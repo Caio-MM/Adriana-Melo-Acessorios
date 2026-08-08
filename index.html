@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adriana Melo Acessórios — Laços artesanais feitos com carinho</title>
+<meta name="description" content="Laços de cabelo artesanais para cada ocasião: maternidade, festa, batizado e presente. Feitos à mão, um a um.">
+
+<!--
+  SEGURANÇA (ver SECURITY-AUDIT.md para o relatório completo):
+  - CSP abaixo restringe de onde scripts/estilos/imagens podem ser carregados (mitiga XSS via injeção de <script> externo).
+  - Uma CSP via <meta> é uma camada extra, não substitui o header HTTP `Content-Security-Policy`
+    que o servidor/hospedagem deve enviar (veja server/server.js, uso de helmet()).
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://cdnjs.cloudflare.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' https://picsum.photos https://fastly.picsum.photos data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+
+<!-- Bootstrap 5 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<!-- Fontes -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Poppins:wght@300;400;500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+
+<!-- Estilos Customizados -->
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+ 
+<!-- ============ SVG SYMBOLS ============ -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="bow-shape" viewBox="0 0 100 70">
+    <path d="M50 35 C50 35 38 6 15 10 C-4 13 -4 47 15 51 C36 56 50 35 50 35 Z"/>
+    <path d="M50 35 C50 35 62 6 85 10 C104 13 104 47 85 51 C64 56 50 35 50 35 Z"/>
+    <rect x="42" y="26" width="16" height="18" rx="5"/>
+    <path d="M45 44 L38 68 L48 60 Z"/>
+    <path d="M55 44 L62 68 L52 60 Z"/>
+  </symbol>
+</svg>
+ 
+<!-- ============ NAVBAR ============ -->
+<nav class="plc-navbar" id="mainNav">
+  <div class="container d-flex align-items-center justify-content-between">
+    
+    <!-- 1. Logo -->
+    <a href="#inicio" class="plc-brand">
+      <svg class="bow-icon"><use href="#bow-shape"/></svg>
+      Adriana Melo Acessórios
+    </a>
+ 
+    <!-- 2. Menu de Links (Apenas Desktop) -->
+    <div class="d-none d-lg-flex align-items-center gap-1">
+      <a href="#inicio" class="plc-nav-link">Início</a>
+      <a href="#colecoes" class="plc-nav-link">Coleções</a>
+      <a href="#sobre" class="plc-nav-link">Como funciona</a>
+      <a href="#depoimentos" class="plc-nav-link">Depoimentos</a>
+      <a href="#contato" class="plc-nav-link">Contato</a>
+    </div>
+ 
+    <!-- 3. Carrinho e Botões (Mobile e Desktop) -->
+    <div class="d-flex align-items-center gap-2 gap-lg-3">
+      
+      <!-- Carrinho: Visível em TODAS as telas -->
+      <button class="cart-pill" type="button" data-bs-toggle="offcanvas" data-bs-target="#cartOffcanvas" aria-controls="cartOffcanvas" aria-label="Abrir carrinho">
+        <i class="bi bi-bag-heart"></i>
+        <span class="cart-badge" id="cartCount">0</span>
+      </button>
+      
+      <!-- Botão Fazer Pedido: Apenas Desktop -->
+      <a href="#contato" class="btn-blush d-none d-lg-inline-block">Fazer pedido</a>
+      
+      <!-- Botão Menu Hambúrguer: Apenas Mobile -->
+      <button class="navbar-toggler border-0 d-lg-none p-0 ms-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#navOffcanvas" style="color:var(--ink)">
+        <i class="bi bi-list fs-2"></i>
+      </button>
+
+    </div>
+  </div>
+</nav>
+</nav>
+ 
+<!-- Offcanvas mobile -->
+<div class="offcanvas offcanvas-end" id="navOffcanvas" style="background:var(--cream)">
+  <div class="offcanvas-header">
+    <span class="plc-brand"><svg class="bow-icon"><use href="#bow-shape"/></svg> Adriana Melo Acessórios</span>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body d-flex flex-column gap-3">
+    <a href="#inicio" class="plc-nav-link" data-bs-dismiss="offcanvas">Início</a>
+    <a href="#colecoes" class="plc-nav-link" data-bs-dismiss="offcanvas">Coleções</a>
+    <a href="#sobre" class="plc-nav-link" data-bs-dismiss="offcanvas">Como funciona</a>
+    <a href="#depoimentos" class="plc-nav-link" data-bs-dismiss="offcanvas">Depoimentos</a>
+    <a href="#contato" class="plc-nav-link" data-bs-dismiss="offcanvas">Contato</a>
+    <a href="#contato" class="btn-blush text-center mt-2" data-bs-dismiss="offcanvas">Fazer pedido</a>
+    <button type="button" class="btn-outline-blush text-center" data-bs-dismiss="offcanvas" data-bs-toggle="offcanvas" data-bs-target="#cartOffcanvas">
+      <i class="bi bi-bag-heart me-1"></i> Ver carrinho (<span id="cartCountMobile">0</span>)
+    </button>
+  </div>
+</div>
+
+<!-- ============ CARRINHO (OFFCANVAS) ============ -->
+<div class="offcanvas offcanvas-end cart-offcanvas" tabindex="-1" id="cartOffcanvas" aria-labelledby="cartOffcanvasLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title font-display" id="cartOffcanvasLabel"><i class="bi bi-bag-heart me-2"></i>Seu carrinho</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+  </div>
+  <div class="offcanvas-body d-flex flex-column">
+    <div id="cartItemsList" class="flex-grow-1 d-flex flex-column gap-3"></div>
+
+    <div id="cartEmptyState" class="text-center my-auto py-5 d-none">
+      <i class="bi bi-bag-heart" style="font-size:2.4rem; color:var(--blush-300)"></i>
+      <p class="section-sub mt-2 mb-0">Seu carrinho está vazio.<br>Que tal escolher um laço?</p>
+    </div>
+
+    <div class="cart-shipping border-top pt-3 mt-3" style="border-color:var(--blush-100)!important">
+      <label class="form-label small fw-semibold mb-1" for="cepInput">Calcular frete</label>
+      <div class="d-flex gap-2">
+        <input type="text" class="form-control" id="cepInput" placeholder="00000-000" inputmode="numeric" maxlength="9" autocomplete="postal-code">
+        <button class="btn-outline-blush flex-shrink-0" id="calcShippingBtn" type="button">Calcular</button>
+      </div>
+      <div class="small mt-1" id="shippingMsg" style="color:var(--ink-soft)"></div>
+      <div id="shippingOptions" class="d-flex flex-column gap-2 mt-2"></div>
+
+      <div id="addressFields" class="d-none mt-3 pt-3 border-top" style="border-color:var(--blush-100)!important">
+        <div class="small fw-semibold mb-2">Endereço de entrega</div>
+        <div class="row g-2">
+          <div class="col-12"><input type="text" class="form-control form-control-sm" id="addrNome" placeholder="Nome completo do destinatário" autocomplete="name"></div>
+          <div class="col-12"><input type="tel" class="form-control form-control-sm" id="addrTelefone" placeholder="Telefone / WhatsApp" autocomplete="tel"></div>
+          <div class="col-8"><input type="text" class="form-control form-control-sm" id="addrRua" placeholder="Rua" autocomplete="address-line1"></div>
+          <div class="col-4"><input type="text" class="form-control form-control-sm" id="addrNumero" placeholder="Número" autocomplete="off"></div>
+          <div class="col-12"><input type="text" class="form-control form-control-sm" id="addrComplemento" placeholder="Complemento (opcional)" autocomplete="address-line2"></div>
+          <div class="col-7"><input type="text" class="form-control form-control-sm" id="addrBairro" placeholder="Bairro" autocomplete="off"></div>
+          <div class="col-5"><input type="text" class="form-control form-control-sm" id="addrCidade" placeholder="Cidade" autocomplete="address-level2"></div>
+          <div class="col-12">
+            <select class="form-select form-select-sm" id="addrUf" autocomplete="address-level1">
+              <option value="">UF</option>
+              <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cart-summary border-top pt-3 mt-3" style="border-color:var(--blush-100)!important">
+      <div class="d-flex justify-content-between mb-1">
+        <span class="section-sub">Subtotal</span>
+        <strong id="cartSubtotal">R$ 0,00</strong>
+      </div>
+      <div class="d-flex justify-content-between mb-1">
+        <span class="section-sub">Frete</span>
+        <strong id="cartShippingPrice">a calcular</strong>
+      </div>
+      <div class="d-flex justify-content-between mb-3 pt-1 border-top" style="border-color:var(--blush-100)!important">
+        <span class="fw-semibold">Total</span>
+        <strong id="cartTotal" style="color:var(--blush-700)">R$ 0,00</strong>
+      </div>
+      <button class="btn-blush w-100" id="checkoutBtn" disabled>
+        <i class="bi bi-lock-fill me-1"></i> Ir para pagamento
+      </button>
+      <div class="small mt-2 text-center" id="checkoutMsg" style="color:var(--blush-700)"></div>
+    </div>
+  </div>
+</div>
+ 
+<!-- ============ HERO ============ -->
+<header class="hero" id="inicio">
+  <div class="container">
+    <div class="row align-items-center gy-5">
+      <div class="col-lg-6">
+        <span class="hero-ribbon-tag"><i class="bi bi-stars"></i> Feito à mão, laço a laço</span>
+        <h1 class="hero-title">Laços que transformam<br>qualquer penteado em <em>ocasião especial</em></h1>
+        <p class="hero-lead">Da maternidade à festa de aniversário: presilhas e laços artesanais, em cetim e algodão, feitos sob encomenda com a cor que você escolher.</p>
+        <div class="d-flex flex-wrap gap-3">
+          <a href="#colecoes" class="btn-blush">Ver coleção <i class="bi bi-arrow-down-short"></i></a>
+          <a href="https://wa.me/5561982749808" target="_blank" rel="noopener" class="btn-outline-blush"><i class="bi bi-whatsapp me-1"></i> Falar no WhatsApp</a>
+        </div>
+        <div class="hero-stats">
+          <div><span class="num">+3.200</span><span class="lbl">laços entregues</span></div>
+          <div><span class="num">4,9<i class="bi bi-star-fill" style="font-size:.9rem"></i></span><span class="lbl">avaliação média</span></div>
+          <div><span class="num">100%</span><span class="lbl">feito à mão</span></div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="hero-art">
+          <svg class="bow-icon floaty f1"><use href="#bow-shape"/></svg>
+          <svg class="bow-icon floaty f2"><use href="#bow-shape"/></svg>
+          <svg class="bow-icon floaty f3"><use href="#bow-shape"/></svg>
+          <svg class="bow-icon floaty f4"><use href="#bow-shape"/></svg>
+          <svg class="bow-icon hero-bow-shadow"><use href="#bow-shape"/></svg>
+          <svg class="bow-icon hero-bow-main"><use href="#bow-shape"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+ 
+<!-- ============ MARQUEE ============ -->
+<div class="plc-marquee">
+  <div class="plc-marquee-track">
+    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Envio para todo o Brasil</span>
+    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Cores e fitas personalizáveis</span>
+    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Embalagem para presente incluída</span>
+    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Feito à mão em cetim e algodão</span>
+    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Envio para todo o Brasil</span>
+    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Cores e fitas personalizáveis</span>
+    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Embalagem para presente incluída</span>
+    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Feito à mão em cetim e algodão</span>
+  </div>
+</div>
+ 
+<!-- ============ COLEÇÕES / PRODUTOS ============ -->
+<section id="colecoes" class="py-5 py-lg-6" style="padding-top:5rem; padding-bottom:5rem;">
+  <div class="container">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-4 mb-4">
+      <div>
+        <span class="section-eyebrow"><i class="bi bi-flower1"></i> nossa coleção</span>
+        <h2 class="section-title">Um laço para cada momento</h2>
+        <p class="section-sub mt-2">Escolha por ocasião e monte o pedido — cada peça é confeccionada especialmente para você.</p>
+      </div>
+    </div>
+ 
+    <div class="chip-group mb-5" id="filterGroup">
+      <button class="chip active" data-cat="todos">Todos</button>
+      <button class="chip" data-cat="maternidade">Maternidade</button>
+      <button class="chip" data-cat="festa">Festa</button>
+      <button class="chip" data-cat="batizado">Batizado</button>
+      <button class="chip" data-cat="dia-a-dia">Dia a dia</button>
+      <button class="chip" data-cat="presente">Presente</button>
+    </div>
+ 
+    <div class="row g-4" id="productsGrid"></div>
+  </div>
+</section>
+ 
+<!-- ============ COMO FUNCIONA ============ -->
+<section id="sobre" class="py-5" style="background:var(--blush-50); padding-top:5rem; padding-bottom:5rem;">
+  <div class="container">
+    <div class="text-center mx-auto mb-5" style="max-width:560px">
+      <span class="section-eyebrow"><i class="bi bi-heart"></i> como funciona</span>
+      <h2 class="section-title">Do pedido até a sua porta</h2>
+      <p class="section-sub mx-auto mt-2">Três passos simples para o laço perfeito chegar até você.</p>
+    </div>
+ 
+    <div class="process-wrap row g-5">
+      <div class="process-line d-none d-md-block"></div>
+      <div class="col-md-4 process-step">
+        <div class="process-num">1</div>
+        <h3 class="h5 font-display">Escolha o laço</h3>
+        <p class="section-sub mx-auto">Navegue pela coleção e escolha o modelo que combina com a ocasião.</p>
+      </div>
+      <div class="col-md-4 process-step">
+        <div class="process-num">2</div>
+        <h3 class="h5 font-display">Personalize</h3>
+        <p class="section-sub mx-auto">Escolha a cor da fita, o tamanho da presilha e, se quiser, borde um nome.</p>
+      </div>
+      <div class="col-md-4 process-step">
+        <div class="process-num">3</div>
+        <h3 class="h5 font-display">Receba em casa</h3>
+        <p class="section-sub mx-auto">Produzimos à mão, embalamos com carinho e enviamos para todo o Brasil.</p>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+<!-- ============ DEPOIMENTOS ============ -->
+<section id="depoimentos" class="py-5" style="padding-top:5rem; padding-bottom:5rem;">
+  <div class="container">
+    <div class="text-center mb-5">
+      <span class="section-eyebrow"><i class="bi bi-chat-heart"></i> quem já comprou</span>
+      <h2 class="section-title">Carinho que aparece nos detalhes</h2>
+    </div>
+ 
+    <div id="testiCarousel" class="carousel slide" data-bs-ride="carousel">
+      <div class="carousel-inner">
+        <div class="carousel-item active">
+          <div class="testi-card">
+            <p class="testi-quote">"Os laços chegaram lindos, embalados como um presente. A qualidade do cetim é visivelmente superior."</p>
+            <div class="testi-avatar">MF</div>
+            <strong>Mariana Ferreira</strong>
+            <div class="section-sub">Brasília, DF</div>
+          </div>
+        </div>
+        <div class="carousel-item">
+          <div class="testi-card">
+            <p class="testi-quote">"Pedi o kit personalizado com o nome da minha filha para o batizado. Ficou exatamente como eu imaginei."</p>
+            <div class="testi-avatar">CL</div>
+            <strong>Camila Lopes</strong>
+            <div class="section-sub">Goiânia, GO</div>
+          </div>
+        </div>
+        <div class="carousel-item">
+          <div class="testi-card">
+            <p class="testi-quote">"Comprei para revender e o acabamento impressionou minhas clientes. Já virou fornecedora fixa."</p>
+            <div class="testi-avatar">RS</div>
+            <strong>Renata Souza</strong>
+            <div class="section-sub">Anápolis, GO</div>
+          </div>
+        </div>
+      </div>
+      <div class="carousel-indicators position-relative mt-4" style="gap:.4rem">
+        <button type="button" data-bs-target="#testiCarousel" data-bs-slide-to="0" class="active"></button>
+        <button type="button" data-bs-target="#testiCarousel" data-bs-slide-to="1"></button>
+        <button type="button" data-bs-target="#testiCarousel" data-bs-slide-to="2"></button>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+<!-- ============ GALERIA ============ -->
+<section class="py-5" style="background:var(--blush-50); padding-top:5rem; padding-bottom:5rem;">
+  <div class="container">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+      <div>
+        <span class="section-eyebrow"><i class="bi bi-camera"></i> na régua</span>
+        <h2 class="section-title mb-0">Nos siga @adriana_melo_acessorios</h2>
+      </div>
+      <a href="https://www.instagram.com/adriana_melo_acessorios/" class="btn-outline-blush"><i class="bi bi-instagram me-1"></i> Seguir no Instagram</a>
+    </div>
+    <div class="row g-3" id="galleryGrid"></div>
+  </div>
+</section>
+ 
+<!-- ============ CTA / NEWSLETTER ============ -->
+<section class="py-5" style="padding-top:5rem; padding-bottom:5rem;">
+  <div class="container">
+    <div class="plc-cta text-center text-md-start">
+      <svg class="bow-icon" style="width:200px; top:-30px; right:-20px;"><use href="#bow-shape"/></svg>
+      <svg class="bow-icon" style="width:120px; bottom:-30px; left:10%;"><use href="#bow-shape"/></svg>
+      <div class="row align-items-center position-relative">
+        <div class="col-md-6 mb-4 mb-md-0">
+          <h2 class="font-display mb-2" style="font-size:1.9rem; color:#fff">Ganhe 10% na primeira compra</h2>
+          <p class="mb-0" style="color:var(--blush-100)">Cadastre seu e-mail e receba o cupom, além de novidades da coleção.</p>
+        </div>
+        <div class="col-md-6">
+          <form class="d-flex flex-column flex-sm-row gap-2" id="newsletterForm" novalidate>
+            <input type="email" class="form-control" placeholder="seu@email.com" required aria-label="Seu e-mail">
+            <button class="btn-blush flex-shrink-0" type="submit">Quero o cupom</button>
+          </form>
+          <div class="small mt-2" id="newsletterMsg" style="color:var(--blush-100)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+<!-- ============ CONTATO ============ -->
+<section id="contato" class="py-5" style="padding-top:5rem; padding-bottom:6rem;">
+  <div class="container">
+    <div class="row g-5">
+      <div class="col-lg-5">
+        <span class="section-eyebrow"><i class="bi bi-envelope-heart"></i> fale com a gente</span>
+        <h2 class="section-title">Vamos criar seu laço?</h2>
+        <p class="section-sub mt-2 mb-4">Conte a ocasião, a cor e o tamanho — respondemos em até 24h úteis.</p>
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span class="social-circle" style="background:var(--blush-100); color:var(--blush-700)"><i class="bi bi-whatsapp"></i></span>
+          <div>
+            <div class="fw-semibold">WhatsApp</div>
+            <a href="https://wa.me/5561982749808" target="_blank" rel="noopener">(61) 98274-9808</a>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <span class="social-circle" style="background:var(--blush-100); color:var(--blush-700)"><i class="bi bi-envelope"></i></span>
+          <div>
+            <div class="fw-semibold">E-mail</div>
+            <a href="mailto:ola@petitlaco.com.br">adriana_melo_acessorios@gmail.com</a>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+          <span class="social-circle" style="background:var(--blush-100); color:var(--blush-700)"><i class="bi bi-geo-alt"></i></span>
+          <div>
+            <div class="fw-semibold">Ateliê</div>
+            <span class="section-sub">Brasília, DF — envios para todo o Brasil</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-7">
+        <form class="row g-3" id="contactForm" novalidate>
+          <div class="col-sm-6">
+            <label class="form-label small fw-semibold">Nome</label>
+            <input type="text" class="form-control" required>
+            <div class="invalid-feedback">Conte seu nome para a gente 🙂</div>
+          </div>
+          <div class="col-sm-6">
+            <label class="form-label small fw-semibold">WhatsApp</label>
+            <input type="tel" class="form-control" required>
+            <div class="invalid-feedback">Informe um telefone para contato.</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Ocasião</label>
+            <select class="form-select" required>
+              <option value="" selected disabled>Selecione...</option>
+              <option>Maternidade</option>
+              <option>Festa</option>
+              <option>Batizado</option>
+              <option>Dia a dia</option>
+              <option>Presente</option>
+            </select>
+            <div class="invalid-feedback">Escolha uma ocasião.</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Mensagem</label>
+            <textarea class="form-control" rows="4" placeholder="Cor, tamanho, quantidade..." required></textarea>
+            <div class="invalid-feedback">Escreva sua mensagem.</div>
+          </div>
+          <div class="col-12">
+            <button class="btn-blush" type="submit">Enviar mensagem <i class="bi bi-send ms-1"></i></button>
+            <span class="small ms-3" id="contactMsg" style="color:var(--blush-700)"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+<!-- ============ FOOTER ============ -->
+<footer class="plc-footer">
+  <div class="container">
+    <div class="row g-4 mb-4">
+      <div class="col-lg-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <svg class="bow-icon"><use href="#bow-shape"/></svg>
+          <span class="font-display fw-semibold fs-5" style="color:#fff">Petit Laço</span>
+        </div>
+        <p class="small" style="max-width:320px">Ateliê artesanal de laços e presilhas para bebês e crianças. Cada peça é feita à mão, com fitas selecionadas e muito carinho.</p>
+        <div class="d-flex gap-2 mt-3">
+          <a href="https://www.instagram.com/adriana_melo_acessorios/" class="social-circle"><i class="bi bi-instagram"></i></a>
+          <a href="https://wa.me/5561982749808" class="social-circle"><i class="bi bi-whatsapp"></i></a>
+          <a href="#" class="social-circle"><i class="bi bi-pinterest"></i></a>
+        </div>
+      </div>
+      <div class="col-lg-2 col-6">
+        <h6>Coleções</h6>
+        <div class="d-flex flex-column gap-2">
+          <a href="#colecoes">Maternidade</a>
+          <a href="#colecoes">Festa</a>
+          <a href="#colecoes">Batizado</a>
+          <a href="#colecoes">Presente</a>
+        </div>
+      </div>
+      <div class="col-lg-2 col-6">
+        <h6>Ateliê</h6>
+        <div class="d-flex flex-column gap-2">
+          <a href="#sobre">Como funciona</a>
+          <a href="#depoimentos">Depoimentos</a>
+          <a href="#contato">Contato</a>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <h6>Formas de pagamento</h6>
+        <div class="d-flex flex-wrap gap-2">
+          <span class="pay-badge">Pix</span>
+          <span class="pay-badge">Cartão de crédito</span>
+          <span class="pay-badge">Boleto</span>
+          <span class="pay-badge">Até 3x sem juros</span>
+        </div>
+      </div>
+    </div>
+    <hr style="border-color:rgba(255,255,255,.12)">
+    <div class="d-flex flex-wrap justify-content-between gap-2 small" style="color:var(--blush-150)">
+      <span>© 2026 Petit Laço — todos os direitos reservados.</span>
+      <span>Feito com <i class="bi bi-heart-fill" style="color:var(--blush-500)"></i> em Brasília</span>
+    </div>
+  </div>
+</footer>
+ 
+<!-- ============ FLOATING BUTTONS ============ -->
+<button class="fab fab-top" id="btnTop" aria-label="Voltar ao topo"><i class="bi bi-arrow-up"></i></button>
+<a class="fab" href="https://wa.me/5561999999999" target="_blank" rel="noopener" aria-label="WhatsApp"><i class="bi bi-whatsapp"></i></a>
+ 
+<!-- ============ TOAST ============ -->
+<div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" style="z-index:1080">
+  <div id="cartToast" class="toast align-items-center border-0" role="alert" style="background:var(--ink); color:#fff">
+    <div class="d-flex">
+      <div class="toast-body"><i class="bi bi-check-circle me-2"></i>Adicionado ao carrinho!</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+ 
+<!-- ============ MODAL: QUICK VIEW ============ -->
+<div class="modal fade" id="quickViewModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:var(--radius-md); border:none">
+      <div class="modal-header border-0">
+        <h5 class="modal-title font-display" id="qvName">Laço</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center mb-3" id="qvThumb" style="height:200px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-md);">
+          <svg class="bow-icon" style="width:40%"><use href="#bow-shape"/></svg>
+        </div>
+        <p class="section-sub" id="qvDesc">Descrição do produto.</p>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <span class="product-price" id="qvPrice">R$ 0,00</span>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-sm btn-outline-blush" id="qvMinus">−</button>
+            <span id="qvQty">1</span>
+            <button class="btn btn-sm btn-outline-blush" id="qvPlus">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button class="btn-blush w-100" id="qvAddBtn">Adicionar ao carrinho</button>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js" defer></script>
+
+<!--
+  SDK do Mercado Pago (v2) — necessário apenas se você usar Wallet Brick / pagamento embutido.
+  No fluxo padrão implementado aqui (Checkout Pro), o site apenas redireciona para o
+  "init_point" devolvido pelo backend, então esse SDK é opcional. Mantido comentado
+  para não carregar script externo desnecessário (performance) até que seja usado.
+  Consulte README.md, seção "Onde colocar suas credenciais".
+-->
+<!-- <script src="https://sdk.mercadopago.com/js/v2" defer></script> -->
+
+<!-- Scripts Customizados -->
+<script src="js/main.js" defer></script>
+</body>
+</html>
