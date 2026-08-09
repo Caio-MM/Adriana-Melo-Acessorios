@@ -91,8 +91,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-size:1.5rem;
   color:var(--ink);
   display:flex; align-items:center; gap:.55rem;
+  white-space:nowrap;
 }
-.plc-brand .bow-icon{ color:var(--blush-600); width:30px; height:22px; }
+.plc-brand .bow-icon{ color:var(--blush-600); width:30px; height:22px; flex-shrink:0; }
+@media (max-width: 575.98px){
+  .plc-brand{ font-size:1.05rem; gap:.4rem; }
+  .plc-brand .bow-icon{ width:22px; height:17px; }
+}
+@media (max-width: 380px){
+  .plc-brand{ font-size:.92rem; }
+}
 .plc-nav-link{
   font-size:.92rem; font-weight:500; color:var(--ink);
   padding:.5rem 1rem !important;
@@ -138,6 +146,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     var(--cream);
   overflow:hidden;
   position:relative;
+}
+@media (max-width: 575.98px){
+  .hero{ padding:96px 0 56px; }
 }
 .hero-ribbon-tag{
   display:inline-flex; align-items:center; gap:.5rem;
