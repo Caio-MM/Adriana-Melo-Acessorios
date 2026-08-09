@@ -1,0 +1,17 @@
+# Segredos — nunca versionar
+.env
+.env.*
+!.env.example
+
+# Dependências
+node_modules/
+
+# Banco de dados local (usuários, sessões, pedidos)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Sistema
+.DS_Store
+npm-debug.log*

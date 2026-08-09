@@ -1,0 +1,16 @@
+# Sistema
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Segredos e dados locais do back-end (ver também server/.gitignore)
+server/.env
+server/.env.*
+!server/.env.example
+server/node_modules/
+server/*.db
+server/*.db-journal
+server/*.db-wal
+server/*.db-shm
