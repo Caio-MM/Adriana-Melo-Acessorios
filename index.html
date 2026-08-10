@@ -16,6 +16,7 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 
 <!-- Bootstrap 5 -->
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <!-- Fontes -->
@@ -115,6 +116,16 @@
     <div id="cartEmptyState" class="text-center my-auto py-5 d-none">
       <i class="bi bi-bag-heart" style="font-size:2.4rem; color:var(--blush-300)"></i>
       <p class="section-sub mt-2 mb-0">Seu carrinho está vazio.<br>Que tal escolher um laço?</p>
+    </div>
+
+    <!-- Cross-sell: sugestões calculadas a partir do que já está no carrinho
+         (ver renderCartRecommendations em js/main.js). Aumenta o ticket
+         médio mostrando o complemento certo no momento de maior intenção
+         de compra (o cliente já decidiu comprar, só falta decidir o quê
+         mais). -->
+    <div id="cartRecommendations" class="cart-recs d-none border-top pt-3 mt-3" style="border-color:var(--blush-100)!important">
+      <div class="small fw-semibold mb-2">Complete seu pedido</div>
+      <div id="cartRecsList" class="d-flex flex-column gap-2"></div>
     </div>
 
     <div class="cart-shipping border-top pt-3 mt-3" style="border-color:var(--blush-100)!important">
@@ -247,7 +258,44 @@
     <div class="row g-4" id="productsGrid"></div>
   </div>
 </section>
- 
+
+<!-- ============ NOSSA HISTÓRIA ============ -->
+<section id="historia" class="py-5" style="padding-top:5rem; padding-bottom:5rem;">
+  <div class="container">
+    <div class="row align-items-center gy-5">
+      <div class="col-lg-6 reveal">
+        <span class="section-eyebrow"><i class="bi bi-heart-fill"></i> nossa história</span>
+        <h2 class="section-title mb-3">Cada laço carrega um pouco da nossa história</h2>
+        <!-- 📝 Texto placeholder: troque pelo relato real da Adriana (como
+             começou, o que inspira o trabalho, um marco importante). O
+             espaço/design já está pronto — só falta a história de verdade. -->
+        <p class="section-sub mb-3">Tudo começou com a vontade de transformar um gesto simples — um laço no cabelo — em um momento especial. Cada peça é cortada, costurada e finalizada à mão, uma de cada vez, com o mesmo cuidado que a gente teria ao presentear alguém da família.</p>
+        <p class="section-sub mb-4">Hoje esse cuidado chega a famílias em todo o Brasil — e continua sendo feito exatamente como no primeiro laço.</p>
+        <div class="d-flex align-items-center gap-3 mb-4">
+          <div class="social-circle" style="background:var(--blush-100); color:var(--blush-700)"><i class="bi bi-scissors"></i></div>
+          <div>
+            <div class="fw-semibold font-display" style="font-size:1.05rem">Adriana Melo</div>
+            <div class="small" style="color:var(--ink-soft)">Idealizadora e artesã</div>
+          </div>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-3 pt-4 border-top" style="border-color:var(--blush-100)!important">
+          <div>
+            <span class="section-eyebrow"><i class="bi bi-camera"></i> na régua</span>
+            <div class="fw-semibold font-display" style="font-size:1.05rem">Nos siga @adriana_melo_acessorios</div>
+          </div>
+          <a href="https://www.instagram.com/adriana_melo_acessorios/" target="_blank" rel="noopener noreferrer" class="btn-outline-blush ms-auto"><i class="bi bi-instagram me-1"></i> Seguir no Instagram</a>
+        </div>
+      </div>
+      <div class="col-lg-6 reveal reveal-delay-1">
+        <div class="historia-frame">
+          <svg class="bow-icon" style="width:38%; top:14%; left:12%; position:absolute; color:var(--blush-200)"><use href="#bow-shape"/></svg>
+          <svg class="bow-icon" style="width:55%"><use href="#bow-shape"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ COMO FUNCIONA ============ -->
 <section id="sobre" class="py-5" style="background:var(--blush-50); padding-top:5rem; padding-bottom:5rem;">
   <div class="container">
@@ -319,20 +367,6 @@
         <button type="button" data-bs-target="#testiCarousel" data-bs-slide-to="2"></button>
       </div>
     </div>
-  </div>
-</section>
- 
-<!-- ============ GALERIA ============ -->
-<section class="py-5" style="background:var(--blush-50); padding-top:5rem; padding-bottom:5rem;">
-  <div class="container">
-    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4 reveal">
-      <div>
-        <span class="section-eyebrow"><i class="bi bi-camera"></i> na régua</span>
-        <h2 class="section-title mb-0">Nos siga @adriana_melo_acessorios</h2>
-      </div>
-      <a href="https://www.instagram.com/adriana_melo_acessorios/" class="btn-outline-blush"><i class="bi bi-instagram me-1"></i> Seguir no Instagram</a>
-    </div>
-    <div class="row g-3" id="galleryGrid"></div>
   </div>
 </section>
  
@@ -456,6 +490,7 @@
       <div class="col-lg-2 col-6">
         <h6>Ateliê</h6>
         <div class="d-flex flex-column gap-2">
+          <a href="#historia">Nossa história</a>
           <a href="#sobre">Como funciona</a>
           <a href="#depoimentos">Depoimentos</a>
           <a href="#contato">Contato</a>

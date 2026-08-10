@@ -23,6 +23,7 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const compression = require("compression");
 const { randomUUID } = require("crypto");
 const rateLimit = require("express-rate-limit");
 const { MercadoPagoConfig, Preference, Payment } = require("mercadopago");
@@ -115,16 +116,15 @@ function effectiveProduct(id, overridesMap){
    front-end manda só o código; o desconto real é sempre calculado aqui,
    nunca confiando em um valor de desconto vindo do navegador (mesma lógica
    de "nunca confiar em preço/valor do cliente" usada para o carrinho).
-   Para adicionar um cupom novo, basta acrescentar uma entrada aqui.
+   Cupons ficam em server/db.js (tabela coupons) — criados/apagados pelo
+   painel administrativo em /api/admin/coupons, sem precisar editar código.
 ========================================================================= */
-const COUPONS = {
-  BEMVINDA10: { percentOff: 10, description: "10% de desconto — primeira compra" },
-};
-
 function findCoupon(rawCode){
   const code = String(rawCode || "").trim().toUpperCase();
-  if(!code || !COUPONS[code]) return null;
-  return { code, ...COUPONS[code] };
+  if(!code) return null;
+  const row = db.getCoupon(code);
+  if(!row) return null;
+  return { code: row.code, percentOff: row.percent_off, description: row.description };
 }
 
 /* -------------------------- MIDDLEWARES DE SEGURANÇA -------------------------- */
@@ -153,6 +153,12 @@ app.use(helmet({
 // com um live-reload em outra porta). Combinado com `origin` fixo (não "*"),
 // só o seu próprio site pode enviar/receber esse cookie.
 app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
+// Comprime HTML/CSS/JS/JSON com gzip antes de enviar — sem isso, o
+// style.css (~21KB) e o main.js (~37KB) saíam do jeito que estão no disco,
+// mesmo o navegador sempre anunciando que aceita gzip. Não comprime
+// imagens/binários (já vêm comprimidos, gastar CPU tentando de novo
+// não ajuda).
+app.use(compression());
 app.use(express.json({ limit: "50kb" }));   // corpo pequeno: evita payloads gigantes (DoS simples)
 app.use(auth.attachUser);                   // preenche req.user (ou null) a partir do cookie de sessão
 
@@ -219,7 +225,22 @@ app.use((req, res, next) => {
   if (firstSegment && PUBLIC_TOP_LEVEL.has(firstSegment)) return next();
   return res.status(404).send("Não encontrado.");
 });
-app.use(express.static(SITE_ROOT, { extensions: ["html"], dotfiles: "ignore" }));
+// maxAge de 1h para tudo (css/js/img) — deixa o navegador reaproveitar
+// esses arquivos sem baixar de novo ao navegar entre páginas ou voltar ao
+// site na mesma hora, sem arriscar ficar preso a uma versão velha por
+// muito tempo caso algo seja corrigido/publicado de novo (não há um passo
+// de build com nome de arquivo versionado neste projeto). HTML fica de
+// fora de propósito (sempre revalidado): são as "portas de entrada" do
+// site — nunca queremos alguém preso numa versão antiga do index.html
+// depois de um deploy, especialmente das páginas de checkout/admin.
+app.use(express.static(SITE_ROOT, {
+  extensions: ["html"],
+  dotfiles: "ignore",
+  maxAge: "1h",
+  setHeaders(res, filePath){
+    if(filePath.endsWith(".html")) res.setHeader("Cache-Control", "no-cache");
+  },
+}));
 
 /* =========================================================================
    Validação e montagem de itens a partir do que o CLIENTE enviou.
@@ -370,7 +391,16 @@ app.post("/api/calculate-shipping", strictLimiter, async (req, res) => {
     }
     res.json({ options });
   } catch (err) {
-    if(err.status && err.message){
+    // Distingue os dois tipos de erro que caem aqui: os que a GENTE lança
+    // de propósito (objeto simples, ex.: buildValidatedItems — mensagem já
+    // pensada pro cliente ler) dos que vêm de uma falha real de rede/API
+    // externa (sempre um Error de verdade — meFetch, na chamada ao Melhor
+    // Envio). Mostrar a mensagem crua do segundo tipo pro cliente (ex.:
+    // "Unauthenticated." quando o token do Melhor Envio está errado) é
+    // confuso e vaza detalhe interno — por isso só o primeiro tipo é
+    // devolvido como está; o resto vira uma mensagem genérica, com o erro
+    // de verdade só no log do servidor.
+    if(!(err instanceof Error) && err.status && err.message){
       console.error("Erro de validação/frete:", err.message);
       return res.status(err.status).json({ error: err.message });
     }
@@ -397,7 +427,7 @@ app.post("/api/validate-coupon", strictLimiter, (req, res) => {
     const discount = Math.round(subtotal * (coupon.percentOff / 100) * 100) / 100;
     res.json({ code: coupon.code, percentOff: coupon.percentOff, discount });
   } catch (err) {
-    if(err.status && err.message){
+    if(!(err instanceof Error) && err.status && err.message){
       return res.status(err.status).json({ error: err.message });
     }
     console.error("Erro ao validar cupom:", err);
@@ -535,7 +565,11 @@ app.post("/api/create-preference", strictLimiter, async (req, res) => {
     // init_point = link de pagamento (Checkout Pro) para redirecionar o cliente
     res.json({ id: result.id, init_point: result.init_point });
   } catch (err) {
-    if(err.status && err.message){
+    // Mesmo racional do catch em /api/calculate-shipping: só mostra a
+    // mensagem crua pro cliente quando é um erro de validação nosso
+    // (objeto simples); qualquer Error de verdade (Melhor Envio, Mercado
+    // Pago) vira mensagem genérica aqui, com o detalhe real só no log.
+    if(!(err instanceof Error) && err.status && err.message){
       return res.status(err.status).json({ error: err.message });
     }
     console.error("Erro ao criar preferência:", err);
@@ -1066,6 +1100,122 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
   } catch (err) {
     console.error("Erro ao atualizar produto:", err);
     res.status(500).json({ error: "Não foi possível salvar o produto agora." });
+  }
+});
+
+/* DELETE /api/admin/orders/:reference — apaga um pedido (carrinho
+   abandonado, teste, etc.). NUNCA apaga um pedido "pago": isso é
+   histórico financeiro do pedido, não um "carrinho" — remover um pago de
+   verdade tem que ser uma decisão manual direta no banco, não um clique
+   no painel. */
+app.delete("/api/admin/orders/:reference", auth.requireAdmin, (req, res) => {
+  try {
+    const reference = String(req.params.reference || "");
+    const order = db.getOrderByExternalReference(reference);
+    if(!order){
+      return res.status(404).json({ error: "Pedido não encontrado." });
+    }
+    if(order.status === "pago"){
+      return res.status(409).json({ error: "Pedidos pagos não podem ser apagados — é o histórico financeiro do pedido." });
+    }
+    db.deleteOrder(reference);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Erro ao apagar pedido:", err);
+    res.status(500).json({ error: "Não foi possível apagar o pedido agora." });
+  }
+});
+
+/* =========================================================================
+   GESTÃO DE CUPONS (painel administrativo) — /api/admin/coupons
+   -------------------------------------------------------------------------
+   Cria/lista/apaga cupons de desconto percentual. findCoupon() (usado no
+   checkout de verdade) lê da mesma tabela — um cupom criado aqui já vale
+   pro cliente no próximo checkout, sem precisar reiniciar o servidor.
+========================================================================= */
+app.get("/api/admin/coupons", auth.requireAdmin, (req, res) => {
+  try {
+    const coupons = db.listCoupons().map(c => ({
+      code: c.code, percentOff: c.percent_off, description: c.description, createdAt: c.created_at,
+    }));
+    res.json({ coupons });
+  } catch (err) {
+    console.error("Erro ao listar cupons:", err);
+    res.status(500).json({ error: "Não foi possível carregar os cupons agora." });
+  }
+});
+
+app.post("/api/admin/coupons", auth.requireAdmin, (req, res) => {
+  try {
+    const code = String(req.body?.code || "").trim().toUpperCase().replace(/\s+/g, "");
+    const percentOff = Number(req.body?.percentOff);
+    const description = String(req.body?.description || "").trim().slice(0, 200);
+
+    if(!/^[A-Z0-9]{3,20}$/.test(code)){
+      return res.status(400).json({ error: "Código precisa ter de 3 a 20 letras/números, sem espaço." });
+    }
+    if(!Number.isFinite(percentOff) || percentOff <= 0 || percentOff > 90){
+      return res.status(400).json({ error: "Desconto precisa ser um número entre 1 e 90 (%)." });
+    }
+    if(db.getCoupon(code)){
+      return res.status(409).json({ error: "Já existe um cupom com esse código." });
+    }
+
+    const created = db.createCoupon({ code, percentOff, description });
+    res.status(201).json({
+      code: created.code, percentOff: created.percent_off, description: created.description, createdAt: created.created_at,
+    });
+  } catch (err) {
+    console.error("Erro ao criar cupom:", err);
+    res.status(500).json({ error: "Não foi possível criar o cupom agora." });
+  }
+});
+
+app.delete("/api/admin/coupons/:code", auth.requireAdmin, (req, res) => {
+  try {
+    const code = String(req.params.code || "").trim().toUpperCase();
+    if(!db.getCoupon(code)){
+      return res.status(404).json({ error: "Cupom não encontrado." });
+    }
+    db.deleteCoupon(code);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Erro ao apagar cupom:", err);
+    res.status(500).json({ error: "Não foi possível apagar o cupom agora." });
+  }
+});
+
+/* POST /api/admin/orders/:reference/generate-label — compra a etiqueta de
+   envio no Melhor Envio para este pedido (ação manual, sob demanda —
+   diferente de AUTO_PURCHASE_SHIPPING_LABEL, que é automático via
+   webhook). ⚠️ Gasta saldo real da conta Melhor Envio: só funciona para
+   pedido já pago, e é sempre a lojista quem decide clicar, pedido por
+   pedido (nunca automático a partir daqui). */
+app.post("/api/admin/orders/:reference/generate-label", auth.requireAdmin, async (req, res) => {
+  const reference = String(req.params.reference || "");
+  try {
+    const orderRow = db.getOrderByExternalReference(reference);
+    if(!orderRow){
+      return res.status(404).json({ error: "Pedido não encontrado." });
+    }
+    if(orderRow.status !== "pago"){
+      return res.status(409).json({ error: "Só é possível gerar etiqueta para pedidos pagos." });
+    }
+
+    const order = {
+      items: JSON.parse(orderRow.items_json),
+      address: JSON.parse(orderRow.address_json),
+      shipping: JSON.parse(orderRow.shipping_json),
+    };
+    const generated = await purchaseShippingLabel(order);
+    const trackingCode = generated?.[0]?.tracking || generated?.tracking || null;
+    if(trackingCode){
+      db.updateOrderTracking(reference, trackingCode);
+    }
+    res.json({ ok: true, trackingCode, raw: generated });
+  } catch (err) {
+    console.error(`Erro ao gerar etiqueta para o pedido ${reference}:`, err);
+    res.status(502).json({ error: "Não foi possível gerar a etiqueta agora. Confira as credenciais do Melhor Envio ou gere manualmente no painel deles." });
   }
 });
 

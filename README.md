@@ -63,9 +63,12 @@ site/
   um e-mail cujo hash SHA-256 está em `ADMIN_EMAIL_HASHES` (ver seção 2 —
   o e-mail nunca fica em texto puro no `.env`) — qualquer outra pessoa
   logada recebe 403 e visitante sem login é mandado para o login. O link
-  "Admin" só aparece na navbar para quem tem acesso. Três áreas:
+  "Admin" só aparece na navbar para quem tem acesso. Cinco áreas:
   - **Visão geral**: vendas totais (R$) e total de pedidos, somando só os
     pedidos com status "pago" (`GET /api/admin/orders`, campo `stats`).
+  - **Carrinhos pendentes**: pedidos com checkout iniciado (preferência
+    criada no Mercado Pago) mas nunca pagos, entre 1h e 14 dias atrás —
+    botão "Chamar no WhatsApp" (mensagem pré-escrita) e "Apagar carrinho".
   - **Produtos**: tabela com todos os produtos do catálogo — "Editar" abre
     um modal para trocar nome, preço e a URL da foto. Salvar grava em
     `product_overrides` (server/db.js) e o preço novo já vale no próximo
@@ -73,9 +76,16 @@ site/
     a vitrine quanto para cobrar) — nunca é só cosmético. A vitrine
     (`js/main.js`) busca essas edições sozinha ao carregar a página, sem
     precisar reiniciar o servidor.
+  - **Cupons**: criar/apagar cupons de desconto percentual (tabela
+    `coupons`, server/db.js) — um cupom criado aqui já vale no checkout do
+    cliente na hora, sem editar código nem reiniciar o servidor.
   - **Pedidos**: cliente, telefone, itens (quantidade/cor), endereço de
-    entrega, total, e um campo para a lojista preencher o código de
-    rastreio dos Correios depois de postar.
+    entrega, total; pedidos não pagos podem ser apagados; pedidos pagos
+    (nunca apagáveis — é o histórico financeiro) mostram um campo pra
+    preencher o código de rastreio manualmente **ou** um botão "Gerar
+    código" que compra a etiqueta de envio direto no Melhor Envio e
+    preenche sozinho (gasta saldo real da conta — por isso pede
+    confirmação antes).
 - **Segurança**: ver `SECURITY-AUDIT.md`.
 - **Performance**: ver seção 6 abaixo.
 
@@ -202,7 +212,5 @@ ambiente de build/deploy):
   de sempre reconsultar o pagamento pela API deles (nunca confiar só no
   payload recebido), o que já é sólido, mas a assinatura é uma camada
   extra fácil de somar.
-- Cupons de desconto além do `BEMVINDA10` fixo em `COUPONS`
-  (`server/server.js`) — hoje qualquer cupom novo exige editar o código.
 - E-mail transacional de recuperação de senha (hoje só existe o aviso de
   pedido pago, `server/email.js`).

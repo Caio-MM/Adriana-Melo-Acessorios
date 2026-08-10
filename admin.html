@@ -10,6 +10,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://cdnjs.cloudflare.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' https://picsum.photos https://fastly.picsum.photos data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -80,6 +81,19 @@
           <div class="stats-row" id="statsRow"></div>
         </section>
 
+        <!-- ============ CARRINHOS PENDENTES (recuperação) ============
+             Pedidos com checkout iniciado (preferência criada no Mercado
+             Pago) mas pagamento nunca confirmado — entre 1h e 14 dias
+             atrás. Contato manual pela lojista via WhatsApp converte mais
+             que e-mail automático de recuperação, dado o perfil da loja
+             (atendimento já é feito por WhatsApp). Fica oculta quando não
+             há nenhum. -->
+        <section class="mb-5 d-none" id="pendingCartsSection">
+          <h2 class="admin-section-title">Carrinhos pendentes</h2>
+          <p class="section-sub mb-3" style="font-size:.88rem">Pedidos que começaram o pagamento mas não finalizaram — um contato pode recuperar a venda.</p>
+          <div id="pendingCartsList" class="orders-list"></div>
+        </section>
+
         <!-- ============ PRODUTOS ============ -->
         <section class="mb-5">
           <h2 class="admin-section-title">Produtos</h2>
@@ -95,6 +109,45 @@
                 </tr>
               </thead>
               <tbody id="productsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ============ CUPONS ============ -->
+        <section class="mb-5">
+          <h2 class="admin-section-title">Cupons</h2>
+          <p class="section-sub mb-3" style="font-size:.88rem">Cupons de desconto percentual — criados aqui já valem no checkout do site na hora.</p>
+
+          <form id="newCouponForm" class="row g-2 align-items-end mb-3" novalidate>
+            <div class="col-6 col-sm-3">
+              <label class="form-label small fw-semibold mb-1" for="couponCode">Código</label>
+              <input type="text" class="form-control form-control-sm" id="couponCode" placeholder="Ex.: NATAL15" required minlength="3" maxlength="20">
+            </div>
+            <div class="col-6 col-sm-2">
+              <label class="form-label small fw-semibold mb-1" for="couponPercent">Desconto %</label>
+              <input type="number" class="form-control form-control-sm" id="couponPercent" placeholder="10" required min="1" max="90" step="1">
+            </div>
+            <div class="col-8 col-sm-5">
+              <label class="form-label small fw-semibold mb-1" for="couponDesc">Descrição (opcional)</label>
+              <input type="text" class="form-control form-control-sm" id="couponDesc" placeholder="Ex.: Promoção de Natal" maxlength="200">
+            </div>
+            <div class="col-4 col-sm-2">
+              <button type="submit" class="btn-outline-blush w-100" id="couponSaveBtn">Criar</button>
+            </div>
+            <div class="col-12"><div id="couponFormMsg" class="small account-msg"></div></div>
+          </form>
+
+          <div class="table-responsive admin-table-wrap">
+            <table class="table align-middle admin-products-table mb-0">
+              <thead>
+                <tr>
+                  <th scope="col">Código</th>
+                  <th scope="col">Desconto</th>
+                  <th scope="col">Descrição</th>
+                  <th scope="col"></th>
+                </tr>
+              </thead>
+              <tbody id="couponsTableBody"></tbody>
             </table>
           </div>
         </section>

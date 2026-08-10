@@ -66,6 +66,18 @@ db.exec(`
     updated_at  INTEGER NOT NULL
   );
 
+  -- Cupons criados pelo painel administrativo. BEMVINDA10 (o único cupom
+  -- fixo que existia antes) é semeado aqui automaticamente na primeira
+  -- vez que o servidor sobe com um banco novo/antigo sem essa tabela (ver
+  -- seedDefaultCoupon logo abaixo) — depois disso, este banco é a única
+  -- fonte da verdade pra cupom (nada mais fica hardcoded em server.js).
+  CREATE TABLE IF NOT EXISTS coupons (
+    code         TEXT PRIMARY KEY,
+    percent_off  REAL NOT NULL,
+    description  TEXT,
+    created_at   INTEGER NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
 `);
@@ -83,6 +95,21 @@ function ensureColumn(table, column, definition) {
   }
 }
 ensureColumn("orders", "tracking_code", "TEXT");
+
+// Garante que o cupom que já existia fixo no código (BEMVINDA10) continua
+// funcionando depois da migração pra banco — só insere se a tabela
+// coupons estiver vazia (banco novo, ou banco de antes dessa tabela
+// existir), nunca sobrescreve um cupom que a lojista já tenha editado/
+// apagado de propósito pelo painel.
+function seedDefaultCoupon() {
+  const { count } = db.prepare(`SELECT COUNT(*) AS count FROM coupons`).get();
+  if (count === 0) {
+    db.prepare(
+      `INSERT INTO coupons (code, percent_off, description, created_at) VALUES (?, ?, ?, ?)`
+    ).run("BEMVINDA10", 10, "10% de desconto — primeira compra", Date.now());
+  }
+}
+seedDefaultCoupon();
 
 /* ---------------------------- USERS ---------------------------- */
 const stmtInsertUser = db.prepare(
@@ -148,6 +175,7 @@ const stmtUpdateOrderTracking = db.prepare(
 const stmtOrderStats = db.prepare(
   `SELECT COUNT(*) AS count, COALESCE(SUM(total), 0) AS revenue FROM orders WHERE status = 'pago'`
 );
+const stmtDeleteOrder = db.prepare(`DELETE FROM orders WHERE external_reference = ?`);
 
 function createOrder(order) {
   const now = Date.now();
@@ -187,6 +215,13 @@ function updateOrderTracking(ref, trackingCode) {
 function getOrderStats() {
   return stmtOrderStats.get();
 }
+// Quem chama decide SE pode apagar (nunca um pedido "pago" — ver checagem
+// de status na rota /api/admin/orders/:reference em server.js); esta
+// função só executa o DELETE, sem regra de negócio nenhuma, igual ao
+// resto deste arquivo.
+function deleteOrder(ref) {
+  stmtDeleteOrder.run(ref);
+}
 
 /* ------------------------- PRODUCT OVERRIDES ------------------------- */
 const stmtGetProductOverride = db.prepare(`SELECT * FROM product_overrides WHERE product_id = ?`);
@@ -209,6 +244,28 @@ function upsertProductOverride(productId, { name, price, photoUrl }) {
   return getProductOverride(productId);
 }
 
+/* ------------------------------ COUPONS ------------------------------ */
+const stmtGetCoupon = db.prepare(`SELECT * FROM coupons WHERE code = ?`);
+const stmtListCoupons = db.prepare(`SELECT * FROM coupons ORDER BY created_at DESC`);
+const stmtInsertCoupon = db.prepare(
+  `INSERT INTO coupons (code, percent_off, description, created_at) VALUES (?, ?, ?, ?)`
+);
+const stmtDeleteCoupon = db.prepare(`DELETE FROM coupons WHERE code = ?`);
+
+function getCoupon(code) {
+  return stmtGetCoupon.get(code) || null;
+}
+function listCoupons() {
+  return stmtListCoupons.all();
+}
+function createCoupon({ code, percentOff, description }) {
+  stmtInsertCoupon.run(code, percentOff, description ?? null, Date.now());
+  return getCoupon(code);
+}
+function deleteCoupon(code) {
+  stmtDeleteCoupon.run(code);
+}
+
 module.exports = {
   createUser,
   getUserByEmail,
@@ -224,7 +281,12 @@ module.exports = {
   listAllOrders,
   updateOrderTracking,
   getOrderStats,
+  deleteOrder,
   getProductOverride,
   listProductOverrides,
   upsertProductOverride,
+  getCoupon,
+  listCoupons,
+  createCoupon,
+  deleteCoupon,
 };

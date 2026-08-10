@@ -35,6 +35,17 @@
     }[ch]));
   }
 
+  /* fetch pode travar (nunca resolver nem rejeitar) em vez de falhar
+     rápido — sem um limite de tempo, calcular frete ou ir pro pagamento
+     ficariam presos no botão desabilitado/"Calculando..." pra sempre, sem
+     nenhum jeito de tentar de novo. Mesmo racional do fetchWithTimeout em
+     js/auth.js e js/admin.js. */
+  function fetchWithTimeout(url, options, timeoutMs){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs || 12000);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+  }
+
   /* Lookup de produto por id em O(1) em vez de Array.find (O(n)) a cada
      cálculo de subtotal/render — o catálogo é pequeno hoje, mas é a forma
      correta de fazer e não tem custo nenhum a mais para escrever assim. */
@@ -159,11 +170,11 @@
   function wireImage(imgEl){
     imgEl.addEventListener("load", () => {
       imgEl.classList.add("is-loaded");
-      imgEl.closest(".product-thumb, .cart-item-thumb, .gal-item")?.classList.remove("is-loading");
+      imgEl.closest(".product-thumb, .cart-item-thumb")?.classList.remove("is-loading");
     });
     imgEl.addEventListener("error", () => {
       imgEl.classList.add("is-error");
-      imgEl.closest(".product-thumb, .cart-item-thumb, .gal-item")?.classList.remove("is-loading");
+      imgEl.closest(".product-thumb, .cart-item-thumb")?.classList.remove("is-loading");
     });
   }
 
@@ -171,7 +182,7 @@
     const list = currentFilter === "todos" ? products : products.filter(p => p.cat === currentFilter);
     grid.innerHTML = list.map((p, i) => `
       <div class="col-6 col-md-4 col-lg-3 reveal reveal-delay-${i % 4}">
-        <div class="product-card">
+        <div class="product-card${p.badge ? " is-featured" : ""}">
           <div class="product-thumb is-loading" style="background:${p.color}22">
             ${p.badge ? `<span class="product-badge">${escapeHTML(p.badge)}</span>` : ""}
             <button class="product-quickview" data-id="${p.id}" aria-label="Ver detalhes"><i class="bi bi-eye"></i></button>
@@ -344,6 +355,8 @@
 
   const cartItemsList = document.getElementById("cartItemsList");
   const cartEmptyState = document.getElementById("cartEmptyState");
+  const cartRecommendationsEl = document.getElementById("cartRecommendations");
+  const cartRecsListEl = document.getElementById("cartRecsList");
   const cartSubtotalEl = document.getElementById("cartSubtotal");
   const cartDiscountRow = document.getElementById("cartDiscountRow");
   const cartCouponCodeEl = document.getElementById("cartCouponCode");
@@ -442,11 +455,63 @@
       }).join("");
       cartItemsList.querySelectorAll(".cart-item-thumb img").forEach(wireImage);
     }
+    renderCartRecommendations();
     resetShipping();
     updateTotals();
     checkoutMsg.classList.remove("show");
     checkoutMsg.innerHTML = "";
   }
+
+  /* =====================================================================
+     CROSS-SELL NO CARRINHO ("Complete seu pedido")
+     -------------------------------------------------------------------
+     Sugere produtos que ainda não estão no carrinho, priorizando
+     categorias diferentes das já escolhidas (ex.: cliente levou um laço
+     de "festa" → sugere "presente"/"dia a dia" antes de outro de festa),
+     e dentro de cada grupo prioriza os que já têm selo (mais vendido/
+     novo) — são os que a própria loja já sabe que convertem bem. Mostrado
+     no momento de maior intenção de compra (carrinho aberto), que é onde
+     esse tipo de sugestão mais aumenta o ticket médio.
+  ===================================================================== */
+  function pickCartRecommendations(){
+    const inCartIds = new Set(cart.map(i => i.id));
+    const inCartCats = new Set(cart.map(i => findProduct(i.id)?.cat).filter(Boolean));
+    const candidates = products.filter(p => !inCartIds.has(p.id));
+    const byBadgeFirst = (a, b) => (b.badge ? 1 : 0) - (a.badge ? 1 : 0);
+
+    const otherCategories = candidates.filter(p => !inCartCats.has(p.cat)).sort(byBadgeFirst);
+    const sameCategory = candidates.filter(p => inCartCats.has(p.cat)).sort(byBadgeFirst);
+    return [...otherCategories, ...sameCategory].slice(0, 3);
+  }
+
+  function renderCartRecommendations(){
+    const recs = cart.length ? pickCartRecommendations() : [];
+    if(!recs.length){
+      cartRecommendationsEl.classList.add("d-none");
+      return;
+    }
+    cartRecommendationsEl.classList.remove("d-none");
+    cartRecsListEl.innerHTML = recs.map(p => `
+      <div class="cart-rec-item" data-id="${p.id}">
+        <div class="cart-rec-thumb">
+          <img src="${imageFor(p)}" alt="${escapeHTML(p.name)}" width="44" height="44" loading="lazy" decoding="async">
+        </div>
+        <div class="flex-grow-1">
+          <div class="cart-rec-name">${escapeHTML(p.name)}</div>
+          <div class="cart-rec-price">${formatMoney(p.price)}</div>
+        </div>
+        <button type="button" class="cart-rec-add" data-id="${p.id}" aria-label="Adicionar ${escapeHTML(p.name)} ao carrinho"><i class="bi bi-plus-lg"></i></button>
+      </div>
+    `).join("");
+    cartRecsListEl.querySelectorAll(".cart-rec-thumb img").forEach(wireImage);
+  }
+
+  cartRecsListEl.addEventListener("click", function(e){
+    const btn = e.target.closest(".cart-rec-add");
+    if(!btn) return;
+    addToCart(Number(btn.dataset.id), 1);
+    bumpCartIcon(); // carrinho já está aberto aqui — sem o "voo" até o ícone, que ficaria escondido atrás do próprio painel
+  });
 
   cartItemsList.addEventListener("click", function(e){
     const row = e.target.closest(".cart-item");
@@ -555,7 +620,7 @@
     updateTotals();
 
     try{
-      const res = await fetch("/api/calculate-shipping", {
+      const res = await fetchWithTimeout("/api/calculate-shipping", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -597,7 +662,9 @@
       autofillAddress(cep.replace("-", ""));
     } catch(err){
       console.error("Falha ao calcular frete:", err);
-      shippingMsgEl.textContent = err.message || "Não foi possível calcular o frete agora. Tente novamente em instantes.";
+      shippingMsgEl.textContent = err.name === "AbortError"
+        ? "A busca por opções de frete demorou demais. Tente novamente."
+        : (err.message || "Não foi possível calcular o frete agora. Tente novamente em instantes.");
     } finally {
       calcShippingBtn.disabled = false;
     }
@@ -677,7 +744,7 @@
 
     let res;
     try{
-      res = await fetch("/api/create-preference", {
+      res = await fetchWithTimeout("/api/create-preference", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -755,41 +822,6 @@
     }
     qvModal.hide();
   });
-
-  /* ---------- GALERIA ----------
-     Tenta carregar fotos reais em img/galeria/foto-1.jpg até foto-8.jpg.
-     Enquanto esses arquivos não existirem (ou algum faltar), cai
-     automaticamente para uma foto de placeholder (Picsum) só naquele
-     item — sem quebrar o layout. Basta colocar os arquivos com esses
-     nomes exatos na pasta img/galeria/ que eles passam a aparecer. */
-  const galFallbackSeeds = ["laco-rosa-1","laco-rosa-2","laco-festa","laco-batizado","laco-presente","laco-tiara","laco-borboleta","laco-duquesa"];
-  const gallery = document.getElementById("galleryGrid");
-  gallery.innerHTML = galFallbackSeeds.map((seed,i) => `
-    <div class="col-6 col-md-3 reveal reveal-delay-${i % 4}">
-      <div class="gal-item is-loading">
-        <img
-          src="img/galeria/foto-${i+1}.jpg"
-          data-fallback="https://picsum.photos/seed/${encodeURIComponent(seed)}/500/500"
-          alt="Laço artesanal — foto ${i+1} da galeria"
-          width="500" height="500" loading="lazy" decoding="async"
-          style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0">
-        <div class="gal-overlay"><i class="bi bi-heart-fill"></i> ${120 + i*17}</div>
-      </div>
-    </div>
-  `).join("");
-  gallery.querySelectorAll(".gal-item img").forEach(img => {
-    // se a foto real (local) não existir ainda, usa a de reserva uma única vez
-    img.addEventListener("error", function onErr(){
-      if(img.dataset.fallback){
-        img.src = img.dataset.fallback;
-        delete img.dataset.fallback;
-      } else {
-        img.removeEventListener("error", onErr);
-      }
-    });
-    wireImage(img);
-  });
-  observeReveal(gallery);
 
   /* ---------- NAVBAR SCROLL ---------- */
   const nav = document.getElementById("mainNav");

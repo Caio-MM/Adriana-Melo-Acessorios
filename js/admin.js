@@ -6,6 +6,14 @@
       "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
     }[ch]));
   }
+  // Mesmo racional do fetchWithTimeout em js/auth.js: sem limite de tempo,
+  // um fetch travado deixaria o painel preso em "Carregando painel..."
+  // pra sempre, sem cair no estado de erro (que tem botão de "Tentar de novo").
+  function fetchWithTimeout(url, options, timeoutMs){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs || 8000);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+  }
   function formatMoney(n){
     return "R$ " + Number(n).toFixed(2).replace(".", ",");
   }
@@ -44,6 +52,12 @@
   const productsTableBodyEl = document.getElementById("productsTableBody");
   const stateEmpty = document.getElementById("adminEmpty");
   const listEl = document.getElementById("adminList");
+  const pendingCartsSectionEl = document.getElementById("pendingCartsSection");
+  const pendingCartsListEl = document.getElementById("pendingCartsList");
+  const couponsTableBodyEl = document.getElementById("couponsTableBody");
+  const newCouponFormEl = document.getElementById("newCouponForm");
+  const couponFormMsgEl = document.getElementById("couponFormMsg");
+  const couponSaveBtnEl = document.getElementById("couponSaveBtn");
 
   function showOnly(target){
     [stateLoading, stateLoggedOut, stateForbidden, stateError, contentEl].forEach(node => {
@@ -64,6 +78,76 @@
       </div>
     `;
   }
+
+  /* ======================== CARRINHOS PENDENTES ========================
+     Recuperação de carrinho abandonado: pedidos "pendente" (checkout
+     iniciado no Mercado Pago, pagamento nunca confirmado) entre 1h e 14
+     dias atrás — cedo demais (< 1h) o cliente pode só estar terminando de
+     pagar; tarde demais (> 14 dias) o contato deixa de fazer sentido. */
+  const PENDING_CART_MIN_AGE_MS = 60 * 60 * 1000;
+  const PENDING_CART_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+
+  function whatsappRecoveryUrl(order){
+    const phoneDigits = String(order.customer?.telefone || "").replace(/\D/g, "");
+    const firstName = String(order.customer?.nome || "").trim().split(" ")[0] || "";
+    const itemNames = order.items.map(i => i.name).join(", ");
+    const msg = `Olá${firstName ? " " + firstName : ""}! Vi que você começou uma compra (${itemNames}) aqui na Adriana Melo Acessórios e queria saber se posso ajudar a finalizar 💗`;
+    return `https://wa.me/${phoneDigits}?text=${encodeURIComponent(msg)}`;
+  }
+
+  function renderPendingCarts(orders){
+    const now = Date.now();
+    const pending = orders.filter(o => {
+      if(o.status !== "pendente") return false;
+      const age = now - o.createdAt;
+      return age >= PENDING_CART_MIN_AGE_MS && age <= PENDING_CART_MAX_AGE_MS;
+    });
+
+    if(!pending.length){
+      pendingCartsSectionEl.classList.add("d-none");
+      return;
+    }
+    pendingCartsSectionEl.classList.remove("d-none");
+    pendingCartsListEl.innerHTML = pending.map(order => `
+      <div class="order-card">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+          <div>
+            <div class="fw-semibold">${escapeHTML(order.customer?.nome || "Cliente")}</div>
+            <div class="small" style="color:var(--ink-soft)">Iniciado em ${formatDate(order.createdAt)}</div>
+          </div>
+          <span class="order-status order-status-pending">${escapeHTML(order.items.length)} ${order.items.length === 1 ? "item" : "itens"} — ${formatMoney(order.total)}</span>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <a href="${whatsappRecoveryUrl(order)}" target="_blank" rel="noopener noreferrer" class="btn-outline-blush">
+            <i class="bi bi-whatsapp me-1"></i>Chamar no WhatsApp
+          </a>
+          <button type="button" class="btn-outline-blush delete-order-btn" data-ref="${escapeHTML(order.reference)}"><i class="bi bi-trash3 me-1"></i>Apagar carrinho</button>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  /* Apaga um pedido (usado tanto pelos cards de "Carrinhos pendentes"
+     quanto pela lista geral de "Pedidos", abaixo). O servidor já barra a
+     exclusão de pedidos "pago" (histórico financeiro) — o confirm() aqui
+     é só pra evitar apagar um carrinho por engano num clique errado. */
+  async function deleteOrderWithConfirm(reference, onSuccess){
+    if(!confirm("Apagar este pedido? Essa ação não pode ser desfeita.")) return;
+    try{
+      const res = await fetchWithTimeout(`/api/admin/orders/${encodeURIComponent(reference)}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível apagar o pedido.");
+      onSuccess?.();
+    }catch(err){
+      alert(err.message || "Não foi possível apagar o pedido agora.");
+    }
+  }
+
+  pendingCartsListEl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".delete-order-btn");
+    if(!btn) return;
+    deleteOrderWithConfirm(btn.dataset.ref, () => loadDashboard());
+  });
 
   /* ============================== PRODUTOS ============================== */
   let productsCache = [];
@@ -164,6 +248,7 @@
   function orderCardHTML(order){
     const status = STATUS_LABELS[order.status] || { label: escapeHTML(order.status), cls:"order-status-pending" };
     const ref = order.reference;
+    const isPaid = order.status === "pago";
 
     const itemsHtml = order.items.map(item => `
       <li class="d-flex justify-content-between gap-3">
@@ -179,7 +264,10 @@
             <div class="fw-semibold">Pedido #${escapeHTML(ref.slice(0, 8))}</div>
             <div class="small" style="color:var(--ink-soft)">${formatDate(order.createdAt)}</div>
           </div>
-          <span class="order-status ${status.cls}">${status.label}</span>
+          <div class="d-flex align-items-center gap-2">
+            <span class="order-status ${status.cls}">${status.label}</span>
+            ${!isPaid ? `<button type="button" class="delete-order-icon-btn delete-order-btn" data-ref="${escapeHTML(ref)}" aria-label="Apagar pedido" title="Apagar pedido"><i class="bi bi-trash3"></i></button>` : ""}
+          </div>
         </div>
 
         <div class="small mb-3" style="color:var(--ink-soft)">
@@ -195,15 +283,18 @@
           <span>Total</span><span style="color:var(--blush-700)">${formatMoney(order.total)}</span>
         </div>
 
+        ${isPaid ? `
         <div class="tracking-row mt-3 pt-3 border-top d-flex flex-wrap align-items-center gap-2" style="border-color:var(--blush-100)!important">
           <label class="small fw-semibold mb-0" for="tracking-${escapeHTML(ref)}">Código de rastreio (Correios)</label>
-          <div class="d-flex gap-2 flex-grow-1" style="min-width:220px">
+          <div class="d-flex gap-2 flex-grow-1 flex-wrap" style="min-width:220px">
             <input type="text" class="form-control form-control-sm tracking-input" id="tracking-${escapeHTML(ref)}"
                    value="${escapeHTML(order.trackingCode || "")}" placeholder="Ex.: BR123456789BR" maxlength="60">
             <button type="button" class="btn-outline-blush save-tracking-btn" data-ref="${escapeHTML(ref)}">Salvar</button>
+            <button type="button" class="btn-outline-blush generate-label-btn" data-ref="${escapeHTML(ref)}" title="Compra a etiqueta no Melhor Envio e preenche o código automaticamente"><i class="bi bi-stars me-1"></i>Gerar código</button>
           </div>
           <span class="small tracking-feedback" data-ref-feedback="${escapeHTML(ref)}"></span>
         </div>
+        ` : ""}
       </div>
     `;
   }
@@ -251,35 +342,141 @@
     }
   }
 
+  // ⚠️ Compra a etiqueta de verdade no Melhor Envio (gasta saldo real da
+  // conta) — por isso confirm() antes, mesmo já sendo um clique
+  // deliberado da lojista num botão explicitamente rotulado.
+  async function generateLabel(ref, feedbackEl, btn){
+    if(!confirm("Gerar a etiqueta de envio agora? Isso compra o frete de verdade no Melhor Envio (gasta saldo da conta).")) return;
+    const originalLabel = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = "Gerando...";
+    feedbackEl.textContent = "";
+    feedbackEl.classList.remove("is-success", "is-error");
+    try{
+      const res = await fetchWithTimeout(`/api/admin/orders/${encodeURIComponent(ref)}/generate-label`, { method: "POST" }, 20000);
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível gerar a etiqueta.");
+      const input = document.getElementById(`tracking-${ref}`);
+      if(input && data.trackingCode) input.value = data.trackingCode;
+      feedbackEl.textContent = data.trackingCode ? "Código gerado!" : "Etiqueta comprada, mas sem código de rastreio na resposta — confira no painel do Melhor Envio.";
+      feedbackEl.classList.add("is-success");
+    }catch(err){
+      feedbackEl.textContent = err.message || "Erro ao gerar etiqueta.";
+      feedbackEl.classList.add("is-error");
+    }finally{
+      btn.disabled = false;
+      btn.innerHTML = originalLabel;
+    }
+  }
+
   listEl.addEventListener("click", (e) => {
-    const btn = e.target.closest(".save-tracking-btn");
+    const trackBtn = e.target.closest(".save-tracking-btn");
+    const labelBtn = e.target.closest(".generate-label-btn");
+    const deleteBtn = e.target.closest(".delete-order-btn");
+
+    if(trackBtn){
+      const ref = trackBtn.dataset.ref;
+      const input = document.getElementById(`tracking-${ref}`);
+      const feedbackEl = listEl.querySelector(`[data-ref-feedback="${ref}"]`);
+      if(input && feedbackEl) saveTracking(ref, input.value.trim(), feedbackEl);
+      return;
+    }
+    if(labelBtn){
+      const ref = labelBtn.dataset.ref;
+      const feedbackEl = listEl.querySelector(`[data-ref-feedback="${ref}"]`);
+      if(feedbackEl) generateLabel(ref, feedbackEl, labelBtn);
+      return;
+    }
+    if(deleteBtn){
+      deleteOrderWithConfirm(deleteBtn.dataset.ref, () => loadDashboard());
+    }
+  });
+
+  /* ================================ CUPONS ================================ */
+  function renderCouponsTable(coupons){
+    if(!coupons.length){
+      couponsTableBodyEl.innerHTML = `<tr><td colspan="4" class="text-center small py-3" style="color:var(--ink-soft)">Nenhum cupom cadastrado.</td></tr>`;
+      return;
+    }
+    couponsTableBodyEl.innerHTML = coupons.map(c => `
+      <tr data-code="${escapeHTML(c.code)}">
+        <td class="fw-semibold">${escapeHTML(c.code)}</td>
+        <td>${c.percentOff}%</td>
+        <td class="small" style="color:var(--ink-soft)">${escapeHTML(c.description || "—")}</td>
+        <td class="text-end">
+          <button type="button" class="delete-order-icon-btn delete-coupon-btn" data-code="${escapeHTML(c.code)}" aria-label="Apagar cupom" title="Apagar cupom"><i class="bi bi-trash3"></i></button>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  couponsTableBodyEl.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".delete-coupon-btn");
     if(!btn) return;
-    const ref = btn.dataset.ref;
-    const input = document.getElementById(`tracking-${ref}`);
-    const feedbackEl = listEl.querySelector(`[data-ref-feedback="${ref}"]`);
-    if(input && feedbackEl) saveTracking(ref, input.value.trim(), feedbackEl);
+    const code = btn.dataset.code;
+    if(!confirm(`Apagar o cupom ${code}? Ele deixa de funcionar no checkout imediatamente.`)) return;
+    try{
+      const res = await fetchWithTimeout(`/api/admin/coupons/${encodeURIComponent(code)}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível apagar o cupom.");
+      loadDashboard();
+    }catch(err){
+      alert(err.message || "Não foi possível apagar o cupom agora.");
+    }
+  });
+
+  newCouponFormEl.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const code = document.getElementById("couponCode").value.trim();
+    const percentOff = Number(document.getElementById("couponPercent").value);
+    const description = document.getElementById("couponDesc").value.trim();
+
+    couponFormMsgEl.textContent = "";
+    couponFormMsgEl.className = "small account-msg";
+    couponSaveBtnEl.disabled = true;
+    try{
+      const res = await fetchWithTimeout("/api/admin/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, percentOff, description }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível criar o cupom.");
+      newCouponFormEl.reset();
+      loadDashboard();
+    }catch(err){
+      couponFormMsgEl.textContent = err.message || "Erro ao criar cupom.";
+      couponFormMsgEl.classList.add("text-danger");
+    }finally{
+      couponSaveBtnEl.disabled = false;
+    }
   });
 
   /* ============================ CARREGAMENTO ============================ */
   async function loadDashboard(){
     showOnly(stateLoading);
     try{
-      const [ordersRes, productsRes] = await Promise.all([
-        fetch("/api/admin/orders"),
-        fetch("/api/admin/products"),
+      const [ordersRes, productsRes, couponsRes] = await Promise.all([
+        fetchWithTimeout("/api/admin/orders"),
+        fetchWithTimeout("/api/admin/products"),
+        fetchWithTimeout("/api/admin/coupons"),
       ]);
-      if(ordersRes.status === 401 || productsRes.status === 401){ showOnly(stateLoggedOut); return; }
-      if(ordersRes.status === 403 || productsRes.status === 403){ showOnly(stateForbidden); return; }
-      if(!ordersRes.ok || !productsRes.ok){
-        throw new Error("Falha ao carregar o painel (HTTP " + (ordersRes.status || productsRes.status) + ").");
+      if([ordersRes, productsRes, couponsRes].some(r => r.status === 401)){ showOnly(stateLoggedOut); return; }
+      if([ordersRes, productsRes, couponsRes].some(r => r.status === 403)){ showOnly(stateForbidden); return; }
+      if(!ordersRes.ok || !productsRes.ok || !couponsRes.ok){
+        throw new Error("Falha ao carregar o painel (HTTP " + (ordersRes.status || productsRes.status || couponsRes.status) + ").");
       }
       const ordersData = await ordersRes.json();
       const productsData = await productsRes.json();
+      const couponsData = await couponsRes.json();
 
+      const orders = Array.isArray(ordersData.orders) ? ordersData.orders : [];
       showOnly(contentEl);
       renderStats(ordersData.stats || { totalRevenue: 0, totalOrders: 0 });
+      renderPendingCarts(orders);
       renderProductsTable(Array.isArray(productsData.products) ? productsData.products : []);
-      renderOrders(Array.isArray(ordersData.orders) ? ordersData.orders : []);
+      renderCouponsTable(Array.isArray(couponsData.coupons) ? couponsData.coupons : []);
+      renderOrders(orders);
     }catch(err){
       console.error("Erro ao carregar painel administrativo:", err);
       showOnly(stateError);
@@ -294,10 +491,19 @@
   // contrário mostra o estado apropriado sem nunca chamar /api/admin/* (a
   // proteção de verdade é sempre no servidor, isso é só para não fazer uma
   // chamada que sabemos que vai voltar 401/403).
+  let authEventReceived = false;
   document.addEventListener("plc:auth", (e) => {
+    authEventReceived = true;
     const user = e.detail.user;
     if(!user) showOnly(stateLoggedOut);
     else if(!user.isAdmin) showOnly(stateForbidden);
     else loadDashboard();
   });
+
+  // Rede de segurança: se por algum motivo o evento "plc:auth" nunca
+  // chegar (ex.: js/auth.js falhou ao carregar), não fica preso em
+  // "Carregando painel..." pra sempre — mostra erro com botão de retry.
+  setTimeout(() => {
+    if(!authEventReceived) showOnly(stateError);
+  }, 10000);
 })();

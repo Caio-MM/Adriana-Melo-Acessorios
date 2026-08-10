@@ -16,6 +16,17 @@
     }[ch]));
   }
 
+  /* fetch trava para sempre (sem resolver nem rejeitar) em algumas
+     situações de rede/extensão do navegador — sem um limite de tempo,
+     checkSession() nunca chamaria renderLoggedOut()/dispatchEvent, e
+     qualquer página esperando o evento "plc:auth" (pedidos.html,
+     admin.html) ficaria "carregando" pra sempre. */
+  function fetchWithTimeout(url, options, timeoutMs){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs || 8000);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+  }
+
   const navAccount = document.getElementById("navAccount");
   const navAccountMobile = document.getElementById("navAccountMobile");
 
@@ -64,7 +75,7 @@
   async function checkSession(){
     let user = null;
     try{
-      const res = await fetch("/api/auth/me");
+      const res = await fetchWithTimeout("/api/auth/me");
       if(res.ok) user = await res.json();
     }catch(err){
       console.warn("Não foi possível verificar a sessão:", err);
