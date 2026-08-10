@@ -30,8 +30,13 @@
 
   function renderLoggedIn(user){
     const firstName = escapeHTML(String(user.name || "").trim().split(" ")[0] || "cliente");
+    const adminLink = user.isAdmin
+      ? `<a href="admin.html" class="plc-nav-link"><i class="bi bi-shield-lock me-1"></i>Admin</a>` : "";
+    const adminLinkMobile = user.isAdmin
+      ? `<a href="admin.html" class="plc-nav-link" data-bs-dismiss="offcanvas"><i class="bi bi-shield-lock me-1"></i>Painel admin</a>` : "";
     if(navAccount){
       navAccount.innerHTML = `
+        ${adminLink}
         <a href="pedidos.html" class="plc-nav-link">Olá, ${firstName}</a>
         <button type="button" class="plc-nav-link" id="logoutBtn" style="background:none;border:none;cursor:pointer">Sair</button>
       `;
@@ -39,6 +44,7 @@
     }
     if(navAccountMobile){
       navAccountMobile.innerHTML = `
+        ${adminLinkMobile}
         <a href="pedidos.html" class="plc-nav-link" data-bs-dismiss="offcanvas"><i class="bi bi-bag-check me-1"></i>Meus pedidos</a>
         <button type="button" class="plc-nav-link text-start p-0 border-0 bg-transparent" id="logoutBtnMobile">Sair (${firstName})</button>
       `;

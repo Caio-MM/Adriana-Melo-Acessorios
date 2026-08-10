@@ -106,6 +106,41 @@ function clearSession(req, res) {
   res.clearCookie(SESSION_COOKIE_NAME, { ...cookieOptions(), maxAge: undefined });
 }
 
+/* ------------------------------ ADMIN ------------------------------ */
+// Não existe uma tabela/coluna "role": o acesso de administrador é dado por
+// e-mail, via ADMIN_EMAIL_HASHES no .env (lista de hashes SHA-256,
+// separados por vírgula — nunca o e-mail em texto puro). Isso evita uma
+// migração de schema e uma tela de "promover usuário a admin" — quem tem
+// acesso ao .env do servidor já é, por definição, de confiança.
+//
+// Por que hash em vez do e-mail direto: se o .env vazar por engano (log,
+// captura de tela, backup mal guardado), quem ler não descobre de cara
+// qual é o e-mail com acesso de admin — só um hash. Isso NÃO é o que
+// impede um cliente comum de virar admin mexendo no DevTools (isso já é
+// impossível por construção: o cookie de sessão é um token aleatório
+// opaco, sem papel/role nenhum embutido, e o servidor recalcula
+// isAdminEmail() a cada requisição a partir da sessão — nunca confia em
+// nada que o navegador declare sobre si mesmo). O hash é uma camada a
+// mais, especificamente contra vazamento do próprio arquivo .env.
+function hashEmail(email) {
+  return crypto.createHash("sha256").update(normalizeEmail(email)).digest("hex");
+}
+function isAdminEmail(email) {
+  if (!email) return false;
+  const candidate = Buffer.from(hashEmail(email), "hex");
+  const adminHashes = String(process.env.ADMIN_EMAIL_HASHES || "")
+    .split(",")
+    .map(h => h.trim().toLowerCase())
+    .filter(Boolean);
+  // timingSafeEqual em vez de === / includes(): evita que o tempo de
+  // resposta vaze informação sobre quantos bytes do hash bateram (mesmo
+  // racional do DUMMY_HASH usado no login, acima).
+  return adminHashes.some(stored => {
+    const storedBuf = Buffer.from(stored, "hex");
+    return storedBuf.length === candidate.length && crypto.timingSafeEqual(storedBuf, candidate);
+  });
+}
+
 function getUserFromRequest(req) {
   const cookies = parseCookies(req);
   const token = cookies[SESSION_COOKIE_NAME];
@@ -114,7 +149,7 @@ function getUserFromRequest(req) {
   if (!session) return null;
   const user = db.getUserById(session.user_id);
   if (!user) return null;
-  return { id: user.id, name: user.name, email: user.email };
+  return { id: user.id, name: user.name, email: user.email, isAdmin: isAdminEmail(user.email) };
 }
 
 /* ------------------------------ MIDDLEWARES ------------------------------ */
@@ -126,6 +161,19 @@ function requireAuth(req, res, next) {
   req.user = getUserFromRequest(req);
   if (!req.user) {
     return res.status(401).json({ error: "Faça login para continuar." });
+  }
+  next();
+}
+// Painel administrativo e suas rotas de API (/api/admin/*): exige sessão
+// válida E e-mail com hash cadastrado em ADMIN_EMAIL_HASHES. Resposta
+// genérica 403 (não revela se a rota existiria para outro usuário).
+function requireAdmin(req, res, next) {
+  req.user = getUserFromRequest(req);
+  if (!req.user) {
+    return res.status(401).json({ error: "Faça login para continuar." });
+  }
+  if (!req.user.isAdmin) {
+    return res.status(403).json({ error: "Acesso restrito ao administrador da loja." });
   }
   next();
 }
@@ -141,4 +189,5 @@ module.exports = {
   clearSession,
   attachUser,
   requireAuth,
+  requireAdmin,
 };

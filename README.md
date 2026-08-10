@@ -8,16 +8,21 @@ site/
 ├── index.html            ← loja
 ├── conta.html             ← login / cadastro
 ├── pedidos.html           ← histórico de pedidos (exige login)
+├── admin.html             ← painel administrativo (exige login + ADMIN_EMAIL_HASHES)
 ├── css/style.css
 ├── js/
 │   ├── main.js            ← catálogo, carrinho, frete, cupom, checkout
 │   ├── auth.js             ← sessão + área de conta na navbar (toda página)
 │   ├── conta.js            ← formulários de login/cadastro
-│   └── pedidos.js          ← histórico de pedidos
+│   ├── pedidos.js          ← histórico de pedidos
+│   └── admin.js            ← painel administrativo (lista + código de rastreio)
 └── server/                 ← back-end Node.js (também serve o site, ver seção 3)
     ├── server.js
     ├── db.js                ← usuários, sessões e pedidos (SQLite embutido)
-    ├── auth.js              ← hashing de senha, sessão por cookie
+    ├── auth.js              ← hashing de senha, sessão por cookie, checagem de admin
+    ├── whatsapp.js           ← aviso de WhatsApp p/ lojista (WhatsApp Cloud API)
+    ├── email.js              ← aviso de e-mail p/ lojista (Nodemailer/SMTP)
+    ├── orderFormatting.js    ← cor/moeda/data compartilhados entre os avisos
     ├── package.json
     ├── .env.example
     └── .gitignore
@@ -43,6 +48,34 @@ site/
   etc.), atualizado automaticamente pelo webhook do Mercado Pago.
 - **Catálogo com fotos**: via [Picsum Photos](https://picsum.photos) por
   enquanto, com *lazy loading* e fallback para o ícone de laço se falhar.
+- **Aviso de WhatsApp para a lojista**: quando o webhook confirma um
+  pagamento aprovado, `server/whatsapp.js` monta a mensagem (itens,
+  quantidade, cor, total, data/hora) e envia via WhatsApp Cloud API oficial
+  (Meta) para `OWNER_WHATSAPP_NUMBER` (ver seção 2). Falha no envio nunca
+  afeta a confirmação do pedido — só fica registrada no log do servidor.
+  ⚠️ A API oficial só entrega texto livre para números que falaram com o
+  WhatsApp Business da loja nas últimas 24h — ver aviso em `whatsapp.js`.
+- **Aviso de e-mail para a lojista**: mesmo gatilho (webhook de pagamento
+  aprovado) dispara um e-mail para `OWNER_EMAIL` via `server/email.js`
+  (Nodemailer/SMTP), com o resumo do pedido e um link direto para o pedido
+  no painel administrativo. Também best-effort — nunca afeta a confirmação.
+- **Painel administrativo** (`admin.html`): só abre para quem faz login com
+  um e-mail cujo hash SHA-256 está em `ADMIN_EMAIL_HASHES` (ver seção 2 —
+  o e-mail nunca fica em texto puro no `.env`) — qualquer outra pessoa
+  logada recebe 403 e visitante sem login é mandado para o login. O link
+  "Admin" só aparece na navbar para quem tem acesso. Três áreas:
+  - **Visão geral**: vendas totais (R$) e total de pedidos, somando só os
+    pedidos com status "pago" (`GET /api/admin/orders`, campo `stats`).
+  - **Produtos**: tabela com todos os produtos do catálogo — "Editar" abre
+    um modal para trocar nome, preço e a URL da foto. Salvar grava em
+    `product_overrides` (server/db.js) e o preço novo já vale no próximo
+    checkout (server.js usa o mesmo `effectiveProduct()` tanto para montar
+    a vitrine quanto para cobrar) — nunca é só cosmético. A vitrine
+    (`js/main.js`) busca essas edições sozinha ao carregar a página, sem
+    precisar reiniciar o servidor.
+  - **Pedidos**: cliente, telefone, itens (quantidade/cor), endereço de
+    entrega, total, e um campo para a lojista preencher o código de
+    rastreio dos Correios depois de postar.
 - **Segurança**: ver `SECURITY-AUDIT.md`.
 - **Performance**: ver seção 6 abaixo.
 
@@ -60,6 +93,12 @@ Depois abra `.env` e preencha (o arquivo já explica cada uma):
 | `MP_ACCESS_TOKEN` | [painel do Mercado Pago](https://www.mercadopago.com.br/developers/panel) → Credenciais | **Secreta.** Use `TEST-...` para testar, `APP_USR-...` só em produção. |
 | `MELHOR_ENVIO_TOKEN` | [painel do Melhor Envio](https://melhorenvio.com.br/painel/gerenciar/tokens) | Use o token de **sandbox** até validar o fluxo. |
 | `ORIGIN_CEP` | CEP do ateliê/remetente | Usado para cotar o frete. |
+| `WHATSAPP_CLOUD_API_TOKEN` | [business.facebook.com](https://business.facebook.com) → Configurações do negócio → Usuários do sistema → gerar token | **Secreta.** Token temporário (24h) em developers.facebook.com funciona para testar. |
+| `WHATSAPP_CLOUD_PHONE_NUMBER_ID` | [developers.facebook.com](https://developers.facebook.com) → seu app → WhatsApp → Introdução | Número que **envia** o aviso (precisa estar verificado no app da Meta). |
+| `OWNER_WHATSAPP_NUMBER` | número da própria loja, só dígitos com DDI+DDD | Ex.: `5561982749808`. É quem **recebe** o aviso. |
+| `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS` | conta de e-mail que **envia** o aviso | Para Gmail: `smtp.gmail.com`, porta `587`, `SMTP_PASS` = "senha de app" em [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) (exige verificação em duas etapas). |
+| `OWNER_EMAIL` | endereço que **recebe** o aviso | `adriana_melo_acessorios@gmail.com`. |
+| `ADMIN_EMAIL_HASHES` | hash SHA-256 do(s) e-mail(s) já cadastrado(s) no site, separados por vírgula | Gere com `node -e "console.log(require('crypto').createHash('sha256').update('email@exemplo.com').digest('hex'))"`. Nunca o e-mail em texto puro. |
 | `SESSION`/login | nada a configurar | a sessão de login usa um token aleatório por usuário, guardado com hash no banco — não precisa de nenhuma chave extra no `.env`. |
 
 **Nunca** cole valores reais em `.env.example` (esse arquivo fica versionado
@@ -98,6 +137,8 @@ Render, Railway, Fly.io ou uma VPS, e use a URL real de produção.
 - `express-rate-limit` — limita requisições por IP (anti-spam/força bruta)
 - `mercadopago` — SDK oficial do Mercado Pago
 - `bcryptjs` — hash de senha das contas de cliente
+- `nodemailer` — envio do e-mail de aviso por SMTP (único serviço de e-mail
+  do projeto; WhatsApp e Melhor Envio usam `fetch` nativo, sem SDK)
 
 Banco de dados: `node:sqlite` (nativo do Node, sem dependência extra). O
 arquivo fica em `server/data.db` (fora do git — apagar esse arquivo reseta
@@ -105,18 +146,15 @@ usuários/pedidos, útil em desenvolvimento).
 
 ## 4. Páginas de retorno do pagamento
 
-O `server.js` aponta `back_urls` para:
-
-- `/pagamento-sucesso.html`
-- `/pagamento-erro.html`
-- `/pagamento-pendente.html`
-
-Ainda não existem no pacote — crie essas três páginas simples no site (mesmo
-estilo visual, com uma mensagem e um botão "Voltar para a loja"; adicione o
-nome delas à lista `PUBLIC_TOP_LEVEL` em `server/server.js` para ficarem
-acessíveis). Elas são só para a experiência do usuário — a confirmação **de
-verdade** do pagamento vem do webhook (`/api/webhook`), não do fato de o
-navegador ter chegado nessas páginas.
+O `server.js` aponta `back_urls` para `/pagamento-sucesso.html`,
+`/pagamento-erro.html` e `/pagamento-pendente.html` — as três existem no
+site (mesmo estilo visual do resto, com o número do pedido quando
+disponível na URL e um botão de próximo passo). Elas são só para a
+experiência do usuário — a confirmação **de verdade** do pagamento vem do
+webhook (`/api/webhook`), não do fato de o navegador ter chegado nessas
+páginas, então o texto de cada uma evita afirmar mais do que o
+redirecionamento garante (a de "pendente", por exemplo, não promete prazo
+igual para Pix e boleto).
 
 ## 5. Contas de cliente e histórico de pedidos
 
@@ -159,8 +197,12 @@ ambiente de build/deploy):
 
 ## 7. Próximos passos sugeridos (fora do escopo deste pacote)
 
-- E-mail transacional de confirmação de pedido e de recuperação de senha
-  (ex.: com Nodemailer/Resend).
-- Painel simples para a Adriana editar produtos/cupons sem mexer no código
-  (hoje `PRODUCTS` e `COUPONS` são objetos fixos em `server/server.js`).
-- Páginas de retorno do pagamento (`pagamento-sucesso.html` etc., seção 4).
+- Validar a assinatura do webhook do Mercado Pago (header `x-signature`,
+  configurável no painel deles) — hoje a segurança do webhook vem inteira
+  de sempre reconsultar o pagamento pela API deles (nunca confiar só no
+  payload recebido), o que já é sólido, mas a assinatura é uma camada
+  extra fácil de somar.
+- Cupons de desconto além do `BEMVINDA10` fixo em `COUPONS`
+  (`server/server.js`) — hoje qualquer cupom novo exige editar o código.
+- E-mail transacional de recuperação de senha (hoje só existe o aviso de
+  pedido pago, `server/email.js`).

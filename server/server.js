@@ -28,6 +28,9 @@ const rateLimit = require("express-rate-limit");
 const { MercadoPagoConfig, Preference, Payment } = require("mercadopago");
 const db = require("./db");
 const auth = require("./auth");
+const whatsapp = require("./whatsapp");
+const email = require("./email");
+const { colorLabelFor } = require("./orderFormatting");
 
 const app = express();
 const PORT = process.env.PORT || 3333;
@@ -78,6 +81,34 @@ const PRODUCTS = {
 /* Dimensões mínimas aceitas pelos Correios/transportadoras — nunca cotar
    abaixo disso, mesmo que o produto seja minúsculo. */
 const MIN_PACKAGE = { weight:0.1, width:16, height:2, length:11 };
+
+/* =========================================================================
+   EDIÇÕES DE PRODUTO (painel administrativo) — nome/preço/foto podem ser
+   sobrescritos via /api/admin/products, gravados em product_overrides
+   (server/db.js). PRODUCTS acima continua sendo a fonte de peso/dimensões
+   (não editável pelo painel); effectiveProduct() é o único lugar que
+   decide "qual é o valor de verdade agora" — todo o resto do arquivo
+   (checkout, listagem de pedidos, avisos de WhatsApp/e-mail) usa essa
+   função em vez de ler PRODUCTS[id] direto, para que uma edição no painel
+   passe a valer imediatamente em TUDO, inclusive no preço cobrado.
+========================================================================= */
+function getProductOverridesMap(){
+  const map = new Map();
+  for(const row of db.listProductOverrides()) map.set(row.product_id, row);
+  return map;
+}
+function effectiveProduct(id, overridesMap){
+  const base = PRODUCTS[id];
+  if(!base) return null;
+  const override = overridesMap.get(id);
+  if(!override) return { ...base, photoUrl: null };
+  return {
+    ...base,
+    name: override.name || base.name,
+    price: override.price != null ? override.price : base.price,
+    photoUrl: override.photo_url || null,
+  };
+}
 
 /* =========================================================================
    CUPONS — assim como PRODUCTS, é a fonte da verdade no servidor. O
@@ -178,7 +209,7 @@ const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 ========================================================================= */
 const SITE_ROOT = path.join(__dirname, "..");
 const PUBLIC_TOP_LEVEL = new Set([
-  "index.html", "conta.html", "pedidos.html",
+  "index.html", "conta.html", "pedidos.html", "admin.html",
   "pagamento-sucesso.html", "pagamento-erro.html", "pagamento-pendente.html",
   "css", "js", "img",
 ]);
@@ -192,7 +223,8 @@ app.use(express.static(SITE_ROOT, { extensions: ["html"], dotfiles: "ignore" }))
 
 /* =========================================================================
    Validação e montagem de itens a partir do que o CLIENTE enviou.
-   Nunca usa preço/peso vindos do navegador — sempre busca em PRODUCTS.
+   Nunca usa preço/peso vindos do navegador — sempre busca no catálogo do
+   servidor (effectiveProduct, que já aplica eventual edição do painel).
 ========================================================================= */
 function buildValidatedItems(items){
   if(!Array.isArray(items) || items.length === 0){
@@ -201,16 +233,18 @@ function buildValidatedItems(items){
   if(items.length > 50){
     throw { status:400, message:"Carrinho excede o limite de itens." };
   }
+  const overridesMap = getProductOverridesMap();
   return items.map(raw => {
     const id = Number(raw?.id);
     const qty = Number(raw?.qty);
-    if(!Number.isInteger(id) || !PRODUCTS[id]){
+    const product = Number.isInteger(id) ? effectiveProduct(id, overridesMap) : null;
+    if(!product){
       throw { status:400, message:`Produto inválido: ${raw?.id}` };
     }
     if(!Number.isInteger(qty) || qty < 1 || qty > 10){
       throw { status:400, message:`Quantidade inválida para o produto ${id}.` };
     }
-    return { id, qty, product: PRODUCTS[id] };
+    return { id, qty, product };
   });
 }
 
@@ -448,10 +482,23 @@ app.post("/api/create-preference", strictLimiter, async (req, res) => {
     // se essa chamada falhar (token inválido, MP fora do ar), não queremos
     // um pedido "pendente" órfão no histórico do cliente que nunca vai virar
     // nada (nenhum link de pagamento chegou a existir para ele).
+    // payer é opcional na API do Mercado Pago — mandamos o que já temos
+    // (nome do endereço de entrega; e-mail só quando o cliente está
+    // logado, já que o checkout de visitante não coleta e-mail) pra
+    // pré-preencher a tela de pagamento. Sem telefone aqui de propósito:
+    // o Mercado Pago exige um formato específico (DDD + número
+    // separados) e um valor mal formatado rejeitaria a preferência
+    // inteira — não vale o risco por um campo que já é opcional.
+    const payer = {
+      name: address.nome,
+      ...(req.user?.email ? { email: req.user.email } : {}),
+    };
+
     const preference = new Preference(mpClient);
     const result = await preference.create({
       body: {
         items: preferenceItems,
+        payer,
         external_reference: orderRef,
         back_urls: {
           success: `${CLIENT_ORIGIN}/pagamento-sucesso.html`,
@@ -597,6 +644,69 @@ const PAYMENT_STATUS_MAP = {
   charged_back: "estornado",
 };
 
+/* Tudo que só deve acontecer UMA VEZ, na primeira vez que um pedido vira
+   "pago" (comprar etiqueta, avisar a lojista por WhatsApp/e-mail) — ver
+   guarda de idempotência (wasAlreadyApproved) no handler do webhook,
+   abaixo, que é quem decide SE isso é chamado. Roda depois da resposta
+   200 já ter sido enviada ao Mercado Pago (fire-and-forget, com seu
+   próprio catch) — chamadas de rede a terceiros (WhatsApp/SMTP) podem
+   demorar alguns segundos, e nunca podem atrasar/arriscar o timeout da
+   confirmação do webhook. */
+async function runApprovedOrderSideEffects(orderRow, info){
+  const order = {
+    items: JSON.parse(orderRow.items_json),
+    address: JSON.parse(orderRow.address_json),
+    shipping: JSON.parse(orderRow.shipping_json),
+  };
+
+  if(process.env.AUTO_PURCHASE_SHIPPING_LABEL === "true"){
+    try{
+      const label = await purchaseShippingLabel(order);
+      console.log("Etiqueta de envio comprada:", label);
+      // TODO: salvar o código de rastreio automaticamente (hoje a
+      // lojista preenche à mão no painel /admin.html).
+    }catch(labelErr){
+      console.error("Falha ao comprar etiqueta automaticamente (pedido ficou pago, mas sem etiqueta — gere manualmente no painel do Melhor Envio):", labelErr);
+    }
+  } else {
+    console.log("Pagamento aprovado. Gere a etiqueta manualmente no painel do Melhor Envio para o pedido:", info.external_reference);
+  }
+
+  // Dados comuns aos dois avisos abaixo (WhatsApp e e-mail), montados uma
+  // única vez.
+  const notifyOverridesMap = getProductOverridesMap();
+  const notificationOrder = {
+    externalReference: info.external_reference,
+    items: order.items.map(({ id, qty }) => ({
+      id, qty, name: effectiveProduct(id, notifyOverridesMap)?.name || `Produto #${id}`,
+    })),
+    address: order.address,
+    total: orderRow.total,
+    paidAt: info.date_approved || info.date_created || Date.now(),
+  };
+
+  // Os dois avisos abaixo são best-effort e independentes um do outro:
+  // uma falha em qualquer um deles (credenciais ausentes, provedor fora
+  // do ar, etc.) nunca pode reverter a confirmação do pedido, que já foi
+  // gravada antes de chegar aqui.
+  try{
+    await whatsapp.notifyOwnerOfPaidOrder(notificationOrder);
+    console.log(`Aviso de WhatsApp enviado à lojista para o pedido ${info.external_reference}.`);
+  }catch(waErr){
+    console.error(`Falha ao enviar aviso de WhatsApp (pedido ${info.external_reference} segue pago normalmente):`, waErr.message || waErr);
+  }
+
+  try{
+    await email.notifyOwnerOfPaidOrder({
+      ...notificationOrder,
+      adminUrl: `${CLIENT_ORIGIN}/admin.html?pedido=${encodeURIComponent(info.external_reference)}`,
+    });
+    console.log(`E-mail de aviso enviado à lojista para o pedido ${info.external_reference}.`);
+  }catch(mailErr){
+    console.error(`Falha ao enviar e-mail de aviso (pedido ${info.external_reference} segue pago normalmente):`, mailErr.message || mailErr);
+  }
+}
+
 app.post("/api/webhook", async (req, res) => {
   try {
     const paymentId = req.query?.["data.id"] || req.body?.data?.id;
@@ -611,36 +721,43 @@ app.post("/api/webhook", async (req, res) => {
         ? db.getOrderByExternalReference(info.external_reference)
         : null;
 
-      if(orderRow){
-        const status = PAYMENT_STATUS_MAP[info.status] || info.status;
-        db.updateOrderStatus(info.external_reference, status, String(paymentId));
-
-        if(info.status === "approved"){
-          const order = {
-            items: JSON.parse(orderRow.items_json),
-            address: JSON.parse(orderRow.address_json),
-            shipping: JSON.parse(orderRow.shipping_json),
-          };
-          if(process.env.AUTO_PURCHASE_SHIPPING_LABEL === "true"){
-            try{
-              const label = await purchaseShippingLabel(order);
-              console.log("Etiqueta de envio comprada:", label);
-              // TODO: salvar o código de rastreio e enviar por e-mail/WhatsApp ao cliente.
-            }catch(labelErr){
-              console.error("Falha ao comprar etiqueta automaticamente (pedido ficou pago, mas sem etiqueta — gere manualmente no painel do Melhor Envio):", labelErr);
-            }
-          } else {
-            console.log("Pagamento aprovado. Gere a etiqueta manualmente no painel do Melhor Envio para o pedido:", info.external_reference);
-          }
-        }
+      if(!orderRow){
+        console.warn(`Webhook: pagamento ${paymentId} não corresponde a nenhum pedido conhecido (external_reference=${info.external_reference || "ausente"}).`);
+        return res.sendStatus(200);
       }
+
+      // Guarda de idempotência: o Mercado Pago pode reenviar a mesma
+      // notificação (rede instável, ou nosso servidor demorou a
+      // responder da vez anterior). Se esse pedido JÁ estava "pago"
+      // antes desta chamada, é um reenvio — sem esta checagem, cada
+      // reenvio mandaria WhatsApp/e-mail de novo pra lojista e, com
+      // AUTO_PURCHASE_SHIPPING_LABEL ligado, compraria a etiqueta de novo
+      // (gastando saldo real duplicado).
+      const wasAlreadyApproved = orderRow.status === "pago";
+      const status = PAYMENT_STATUS_MAP[info.status] || info.status;
+      db.updateOrderStatus(info.external_reference, status, String(paymentId));
+
+      // Responde ao Mercado Pago AGORA. O que falta (etiqueta, avisos)
+      // são chamadas de rede a terceiros que podem demorar — rodam depois,
+      // sem bloquear esta resposta nem arriscar um timeout que faria o
+      // Mercado Pago reenviar este mesmo webhook.
+      res.sendStatus(200);
+
+      if(info.status === "approved" && !wasAlreadyApproved){
+        runApprovedOrderSideEffects(orderRow, info).catch(err => {
+          console.error(`Falha inesperada processando efeitos do pedido ${info.external_reference}:`, err);
+        });
+      }
+      return;
     }
 
-    // Responder 200 rápido é importante: o Mercado Pago reenvia se não receber OK.
+    // Notificação de um tipo que não nos interessa (ex.: merchant_order) —
+    // confirma recebimento mesmo assim, pra o Mercado Pago não ficar
+    // reenviando algo que nunca vamos processar.
     res.sendStatus(200);
   } catch (err) {
     console.error("Erro no webhook:", err);
-    res.sendStatus(500);
+    if(!res.headersSent) res.sendStatus(500);
   }
 });
 
@@ -759,13 +876,14 @@ app.get("/api/auth/me", (req, res) => {
 app.get("/api/orders", auth.requireAuth, (req, res) => {
   try {
     const rows = db.listOrdersByUser(req.user.id);
+    const overridesMap = getProductOverridesMap();
     const orders = rows.map(row => {
       const items = JSON.parse(row.items_json).map(({ id, qty, price }) => ({
         id, qty,
-        name: PRODUCTS[id]?.name || `Produto #${id}`,
+        name: effectiveProduct(id, overridesMap)?.name || `Produto #${id}`,
         // Preço gravado no momento da compra (fallback ao catálogo atual só
         // para pedidos antigos, de antes dessa informação ser salva).
-        unitPrice: price ?? PRODUCTS[id]?.price ?? null,
+        unitPrice: price ?? effectiveProduct(id, overridesMap)?.price ?? null,
       }));
       const shipping = JSON.parse(row.shipping_json);
       return {
@@ -785,6 +903,169 @@ app.get("/api/orders", auth.requireAuth, (req, res) => {
   } catch (err) {
     console.error("Erro ao listar pedidos:", err);
     res.status(500).json({ error: "Não foi possível carregar seus pedidos agora." });
+  }
+});
+
+/* =========================================================================
+   PAINEL ADMINISTRATIVO — /api/admin/*  (ver admin.html / js/admin.js)
+   -------------------------------------------------------------------------
+   Exige sessão + e-mail com hash cadastrado em ADMIN_EMAIL_HASHES
+   (auth.requireAdmin, ver server/auth.js). Diferente de /api/orders
+   (cliente só vê os próprios pedidos), aqui devolve TODOS os pedidos com
+   dados do cliente (nome, telefone, endereço de entrega) — por isso o
+   controle de acesso é crítico: nunca relaxar para auth.requireAuth aqui.
+
+   `noStore` abaixo evita que essas respostas (dados de cliente, preços)
+   fiquem guardadas no cache do navegador/proxy — relevante em computador
+   compartilhado, onde outra pessoa poderia usar "voltar" no histórico e
+   ver a última resposta cacheada mesmo depois do logout.
+========================================================================= */
+function noStore(req, res, next){
+  res.set("Cache-Control", "no-store, private");
+  next();
+}
+app.use("/api/admin", noStore);
+
+app.get("/api/admin/orders", auth.requireAdmin, (req, res) => {
+  try {
+    const rows = db.listAllOrders();
+    const overridesMap = getProductOverridesMap();
+    const orders = rows.map(row => {
+      const items = JSON.parse(row.items_json).map(({ id, qty, price }) => ({
+        id, qty,
+        name: effectiveProduct(id, overridesMap)?.name || `Produto #${id}`,
+        color: colorLabelFor(id),
+        unitPrice: price ?? effectiveProduct(id, overridesMap)?.price ?? null,
+      }));
+      const address = JSON.parse(row.address_json);
+      const shipping = JSON.parse(row.shipping_json);
+      const account = row.user_id ? db.getUserById(row.user_id) : null;
+      return {
+        reference: row.external_reference,
+        status: row.status,
+        items,
+        customer: {
+          nome: address?.nome || null,
+          telefone: address?.telefone || null,
+          email: account?.email || null,
+        },
+        address,
+        shipping: { name: shipping.name, deliveryTime: shipping.delivery_time },
+        trackingCode: row.tracking_code || "",
+        subtotal: row.subtotal,
+        discount: row.discount,
+        shippingPrice: row.shipping_price,
+        total: row.total,
+        createdAt: row.created_at,
+      };
+    });
+    const stats = db.getOrderStats();
+    res.json({ orders, stats: { totalRevenue: stats.revenue, totalOrders: stats.count } });
+  } catch (err) {
+    console.error("Erro ao listar pedidos (admin):", err);
+    res.status(500).json({ error: "Não foi possível carregar os pedidos agora." });
+  }
+});
+
+/* PATCH /api/admin/orders/:reference/tracking — salva o código de postagem/
+   rastreio dos Correios para um pedido (preenchido à mão pela lojista). */
+app.patch("/api/admin/orders/:reference/tracking", auth.requireAdmin, (req, res) => {
+  try {
+    const reference = String(req.params.reference || "");
+    const trackingCode = String(req.body?.trackingCode || "").trim().slice(0, 60);
+    const order = db.getOrderByExternalReference(reference);
+    if(!order){
+      return res.status(404).json({ error: "Pedido não encontrado." });
+    }
+    db.updateOrderTracking(reference, trackingCode);
+    res.json({ ok: true, trackingCode });
+  } catch (err) {
+    console.error("Erro ao salvar código de rastreio:", err);
+    res.status(500).json({ error: "Não foi possível salvar o código de rastreio agora." });
+  }
+});
+
+/* =========================================================================
+   GET /api/products — catálogo público (nome/preço/foto já mesclando
+   eventuais edições do painel administrativo). O front-end (js/main.js)
+   busca isso para atualizar a vitrine sem precisar recarregar a página
+   depois de uma edição — ver loadProductOverrides() em js/main.js.
+========================================================================= */
+app.get("/api/products", (req, res) => {
+  const overridesMap = getProductOverridesMap();
+  const products = Object.keys(PRODUCTS).map(Number).map(id => {
+    const p = effectiveProduct(id, overridesMap);
+    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl };
+  });
+  res.json({ products });
+});
+
+/* =========================================================================
+   GESTÃO DE PRODUTOS (painel administrativo) — /api/admin/products
+   -------------------------------------------------------------------------
+   Só permite editar nome, preço e foto (photoUrl) dos produtos que já
+   existem em PRODUCTS — não cria nem remove produtos do catálogo. Peso e
+   dimensões (usados no cálculo de frete) não são editáveis por aqui.
+========================================================================= */
+app.get("/api/admin/products", auth.requireAdmin, (req, res) => {
+  const overridesMap = getProductOverridesMap();
+  const products = Object.keys(PRODUCTS).map(Number).map(id => {
+    const p = effectiveProduct(id, overridesMap);
+    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl };
+  });
+  res.json({ products });
+});
+
+function isValidProductPrice(v){
+  return typeof v === "number" && Number.isFinite(v) && v > 0 && v < 100000;
+}
+// Aceita vazio (remove a foto customizada, volta para o padrão calculado no
+// front-end a partir do nome) ou uma URL http(s) — nunca javascript:/data:
+// etc., que não fazem sentido como <img src> de um link colado por um
+// formulário.
+function isValidPhotoUrl(v){
+  if(!v) return true;
+  if(typeof v !== "string" || v.length > 2000) return false;
+  try{
+    const parsed = new URL(v);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  }catch{
+    return false;
+  }
+}
+
+app.patch("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if(!Number.isInteger(id) || !PRODUCTS[id]){
+      return res.status(404).json({ error: "Produto não encontrado." });
+    }
+
+    const name = String(req.body?.name || "").trim();
+    const price = Number(req.body?.price);
+    const photoUrl = req.body?.photoUrl ? String(req.body.photoUrl).trim() : "";
+
+    if(name.length < 2 || name.length > 120){
+      return res.status(400).json({ error: "Nome precisa ter entre 2 e 120 caracteres." });
+    }
+    if(!isValidProductPrice(price)){
+      return res.status(400).json({ error: "Preço inválido. Use um valor entre R$ 0,01 e R$ 99.999,99." });
+    }
+    if(!isValidPhotoUrl(photoUrl)){
+      return res.status(400).json({ error: "URL da foto inválida. Use um link http(s) ou deixe em branco." });
+    }
+
+    db.upsertProductOverride(id, {
+      name,
+      price: Math.round(price * 100) / 100,
+      photoUrl: photoUrl || null,
+    });
+
+    const updated = effectiveProduct(id, getProductOverridesMap());
+    res.json({ id, name: updated.name, price: updated.price, photoUrl: updated.photoUrl });
+  } catch (err) {
+    console.error("Erro ao atualizar produto:", err);
+    res.status(500).json({ error: "Não foi possível salvar o produto agora." });
   }
 });
 

@@ -64,6 +64,88 @@
   const cartCountEl = document.getElementById("cartCount");
   const cartCountMobileEl = document.getElementById("cartCountMobile");
   const cartToast = new bootstrap.Toast(document.getElementById("cartToast"));
+  const cartPillEl = document.querySelector(".cart-pill");
+
+  /* =====================================================================
+     REVEAL ON SCROLL — fade/slide-up sutil para seções e cards conforme
+     entram na tela. Só usa opacity/transform (a animação de verdade é
+     CSS, em .reveal/.is-visible no style.css) — aqui só alterna a classe,
+     sem tocar em layout, então é barato mesmo rolando rápido no celular.
+     unobserve() depois de revelar: o elemento já apareceu, não precisa
+     mais gastar ciclos observando ele. */
+  const revealObserver = ("IntersectionObserver" in window)
+    ? new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if(entry.isIntersecting){
+            entry.target.classList.add("is-visible");
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.15, rootMargin: "0px 0px -10% 0px" })
+    : null;
+
+  function observeReveal(root){
+    (root || document).querySelectorAll(".reveal:not(.is-visible)").forEach(el => {
+      if(revealObserver) revealObserver.observe(el);
+      else el.classList.add("is-visible"); // sem suporte a IntersectionObserver: mostra direto
+    });
+  }
+  observeReveal(); // seções estáticas já presentes no HTML
+
+  /* =====================================================================
+     ANIMAÇÃO "ADICIONAR AO CARRINHO" — três efeitos combinados, disparados
+     junto com addToCart() nos cliques de "+"/"Adicionar": (1) uma bolinha
+     "voa" do botão até o ícone do carrinho, (2) o ícone do carrinho dá um
+     pulso, (3) o próprio botão vira um check por um instante. Tudo com
+     transform/opacity (sem animar width/height/top/left, que forçam
+     reflow) para não travar em aparelhos mais fracos.
+  ===================================================================== */
+  function bumpCartIcon(){
+    if(!cartPillEl) return;
+    cartPillEl.classList.remove("is-bumped");
+    void cartPillEl.offsetWidth; // reinicia a keyframe mesmo em cliques em sequência
+    cartPillEl.classList.add("is-bumped");
+    cartPillEl.addEventListener("animationend", () => cartPillEl.classList.remove("is-bumped"), { once: true });
+  }
+
+  function flyToCart(originEl, color){
+    if(!cartPillEl || !originEl) return;
+    const start = originEl.getBoundingClientRect();
+    const end = cartPillEl.getBoundingClientRect();
+    const dot = document.createElement("div");
+    dot.className = "fly-dot";
+    dot.style.background = color || "var(--blush-600)";
+    dot.style.transform = `translate(${start.left + start.width / 2 - 7}px, ${start.top + start.height / 2 - 7}px)`;
+    document.body.appendChild(dot);
+
+    requestAnimationFrame(() => {
+      const x = end.left + end.width / 2 - 7;
+      const y = end.top + end.height / 2 - 7;
+      dot.style.transform = `translate(${x}px, ${y}px) scale(.3)`;
+      dot.style.opacity = "0";
+    });
+
+    const cleanup = () => dot.remove();
+    dot.addEventListener("transitionend", cleanup, { once: true });
+    setTimeout(cleanup, 900); // rede de segurança (ex.: prefers-reduced-motion desliga a transição)
+  }
+
+  function pulseAddButton(btn){
+    const icon = btn?.querySelector("i");
+    if(!icon) return;
+    const original = icon.className;
+    btn.classList.add("is-added");
+    icon.className = "bi bi-check-lg";
+    setTimeout(() => {
+      btn.classList.remove("is-added");
+      icon.className = original;
+    }, 900);
+  }
+
+  function celebrateAddToCart(originEl, color){
+    flyToCart(originEl, color);
+    bumpCartIcon();
+  }
 
   function stars(n){
     let s = "";
@@ -87,8 +169,8 @@
 
   function renderProducts(){
     const list = currentFilter === "todos" ? products : products.filter(p => p.cat === currentFilter);
-    grid.innerHTML = list.map(p => `
-      <div class="col-6 col-md-4 col-lg-3">
+    grid.innerHTML = list.map((p, i) => `
+      <div class="col-6 col-md-4 col-lg-3 reveal reveal-delay-${i % 4}">
         <div class="product-card">
           <div class="product-thumb is-loading" style="background:${p.color}22">
             ${p.badge ? `<span class="product-badge">${escapeHTML(p.badge)}</span>` : ""}
@@ -113,8 +195,38 @@
       </div>
     `).join("");
     grid.querySelectorAll(".product-thumb img").forEach(wireImage);
+    observeReveal(grid);
   }
   renderProducts();
+
+  /* Busca eventuais edições de nome/preço/foto feitas no painel
+     administrativo (server/server.js > /api/products) e aplica por cima
+     do catálogo estático acima, sem bloquear a primeira renderização (que
+     já aconteceu, com os dados estáticos, na linha de cima) — se a busca
+     falhar ou demorar, a vitrine continua funcionando normalmente com o
+     catálogo padrão. Como `products`/`productsById` guardam referências
+     mutáveis, atualizar `p.name`/`p.price`/`p.image` aqui já é suficiente
+     para o carrinho e a quick view (que sempre leem do mesmo objeto)
+     mostrarem o valor novo, sem precisar duplicar essa lógica em cada um. */
+  async function loadProductOverrides(){
+    try{
+      const res = await fetch("/api/products");
+      if(!res.ok) return;
+      const data = await res.json();
+      let changed = false;
+      (Array.isArray(data.products) ? data.products : []).forEach(o => {
+        const p = productsById.get(o.id);
+        if(!p) return;
+        if(o.name && o.name !== p.name){ p.name = o.name; changed = true; }
+        if(o.price != null && o.price !== p.price){ p.price = o.price; changed = true; }
+        if(o.photoUrl && o.photoUrl !== p.image){ p.image = o.photoUrl; changed = true; }
+      });
+      if(changed){ renderProducts(); renderCart(); }
+    }catch(err){
+      console.warn("Não foi possível verificar atualizações do catálogo:", err);
+    }
+  }
+  loadProductOverrides();
 
   /* ---------- FILTROS ---------- */
   document.getElementById("filterGroup").addEventListener("click", function(e){
@@ -605,7 +717,11 @@
     const addBtn = e.target.closest(".btn-add");
     const qvBtn = e.target.closest(".product-quickview");
     if(addBtn){
-      addToCart(Number(addBtn.dataset.id), 1);
+      const id = Number(addBtn.dataset.id);
+      const p = findProduct(id);
+      addToCart(id, 1);
+      celebrateAddToCart(addBtn, p?.color);
+      pulseAddButton(addBtn);
       return;
     }
     if(qvBtn){
@@ -632,7 +748,11 @@
     document.getElementById("qvQty").textContent = qvQty;
   });
   document.getElementById("qvAddBtn").addEventListener("click", () => {
-    if(qvProductId != null) addToCart(qvProductId, qvQty);
+    if(qvProductId != null){
+      const p = findProduct(qvProductId);
+      addToCart(qvProductId, qvQty);
+      celebrateAddToCart(document.getElementById("qvAddBtn"), p?.color);
+    }
     qvModal.hide();
   });
 
@@ -645,7 +765,7 @@
   const galFallbackSeeds = ["laco-rosa-1","laco-rosa-2","laco-festa","laco-batizado","laco-presente","laco-tiara","laco-borboleta","laco-duquesa"];
   const gallery = document.getElementById("galleryGrid");
   gallery.innerHTML = galFallbackSeeds.map((seed,i) => `
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-3 reveal reveal-delay-${i % 4}">
       <div class="gal-item is-loading">
         <img
           src="img/galeria/foto-${i+1}.jpg"
@@ -669,6 +789,7 @@
     });
     wireImage(img);
   });
+  observeReveal(gallery);
 
   /* ---------- NAVBAR SCROLL ---------- */
   const nav = document.getElementById("mainNav");

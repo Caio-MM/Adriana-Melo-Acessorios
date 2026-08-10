@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel administrativo — Adriana Melo Acessórios</title>
+<meta name="description" content="Painel administrativo de pedidos da Adriana Melo Acessórios.">
+<meta name="robots" content="noindex, nofollow">
+
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://cdnjs.cloudflare.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' https://picsum.photos https://fastly.picsum.photos data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Poppins:wght@300;400;500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="bow-shape" viewBox="0 0 100 70">
+    <path d="M50 35 C50 35 38 6 15 10 C-4 13 -4 47 15 51 C36 56 50 35 50 35 Z"/>
+    <path d="M50 35 C50 35 62 6 85 10 C104 13 104 47 85 51 C64 56 50 35 50 35 Z"/>
+    <rect x="42" y="26" width="16" height="18" rx="5"/>
+    <path d="M45 44 L38 68 L48 60 Z"/>
+    <path d="M55 44 L62 68 L52 60 Z"/>
+  </symbol>
+</svg>
+
+<header class="simple-header">
+  <div class="container d-flex align-items-center justify-content-between">
+    <a href="index.html" class="plc-brand">
+      <svg class="bow-icon"><use href="#bow-shape"/></svg>
+      Adriana Melo Acessórios
+    </a>
+    <div id="navAccount" class="d-flex align-items-center gap-2"></div>
+  </div>
+</header>
+
+<main class="account-main">
+  <div class="container">
+    <div class="orders-wrap mx-auto" style="max-width:900px">
+      <div class="mb-4">
+        <span class="section-eyebrow"><i class="bi bi-shield-lock"></i> painel administrativo</span>
+        <h1 class="section-title" style="font-size:1.8rem">Painel administrativo</h1>
+      </div>
+
+      <div id="adminLoading" class="text-center py-5">
+        <div class="spinner-border" role="status" style="color:var(--blush-600)">
+          <span class="visually-hidden">Carregando painel...</span>
+        </div>
+        <p class="section-sub mt-3">Carregando painel...</p>
+      </div>
+
+      <div id="adminLoggedOut" class="account-card text-center d-none">
+        <i class="bi bi-lock" style="font-size:2rem; color:var(--blush-600)"></i>
+        <p class="mt-3 mb-3">Faça login para acessar o painel administrativo.</p>
+        <a href="conta.html" class="btn-blush">Entrar</a>
+      </div>
+
+      <div id="adminForbidden" class="account-card text-center d-none">
+        <i class="bi bi-shield-exclamation" style="font-size:2rem; color:var(--blush-600)"></i>
+        <p class="mt-3 mb-3">Esta área é restrita à administradora da loja.</p>
+        <a href="index.html" class="btn-outline-blush">Voltar para a loja</a>
+      </div>
+
+      <div id="adminError" class="account-card text-center d-none">
+        <i class="bi bi-exclamation-triangle" style="font-size:2rem; color:var(--blush-700)"></i>
+        <p class="section-sub mt-3 mb-3">Não foi possível carregar o painel agora.</p>
+        <button type="button" class="btn-outline-blush" id="adminRetryBtn">Tentar de novo</button>
+      </div>
+
+      <div id="adminContent" class="d-none">
+
+        <!-- ============ VISÃO GERAL ============ -->
+        <section class="mb-5">
+          <h2 class="admin-section-title">Visão geral</h2>
+          <div class="stats-row" id="statsRow"></div>
+        </section>
+
+        <!-- ============ PRODUTOS ============ -->
+        <section class="mb-5">
+          <h2 class="admin-section-title">Produtos</h2>
+          <p class="section-sub mb-3" style="font-size:.88rem">Edite nome, preço e foto — a vitrine da loja atualiza sozinha em poucos segundos.</p>
+          <div class="table-responsive admin-table-wrap">
+            <table class="table align-middle admin-products-table mb-0">
+              <thead>
+                <tr>
+                  <th scope="col">Foto</th>
+                  <th scope="col">Nome</th>
+                  <th scope="col">Preço</th>
+                  <th scope="col"></th>
+                </tr>
+              </thead>
+              <tbody id="productsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ============ PEDIDOS ============ -->
+        <section>
+          <h2 class="admin-section-title">Pedidos</h2>
+
+          <div id="adminEmpty" class="account-card text-center d-none">
+            <i class="bi bi-bag-heart" style="font-size:2rem; color:var(--blush-300)"></i>
+            <p class="section-sub mt-3 mb-0">Nenhum pedido registrado ainda.</p>
+          </div>
+
+          <div id="adminList" class="orders-list d-none"></div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ============ MODAL: EDITAR PRODUTO ============ -->
+<div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:var(--radius-md); border:none">
+      <form id="editProductForm" novalidate>
+        <div class="modal-header border-0">
+          <h5 class="modal-title font-display" id="editProductModalLabel">Editar produto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="epId">
+
+          <div class="mb-3 text-center">
+            <img id="epPreview" src="" alt="Pré-visualização" class="epPreview-img">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" for="epName">Nome</label>
+            <input type="text" class="form-control" id="epName" required minlength="2" maxlength="120">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" for="epPrice">Preço (R$)</label>
+            <input type="number" class="form-control" id="epPrice" required min="0.01" max="99999" step="0.01" inputmode="decimal">
+          </div>
+
+          <div class="mb-1">
+            <label class="form-label small fw-semibold" for="epPhoto">URL da foto</label>
+            <input type="url" class="form-control" id="epPhoto" placeholder="https://...">
+            <div class="form-text">Link de uma imagem já hospedada. Deixe em branco para usar a foto padrão do produto.</div>
+          </div>
+
+          <div id="epMsg" class="small account-msg" role="alert"></div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="submit" class="btn-blush w-100" id="epSaveBtn">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js" defer></script>
+<script src="js/auth.js" defer></script>
+<script src="js/admin.js" defer></script>
+</body>
+</html>

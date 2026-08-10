@@ -49,6 +49,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @media (prefers-reduced-motion: reduce){
   *{ animation:none !important; transition:none !important; scroll-behavior:auto !important; }
 }
+
+/* ============ REVEAL ON SCROLL ============
+   Aplicado via IntersectionObserver em js/main.js (observeReveal). Só usa
+   opacity/transform (propriedades "baratas" para o navegador animar — não
+   disparam reflow, só compositing), pra não pesar a thread principal no
+   celular. Respeita prefers-reduced-motion pela regra global acima
+   (transition:none!important desliga a transição, o elemento só aparece
+   direto no estado final). */
+.reveal{
+  opacity:0; transform:translateY(28px);
+  transition:opacity .6s ease, transform .6s ease;
+  will-change:opacity, transform;
+}
+.reveal.is-visible{ opacity:1; transform:translateY(0); }
+.reveal-delay-1{ transition-delay:.09s; }
+.reveal-delay-2{ transition-delay:.18s; }
+.reveal-delay-3{ transition-delay:.27s; }
  
 .section-eyebrow{
   font-family:var(--font-script);
@@ -136,7 +153,26 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-size:.65rem; font-weight:700; min-width:19px; height:19px; border-radius:50%;
   display:flex; align-items:center; justify-content:center; border:2px solid var(--cream);
 }
- 
+
+/* Disparado por bumpCartIcon() (js/main.js) sempre que um item é
+   adicionado — só transform, sem custo de layout. */
+.cart-pill.is-bumped{ animation:cart-bump .5s ease; }
+@keyframes cart-bump{
+  0%{ transform:scale(1) rotate(0); }
+  35%{ transform:scale(1.22) rotate(-8deg); }
+  60%{ transform:scale(.94) rotate(4deg); }
+  100%{ transform:scale(1) rotate(0); }
+}
+
+/* "Bolinha" que voa do botão de adicionar até o ícone do carrinho
+   (flyToCart em js/main.js) — elemento próprio, posição fixed, some ao
+   fim da transição. */
+.fly-dot{
+  position:fixed; top:0; left:0; width:14px; height:14px; border-radius:50%;
+  pointer-events:none; z-index:2000; box-shadow:0 6px 14px -4px rgba(84,41,60,.5);
+  transition:transform .55s cubic-bezier(.34,.6,.32,1), opacity .55s ease .05s;
+}
+
 /* ============ HERO ============ */
 .hero{
   padding:150px 0 90px;
@@ -239,7 +275,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border:none; display:flex; align-items:center; justify-content:center; transition:all .2s ease;
 }
 .btn-add:hover{ background:var(--blush-600); color:#fff; }
- 
+.btn-add:active{ transform:scale(.88); }
+.btn-add.is-added{ background:#1E7F44; color:#fff; }
+
 /* ============ PROCESS ============ */
 .process-wrap{ position:relative; }
 .process-step{ text-align:center; padding:0 1rem; }
@@ -396,6 +434,54 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .order-status-pending{ background:var(--blush-100); color:var(--blush-700); }
 .order-status-paid{ background:#DDF3E4; color:#1E7F44; }
 .order-status-failed{ background:#FBE1E1; color:#B3261E; }
+
+/* ============ PAINEL ADMINISTRATIVO (admin.html) ============ */
+.order-card.is-highlighted{
+  border-color:var(--blush-500); box-shadow:0 0 0 3px var(--blush-100);
+  transition:box-shadow .3s ease, border-color .3s ease;
+}
+.tracking-row .btn-outline-blush{ padding:.4rem 1rem; font-size:.82rem; white-space:nowrap; }
+.tracking-feedback{ min-height:1.1em; }
+.tracking-feedback.is-success{ color:#1E7F44; }
+.tracking-feedback.is-error{ color:#B3261E; }
+
+.admin-section-title{
+  font-family:var(--font-display); font-weight:600; font-size:1.2rem; margin-bottom:1rem;
+}
+
+/* Visão geral */
+.stats-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; }
+.stat-tile{
+  background:var(--white); border:1px solid var(--blush-100); border-radius:var(--radius-md);
+  padding:1.1rem 1.3rem; box-shadow:0 10px 25px -20px rgba(84,41,60,.3);
+}
+.stat-tile .stat-value{ font-family:var(--font-display); font-size:1.7rem; font-weight:600; color:var(--blush-700); display:block; }
+.stat-tile .stat-label{ font-size:.8rem; color:var(--ink-soft); }
+
+/* Produtos */
+.admin-table-wrap{
+  background:var(--white); border:1px solid var(--blush-100); border-radius:var(--radius-md);
+  box-shadow:0 10px 25px -20px rgba(84,41,60,.3);
+}
+.admin-products-table{ font-size:.9rem; }
+.admin-products-table th{
+  font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);
+  border-bottom-color:var(--blush-100)!important; white-space:nowrap;
+}
+.admin-products-table td{ border-bottom-color:var(--blush-100)!important; vertical-align:middle; }
+.admin-products-table tr:last-child td{ border-bottom:none; }
+.admin-product-thumb{
+  width:44px; height:44px; border-radius:10px; object-fit:cover; background:var(--blush-50); flex-shrink:0;
+}
+.admin-products-table .btn-outline-blush{ padding:.4rem 1rem; font-size:.82rem; white-space:nowrap; }
+.epPreview-img{
+  width:120px; height:120px; border-radius:var(--radius-md); object-fit:cover; background:var(--blush-50);
+}
+@media (max-width: 575.98px){
+  .admin-products-table{ font-size:.82rem; }
+  .admin-products-table th, .admin-products-table td{ padding:.55rem .5rem; }
+  .admin-product-thumb{ width:36px; height:36px; }
+}
 
 @media (min-width: 576px){
   .account-card{ padding:2.25rem 2.5rem; }
