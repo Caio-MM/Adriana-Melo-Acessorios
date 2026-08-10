@@ -46,6 +46,12 @@ db.exec(`
     coupon_code         TEXT,
     subtotal            REAL NOT NULL,
     discount            REAL NOT NULL DEFAULT 0,
+    -- Desconto do Pix guardado separado do desconto de cupom: são duas
+    -- linhas diferentes no resumo do pedido ("Desconto (CUPOM)" e "Desconto
+    -- Pix"), e somar os dois numa coluna só tornaria impossível remontar o
+    -- recibo depois.
+    pix_discount        REAL NOT NULL DEFAULT 0,
+    payment_method      TEXT NOT NULL DEFAULT 'card',
     shipping_price      REAL NOT NULL,
     total               REAL NOT NULL,
     payment_id          TEXT,
@@ -95,6 +101,10 @@ function ensureColumn(table, column, definition) {
   }
 }
 ensureColumn("orders", "tracking_code", "TEXT");
+// Pedidos criados antes da forma de pagamento existir são todos de cartão
+// (era a única opção), então o DEFAULT já deixa o histórico correto.
+ensureColumn("orders", "pix_discount", "REAL NOT NULL DEFAULT 0");
+ensureColumn("orders", "payment_method", "TEXT NOT NULL DEFAULT 'card'");
 
 // Garante que o cupom que já existia fixo no código (BEMVINDA10) continua
 // funcionando depois da migração pra banco — só insere se a tabela
@@ -156,8 +166,9 @@ function deleteAllSessionsForUser(userId) {
 const stmtInsertOrder = db.prepare(`
   INSERT INTO orders (
     external_reference, user_id, status, items_json, address_json, shipping_json,
-    coupon_code, subtotal, discount, shipping_price, total, created_at, updated_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    coupon_code, subtotal, discount, pix_discount, payment_method,
+    shipping_price, total, created_at, updated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const stmtGetOrderByRef = db.prepare(`SELECT * FROM orders WHERE external_reference = ?`);
 const stmtUpdateOrderStatus = db.prepare(
@@ -189,6 +200,8 @@ function createOrder(order) {
     order.couponCode ?? null,
     order.subtotal,
     order.discount ?? 0,
+    order.pixDiscount ?? 0,
+    order.paymentMethod ?? "card",
     order.shippingPrice,
     order.total,
     now,

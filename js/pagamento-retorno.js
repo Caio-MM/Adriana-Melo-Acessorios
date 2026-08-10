@@ -16,4 +16,20 @@
     const short = ref.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 8);
     if(short) lineEl.textContent = `Pedido #${short} — ${lineEl.textContent}`;
   }
+
+  /* Esvazia o carrinho quando a compra deu certo — mesma chave usada em
+     js/main.js (CART_KEY). Sem isso, o cliente voltava do Mercado Pago com
+     os itens que acabou de pagar ainda no carrinho: além do "não comprei?"
+     na hora, era um convite direto a pagar o mesmo pedido duas vezes.
+     Só nesta página: em "erro"/"pendente" o pagamento ainda pode ser
+     retomado, e aí apagar o carrinho é que seria perder a venda.
+     A confirmação real continua sendo o webhook (server/server.js) — isto
+     é só a limpeza da tela do cliente. */
+  if(document.body.dataset.paymentResult === "sucesso"){
+    try{
+      localStorage.removeItem("plc_cart_v1");
+    }catch(err){
+      console.warn("Não foi possível limpar o carrinho salvo:", err);
+    }
+  }
 })();

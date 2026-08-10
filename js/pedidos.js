@@ -13,6 +13,9 @@
     return new Date(ts).toLocaleDateString("pt-BR", { day:"2-digit", month:"short", year:"numeric" });
   }
 
+  // Espelha PAYMENT_METHODS em server/server.js.
+  const PAYMENT_METHOD_LABELS = { pix: "Pix", card: "Cartão ou boleto" };
+
   const STATUS_LABELS = {
     "pendente":    { label:"Pagamento pendente", cls:"order-status-pending" },
     "em análise":  { label:"Pagamento em análise", cls:"order-status-pending" },
@@ -65,11 +68,16 @@
             <span>Desconto${order.couponCode ? " (" + escapeHTML(order.couponCode) + ")" : ""}</span>
             <span>-${formatMoney(order.discount)}</span>
           </div>` : ""}
+          ${order.pixDiscount > 0 ? `
+          <div class="d-flex justify-content-between small" style="color:var(--blush-700)">
+            <span>Desconto Pix</span><span>-${formatMoney(order.pixDiscount)}</span>
+          </div>` : ""}
           <div class="d-flex justify-content-between small">
             <span>Frete${shippingLabel}</span><span>${formatMoney(order.shippingPrice)}</span>
           </div>
           <div class="d-flex justify-content-between fw-semibold pt-2 mt-1 border-top" style="border-color:var(--blush-100)!important">
-            <span>Total</span><span style="color:var(--blush-700)">${formatMoney(order.total)}</span>
+            <span>Total <span class="fw-normal small" style="color:var(--ink-soft)">· ${escapeHTML(PAYMENT_METHOD_LABELS[order.paymentMethod] || "Cartão ou boleto")}</span></span>
+            <span style="color:var(--blush-700)">${formatMoney(order.total)}</span>
           </div>
         </div>
       `;

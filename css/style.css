@@ -261,18 +261,41 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-size:.68rem; font-weight:700; padding:.35rem .7rem; border-radius:999px; letter-spacing:.02em;
   box-shadow:0 6px 14px -6px rgba(192,84,128,.6);
 }
+.product-card{ cursor:pointer; }
 .product-quickview{
   position:absolute; top:12px; right:12px; width:36px; height:36px; border-radius:50%;
   background:rgba(255,255,255,.9); border:none; display:flex; align-items:center; justify-content:center;
   color:var(--blush-700); opacity:0; transform:translateY(-6px); transition:all .2s ease;
+  z-index:1;
 }
-.product-card:hover .product-quickview{ opacity:1; transform:translateY(0); }
+.product-card:hover .product-quickview,
+.product-quickview:focus-visible{ opacity:1; transform:translateY(0); }
+/* Aparelho sem hover (celular/tablet): o ícone precisa estar visível o tempo
+   todo, senão a única pista de que o card abre os detalhes some — que era
+   exatamente o que acontecia antes no celular. */
+@media (hover: none){
+  .product-quickview{ opacity:1; transform:translateY(0); }
+}
 .product-body{ padding:1.1rem 1.2rem 1.3rem; }
 .product-cat{ font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--blush-600); font-weight:700; }
 .product-name{ font-family:var(--font-display); font-size:1.08rem; font-weight:600; margin:.2rem 0 .35rem; }
 .product-stars{ color:var(--blush-500); font-size:.78rem; }
 .product-price{ font-weight:700; font-size:1.1rem; color:var(--ink); }
 .product-price small{ font-weight:400; color:var(--ink-soft); font-size:.72rem; }
+
+/* Bloco de preço do card: preço cheio, preço no Pix (destacado) e a parcela.
+   Calculados em js/main.js a partir de js/pricing.js. */
+.product-pricing{ display:flex; flex-direction:column; line-height:1.3; min-width:0; }
+.product-pix{
+  font-size:.9rem; font-weight:700; color:var(--blush-700); white-space:nowrap;
+}
+.product-pix small{ font-weight:600; font-size:.72rem; }
+.product-installment{ font-size:.72rem; color:var(--ink-soft); white-space:nowrap; }
+@media (max-width: 400px){
+  .product-price{ font-size:1rem; }
+  .product-pix{ font-size:.82rem; }
+  .product-installment{ font-size:.68rem; }
+}
 .btn-add{
   width:40px; height:40px; border-radius:50%; background:var(--blush-100); color:var(--blush-700);
   border:none; display:flex; align-items:center; justify-content:center; transition:all .2s ease;
@@ -280,6 +303,60 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .btn-add:hover{ background:var(--blush-600); color:#fff; }
 .btn-add:active{ transform:scale(.88); }
 .btn-add.is-added{ background:#1E7F44; color:#fff; }
+
+/* ============ QUICK VIEW (detalhes do produto) ============ */
+.qv-thumb{
+  position:relative; height:220px; border-radius:var(--radius-md); overflow:hidden;
+  display:flex; align-items:center; justify-content:center; background:var(--blush-50);
+}
+.qv-thumb img{
+  position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  opacity:0; transition:opacity .4s ease;
+}
+.qv-thumb img.is-loaded{ opacity:1; }
+.qv-thumb img.is-error{ display:none; }
+.qv-thumb .bow-icon{ width:40%; height:auto; }
+.qv-thumb.is-loading{
+  background:linear-gradient(100deg, var(--blush-50) 30%, var(--blush-100) 50%, var(--blush-50) 70%);
+  background-size:200% 100%;
+  animation:shimmer 1.4s ease-in-out infinite;
+}
+
+/* Preço promocional do Pix — é o número que deve puxar o olho primeiro. */
+.qv-pix{
+  background:var(--blush-50); border:1.5px solid var(--blush-200);
+  border-radius:14px; padding:.7rem .9rem;
+}
+.qv-pix-main{ display:flex; align-items:baseline; flex-wrap:wrap; gap:.5rem; }
+.qv-pix-price{ font-family:var(--font-display); font-size:1.6rem; font-weight:700; color:var(--blush-700); line-height:1.1; }
+.qv-pix-tag{
+  background:var(--blush-600); color:#fff; font-size:.7rem; font-weight:700;
+  padding:.2rem .6rem; border-radius:999px; white-space:nowrap;
+}
+.qv-pix-note{ font-size:.8rem; color:var(--ink-soft); margin-top:.15rem; }
+.qv-card{ display:flex; align-items:baseline; flex-wrap:wrap; gap:.5rem; padding:0 .2rem; }
+.qv-card-price{ font-weight:700; font-size:1.05rem; color:var(--ink); }
+.qv-card-inst{ font-size:.82rem; color:var(--ink-soft); }
+
+/* ============ FORMA DE PAGAMENTO (carrinho) ============ */
+.pay-methods{ display:flex; flex-direction:column; gap:.5rem; }
+.pay-method{
+  display:flex; align-items:center; gap:.7rem; cursor:pointer;
+  border:1.5px solid var(--blush-200); border-radius:12px; padding:.55rem .8rem;
+  transition:border-color .2s ease, background .2s ease;
+}
+.pay-method:hover{ border-color:var(--blush-500); }
+/* .selected vem do JS (mesmo padrão de .shipping-option acima) em vez de
+   :has(input:checked) — o estado precisa aparecer também em navegador sem
+   suporte a :has(). */
+.pay-method.selected{ border-color:var(--blush-600); background:var(--blush-50); }
+.pay-method:focus-within{ outline:3px solid var(--blush-600); outline-offset:2px; }
+.pay-method input[type="radio"]{ accent-color:var(--blush-600); width:16px; height:16px; flex-shrink:0; }
+.pay-method .pm-body{ display:flex; flex-direction:column; min-width:0; line-height:1.3; }
+.pay-method .pm-name{ font-weight:600; font-size:.86rem; }
+.pay-method .pm-note{ font-size:.74rem; color:var(--ink-soft); }
+.pay-method .pm-price{ margin-left:auto; font-weight:700; color:var(--blush-700); white-space:nowrap; font-size:.92rem; }
+#cartInstallmentNote:empty{ display:none; }
 
 /* ============ NOSSA HISTÓRIA ============ */
 .historia-frame{

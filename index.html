@@ -12,7 +12,7 @@
   - Uma CSP via <meta> é uma camada extra, não substitui o header HTTP `Content-Security-Policy`
     que o servidor/hospedagem deve enviar (veja server/server.js, uso de helmet()).
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://cdnjs.cloudflare.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' https://picsum.photos https://fastly.picsum.photos data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://cdnjs.cloudflare.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' https: data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 
 <!-- Bootstrap 5 -->
@@ -173,14 +173,43 @@
         <span class="section-sub">Desconto <span id="cartCouponCode" style="color:var(--blush-700)"></span></span>
         <strong id="cartDiscount">-R$ 0,00</strong>
       </div>
+      <div class="d-flex justify-content-between align-items-start mb-1 d-none" id="cartPixRow" style="color:var(--blush-700)">
+        <span class="section-sub">Desconto Pix <span id="cartPixPercent" style="color:var(--blush-700)"></span></span>
+        <strong id="cartPixDiscount">-R$ 0,00</strong>
+      </div>
       <div class="d-flex justify-content-between mb-1">
         <span class="section-sub">Frete</span>
         <strong id="cartShippingPrice">a calcular</strong>
       </div>
-      <div class="d-flex justify-content-between mb-3 pt-1 border-top" style="border-color:var(--blush-100)!important">
+      <div class="d-flex justify-content-between mb-2 pt-1 border-top" style="border-color:var(--blush-100)!important">
         <span class="fw-semibold">Total</span>
         <strong id="cartTotal" style="color:var(--blush-700)">R$ 0,00</strong>
       </div>
+      <div class="small mb-3" id="cartInstallmentNote" style="color:var(--ink-soft)"></div>
+
+      <!-- Forma de pagamento: a escolha aqui não é só visual — vai para o
+           servidor, que aplica (ou não) o desconto do Pix E restringe os
+           meios de pagamento na tela do Mercado Pago de acordo. Ver
+           PAYMENT_METHODS em server/server.js. -->
+      <div class="pay-methods mb-3" id="payMethodGroup" role="radiogroup" aria-label="Forma de pagamento">
+        <label class="pay-method">
+          <input type="radio" name="payMethod" value="pix" checked>
+          <span class="pm-body">
+            <span class="pm-name"><i class="bi bi-qr-code me-1"></i>Pix</span>
+            <span class="pm-note" id="pmPixNote">à vista</span>
+          </span>
+          <span class="pm-price" id="pmPixPrice">R$ 0,00</span>
+        </label>
+        <label class="pay-method">
+          <input type="radio" name="payMethod" value="card">
+          <span class="pm-body">
+            <span class="pm-name"><i class="bi bi-credit-card me-1"></i>Cartão ou boleto</span>
+            <span class="pm-note" id="pmCardNote"></span>
+          </span>
+          <span class="pm-price" id="pmCardPrice">R$ 0,00</span>
+        </label>
+      </div>
+
       <button class="btn-blush w-100" id="checkoutBtn" disabled>
         <i class="bi bi-lock-fill me-1"></i> Ir para pagamento
       </button>
@@ -426,18 +455,18 @@
       <div class="col-lg-7 reveal reveal-delay-1">
         <form class="row g-3" id="contactForm" novalidate>
           <div class="col-sm-6">
-            <label class="form-label small fw-semibold">Nome</label>
-            <input type="text" class="form-control" required>
+            <label class="form-label small fw-semibold" for="contactNome">Nome</label>
+            <input type="text" class="form-control" id="contactNome" name="nome" autocomplete="name" maxlength="120" required>
             <div class="invalid-feedback">Conte seu nome para a gente 🙂</div>
           </div>
           <div class="col-sm-6">
-            <label class="form-label small fw-semibold">WhatsApp</label>
-            <input type="tel" class="form-control" required>
+            <label class="form-label small fw-semibold" for="contactTelefone">WhatsApp</label>
+            <input type="tel" class="form-control" id="contactTelefone" name="telefone" autocomplete="tel" maxlength="30" required>
             <div class="invalid-feedback">Informe um telefone para contato.</div>
           </div>
           <div class="col-12">
-            <label class="form-label small fw-semibold">Ocasião</label>
-            <select class="form-select" required>
+            <label class="form-label small fw-semibold" for="contactOcasiao">Ocasião</label>
+            <select class="form-select" id="contactOcasiao" name="ocasiao" required>
               <option value="" selected disabled>Selecione...</option>
               <option>Maternidade</option>
               <option>Festa</option>
@@ -448,8 +477,8 @@
             <div class="invalid-feedback">Escolha uma ocasião.</div>
           </div>
           <div class="col-12">
-            <label class="form-label small fw-semibold">Mensagem</label>
-            <textarea class="form-control" rows="4" placeholder="Cor, tamanho, quantidade..." required></textarea>
+            <label class="form-label small fw-semibold" for="contactMensagem">Mensagem</label>
+            <textarea class="form-control" id="contactMensagem" name="mensagem" rows="4" maxlength="2000" placeholder="Cor, tamanho, quantidade..." required></textarea>
             <div class="invalid-feedback">Escreva sua mensagem.</div>
           </div>
           <div class="col-12">
@@ -498,11 +527,14 @@
       </div>
       <div class="col-lg-4">
         <h6>Formas de pagamento</h6>
+        <!-- Os dois selos com id são preenchidos por js/main.js a partir de
+             js/pricing.js: antes ficavam escritos à mão aqui e viravam
+             mentira assim que a regra de parcelamento/desconto mudasse. -->
         <div class="d-flex flex-wrap gap-2">
-          <span class="pay-badge">Pix</span>
+          <span class="pay-badge" id="payBadgePix">Pix</span>
           <span class="pay-badge">Cartão de crédito</span>
           <span class="pay-badge">Boleto</span>
-          <span class="pay-badge">Até 3x sem juros</span>
+          <span class="pay-badge" id="payBadgeInstallments">Parcelamento no cartão</span>
         </div>
       </div>
     </div>
@@ -537,16 +569,36 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <div class="text-center mb-3" id="qvThumb" style="height:200px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-md);">
-          <svg class="bow-icon" style="width:40%"><use href="#bow-shape"/></svg>
+        <div class="qv-thumb is-loading mb-3" id="qvThumb">
+          <img id="qvImage" src="" alt="" width="600" height="600" decoding="async">
+          <svg class="bow-icon"><use href="#bow-shape"/></svg>
         </div>
         <p class="section-sub" id="qvDesc">Descrição do produto.</p>
+
         <div class="d-flex justify-content-between align-items-center mt-3">
-          <span class="product-price" id="qvPrice">R$ 0,00</span>
+          <span class="section-sub mb-0">Quantidade</span>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-sm btn-outline-blush" id="qvMinus">−</button>
+            <button class="btn btn-sm btn-outline-blush" id="qvMinus" aria-label="Diminuir quantidade">−</button>
             <span id="qvQty">1</span>
-            <button class="btn btn-sm btn-outline-blush" id="qvPlus">+</button>
+            <button class="btn btn-sm btn-outline-blush" id="qvPlus" aria-label="Aumentar quantidade">+</button>
+          </div>
+        </div>
+
+        <!-- Parcelamento e desconto do Pix. Os valores são calculados em
+             js/main.js a partir de js/pricing.js (as MESMAS regras que o
+             servidor aplica na cobrança) e recalculados a cada mudança de
+             quantidade acima — ver renderQuickViewPayment(). -->
+        <div class="qv-payment mt-3 pt-3 border-top" style="border-color:var(--blush-100)!important">
+          <div class="qv-pix">
+            <div class="qv-pix-main">
+              <span class="qv-pix-price" id="qvPixPrice">R$ 0,00</span>
+              <span class="qv-pix-tag"><i class="bi bi-lightning-charge-fill"></i> no Pix</span>
+            </div>
+            <div class="qv-pix-note" id="qvPixNote"></div>
+          </div>
+          <div class="qv-card mt-2">
+            <span class="qv-card-price" id="qvPrice">R$ 0,00</span>
+            <span class="qv-card-inst" id="qvInstallment"></span>
           </div>
         </div>
       </div>
@@ -570,6 +622,10 @@
 
 <!-- Scripts Customizados -->
 <script src="js/auth.js" defer></script>
+<!-- pricing.js antes de main.js: define window.PLCPricing (regras de
+     parcelamento/Pix) que main.js usa já na primeira renderização da vitrine.
+     Scripts com `defer` executam na ordem em que aparecem aqui. -->
+<script src="js/pricing.js" defer></script>
 <script src="js/main.js" defer></script>
 </body>
 </html>

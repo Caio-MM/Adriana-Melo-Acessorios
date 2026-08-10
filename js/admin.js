@@ -31,6 +31,9 @@
     return product.photoUrl || `https://picsum.photos/seed/${encodeURIComponent(slugify(product.name))}/200/200`;
   }
 
+  // Espelha PAYMENT_METHODS em server/server.js.
+  const PAYMENT_METHOD_LABELS = { pix: "Pix", card: "Cartão ou boleto" };
+
   const STATUS_LABELS = {
     "pendente":    { label:"Pagamento pendente", cls:"order-status-pending" },
     "em análise":  { label:"Pagamento em análise", cls:"order-status-pending" },
@@ -279,8 +282,19 @@
 
         <ul class="list-unstyled small mb-2">${itemsHtml}</ul>
 
+        ${order.discount > 0 ? `
+        <div class="d-flex justify-content-between small" style="color:var(--blush-700)">
+          <span>Desconto${order.couponCode ? " (" + escapeHTML(order.couponCode) + ")" : ""}</span>
+          <span>-${formatMoney(order.discount)}</span>
+        </div>` : ""}
+        ${order.pixDiscount > 0 ? `
+        <div class="d-flex justify-content-between small" style="color:var(--blush-700)">
+          <span>Desconto Pix</span><span>-${formatMoney(order.pixDiscount)}</span>
+        </div>` : ""}
+
         <div class="d-flex justify-content-between fw-semibold pt-2 mt-1 border-top" style="border-color:var(--blush-100)!important">
-          <span>Total</span><span style="color:var(--blush-700)">${formatMoney(order.total)}</span>
+          <span>Total <span class="fw-normal small" style="color:var(--ink-soft)">· ${escapeHTML(PAYMENT_METHOD_LABELS[order.paymentMethod] || "Cartão ou boleto")}</span></span>
+          <span style="color:var(--blush-700)">${formatMoney(order.total)}</span>
         </div>
 
         ${isPaid ? `
@@ -303,7 +317,12 @@
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("pedido");
     if(!ref) return;
-    const card = document.getElementById(`pedido-${CSS.escape(ref)}`);
+    // getElementById recebe o id LITERAL, não um seletor CSS — passar por
+    // CSS.escape aqui quebrava justamente os casos reais: a referência é um
+    // UUID, e quando ele começa com dígito o escape vira "\38 f2a…", que
+    // nunca casa com o id no DOM. Resultado: o link "ver no painel" do
+    // e-mail de pedido pago abria a página e não destacava nada.
+    const card = document.getElementById(`pedido-${ref}`);
     if(!card) return;
     card.scrollIntoView({ behavior:"smooth", block:"center" });
     card.classList.add("is-highlighted");

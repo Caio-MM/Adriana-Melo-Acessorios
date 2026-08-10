@@ -32,6 +32,10 @@ const auth = require("./auth");
 const whatsapp = require("./whatsapp");
 const email = require("./email");
 const { colorLabelFor } = require("./orderFormatting");
+// Mesmo arquivo que a vitrine e o carrinho carregam no navegador (js/pricing.js,
+// em formato UMD) — é o que garante que o "5% no Pix" e o "3x sem juros"
+// mostrados na tela do produto sejam exatamente os valores cobrados aqui.
+const pricing = require("../js/pricing.js");
 
 const app = express();
 const PORT = process.env.PORT || 3333;
@@ -127,6 +131,33 @@ function findCoupon(rawCode){
   return { code: row.code, percentOff: row.percent_off, description: row.description };
 }
 
+/* =========================================================================
+   FORMAS DE PAGAMENTO — Pix (com desconto) x cartão/boleto
+   -------------------------------------------------------------------------
+   O cliente escolhe no carrinho e o servidor faz DUAS coisas com essa
+   escolha, nunca só uma:
+     1) aplica (ou não) o desconto do Pix no preço de cada item;
+     2) restringe, na própria preferência do Mercado Pago, quais meios de
+        pagamento aparecem na tela de checkout.
+   O (2) é o que impede as duas fraudes óbvias do (1): escolher "Pix" para
+   ganhar os 5% e pagar no cartão na tela seguinte, e o inverso — escolher
+   cartão e pagar no Pix sem o desconto que era devido. `account_money`
+   (saldo do Mercado Pago) fica junto do Pix por ser igualmente à vista e
+   instantâneo; deixá-lo no lado do cartão faria o cliente pagar mais por
+   uma forma de pagamento que, para a loja, é idêntica ao Pix.
+   IDs conforme a documentação de payment types do Mercado Pago.
+========================================================================= */
+const PAYMENT_METHODS = {
+  pix: {
+    label: "Pix",
+    excludedPaymentTypes: ["credit_card", "debit_card", "prepaid_card", "ticket", "atm"],
+  },
+  card: {
+    label: "Cartão ou boleto",
+    excludedPaymentTypes: ["bank_transfer", "account_money"],
+  },
+};
+
 /* -------------------------- MIDDLEWARES DE SEGURANÇA -------------------------- */
 // CSP explícita (mesmas origens já liberadas na <meta> de index.html — mantenha
 // as duas em sincronia). Sem isto, o helmet() aplicaria a CSP padrão dele
@@ -140,7 +171,14 @@ app.use(helmet({
       scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://sdk.mercadopago.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
       fontSrc: ["https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
-      imgSrc: ["'self'", "https://picsum.photos", "https://fastly.picsum.photos", "data:"],
+      // `https:` (qualquer origem https) em vez de uma lista fixa: o painel
+      // administrativo deixa a lojista colar a URL de uma foto hospedada em
+      // qualquer lugar (Google Drive, Imgur, CDN da loja...), e não há como
+      // saber esses domínios de antemão — com a lista fixa, toda foto
+      // customizada era silenciosamente bloqueada pela CSP e a vitrine ficava
+      // sem imagem. Continua barrando http:// e, principalmente, o que a CSP
+      // realmente protege aqui (script/style/connect) segue restrito.
+      imgSrc: ["'self'", "https:", "data:"],
       connectSrc: ["'self'", "https://api.mercadopago.com", "https://viacep.com.br"],
       frameSrc: ["https://www.mercadopago.com", "https://www.mercadopago.com.br"],
       objectSrc: ["'none'"],
@@ -438,9 +476,9 @@ app.post("/api/validate-coupon", strictLimiter, (req, res) => {
 /* =========================================================================
    POST /api/create-preference
    -------------------------------------------------------------------------
-   Recebe { items: [{id, qty}], cep, shipping_service_id, address, coupon }
-   do front-end — SEM preço de produto, SEM preço de frete, SEM valor de
-   desconto. O servidor:
+   Recebe { items: [{id, qty}], cep, shipping_service_id, address, coupon,
+   paymentMethod } do front-end — SEM preço de produto, SEM preço de frete,
+   SEM valor de desconto. O servidor:
      1) recalcula os itens a partir de PRODUCTS;
      2) recalcula o frete de novo junto ao Melhor Envio e confirma que
         `shipping_service_id` ainda é uma opção válida para esse pedido
@@ -448,10 +486,13 @@ app.post("/api/validate-coupon", strictLimiter, (req, res) => {
      3) revalida o cupom (se houver) contra COUPONS e aplica o desconto
         proporcionalmente ao preço de cada item (nunca confia no desconto
         que o navegador mostrou);
-     4) grava o pedido no banco (server/db.js), vinculado ao usuário logado
+     4) aplica o desconto do Pix (js/pricing.js) quando essa é a forma de
+        pagamento escolhida, e restringe a preferência aos meios de
+        pagamento correspondentes (ver PAYMENT_METHODS);
+     5) grava o pedido no banco (server/db.js), vinculado ao usuário logado
         quando houver sessão (req.user, ver server/auth.js) — é isso que
         permite ao cliente ver o pedido depois em "Meus pedidos";
-     5) cria a preferência no Mercado Pago com o frete somado como um
+     6) cria a preferência no Mercado Pago com o frete somado como um
         item da compra.
 ========================================================================= */
 app.post("/api/create-preference", strictLimiter, async (req, res) => {
@@ -463,6 +504,10 @@ app.post("/api/create-preference", strictLimiter, async (req, res) => {
     }
     if(!shipping_service_id){
       return res.status(400).json({ error: "Escolha uma opção de frete." });
+    }
+    const paymentMethod = String(req.body?.paymentMethod || "card").toLowerCase();
+    if(!PAYMENT_METHODS[paymentMethod]){
+      return res.status(400).json({ error: "Forma de pagamento inválida." });
     }
     const requiredAddress = ["nome","telefone","rua","numero","bairro","cidade","uf"];
     if(!address || requiredAddress.some(f => !String(address[f] || "").trim())){
@@ -476,12 +521,21 @@ app.post("/api/create-preference", strictLimiter, async (req, res) => {
     if(req.body?.coupon && !coupon){
       return res.status(409).json({ error: "Esse cupom não é mais válido. Remova-o e tente novamente." });
     }
-    const discountFactor = coupon ? (1 - coupon.percentOff / 100) : 1;
+    const couponFactor = coupon ? (1 - coupon.percentOff / 100) : 1;
 
-    let subtotal = 0;
+    /* Descontos aplicados no PREÇO UNITÁRIO e somados item a item (em vez de
+       calculados de uma vez sobre o subtotal): o Mercado Pago cobra
+       `unit_price * quantity` já arredondado por item, então somar os
+       descontos do mesmo jeito é o que faz o "Total" gravado no pedido bater
+       exatamente com o valor cobrado — calcular por fora sobre o subtotal
+       deixaria uma diferença de centavos entre o recibo e a cobrança. */
+    let subtotal = 0, couponDiscount = 0, pixDiscount = 0;
     const preferenceItems = validatedItems.map(({ id, qty, product }) => {
+      const afterCoupon = pricing.round2(product.price * couponFactor);
+      const unitPrice = paymentMethod === "pix" ? pricing.pixPriceFor(afterCoupon) : afterCoupon;
       subtotal += product.price * qty;
-      const unitPrice = Math.round(product.price * discountFactor * 100) / 100;
+      couponDiscount += (product.price - afterCoupon) * qty;
+      pixDiscount += (afterCoupon - unitPrice) * qty;
       return {
         id: String(id),
         title: product.name,
@@ -490,7 +544,9 @@ app.post("/api/create-preference", strictLimiter, async (req, res) => {
         currency_id: "BRL",
       };
     });
-    const discount = coupon ? Math.round(subtotal * (coupon.percentOff / 100) * 100) / 100 : 0;
+    subtotal = pricing.round2(subtotal);
+    const discount = pricing.round2(couponDiscount);
+    pixDiscount = pricing.round2(pixDiscount);
 
     // Recalcula o frete de novo (nunca confia no preço que o front mostrou)
     const shippingOptions = await quoteShipping(cep, validatedItems);
@@ -529,6 +585,12 @@ app.post("/api/create-preference", strictLimiter, async (req, res) => {
       body: {
         items: preferenceItems,
         payer,
+        // Trava a tela de pagamento na forma que o cliente escolheu (e no
+        // limite de parcelas que a vitrine anunciou) — ver PAYMENT_METHODS.
+        payment_methods: {
+          excluded_payment_types: PAYMENT_METHODS[paymentMethod].excludedPaymentTypes.map(id => ({ id })),
+          installments: paymentMethod === "pix" ? 1 : pricing.PAYMENT_RULES.maxInstallments,
+        },
         external_reference: orderRef,
         back_urls: {
           success: `${CLIENT_ORIGIN}/pagamento-sucesso.html`,
@@ -556,10 +618,12 @@ app.post("/api/create-preference", strictLimiter, async (req, res) => {
       address: { ...address, cep },
       shipping: chosenShipping,
       couponCode: coupon ? coupon.code : null,
-      subtotal: Math.round(subtotal * 100) / 100,
+      subtotal,
       discount,
+      pixDiscount,
+      paymentMethod,
       shippingPrice: chosenShipping.price,
-      total: Math.round((subtotal - discount + chosenShipping.price) * 100) / 100,
+      total: pricing.round2(subtotal - discount - pixDiscount + chosenShipping.price),
     });
 
     // init_point = link de pagamento (Checkout Pro) para redirecionar o cliente
@@ -610,11 +674,23 @@ async function purchaseShippingLabel(order){
     country_id: "BR",
   };
 
-  const items = order.items.map(({ id, qty }) => {
-    const p = PRODUCTS[id];
-    return { name: p.name, quantity: qty, unitary_value: p.price };
-  });
-  const pkg = buildPackage(order.items.map(({ id, qty }) => ({ qty, product: PRODUCTS[id] })));
+  /* Usa effectiveProduct (e não PRODUCTS direto) pelo mesmo motivo do resto
+     do arquivo: um nome/preço editado no painel precisa valer aqui também,
+     senão a declaração de conteúdo e o valor segurado da etiqueta saem com
+     o dado antigo. O filter() descarta um id que não exista mais no
+     catálogo — sem ele, um produto removido derrubaria a geração da
+     etiqueta inteira com um TypeError. */
+  const labelOverridesMap = getProductOverridesMap();
+  const labelItems = order.items
+    .map(({ id, qty }) => ({ qty, product: effectiveProduct(id, labelOverridesMap) }))
+    .filter(({ product }) => product);
+  if(labelItems.length === 0){
+    throw new Error("Nenhum item válido no pedido para gerar a etiqueta.");
+  }
+  const items = labelItems.map(({ qty, product }) => ({
+    name: product.name, quantity: qty, unitary_value: product.price,
+  }));
+  const pkg = buildPackage(labelItems);
 
   const cartItem = await meFetch("/api/v2/me/cart", {
     method: "POST",
@@ -928,6 +1004,8 @@ app.get("/api/orders", auth.requireAuth, (req, res) => {
         couponCode: row.coupon_code,
         subtotal: row.subtotal,
         discount: row.discount,
+        pixDiscount: row.pix_discount || 0,
+        paymentMethod: row.payment_method || "card",
         shippingPrice: row.shipping_price,
         total: row.total,
         createdAt: row.created_at,
@@ -988,6 +1066,8 @@ app.get("/api/admin/orders", auth.requireAdmin, (req, res) => {
         trackingCode: row.tracking_code || "",
         subtotal: row.subtotal,
         discount: row.discount,
+        pixDiscount: row.pix_discount || 0,
+        paymentMethod: row.payment_method || "card",
         shippingPrice: row.shipping_price,
         total: row.total,
         createdAt: row.created_at,
@@ -1031,7 +1111,13 @@ app.get("/api/products", (req, res) => {
     const p = effectiveProduct(id, overridesMap);
     return { id, name: p.name, price: p.price, photoUrl: p.photoUrl };
   });
-  res.json({ products });
+  // `paymentRules` viaja junto do catálogo (em vez de numa rota própria) para
+  // não gastar mais uma das requisições do rate limit por carregamento de
+  // página. A vitrine calcula os preços sozinha com o js/pricing.js que já
+  // baixou — isto serve para ela CONFERIR se esse arquivo, que pode vir de
+  // um cache de até 1h, ainda concorda com o que o servidor vai cobrar.
+  // Ver loadProductOverrides() em js/main.js.
+  res.json({ products, paymentRules: pricing.PAYMENT_RULES });
 });
 
 /* =========================================================================

@@ -51,9 +51,12 @@
      correta de fazer e não tem custo nenhum a mais para escrever assim. */
   const productsById = new Map(products.map(p => [p.id, p]));
 
-  function formatMoney(n){
-    return "R$ " + Number(n).toFixed(2).replace(".", ",");
-  }
+  /* Regras de parcelamento e desconto do Pix — js/pricing.js, o MESMO
+     arquivo que server/server.js carrega para cobrar. Nada de preço é
+     calculado aqui na mão justamente para não abrir espaço de a vitrine
+     anunciar um valor e o checkout cobrar outro. */
+  const pricing = window.PLCPricing;
+  const formatMoney = pricing.formatMoney;
 
   function slugify(str){
     return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g,"")
@@ -144,6 +147,9 @@
   function pulseAddButton(btn){
     const icon = btn?.querySelector("i");
     if(!icon) return;
+    // Já está no meio do "check": sair agora guardaria "bi-check-lg" como
+    // ícone original e o botão ficaria com o check para sempre.
+    if(btn.classList.contains("is-added")) return;
     const original = icon.className;
     btn.classList.add("is-added");
     icon.className = "bi bi-check-lg";
@@ -170,22 +176,24 @@
   function wireImage(imgEl){
     imgEl.addEventListener("load", () => {
       imgEl.classList.add("is-loaded");
-      imgEl.closest(".product-thumb, .cart-item-thumb")?.classList.remove("is-loading");
+      imgEl.closest(".product-thumb, .cart-item-thumb, .qv-thumb")?.classList.remove("is-loading");
     });
     imgEl.addEventListener("error", () => {
       imgEl.classList.add("is-error");
-      imgEl.closest(".product-thumb, .cart-item-thumb")?.classList.remove("is-loading");
+      imgEl.closest(".product-thumb, .cart-item-thumb, .qv-thumb")?.classList.remove("is-loading");
     });
   }
 
   function renderProducts(){
     const list = currentFilter === "todos" ? products : products.filter(p => p.cat === currentFilter);
-    grid.innerHTML = list.map((p, i) => `
+    grid.innerHTML = list.map((p, i) => {
+      const pay = pricing.paymentSummaryFor(p.price);
+      return `
       <div class="col-6 col-md-4 col-lg-3 reveal reveal-delay-${i % 4}">
-        <div class="product-card${p.badge ? " is-featured" : ""}">
+        <div class="product-card${p.badge ? " is-featured" : ""}" data-id="${p.id}">
           <div class="product-thumb is-loading" style="background:${p.color}22">
             ${p.badge ? `<span class="product-badge">${escapeHTML(p.badge)}</span>` : ""}
-            <button class="product-quickview" data-id="${p.id}" aria-label="Ver detalhes"><i class="bi bi-eye"></i></button>
+            <button type="button" class="product-quickview" aria-label="Ver detalhes de ${escapeHTML(p.name)}"><i class="bi bi-eye"></i></button>
             <img
               src="${imageFor(p)}"
               alt="${escapeHTML(p.name)} — ${escapeHTML(p.catLabel)}"
@@ -197,14 +205,19 @@
             <div class="product-cat">${escapeHTML(p.catLabel)}</div>
             <div class="product-name">${escapeHTML(p.name)}</div>
             <div class="product-stars mb-2">${stars(p.rating)}</div>
-            <div class="d-flex align-items-center justify-content-between">
-              <span class="product-price">${formatMoney(p.price)}</span>
-              <button class="btn-add" data-id="${p.id}" aria-label="Adicionar ${escapeHTML(p.name)} ao carrinho"><i class="bi bi-plus-lg"></i></button>
+            <div class="d-flex align-items-end justify-content-between gap-2">
+              <div class="product-pricing">
+                <span class="product-price">${formatMoney(p.price)}</span>
+                <span class="product-pix">${formatMoney(pay.pixPrice)} <small>no Pix</small></span>
+                <span class="product-installment">ou ${escapeHTML(pay.installmentLabel)}</span>
+              </div>
+              <button class="btn-add flex-shrink-0" data-id="${p.id}" aria-label="Adicionar ${escapeHTML(p.name)} ao carrinho"><i class="bi bi-plus-lg"></i></button>
             </div>
           </div>
         </div>
       </div>
-    `).join("");
+    `;
+    }).join("");
     grid.querySelectorAll(".product-thumb img").forEach(wireImage);
     observeReveal(grid);
   }
@@ -233,10 +246,32 @@
         if(o.photoUrl && o.photoUrl !== p.image){ p.image = o.photoUrl; changed = true; }
       });
       if(changed){ renderProducts(); renderCart(); }
+      verifyPaymentRules(data.paymentRules);
     }catch(err){
       console.warn("Não foi possível verificar atualizações do catálogo:", err);
     }
   }
+
+  /* Este navegador pode estar com um js/pricing.js de até 1h atrás em cache
+     (ver maxAge do express.static em server/server.js). Se as regras dele já
+     não forem as que o servidor vai cobrar, a vitrine estaria anunciando um
+     desconto/parcelamento que o checkout não daria — então recarrega a página
+     uma vez para pegar o arquivo novo. O sessionStorage evita laço infinito
+     de recarga caso a divergência tenha outra causa. */
+  const PRICING_RELOAD_KEY = "plc_pricing_reloaded";
+  function verifyPaymentRules(serverRules){
+    if(!serverRules) return;
+    const same = Object.keys(pricing.PAYMENT_RULES)
+      .every(k => serverRules[k] === pricing.PAYMENT_RULES[k]);
+    if(same){ sessionStorage.removeItem(PRICING_RELOAD_KEY); return; }
+    if(sessionStorage.getItem(PRICING_RELOAD_KEY)){
+      console.error("Regras de pagamento do servidor continuam diferentes das do navegador após recarregar.", serverRules);
+      return;
+    }
+    sessionStorage.setItem(PRICING_RELOAD_KEY, "1");
+    window.location.reload();
+  }
+
   loadProductOverrides();
 
   /* ---------- FILTROS ---------- */
@@ -361,8 +396,17 @@
   const cartDiscountRow = document.getElementById("cartDiscountRow");
   const cartCouponCodeEl = document.getElementById("cartCouponCode");
   const cartDiscountEl = document.getElementById("cartDiscount");
+  const cartPixRow = document.getElementById("cartPixRow");
+  const cartPixPercentEl = document.getElementById("cartPixPercent");
+  const cartPixDiscountEl = document.getElementById("cartPixDiscount");
   const cartShippingPriceEl = document.getElementById("cartShippingPrice");
   const cartTotalEl = document.getElementById("cartTotal");
+  const cartInstallmentNoteEl = document.getElementById("cartInstallmentNote");
+  const payMethodGroupEl = document.getElementById("payMethodGroup");
+  const pmPixPriceEl = document.getElementById("pmPixPrice");
+  const pmPixNoteEl = document.getElementById("pmPixNote");
+  const pmCardPriceEl = document.getElementById("pmCardPrice");
+  const pmCardNoteEl = document.getElementById("pmCardNote");
   const checkoutBtn = document.getElementById("checkoutBtn");
   const checkoutMsg = document.getElementById("checkoutMsg");
   const couponInput = document.getElementById("couponInput");
@@ -386,6 +430,13 @@
     return coupon ? Math.round(subtotal * coupon.percentOff / 100 * 100) / 100 : 0;
   }
 
+  /* Forma de pagamento escolhida no carrinho ("pix" | "card"). Vai junto no
+     /api/create-preference; o servidor é quem aplica o desconto e restringe
+     os meios de pagamento — aqui é só o que o cliente vê antes de decidir.
+     "pix" é o padrão por ser o preço mais barato: abrir no valor maior e
+     deixar o cliente descobrir o desconto sozinho seria trabalhar contra ele. */
+  let paymentMethod = "pix";
+
   function updateTotals(){
     const subtotal = cartSubtotal();
     const discount = currentDiscount(subtotal);
@@ -399,16 +450,54 @@
       cartDiscountRow.classList.add("d-none");
     }
 
-    const afterDiscount = subtotal - discount;
-    if(shipping){
-      cartShippingPriceEl.textContent = formatMoney(shipping.price);
-      cartTotalEl.textContent = formatMoney(afterDiscount + shipping.price);
-    } else {
-      cartShippingPriceEl.textContent = "a calcular";
-      cartTotalEl.textContent = formatMoney(afterDiscount);
-    }
+    /* O desconto do Pix incide sobre o subtotal JÁ com o cupom aplicado (e
+       nunca sobre o frete) — é a mesma ordem que server/server.js usa para
+       cobrar, então o total daqui bate com o da tela do Mercado Pago. */
+    const afterCoupon = pricing.round2(subtotal - discount);
+    const pixDiscount = pricing.pixDiscountFor(afterCoupon);
+    const shippingPrice = shipping ? shipping.price : 0;
+
+    // Os dois preços lado a lado no seletor de forma de pagamento, sempre
+    // com o frete embutido: comparar "produtos" de um lado e "produtos +
+    // frete" do outro é o tipo de detalhe que faz o cliente achar que foi
+    // cobrado a mais no fim.
+    pmPixPriceEl.textContent = formatMoney(afterCoupon - pixDiscount + shippingPrice);
+    pmPixNoteEl.textContent = `${pricing.PAYMENT_RULES.pixDiscountPercent}% de desconto · ${formatMoney(pixDiscount)} a menos`;
+    pmCardPriceEl.textContent = formatMoney(afterCoupon + shippingPrice);
+    pmCardNoteEl.textContent = pricing.installmentPlanFor(afterCoupon + shippingPrice).count > 1
+      ? `em até ${pricing.installmentLabelFor(afterCoupon + shippingPrice)}`
+      : "à vista";
+
+    const isPix = paymentMethod === "pix";
+    cartPixRow.classList.toggle("d-none", !isPix || pixDiscount <= 0);
+    cartPixPercentEl.textContent = `(${pricing.PAYMENT_RULES.pixDiscountPercent}%)`;
+    cartPixDiscountEl.textContent = "-" + formatMoney(pixDiscount);
+
+    const total = pricing.round2(afterCoupon - (isPix ? pixDiscount : 0) + shippingPrice);
+    cartShippingPriceEl.textContent = shipping ? formatMoney(shipping.price) : "a calcular";
+    cartTotalEl.textContent = formatMoney(total);
+
+    const plan = pricing.installmentPlanFor(total);
+    cartInstallmentNoteEl.textContent = (!isPix && plan.count > 1)
+      ? `ou ${pricing.installmentLabelFor(total)} no cartão`
+      : "";
+
     checkoutBtn.disabled = cart.length === 0 || !shipping || !isAddressComplete();
   }
+
+  function syncPayMethodSelection(){
+    payMethodGroupEl.querySelectorAll(".pay-method").forEach(label => {
+      label.classList.toggle("selected", label.querySelector("input").checked);
+    });
+  }
+  payMethodGroupEl.addEventListener("change", (e) => {
+    const input = e.target.closest("input[name='payMethod']");
+    if(!input) return;
+    paymentMethod = input.value === "pix" ? "pix" : "card";
+    syncPayMethodSelection();
+    updateTotals();
+  });
+  syncPayMethodSelection();
 
   function resetShipping(){
     shipping = null;
@@ -517,12 +606,14 @@
     const row = e.target.closest(".cart-item");
     if(!row) return;
     const id = Number(row.dataset.id);
+    // A linha existe no DOM mas o item pode não estar mais no array (outra
+    // aba mexeu no carrinho, render a meio caminho). Sem esta guarda, o
+    // clique em +/− estourava um TypeError e travava o handler.
+    const item = cart.find(i => i.id === id);
     if(e.target.closest(".cart-qty-plus")){
-      const item = cart.find(i => i.id === id);
-      setQty(id, item.qty + 1);
+      if(item) setQty(id, item.qty + 1);
     } else if(e.target.closest(".cart-qty-minus")){
-      const item = cart.find(i => i.id === id);
-      if(item.qty <= 1){ removeFromCart(id); } else { setQty(id, item.qty - 1); }
+      if(!item || item.qty <= 1){ removeFromCart(id); } else { setQty(id, item.qty - 1); }
     } else if(e.target.closest(".cart-item-remove")){
       removeFromCart(id);
     }
@@ -753,6 +844,7 @@
           shipping_service_id: shipping.service_id,
           address: getAddress(),
           coupon: coupon ? coupon.code : undefined,
+          paymentMethod,
         })
       });
     } catch(networkErr){
@@ -775,14 +867,66 @@
   }
   checkoutBtn.addEventListener("click", goToCheckout);
 
-  /* ---------- ADICIONAR AO CARRINHO / QUICK VIEW ---------- */
+  /* =====================================================================
+     QUICK VIEW — tela de detalhes do produto
+     -------------------------------------------------------------------
+     É aqui que o cliente vê o parcelamento no cartão e o preço promocional
+     do Pix. Os dois são recalculados a cada mudança de quantidade
+     (renderQuickViewPayment), porque é o valor da COMPRA que define a
+     parcela — em 1 unidade de R$ 29,90 a regra derruba para 2x (parcela
+     mínima), em 3 unidades já cabem as 3x.
+  ===================================================================== */
   let qvProductId = null, qvQty = 1;
   const qvModalEl = document.getElementById("quickViewModal");
   const qvModal = new bootstrap.Modal(qvModalEl);
+  const qvQtyEl = document.getElementById("qvQty");
+  const qvPriceEl = document.getElementById("qvPrice");
+  const qvPixPriceEl = document.getElementById("qvPixPrice");
+  const qvPixNoteEl = document.getElementById("qvPixNote");
+  const qvInstallmentEl = document.getElementById("qvInstallment");
+
+  function renderQuickViewPayment(){
+    const p = findProduct(qvProductId);
+    if(!p) return;
+    const total = pricing.round2(p.price * qvQty);
+    const pay = pricing.paymentSummaryFor(total);
+
+    qvQtyEl.textContent = qvQty;
+    qvPriceEl.textContent = formatMoney(total);
+    qvPixPriceEl.textContent = formatMoney(pay.pixPrice);
+    qvPixNoteEl.textContent =
+      `Economize ${formatMoney(pay.pixSavings)} (${pay.pixDiscountPercent}% de desconto à vista)`;
+    qvInstallmentEl.textContent = pay.installment.count > 1
+      ? `ou ${pay.installmentLabel} no cartão`
+      : "à vista no cartão ou boleto";
+  }
+
+  function openQuickView(id){
+    const p = findProduct(id);
+    if(!p) return;
+    qvProductId = p.id; qvQty = 1;
+    document.getElementById("qvName").textContent = p.name;
+    document.getElementById("qvDesc").textContent = p.desc;
+
+    const thumb = document.getElementById("qvThumb");
+    const img = document.getElementById("qvImage");
+    thumb.style.background = p.color + "22";
+    thumb.querySelector(".bow-icon").style.color = p.color;
+    // Reseta o estado da imagem anterior antes de trocar o src: sem isso, a
+    // foto do produto anterior ficaria visível (classe is-loaded) enquanto a
+    // nova carrega, e um erro anterior (is-error) esconderia a nova.
+    img.classList.remove("is-loaded", "is-error");
+    thumb.classList.add("is-loading");
+    img.alt = p.name;
+    img.src = imageFor(p);
+
+    renderQuickViewPayment();
+    qvModal.show();
+  }
+  wireImage(document.getElementById("qvImage"));
 
   grid.addEventListener("click", function(e){
     const addBtn = e.target.closest(".btn-add");
-    const qvBtn = e.target.closest(".product-quickview");
     if(addBtn){
       const id = Number(addBtn.dataset.id);
       const p = findProduct(id);
@@ -791,28 +935,25 @@
       pulseAddButton(addBtn);
       return;
     }
-    if(qvBtn){
-      const p = findProduct(Number(qvBtn.dataset.id));
-      if(!p) return;
-      qvProductId = p.id; qvQty = 1;
-      document.getElementById("qvName").textContent = p.name;
-      document.getElementById("qvDesc").textContent = p.desc;
-      document.getElementById("qvPrice").textContent = formatMoney(p.price);
-      document.getElementById("qvQty").textContent = qvQty;
-      const thumb = document.getElementById("qvThumb");
-      thumb.style.background = p.color + "22";
-      thumb.querySelector(".bow-icon").style.color = p.color;
-      qvModal.show();
-    }
+    /* Clique em QUALQUER lugar do card (menos o "+" acima) abre os detalhes.
+       Antes só o ícone de olho abria — e ele aparecia apenas no hover, ou
+       seja, no celular não havia nenhum jeito de chegar nesta tela.
+       O ícone continua sendo um <button> de verdade (e não o card inteiro
+       virar role="button") porque o card contém o botão "+": um botão
+       dentro do outro seria um aninhamento inválido, e no leitor de tela o
+       "+" sumiria dentro do rótulo do card. Assim, mouse/toque clicam em
+       qualquer lugar e o teclado tem dois alvos claros e separados. */
+    const card = e.target.closest(".product-card");
+    if(card) openQuickView(Number(card.dataset.id));
   });
 
   document.getElementById("qvMinus").addEventListener("click", () => {
     qvQty = Math.max(1, qvQty - 1);
-    document.getElementById("qvQty").textContent = qvQty;
+    renderQuickViewPayment();
   });
   document.getElementById("qvPlus").addEventListener("click", () => {
     qvQty = Math.min(10, qvQty + 1);
-    document.getElementById("qvQty").textContent = qvQty;
+    renderQuickViewPayment();
   });
   document.getElementById("qvAddBtn").addEventListener("click", () => {
     if(qvProductId != null){
@@ -854,23 +995,51 @@
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   }
 
-  document.getElementById("newsletterForm").addEventListener("submit", function(e){
+  /* Os dois formulários abaixo mostravam "enviado!" sem nunca chamar o
+     servidor — as rotas /api/newsletter e /api/contact já existiam em
+     server/server.js, mas ninguém falava com elas. Ou seja: a cliente se
+     despedia achando que tinha mandado a mensagem, e a lojista nunca
+     recebia nada. Agora só confirmam depois de o servidor responder ok. */
+  async function postForm(url, body){
+    const res = await fetchWithTimeout(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(data.error || "Não foi possível enviar agora. Tente novamente em instantes.");
+    return data;
+  }
+
+  const newsletterForm = document.getElementById("newsletterForm");
+  newsletterForm.addEventListener("submit", async function(e){
     e.preventDefault();
     const input = this.querySelector("input[type=email]");
+    const btn = this.querySelector("button[type=submit]");
     const msg = document.getElementById("newsletterMsg");
     const email = input.value.trim();
     if(!isValidEmail(email)){
       msg.textContent = "Digite um e-mail válido.";
       return;
     }
-    // Endpoint sugerido: POST /api/newsletter { email } — implemente no
-    // seu back-end com limite de tentativas (rate limit) para evitar spam.
-    msg.textContent = "Cupom enviado! Confira seu e-mail. 🎀";
-    input.value = "";
+    btn.disabled = true;
+    msg.textContent = "Enviando...";
+    try{
+      await postForm("/api/newsletter", { email });
+      msg.textContent = "Pronto! Em instantes o cupom chega no seu e-mail. 🎀";
+      input.value = "";
+    }catch(err){
+      console.error("Falha ao inscrever na newsletter:", err);
+      msg.textContent = err.name === "AbortError"
+        ? "O envio demorou demais. Tente novamente."
+        : err.message;
+    }finally{
+      btn.disabled = false;
+    }
   });
 
   const contactForm = document.getElementById("contactForm");
-  contactForm.addEventListener("submit", function(e){
+  contactForm.addEventListener("submit", async function(e){
     e.preventDefault();
     e.stopPropagation();
     if(!this.checkValidity()){
@@ -878,12 +1047,47 @@
       return;
     }
     const msgEl = document.getElementById("contactMsg");
-    msgEl.textContent = "Mensagem enviada! Responderemos em breve. 🎀";
-    // Endpoint sugerido: POST /api/contact { nome, telefone, ocasiao, mensagem }
-    // Sempre sanitize/valide esses campos de novo no servidor antes de
-    // salvar ou encaminhar (nunca confie só na validação do navegador).
-    this.reset();
-    this.classList.remove("was-validated");
+    const btn = this.querySelector("button[type=submit]");
+    btn.disabled = true;
+    msgEl.textContent = "Enviando...";
+    try{
+      await postForm("/api/contact", {
+        nome: document.getElementById("contactNome").value.trim(),
+        telefone: document.getElementById("contactTelefone").value.trim(),
+        ocasiao: document.getElementById("contactOcasiao").value,
+        mensagem: document.getElementById("contactMensagem").value.trim(),
+      });
+      msgEl.textContent = "Mensagem enviada! Responderemos em breve. 🎀";
+      this.reset();
+      this.classList.remove("was-validated");
+    }catch(err){
+      console.error("Falha ao enviar contato:", err);
+      msgEl.textContent = err.name === "AbortError"
+        ? "O envio demorou demais. Tente novamente."
+        : err.message;
+    }finally{
+      btn.disabled = false;
+    }
   });
+
+  /* =====================================================================
+     RODAPÉ — selos de forma de pagamento
+     Escritos a partir de PAYMENT_RULES em vez de fixos no HTML: o rodapé
+     dizia "Até 3x sem juros" em texto puro, então bastava alguém mudar a
+     regra de parcelamento para o site continuar anunciando o número velho.
+  ===================================================================== */
+  const payBadgePixEl = document.getElementById("payBadgePix");
+  const payBadgeInstallmentsEl = document.getElementById("payBadgeInstallments");
+  if(payBadgePixEl){
+    payBadgePixEl.textContent = `Pix com ${pricing.PAYMENT_RULES.pixDiscountPercent}% de desconto`;
+  }
+  if(payBadgeInstallmentsEl){
+    const { maxInstallments, interestFreeInstallments, monthlyInterestRate } = pricing.PAYMENT_RULES;
+    const semJuros = Math.min(maxInstallments, interestFreeInstallments);
+    payBadgeInstallmentsEl.textContent = (monthlyInterestRate > 0 && maxInstallments > semJuros)
+      ? `Até ${maxInstallments}x (${semJuros}x sem juros)`
+      : `Até ${semJuros}x sem juros`;
+  }
+
 
 })();

@@ -48,7 +48,7 @@
  * =============================================================================
  */
 
-const { colorLabelFor, formatCurrency, formatOrderDateTime } = require("./orderFormatting");
+const { colorLabelFor, formatCurrency, formatOrderDateTime, deliveryLineFor } = require("./orderFormatting");
 
 /**
  * Monta o texto da notificação a partir de um pedido já resolvido (itens
@@ -60,10 +60,7 @@ function formatOrderMessage({ externalReference, items, address, total, paidAt }
     .map(({ id, qty, name }) => `• ${qty}x ${name} — cor: ${colorLabelFor(id)}`)
     .join("\n");
 
-  const deliveryLine = [
-    [address?.rua, address?.numero].filter(Boolean).join(", "),
-    [address?.bairro, address?.cidade, address?.uf].filter(Boolean).join(" — "),
-  ].filter(Boolean).join(" · ");
+  const deliveryLine = deliveryLineFor(address);
 
   return [
     "🎀 *Novo pedido pago!*",

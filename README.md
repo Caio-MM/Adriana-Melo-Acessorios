@@ -12,9 +12,12 @@ site/
 ├── css/style.css
 ├── js/
 │   ├── main.js            ← catálogo, carrinho, frete, cupom, checkout
+│   ├── pricing.js          ← regras de parcelamento e desconto do Pix (usado
+│   │                          também pelo servidor — ver seção 7)
 │   ├── auth.js             ← sessão + área de conta na navbar (toda página)
 │   ├── conta.js            ← formulários de login/cadastro
 │   ├── pedidos.js          ← histórico de pedidos
+│   ├── pagamento-retorno.js ← páginas de retorno do Mercado Pago
 │   └── admin.js            ← painel administrativo (lista + código de rastreio)
 └── server/                 ← back-end Node.js (também serve o site, ver seção 3)
     ├── server.js
@@ -35,12 +38,20 @@ site/
   Fica salvo em `localStorage` (sobrevive a um recarregamento de página).
 - **Frete real (Melhor Envio)**: o carrinho pede o CEP e mostra as opções de
   entrega calculadas de verdade (ver seção 2).
-- **Cupom de desconto**: hoje existe um cupom de exemplo, `BEMVINDA10` (10%),
-  cadastrado em `COUPONS` no topo de `server/server.js` — adicione outros
-  cupons ali. O desconto é sempre validado/calculado no servidor.
+- **Cupom de desconto**: `BEMVINDA10` (10%) já vem cadastrado; os demais são
+  criados/apagados pelo painel administrativo (tabela `coupons` em
+  `server/db.js`), sem editar código. O desconto é sempre validado e
+  recalculado no servidor.
+- **Parcelamento e desconto no Pix**: a tela de detalhes de cada produto (o
+  clique em qualquer card) mostra o preço no Pix com 5% de desconto e o valor
+  das parcelas no cartão, recalculados conforme a quantidade escolhida; o
+  carrinho repete os dois lado a lado para o cliente escolher. As regras
+  ficam em **um lugar só**, `js/pricing.js` → `PAYMENT_RULES` (ver seção 7).
 - **Checkout Mercado Pago (Checkout Pro)**: redireciona para o link oficial
   de pagamento (Pix, cartão ou boleto); a confirmação de verdade vem do
-  webhook, nunca do redirecionamento do navegador.
+  webhook, nunca do redirecionamento do navegador. A forma de pagamento
+  escolhida no carrinho restringe os meios disponíveis na tela do Mercado
+  Pago, para o desconto anunciado ser exatamente o cobrado (ver seção 7).
 - **Contas de cliente**: cadastro/login em `conta.html`, sessão por cookie
   httpOnly (não fica token nenhum acessível em JavaScript/localStorage).
 - **Histórico de pedidos**: `pedidos.html` mostra os pedidos do cliente
@@ -205,7 +216,51 @@ ambiente de build/deploy):
 - Trocar as fotos do Picsum por fotos reais dos produtos, já otimizadas
   (formato `.webp`, ~600×600px, comprimidas).
 
-## 7. Próximos passos sugeridos (fora do escopo deste pacote)
+## 7. Mudar o parcelamento ou o desconto do Pix
+
+Tudo mora em **`js/pricing.js`**, no objeto `PAYMENT_RULES`:
+
+```js
+const PAYMENT_RULES = {
+  pixDiscountPercent: 5,       // desconto à vista no Pix (%)
+  maxInstallments: 3,          // máximo de parcelas no cartão
+  interestFreeInstallments: 3, // até quantas parcelas ficam sem juros
+  monthlyInterestRate: 0,      // juros ao mês acima disso (0.0199 = 1,99% a.m.)
+  minInstallmentValue: 5,      // valor mínimo de cada parcela (R$)
+};
+```
+
+Esse arquivo é carregado **pelos dois lados**: pelo navegador (vitrine,
+tela do produto e carrinho) e pelo servidor (`server/server.js` faz
+`require("../js/pricing.js")` para cobrar). Mudar um número ali muda, de uma
+vez só: os preços da vitrine, a tela de detalhes do produto, os totais do
+carrinho, os selos do rodapé e o valor efetivamente cobrado. Não existe
+segundo lugar para editar — e é de propósito: um desconto anunciado que a
+cobrança não dá é propaganda enganosa.
+
+`maxInstallments` está em **3** porque é o que a loja já anunciava no rodapé
+("Até 3x sem juros"). **Para oferecer 10x ou 12x**, basta subir esse número.
+
+> ⚠️ **Se for cobrar juros** (`maxInstallments > interestFreeInstallments`),
+> configure a **mesma** taxa no painel do Mercado Pago
+> (*Seu negócio → Custos de parcelamento*). Quem define o juro realmente
+> cobrado no cartão é o Mercado Pago; o valor mostrado no site só bate com o
+> da fatura se as duas configurações forem iguais.
+
+**Como o desconto do Pix é garantido.** O cliente escolhe a forma de
+pagamento no carrinho e ela vai junto no `POST /api/create-preference`. O
+servidor então (`PAYMENT_METHODS`, em `server/server.js`):
+
+| Escolha | Preço | Meios liberados no Mercado Pago |
+|---|---|---|
+| **Pix** | 5% off (aplicado depois do cupom, nunca sobre o frete) | Pix e saldo Mercado Pago |
+| **Cartão ou boleto** | preço cheio, até `maxInstallments` | cartão de crédito/débito e boleto |
+
+Restringir os meios é o que fecha as duas brechas óbvias: escolher "Pix"
+para ganhar os 5% e pagar no cartão na tela seguinte, e o inverso — pagar no
+Pix pelo caminho do cartão sem receber o desconto que era devido.
+
+## 8. Próximos passos sugeridos (fora do escopo deste pacote)
 
 - Validar a assinatura do webhook do Mercado Pago (header `x-signature`,
   configurável no painel deles) — hoje a segurança do webhook vem inteira

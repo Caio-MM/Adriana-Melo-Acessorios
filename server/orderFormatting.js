@@ -39,4 +39,14 @@ function formatOrderDateTime(dateInput) {
   });
 }
 
-module.exports = { PRODUCT_COLOR_LABELS, colorLabelFor, formatCurrency, formatOrderDateTime };
+// Linha curta de endereço de entrega ("Rua X, 123 · Bairro — Cidade — UF"),
+// usada tanto no aviso de WhatsApp quanto no e-mail para a lojista já
+// enxergar para onde despachar sem precisar abrir o painel administrativo.
+function deliveryLineFor(address) {
+  return [
+    [address?.rua, address?.numero].filter(Boolean).join(", "),
+    [address?.bairro, address?.cidade, address?.uf].filter(Boolean).join(" — "),
+  ].filter(Boolean).join(" · ");
+}
+
+module.exports = { PRODUCT_COLOR_LABELS, colorLabelFor, formatCurrency, formatOrderDateTime, deliveryLineFor };

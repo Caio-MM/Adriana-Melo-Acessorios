@@ -29,7 +29,7 @@
  * =============================================================================
  */
 const nodemailer = require("nodemailer");
-const { colorLabelFor, formatCurrency, formatOrderDateTime } = require("./orderFormatting");
+const { colorLabelFor, formatCurrency, formatOrderDateTime, deliveryLineFor } = require("./orderFormatting");
 
 function escapeHTML(str) {
   return String(str).replace(/[&<>"']/g, ch => ({
@@ -52,6 +52,7 @@ function formatOrderEmail({ externalReference, items, address, total, paidAt, ad
     .join("");
 
   const subject = `🎀 Novo pedido pago — ${externalReference}`;
+  const deliveryLine = deliveryLineFor(address);
 
   const text = [
     "Novo pedido pago!",
@@ -65,6 +66,7 @@ function formatOrderEmail({ externalReference, items, address, total, paidAt, ad
     "",
     `Cliente: ${address?.nome || "-"}`,
     `Telefone: ${address?.telefone || "-"}`,
+    `Entrega: ${deliveryLine || "-"}`,
     "",
     `Ver no painel administrativo: ${adminUrl}`,
   ].join("\n");
@@ -81,7 +83,8 @@ function formatOrderEmail({ externalReference, items, address, total, paidAt, ad
       <p style="margin:0 0 12px"><strong>Total:</strong> ${escapeHTML(formatCurrency(total))}</p>
       <p style="margin:0 0 16px">
         <strong>Cliente:</strong> ${escapeHTML(address?.nome || "-")}<br>
-        <strong>Telefone:</strong> ${escapeHTML(address?.telefone || "-")}
+        <strong>Telefone:</strong> ${escapeHTML(address?.telefone || "-")}<br>
+        <strong>Entrega:</strong> ${escapeHTML(deliveryLine || "-")}
       </p>
       <p>
         <a href="${escapeHTML(adminUrl)}" style="display:inline-block;padding:10px 20px;background:#c05480;color:#fff;text-decoration:none;border-radius:999px;font-weight:600">
