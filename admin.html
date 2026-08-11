@@ -42,7 +42,7 @@
 
 <main class="account-main">
   <div class="container">
-    <div class="orders-wrap mx-auto" style="max-width:900px">
+    <div class="orders-wrap admin-wrap mx-auto">
       <div class="mb-4">
         <span class="section-eyebrow"><i class="bi bi-shield-lock"></i> painel administrativo</span>
         <h1 class="section-title" style="font-size:1.8rem">Painel administrativo</h1>
@@ -73,99 +73,114 @@
         <button type="button" class="btn-outline-blush" id="adminRetryBtn">Tentar de novo</button>
       </div>
 
-      <div id="adminContent" class="d-none">
+      <div id="adminContent" class="d-none admin-layout">
 
-        <!-- ============ VISÃO GERAL ============ -->
-        <section class="mb-5">
-          <h2 class="admin-section-title">Visão geral</h2>
-          <div class="stats-row" id="statsRow"></div>
-        </section>
+        <!-- ============ NAVEGAÇÃO POR ABAS ============
+             Vira sidebar fixa em telas largas e uma barra de pills
+             horizontal (mesmo padrão visual do filtro de categoria da
+             vitrine) em telas estreitas — ver .admin-sidebar/.admin-tab-btn
+             em css/style.css e o handler de clique em js/admin.js. -->
+        <nav class="admin-sidebar" id="adminTabs" aria-label="Seções do painel">
+          <button type="button" class="admin-tab-btn is-active" data-tab="dashboard"><i class="bi bi-speedometer2"></i> Dashboard</button>
+          <button type="button" class="admin-tab-btn" data-tab="produtos"><i class="bi bi-tags"></i> Produtos</button>
+          <button type="button" class="admin-tab-btn" data-tab="cupons"><i class="bi bi-ticket-perforated"></i> Cupons</button>
+          <button type="button" class="admin-tab-btn" data-tab="pedidos"><i class="bi bi-bag-check"></i> Vendas e pedidos</button>
+        </nav>
 
-        <!-- ============ CARRINHOS PENDENTES (recuperação) ============
-             Pedidos com checkout iniciado (preferência criada no Mercado
-             Pago) mas pagamento nunca confirmado — entre 1h e 14 dias
-             atrás. Contato manual pela lojista via WhatsApp converte mais
-             que e-mail automático de recuperação, dado o perfil da loja
-             (atendimento já é feito por WhatsApp). Fica oculta quando não
-             há nenhum. -->
-        <section class="mb-5 d-none" id="pendingCartsSection">
-          <h2 class="admin-section-title">Carrinhos pendentes</h2>
-          <p class="section-sub mb-3" style="font-size:.88rem">Pedidos que começaram o pagamento mas não finalizaram — um contato pode recuperar a venda.</p>
-          <div id="pendingCartsList" class="orders-list"></div>
-        </section>
+        <div class="admin-tab-panels">
 
-        <!-- ============ PRODUTOS ============ -->
-        <section class="mb-5">
-          <h2 class="admin-section-title">Produtos</h2>
-          <p class="section-sub mb-3" style="font-size:.88rem">Edite nome, preço, foto, categoria e selos de destaque — a vitrine da loja atualiza sozinha em poucos segundos.</p>
-          <div class="table-responsive admin-table-wrap">
-            <table class="table align-middle admin-products-table mb-0">
-              <thead>
-                <tr>
-                  <th scope="col">Foto</th>
-                  <th scope="col">Nome</th>
-                  <th scope="col">Preço</th>
-                  <th scope="col">Categoria</th>
-                  <th scope="col">Selos</th>
-                  <th scope="col"></th>
-                </tr>
-              </thead>
-              <tbody id="productsTableBody"></tbody>
-            </table>
-          </div>
-        </section>
+          <!-- ============ DASHBOARD ============ -->
+          <section class="admin-tab-panel" data-tab-panel="dashboard">
+            <h2 class="admin-section-title">Visão geral</h2>
+            <div class="stats-row" id="statsRow"></div>
+          </section>
 
-        <!-- ============ CUPONS ============ -->
-        <section class="mb-5">
-          <h2 class="admin-section-title">Cupons</h2>
-          <p class="section-sub mb-3" style="font-size:.88rem">Cupons de desconto percentual — criados aqui já valem no checkout do site na hora.</p>
-
-          <form id="newCouponForm" class="row g-2 align-items-end mb-3" novalidate>
-            <div class="col-6 col-sm-3">
-              <label class="form-label small fw-semibold mb-1" for="couponCode">Código</label>
-              <input type="text" class="form-control form-control-sm" id="couponCode" placeholder="Ex.: NATAL15" required minlength="3" maxlength="20">
+          <!-- ============ PRODUTOS ============ -->
+          <section class="admin-tab-panel d-none" data-tab-panel="produtos">
+            <h2 class="admin-section-title">Produtos</h2>
+            <p class="section-sub mb-3" style="font-size:.88rem">Edite nome, preço, foto, categoria e selos de destaque — a vitrine da loja atualiza sozinha em poucos segundos.</p>
+            <div class="table-responsive admin-table-wrap">
+              <table class="table align-middle admin-products-table mb-0">
+                <thead>
+                  <tr>
+                    <th scope="col">Foto</th>
+                    <th scope="col">Nome</th>
+                    <th scope="col">Preço</th>
+                    <th scope="col">Categoria</th>
+                    <th scope="col">Selos</th>
+                    <th scope="col"></th>
+                  </tr>
+                </thead>
+                <tbody id="productsTableBody"></tbody>
+              </table>
             </div>
-            <div class="col-6 col-sm-2">
-              <label class="form-label small fw-semibold mb-1" for="couponPercent">Desconto %</label>
-              <input type="number" class="form-control form-control-sm" id="couponPercent" placeholder="10" required min="1" max="90" step="1">
+          </section>
+
+          <!-- ============ CUPONS ============ -->
+          <section class="admin-tab-panel d-none" data-tab-panel="cupons">
+            <h2 class="admin-section-title">Cupons</h2>
+            <p class="section-sub mb-3" style="font-size:.88rem">Cupons de desconto percentual — criados aqui já valem no checkout do site na hora.</p>
+
+            <form id="newCouponForm" class="row g-2 align-items-end mb-3" novalidate>
+              <div class="col-6 col-sm-3">
+                <label class="form-label small fw-semibold mb-1" for="couponCode">Código</label>
+                <input type="text" class="form-control form-control-sm" id="couponCode" placeholder="Ex.: NATAL15" required minlength="3" maxlength="20">
+              </div>
+              <div class="col-6 col-sm-2">
+                <label class="form-label small fw-semibold mb-1" for="couponPercent">Desconto %</label>
+                <input type="number" class="form-control form-control-sm" id="couponPercent" placeholder="10" required min="1" max="90" step="1">
+              </div>
+              <div class="col-8 col-sm-5">
+                <label class="form-label small fw-semibold mb-1" for="couponDesc">Descrição (opcional)</label>
+                <input type="text" class="form-control form-control-sm" id="couponDesc" placeholder="Ex.: Promoção de Natal" maxlength="200">
+              </div>
+              <div class="col-4 col-sm-2">
+                <button type="submit" class="btn-outline-blush w-100" id="couponSaveBtn">Criar</button>
+              </div>
+              <div class="col-12"><div id="couponFormMsg" class="small account-msg"></div></div>
+            </form>
+
+            <div class="table-responsive admin-table-wrap">
+              <table class="table align-middle admin-products-table mb-0">
+                <thead>
+                  <tr>
+                    <th scope="col">Código</th>
+                    <th scope="col">Desconto</th>
+                    <th scope="col">Descrição</th>
+                    <th scope="col"></th>
+                  </tr>
+                </thead>
+                <tbody id="couponsTableBody"></tbody>
+              </table>
             </div>
-            <div class="col-8 col-sm-5">
-              <label class="form-label small fw-semibold mb-1" for="couponDesc">Descrição (opcional)</label>
-              <input type="text" class="form-control form-control-sm" id="couponDesc" placeholder="Ex.: Promoção de Natal" maxlength="200">
+          </section>
+
+          <!-- ============ VENDAS E PEDIDOS ============ -->
+          <section class="admin-tab-panel d-none" data-tab-panel="pedidos">
+            <!-- Carrinhos pendentes (recuperação): pedidos com checkout
+                 iniciado (preferência criada no Mercado Pago) mas
+                 pagamento nunca confirmado — entre 1h e 14 dias atrás.
+                 Contato manual pela lojista via WhatsApp converte mais que
+                 e-mail automático de recuperação, dado o perfil da loja
+                 (atendimento já é feito por WhatsApp). Fica oculto quando
+                 não há nenhum. -->
+            <div class="mb-5 d-none" id="pendingCartsSection">
+              <h2 class="admin-section-title">Carrinhos pendentes</h2>
+              <p class="section-sub mb-3" style="font-size:.88rem">Pedidos que começaram o pagamento mas não finalizaram — um contato pode recuperar a venda.</p>
+              <div id="pendingCartsList" class="orders-list"></div>
             </div>
-            <div class="col-4 col-sm-2">
-              <button type="submit" class="btn-outline-blush w-100" id="couponSaveBtn">Criar</button>
+
+            <h2 class="admin-section-title">Pedidos</h2>
+
+            <div id="adminEmpty" class="account-card text-center d-none">
+              <i class="bi bi-bag-heart" style="font-size:2rem; color:var(--blush-300)"></i>
+              <p class="section-sub mt-3 mb-0">Nenhum pedido registrado ainda.</p>
             </div>
-            <div class="col-12"><div id="couponFormMsg" class="small account-msg"></div></div>
-          </form>
 
-          <div class="table-responsive admin-table-wrap">
-            <table class="table align-middle admin-products-table mb-0">
-              <thead>
-                <tr>
-                  <th scope="col">Código</th>
-                  <th scope="col">Desconto</th>
-                  <th scope="col">Descrição</th>
-                  <th scope="col"></th>
-                </tr>
-              </thead>
-              <tbody id="couponsTableBody"></tbody>
-            </table>
-          </div>
-        </section>
+            <div id="adminList" class="orders-list d-none"></div>
+          </section>
 
-        <!-- ============ PEDIDOS ============ -->
-        <section>
-          <h2 class="admin-section-title">Pedidos</h2>
-
-          <div id="adminEmpty" class="account-card text-center d-none">
-            <i class="bi bi-bag-heart" style="font-size:2rem; color:var(--blush-300)"></i>
-            <p class="section-sub mt-3 mb-0">Nenhum pedido registrado ainda.</p>
-          </div>
-
-          <div id="adminList" class="orders-list d-none"></div>
-        </section>
-
+        </div>
       </div>
     </div>
   </div>
@@ -238,6 +253,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.12.3/JsBarcode.all.min.js" defer></script>
 <script src="js/auth.js" defer></script>
 <script src="js/admin.js" defer></script>
 </body>

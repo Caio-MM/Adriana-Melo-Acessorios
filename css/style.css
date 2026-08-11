@@ -552,6 +552,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   transition:box-shadow .3s ease, border-color .3s ease;
 }
 .tracking-row .btn-outline-blush{ padding:.4rem 1rem; font-size:.82rem; white-space:nowrap; }
+/* Vazio (sem código de rastreio ainda) não reserva espaço nenhum — só
+   aparece quando JsBarcode desenha algo dentro (ver renderBarcode em
+   js/admin.js). max-width evita que um código de rastreio comprido force
+   scroll horizontal no card em telas estreitas. */
+.tracking-barcode-wrap{ display:flex; flex-direction:column; align-items:flex-start; gap:.5rem; width:100%; }
+.tracking-barcode{ display:block; width:100%; max-width:260px; height:0; }
+.tracking-barcode.is-visible{ height:auto; }
+.barcode-download-btn{
+  display:flex; align-items:center; gap:.4rem; border:none; background:none; padding:0;
+  font-size:.78rem; font-weight:600; color:var(--blush-700); cursor:pointer;
+}
+.barcode-download-btn:hover{ text-decoration:underline; }
 .tracking-feedback{ min-height:1.1em; }
 .tracking-feedback.is-success, #epPhotoStatus.is-success{ color:#1E7F44; }
 .tracking-feedback.is-error, #epPhotoStatus.is-error{ color:#B3261E; }
@@ -564,6 +576,43 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 .admin-section-title{
   font-family:var(--font-display); font-weight:600; font-size:1.2rem; margin-bottom:1rem;
+}
+
+/* Painel em largura maior que o resto de .orders-wrap (640px) — precisa de
+   espaço pra sidebar + conteúdo lado a lado. */
+.admin-wrap{ max-width:1100px; }
+
+/* ============ NAVEGAÇÃO EM ABAS DO PAINEL ============
+   Desktop: sidebar fixa à esquerda, grudada no topo ao rolar (sticky).
+   Mobile: vira uma barra horizontal de pills (mesmo padrão visual do
+   filtro de categoria da vitrine, .chip-group) — ver breakpoint abaixo.
+   Alternar de aba é só troca de classe (ver js/admin.js); nenhum painel
+   recarrega dado ao trocar de aba. */
+.admin-layout{ display:flex; align-items:flex-start; gap:2rem; }
+.admin-sidebar{
+  display:flex; flex-direction:column; gap:.3rem; flex-shrink:0; width:200px;
+  position:sticky; top:24px;
+}
+.admin-tab-btn{
+  display:flex; align-items:center; gap:.6rem; text-align:left;
+  padding:.7rem 1rem; border-radius:var(--radius-md); border:none; background:none;
+  font-weight:600; font-size:.9rem; color:var(--ink-soft); cursor:pointer; transition:all .2s ease;
+}
+.admin-tab-btn i{ font-size:1rem; width:1.1em; text-align:center; }
+.admin-tab-btn:hover{ background:var(--blush-50); color:var(--ink); }
+.admin-tab-btn.is-active{ background:var(--blush-100); color:var(--blush-700); }
+.admin-tab-panels{ flex:1 1 0; min-width:0; }
+@media (max-width: 767.98px){
+  .admin-layout{ flex-direction:column; gap:1.25rem; }
+  .admin-sidebar{
+    position:static; width:100%; flex-direction:row; flex-wrap:nowrap;
+    overflow-x:auto; padding-bottom:.3rem; gap:.5rem;
+  }
+  .admin-tab-btn{
+    flex-shrink:0; white-space:nowrap; border:1.5px solid var(--blush-200); border-radius:999px;
+    padding:.55rem 1.1rem;
+  }
+  .admin-tab-btn.is-active{ border-color:var(--blush-600); }
 }
 
 /* Visão geral */

@@ -78,6 +78,26 @@
     });
   }
 
+  /* ================================ ABAS ================================
+     Troca de aba é só CSS (mostra/esconde .admin-tab-panel) — os dados de
+     todas as abas já foram carregados juntos em loadDashboard(), então
+     nenhuma spinner/requisição nova acontece ao navegar entre elas. */
+  const adminTabsEl = document.getElementById("adminTabs");
+  const tabButtons = [...document.querySelectorAll(".admin-tab-btn")];
+  const tabPanels = [...document.querySelectorAll(".admin-tab-panel")];
+
+  function switchTab(tabName){
+    const target = tabPanels.find(p => p.dataset.tabPanel === tabName);
+    if(!target) return;
+    tabButtons.forEach(btn => btn.classList.toggle("is-active", btn.dataset.tab === tabName));
+    tabPanels.forEach(panel => panel.classList.toggle("d-none", panel !== target));
+  }
+
+  adminTabsEl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".admin-tab-btn");
+    if(btn) switchTab(btn.dataset.tab);
+  });
+
   /* ============================= VISÃO GERAL ============================= */
   function renderStats(stats){
     statsRowEl.innerHTML = `
@@ -428,6 +448,10 @@
             <button type="button" class="btn-outline-blush generate-label-btn" data-ref="${escapeHTML(ref)}" title="Compra a etiqueta no Melhor Envio e preenche o código automaticamente"><i class="bi bi-stars me-1"></i>Gerar código</button>
           </div>
           <span class="small tracking-feedback" data-ref-feedback="${escapeHTML(ref)}"></span>
+          <div class="tracking-barcode-wrap">
+            <svg class="tracking-barcode" id="barcode-${escapeHTML(ref)}"></svg>
+            <button type="button" class="barcode-download-btn d-none" id="barcode-download-${escapeHTML(ref)}" data-ref="${escapeHTML(ref)}" title="Baixar código de barras (PNG)"><i class="bi bi-download"></i> Baixar código de barras</button>
+          </div>
         </div>
         ` : ""}
       </div>
@@ -438,6 +462,12 @@
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("pedido");
     if(!ref) return;
+    // O card do pedido mora na aba "Vendas e pedidos" — desde que o painel
+    // virou abas, ela pode estar escondida (d-none) quando o link do
+    // e-mail de pedido pago abre a página. Sem trocar de aba primeiro, o
+    // scrollIntoView abaixo não faz nada visível (elemento existe no DOM,
+    // mas dentro de um painel oculto).
+    switchTab("pedidos");
     // getElementById recebe o id LITERAL, não um seletor CSS — passar por
     // CSS.escape aqui quebrava justamente os casos reais: a referência é um
     // UUID, e quando ele começa com dígito o escape vira "\38 f2a…", que
@@ -459,7 +489,78 @@
     stateEmpty.classList.add("d-none");
     listEl.classList.remove("d-none");
     listEl.innerHTML = orders.map(orderCardHTML).join("");
+    orders.forEach(order => {
+      if(order.status === "pago" && order.trackingCode) renderBarcode(order.reference, order.trackingCode);
+    });
     highlightFromQuery();
+  }
+
+  // Desenha o código de rastreio como código de barras (Code128) — a
+  // lojista já sai com algo pronto pra colar/mostrar na embalagem, sem
+  // precisar copiar o texto pra outra ferramenta só pra gerar a barra.
+  // JsBarcode (cdnjs, mesma origem já liberada na CSP pro Bootstrap) só
+  // desenha dentro do próprio <svg>, sem nenhuma chamada de rede — código
+  // sensível (rastreio de pedido) nunca sai do navegador da lojista.
+  function renderBarcode(ref, code){
+    const svg = document.getElementById(`barcode-${ref}`);
+    const downloadBtn = document.getElementById(`barcode-download-${ref}`);
+    if(!svg) return;
+    if(!code){
+      svg.innerHTML = "";
+      svg.classList.remove("is-visible");
+      downloadBtn?.classList.add("d-none");
+      return;
+    }
+    try{
+      JsBarcode(svg, code, {
+        format: "CODE128",
+        displayValue: true,
+        height: 40,
+        width: 1.6,
+        fontSize: 12,
+        margin: 4,
+      });
+      svg.classList.add("is-visible");
+      downloadBtn?.classList.remove("d-none");
+    }catch(err){
+      // Só pode acontecer com um código de rastreio digitado à mão fora do
+      // padrão dos Correios (ex.: caractere que o Code128 não representa)
+      // — nunca trava o resto do painel por causa disso.
+      console.error("Não foi possível desenhar o código de barras:", err);
+      svg.innerHTML = "";
+      svg.classList.remove("is-visible");
+      downloadBtn?.classList.add("d-none");
+    }
+  }
+
+  // Baixa o código de barras como PNG. Desenha de novo num <canvas> só
+  // pra isso (fora da tela, nunca inserido no DOM) em vez de converter o
+  // <svg> já visível — bem mais simples e sem as pegadinhas de
+  // serializar SVG pra imagem entre navegadores, e o JsBarcode já sabe
+  // desenhar em canvas do mesmo jeito que em SVG. Tudo local: nenhum
+  // arquivo passa pelo servidor pra virar essa imagem.
+  function downloadBarcode(ref){
+    const input = document.getElementById(`tracking-${ref}`);
+    const code = input?.value.trim();
+    if(!code) return;
+    try{
+      const canvas = document.createElement("canvas");
+      JsBarcode(canvas, code, {
+        format: "CODE128",
+        displayValue: true,
+        height: 80,
+        width: 3,
+        fontSize: 20,
+        margin: 12,
+      });
+      const link = document.createElement("a");
+      link.download = `rastreio-${code}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    }catch(err){
+      console.error("Não foi possível gerar o download do código de barras:", err);
+      alert("Não foi possível gerar o arquivo do código de barras agora.");
+    }
   }
 
   async function saveTracking(ref, trackingCode, feedbackEl){
@@ -473,6 +574,7 @@
       });
       const data = await res.json().catch(() => ({}));
       if(!res.ok) throw new Error(data.error || "Não foi possível salvar.");
+      renderBarcode(ref, data.trackingCode);
       feedbackEl.textContent = "Salvo!";
       feedbackEl.classList.add("is-success");
       setTimeout(() => { feedbackEl.textContent = ""; }, 2500);
@@ -498,6 +600,7 @@
       if(!res.ok) throw new Error(data.error || "Não foi possível gerar a etiqueta.");
       const input = document.getElementById(`tracking-${ref}`);
       if(input && data.trackingCode) input.value = data.trackingCode;
+      if(data.trackingCode) renderBarcode(ref, data.trackingCode);
       feedbackEl.textContent = data.trackingCode ? "Código gerado!" : "Etiqueta comprada, mas sem código de rastreio na resposta — confira no painel do Melhor Envio.";
       feedbackEl.classList.add("is-success");
     }catch(err){
@@ -513,6 +616,7 @@
     const trackBtn = e.target.closest(".save-tracking-btn");
     const labelBtn = e.target.closest(".generate-label-btn");
     const deleteBtn = e.target.closest(".delete-order-btn");
+    const downloadBtn = e.target.closest(".barcode-download-btn");
 
     if(trackBtn){
       const ref = trackBtn.dataset.ref;
@@ -525,6 +629,10 @@
       const ref = labelBtn.dataset.ref;
       const feedbackEl = listEl.querySelector(`[data-ref-feedback="${ref}"]`);
       if(feedbackEl) generateLabel(ref, feedbackEl, labelBtn);
+      return;
+    }
+    if(downloadBtn){
+      downloadBarcode(downloadBtn.dataset.ref);
       return;
     }
     if(deleteBtn){
