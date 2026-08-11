@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "petit-laco-server",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd server && node server.js"],
+      "port": 3333
+    }
+  ]
+}

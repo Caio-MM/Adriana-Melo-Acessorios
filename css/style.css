@@ -285,15 +285,22 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* Bloco de preço do card: preço cheio, preço no Pix (destacado) e a parcela.
    Calculados em js/main.js a partir de js/pricing.js. */
-.product-pricing{ display:flex; flex-direction:column; line-height:1.3; min-width:0; }
+.product-pricing{ display:flex; flex-direction:column; line-height:1.3; min-width:0; flex:1 1 auto; }
+/* nowrap de propósito: o preço no Pix é curto o bastante pra caber numa
+   linha só nos tamanhos de fonte abaixo (ver breakpoint de 400px) — deixar
+   quebrar como o parcelamento (mais longo, com "sem juros") ficava feio
+   partindo "R$ 33,15" de "no Pix". */
 .product-pix{
   font-size:.9rem; font-weight:700; color:var(--blush-700); white-space:nowrap;
 }
 .product-pix small{ font-weight:600; font-size:.72rem; }
-.product-installment{ font-size:.72rem; color:var(--ink-soft); white-space:nowrap; }
+.product-installment{ font-size:.72rem; color:var(--ink-soft); }
 @media (max-width: 400px){
   .product-price{ font-size:1rem; }
-  .product-pix{ font-size:.82rem; }
+  /* Card fica bem estreito nesta largura (2 por linha) — reduz até o
+     ponto medido que ainda cabe o pior caso do catálogo ("R$ 85,40 no
+     Pix") sem quebrar linha nem encostar no botão de adicionar. */
+  .product-pix{ font-size:.625rem; }
   .product-installment{ font-size:.68rem; }
 }
 .btn-add{

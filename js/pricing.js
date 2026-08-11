@@ -55,8 +55,12 @@
     return Math.round((Number(n) || 0) * 100) / 100;
   }
 
+  // Espaço não separável entre "R$" e o valor: em telas bem estreitas, o
+  // preço quebra linha (por causa de outros textos ao lado, como "no Pix"),
+  // e um espaço comum deixava o "R$" sozinho numa linha e o valor na
+  // seguinte — com   os dois sempre quebram juntos, como uma unidade.
   function formatMoney(n) {
-    return "R$ " + (Number(n) || 0).toFixed(2).replace(".", ",");
+    return "R$ " + (Number(n) || 0).toFixed(2).replace(".", ",");
   }
 
   /* ------------------------------- PIX ------------------------------- */
