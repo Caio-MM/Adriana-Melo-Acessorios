@@ -26,6 +26,17 @@
   --font-body:'Poppins', sans-serif;
   --font-script:'Caveat', cursive;
  
+  /* Barra de navegação: um único lugar para o ritmo vertical, o respiro
+     entre itens e a curva/duração das micro-interações, para que links,
+     botão de Contato, conta e carrinho animem exatamente igual. */
+  --nav-pad-y:18px;
+  --nav-pad-y-scrolled:10px;
+  --nav-gap:.15rem;
+  --nav-link-pad-x:.62rem;
+  --nav-link-pad-y:.5rem;
+  --nav-dur:.25s;
+  --nav-ease:cubic-bezier(.4,0,.2,1);
+
   --radius-lg:28px;
   --radius-md:18px;
   --shadow-soft: 0 20px 45px -20px rgba(192,84,128,0.35);
@@ -101,15 +112,28 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* ============ NAVBAR ============ */
 .plc-navbar{
   position:fixed; top:0; left:0; right:0; z-index:1030;
-  padding:18px 0;
-  transition:background .35s ease, padding .35s ease, box-shadow .35s ease;
+  padding:var(--nav-pad-y) 0;
   background:transparent;
+  border-bottom:1px solid transparent;
+  transition:background var(--nav-dur) var(--nav-ease),
+             padding var(--nav-dur) var(--nav-ease),
+             box-shadow var(--nav-dur) var(--nav-ease),
+             border-color var(--nav-dur) var(--nav-ease);
 }
+/* Vidro fosco só depois de rolar (is-scrolled vem de js/main.js). O
+   saturate compensa a lavagem de cor que o blur causa, e a hairline
+   inferior separa a barra do conteúdo sem virar uma borda dura. */
 .plc-navbar.is-scrolled{
-  background:rgba(255,253,252,0.92);
-  backdrop-filter:blur(10px);
-  padding:10px 0;
-  box-shadow:0 10px 30px -18px rgba(84,41,60,0.35);
+  padding:var(--nav-pad-y-scrolled) 0;
+  background:rgba(255,253,252,.72);
+  -webkit-backdrop-filter:blur(16px) saturate(180%);
+  backdrop-filter:blur(16px) saturate(180%);
+  border-bottom-color:rgba(192,84,128,.10);
+  box-shadow:0 8px 28px -20px rgba(84,41,60,.45);
+}
+/* Sem backdrop-filter (Firefox antigo), translúcido viraria texto ilegível. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+  .plc-navbar.is-scrolled{ background:rgba(255,253,252,.97); }
 }
 .plc-brand{
   font-family:var(--font-display);
@@ -127,17 +151,78 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @media (max-width: 380px){
   .plc-brand{ font-size:.92rem; }
 }
+/* Telas bem estreitas (iPhone SE e afins): com conta + carrinho + menu na
+   mesma linha, o hambúrguer chegava a sair da tela. Ver também o ajuste
+   das pílulas junto a .account-pill. */
+@media (max-width: 359.98px){
+  .plc-brand{ font-size:.82rem; }
+  .plc-brand .bow-icon{ width:19px; height:15px; }
+}
 .plc-nav-link{
   font-size:.92rem; font-weight:500; color:var(--ink);
-  padding:.5rem 1rem !important;
-  position:relative;
+  padding:var(--nav-link-pad-y) 1rem !important;
+  position:relative; white-space:nowrap;
+  transition:color var(--nav-dur) var(--nav-ease);
 }
 .plc-nav-link::after{
   content:""; position:absolute; left:1rem; right:1rem; bottom:.25rem; height:2px;
-  background:var(--blush-600); transform:scaleX(0); transform-origin:left;
-  transition:transform .25s ease;
+  border-radius:2px;
+  background:linear-gradient(90deg, var(--blush-500), var(--blush-700));
+  transform:scaleX(0); transform-origin:center;
+  transition:transform var(--nav-dur) var(--nav-ease);
 }
-.plc-nav-link:hover::after{ transform:scaleX(1); }
+.plc-nav-link:hover, .plc-nav-link:focus-visible{ color:var(--blush-700); }
+.plc-nav-link:hover::after,
+.plc-nav-link:focus-visible::after{ transform:scaleX(1); }
+/* Seção visível no momento — marcado por js/main.js junto com
+   aria-current, para que leitor de tela e visão batam. */
+.plc-nav-link.is-active{ color:var(--blush-700); font-weight:600; }
+.plc-nav-link.is-active::after{ transform:scaleX(1); }
+
+/* Só na barra do topo: com conta + carrinho ao lado, o padding de 1rem
+   por link estourava o container. No menu lateral (offcanvas) o padding
+   original continua valendo. */
+#mainNav .plc-nav-link{ padding:var(--nav-link-pad-y) var(--nav-link-pad-x) !important; }
+#mainNav .plc-nav-link::after{ left:var(--nav-link-pad-x); right:var(--nav-link-pad-x); }
+#mainNav .d-none.d-lg-flex{ gap:var(--nav-gap) !important; }
+
+/* "Contato" fecha a lista como botão-fantasma: pesa mais que um link,
+   menos que o rosa sólido dos CTAs do corpo da página. */
+.nav-cta{
+  display:inline-flex; align-items:center; white-space:nowrap;
+  padding:var(--nav-link-pad-y) .9rem;
+  margin-left:.2rem;
+  border-radius:999px;
+  border:1.5px solid var(--blush-200);
+  background:var(--blush-50);
+  color:var(--blush-700); font-size:.92rem; font-weight:600;
+  text-decoration:none;
+  transition:background var(--nav-dur) var(--nav-ease),
+             border-color var(--nav-dur) var(--nav-ease),
+             color var(--nav-dur) var(--nav-ease),
+             transform var(--nav-dur) var(--nav-ease),
+             box-shadow var(--nav-dur) var(--nav-ease);
+}
+.nav-cta:hover, .nav-cta:focus-visible, .nav-cta.is-active{
+  background:var(--blush-600); border-color:var(--blush-600); color:var(--white);
+}
+.nav-cta:hover{ transform:translateY(-1px); box-shadow:0 10px 20px -12px rgba(192,84,128,.85); }
+
+/* Foco visível consistente em tudo que é clicável na barra — o outline
+   padrão sumia contra o vidro fosco. */
+#mainNav .plc-nav-link:focus-visible,
+.nav-cta:focus-visible,
+.account-pill:focus-visible,
+.cart-pill:focus-visible{
+  outline:2px solid var(--blush-600); outline-offset:3px; border-radius:999px;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .plc-navbar, .plc-nav-link, .plc-nav-link::after, .nav-cta, .account-pill{
+    transition-duration:.01ms;
+  }
+  .nav-cta:hover{ transform:none; }
+}
  
 .btn-blush{
   background:var(--blush-600); border:1px solid var(--blush-600); color:var(--white);
@@ -153,9 +238,40 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .btn-outline-blush:hover{ background:var(--blush-100); color:var(--blush-700); }
  
 .cart-pill{
-  position:relative; width:44px; height:44px; border-radius:50%;
+  position:relative; width:44px; height:44px; border-radius:50%; flex-shrink:0;
   background:var(--blush-100); display:flex; align-items:center; justify-content:center;
   color:var(--blush-700); border:none;
+}
+/* Sem isto o flex espremia o carrinho (virava elipse) e quebrava
+   "Fazer pedido" em duas linhas quando a barra ficava apertada. */
+#mainNav .btn-blush{ flex-shrink:0; white-space:nowrap; }
+
+/* Conta (Entrar / Olá, nome / Sair) — irmão visual do .cart-pill: no
+   mobile é um círculo de 44px idêntico ao carrinho (só o ícone), e a
+   partir de lg vira uma pílula com rótulo. O rótulo some via CSS, não
+   via markup duplicado, então js/auth.js só monta um HTML. */
+.account-pill{
+  display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+  width:44px; height:44px; padding:0; border-radius:999px; flex-shrink:0;
+  background:var(--blush-100); color:var(--blush-700); border:none;
+  font-size:.88rem; font-weight:600; text-decoration:none; white-space:nowrap;
+  transition:background .2s ease, transform .2s ease;
+}
+.account-pill:hover, .account-pill:focus-visible{ background:var(--blush-200); color:var(--blush-700); transform:translateY(-1px); }
+.account-pill .account-icon{ width:20px; height:20px; flex-shrink:0; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.account-pill-label{ display:none; }
+/* Abaixo de xl a barra não tem folga para logo + links + conta +
+   carrinho, e o carrinho chegava a ser empurrado para fora da tela; como
+   círculo o botão ocupa o mesmo que o carrinho e segue acessível pelo
+   aria-label. */
+@media (min-width: 1200px){
+  .account-pill{ width:auto; padding:0 1rem 0 .85rem; }
+  .account-pill-label{ display:inline; }
+}
+/* Precisa vir depois de .cart-pill e .account-pill para vencer por ordem. */
+@media (max-width: 359.98px){
+  .account-pill, .cart-pill{ width:38px; height:38px; }
+  .account-pill .account-icon{ width:18px; height:18px; }
 }
 .cart-badge{
   position:absolute; top:-4px; right:-4px; background:var(--blush-700); color:#fff;
@@ -523,6 +639,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   flex-wrap:wrap;
   row-gap:.5rem;
 }
+/* Quando a linha quebra, o space-between joga a conta para a esquerda
+   da 2ª linha; o auto mantém ela encostada à direita, como no desktop. */
+.simple-header #navAccount{ margin-left:auto; }
 .simple-header .plc-brand{ font-size:1.15rem; }
 @media (min-width: 576px){
   .simple-header .plc-brand{ font-size:1.5rem; }

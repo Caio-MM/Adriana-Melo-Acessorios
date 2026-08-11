@@ -987,6 +987,42 @@
   /* ---------- NAVBAR SCROLL ---------- */
   const nav = document.getElementById("mainNav");
   const btnTop = document.getElementById("btnTop");
+
+  /* Seção ativa no menu: vence a última seção cujo topo já passou da
+     linha logo abaixo da barra fixa. Determinístico — ao contrário de um
+     IntersectionObserver com faixa estreita, que erra em seções curtas e
+     fica ambíguo quando duas encostam. São 5 seções medidas dentro do
+     rAF que já existe aqui, então não custa um quadro a mais.
+     aria-current acompanha a classe, para o leitor de tela anunciar o
+     mesmo que a barra mostra. */
+  const navLinks = [...document.querySelectorAll("#mainNav .plc-nav-link, #mainNav .nav-cta")]
+    .filter(a => a.getAttribute("href")?.startsWith("#"));
+  const navTargets = navLinks
+    .map(a => ({ link:a, section: document.getElementById(a.getAttribute("href").slice(1)) }))
+    .filter(t => t.section);
+  let activeLink = null;
+
+  function updateActiveSection(){
+    if(!navTargets.length) return;
+    const line = nav.offsetHeight + 24;
+    let current = null;
+    for(const t of navTargets){
+      if(t.section.getBoundingClientRect().top <= line) current = t.link;
+    }
+    // Perto do fim da página a última seção pode nunca alcançar a linha.
+    if(window.innerHeight + window.scrollY >= document.body.scrollHeight - 2){
+      current = navTargets[navTargets.length - 1].link;
+    }
+    if(current === activeLink) return;
+    activeLink?.classList.remove("is-active");
+    activeLink?.removeAttribute("aria-current");
+    activeLink = current;
+    if(activeLink){
+      activeLink.classList.add("is-active");
+      activeLink.setAttribute("aria-current", "true");
+    }
+  }
+
   let scrollTicking = false;
   window.addEventListener("scroll", () => {
     if(scrollTicking) return;
@@ -994,9 +1030,11 @@
     requestAnimationFrame(() => {
       nav.classList.toggle("is-scrolled", window.scrollY > 40);
       btnTop.classList.toggle("show", window.scrollY > 500);
+      updateActiveSection();
       scrollTicking = false;
     });
   }, { passive:true });
+  updateActiveSection();
 
   /* ---------- BACK TO TOP ---------- */
   btnTop.addEventListener("click", () => {

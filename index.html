@@ -41,29 +41,32 @@
 </svg>
  
 <!-- ============ NAVBAR ============ -->
-<nav class="plc-navbar" id="mainNav">
+<nav class="plc-navbar" id="mainNav" aria-label="Navegação principal">
   <div class="container d-flex align-items-center justify-content-between">
-    
+
     <!-- 1. Logo -->
     <a href="#inicio" class="plc-brand">
       <svg class="bow-icon"><use href="#bow-shape"/></svg>
       Adriana Melo Acessórios
     </a>
- 
-    <!-- 2. Menu de Links (Apenas Desktop) -->
-    <div class="d-none d-lg-flex align-items-center gap-1">
+
+    <!-- 2. Menu de Links (Apenas Desktop). O item ativo ganha .is-active
+         + aria-current por js/main.js, conforme a seção visível. -->
+    <div class="d-none d-lg-flex align-items-center">
       <a href="#inicio" class="plc-nav-link">Início</a>
       <a href="#colecoes" class="plc-nav-link">Coleções</a>
       <a href="#sobre" class="plc-nav-link">Como funciona</a>
       <a href="#depoimentos" class="plc-nav-link">Depoimentos</a>
-      <a href="#contato" class="plc-nav-link">Contato</a>
+      <a href="#contato" class="nav-cta">Contato</a>
     </div>
  
     <!-- 3. Carrinho e Botões (Mobile e Desktop) -->
     <div class="d-flex align-items-center gap-2 gap-lg-3">
 
-      <!-- Conta: login/cadastro ou nome do cliente logado (preenchido por js/auth.js) -->
-      <div id="navAccount" class="d-none d-lg-flex align-items-center gap-1"></div>
+      <!-- Conta: login/cadastro ou nome do cliente logado (preenchido por js/auth.js).
+           Visível em todas as telas — no mobile vira um círculo só com o ícone,
+           irmão do carrinho (ver .account-pill em css/style.css). -->
+      <div id="navAccount" class="d-flex align-items-center gap-2"></div>
 
       <!-- Carrinho: Visível em TODAS as telas -->
       <button class="cart-pill" type="button" data-bs-toggle="offcanvas" data-bs-target="#cartOffcanvas" aria-controls="cartOffcanvas" aria-label="Abrir carrinho">
@@ -71,8 +74,9 @@
         <span class="cart-badge" id="cartCount">0</span>
       </button>
 
-      <!-- Botão Fazer Pedido: Apenas Desktop -->
-      <a href="#contato" class="btn-blush d-none d-lg-inline-block">Fazer pedido</a>
+      <!-- Sem "Fazer pedido" aqui: apontava para #contato, o mesmo destino
+           do botão Contato ao fim dos links — dois botões idênticos lado a
+           lado. O menu lateral (mobile) segue com o CTA. -->
 
       <!-- Botão Menu Hambúrguer: Apenas Mobile -->
       <button class="navbar-toggler border-0 d-lg-none p-0 ms-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#navOffcanvas" style="color:var(--ink)">

@@ -30,9 +30,30 @@
   const navAccount = document.getElementById("navAccount");
   const navAccountMobile = document.getElementById("navAccountMobile");
 
+  /* Ícones em SVG inline (sem depender de fonte de ícones) porque este
+     mesmo HTML é injetado em páginas com e sem o sprite <symbol> do topo.
+     Traço/tamanho vêm do CSS (.account-pill .account-icon). */
+  const ICONS = {
+    user:  `<circle cx="12" cy="8" r="3.6"/><path d="M4.9 20a7.1 7.1 0 0 1 14.2 0"/>`,
+    admin: `<path d="M12 3.2 19 6v5.6c0 4.3-2.9 7.6-7 8.4-4.1-.8-7-4.1-7-8.4V6z"/><path d="m9.2 12.2 1.9 1.9 3.7-3.9"/>`,
+    exit:  `<path d="M14.2 4.2h3.9a1.8 1.8 0 0 1 1.8 1.8v12a1.8 1.8 0 0 1-1.8 1.8h-3.9"/><path d="m9 8.3-4 3.7 4 3.7"/><path d="M5 12h9.6"/>`
+  };
+  function pill(icon, label){
+    return `<svg class="account-icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[icon]}</svg>
+            <span class="account-pill-label">${label}</span>`;
+  }
+
+  /* Em index.html o menu lateral (#navAccountMobile) já carrega "Painel
+     admin" e "Sair" no mobile, então na barra do topo eles só aparecem a
+     partir de lg — o mobile fica com Conta + Carrinho, sem apertar.
+     Nas demais páginas não existe menu lateral: lá eles ficam sempre
+     visíveis, senão o cliente perderia o botão de sair no celular. */
+  const secondaryOnlyDesktop = navAccountMobile ? " d-none d-lg-inline-flex" : "";
+
   function renderLoggedOut(){
     if(navAccount){
-      navAccount.innerHTML = `<a href="conta.html" class="plc-nav-link"><i class="bi bi-person me-1"></i>Entrar</a>`;
+      navAccount.innerHTML =
+        `<a href="conta.html" class="account-pill" aria-label="Entrar na sua conta">${pill("user", "Entrar")}</a>`;
     }
     if(navAccountMobile){
       navAccountMobile.innerHTML = `<a href="conta.html" class="plc-nav-link" data-bs-dismiss="offcanvas"><i class="bi bi-person me-1"></i>Entrar / Cadastrar</a>`;
@@ -41,15 +62,15 @@
 
   function renderLoggedIn(user){
     const firstName = escapeHTML(String(user.name || "").trim().split(" ")[0] || "cliente");
-    const adminLink = user.isAdmin
-      ? `<a href="admin.html" class="plc-nav-link"><i class="bi bi-shield-lock me-1"></i>Admin</a>` : "";
     const adminLinkMobile = user.isAdmin
       ? `<a href="admin.html" class="plc-nav-link" data-bs-dismiss="offcanvas"><i class="bi bi-shield-lock me-1"></i>Painel admin</a>` : "";
     if(navAccount){
+      const adminPill = user.isAdmin
+        ? `<a href="admin.html" class="account-pill${secondaryOnlyDesktop}" aria-label="Painel administrativo">${pill("admin", "Admin")}</a>` : "";
       navAccount.innerHTML = `
-        ${adminLink}
-        <a href="pedidos.html" class="plc-nav-link">Olá, ${firstName}</a>
-        <button type="button" class="plc-nav-link" id="logoutBtn" style="background:none;border:none;cursor:pointer">Sair</button>
+        ${adminPill}
+        <a href="pedidos.html" class="account-pill" aria-label="Meus pedidos">${pill("user", "Olá, " + firstName)}</a>
+        <button type="button" class="account-pill${secondaryOnlyDesktop}" id="logoutBtn" aria-label="Sair da conta">${pill("exit", "Sair")}</button>
       `;
       document.getElementById("logoutBtn")?.addEventListener("click", logout);
     }
