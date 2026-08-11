@@ -552,17 +552,49 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .plc-cta .btn-blush:hover{ background:#3d1e2c; }
  
 /* ============ FOOTER ============ */
-.plc-footer{ background:var(--ink); color:var(--blush-100); padding:4rem 0 1.5rem; }
-.plc-footer h6{ color:#fff; font-weight:600; margin-bottom:1.2rem; font-family:var(--font-display); }
-.plc-footer a{ color:var(--blush-150); font-size:.9rem; }
-.plc-footer a:hover{ color:#fff; }
-.plc-footer .bow-icon{ color:var(--blush-400,#EA8FB4); width:28px; height:20px; }
-.social-circle{
-  width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.1); color:#fff;
-  display:flex; align-items:center; justify-content:center; transition:background .2s ease;
+/* Rodapé compacto: menos respiro vertical que a v. anterior (4rem→2.75rem
+   no topo) sem amontoar — a folga perdida no padding volta como
+   letter-spacing/line-height nos textos, que é o que lê como "refinado"
+   sem precisar de altura extra. */
+.plc-footer{ background:var(--ink); color:var(--blush-100); padding:2.75rem 0 1.1rem; }
+.plc-footer h6{
+  color:#fff; font-weight:600; margin-bottom:.9rem;
+  font-family:var(--font-body); font-size:.72rem;
+  text-transform:uppercase; letter-spacing:.11em;
 }
-.social-circle:hover{ background:var(--blush-600); }
-.pay-badge{ background:rgba(255,255,255,.08); border-radius:8px; padding:.3rem .7rem; font-size:.72rem; color:var(--blush-100); }
+.plc-footer a{ color:var(--blush-150); font-size:.88rem; letter-spacing:.01em; transition:color .2s ease; }
+.plc-footer a:hover{ color:#fff; }
+.plc-footer .bow-icon{ color:var(--blush-400,#EA8FB4); width:26px; height:19px; }
+.plc-footer-brand{ font-size:1.05rem; letter-spacing:.01em; }
+.plc-footer-desc{ color:var(--blush-150); line-height:1.6; letter-spacing:.005em; }
+.social-circle{
+  width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,.08); color:#fff;
+  border:1px solid rgba(255,255,255,.14);
+  display:flex; align-items:center; justify-content:center; transition:background .2s ease, border-color .2s ease;
+}
+.social-circle:hover{ background:var(--blush-600); border-color:var(--blush-600); }
+/* Borda fina em vez de preenchimento sólido — os selos ficam sutis contra
+   o fundo escuro, sem competir visualmente com o resto do rodapé. */
+.pay-badge{
+  background:transparent; border:1px solid rgba(255,255,255,.22); border-radius:999px;
+  padding:.32rem .75rem; font-size:.7rem; letter-spacing:.02em; color:var(--blush-100);
+  transition:border-color .2s ease, color .2s ease;
+}
+.pay-badge:hover{ border-color:var(--blush-400); color:#fff; }
+
+/* Barra inferior: direitos autorais + "feito em" numa linha só, com um
+   ponto sutil separando — quebra para duas linhas centralizadas em telas
+   estreitas, onde o separador some para não sobrar solto entre elas. */
+.footer-bottom{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+  gap:.35rem .65rem; font-size:.78rem; letter-spacing:.01em; color:var(--blush-150);
+  text-align:center;
+}
+.footer-bottom-sep{ opacity:.4; }
+@media (max-width: 480px){
+  .footer-bottom{ flex-direction:column; gap:.3rem; }
+  .footer-bottom-sep{ display:none; }
+}
  
 .shipping-option{
   display:flex; align-items:center; gap:.7rem; border:1.5px solid var(--blush-200);
