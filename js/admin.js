@@ -187,12 +187,34 @@
   const PENDING_CART_MIN_AGE_MS = 60 * 60 * 1000;
   const PENDING_CART_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 
+  // O telefone é digitado pela cliente no checkout como DDD + número (ex.:
+  // "(11) 99999-8888"), sem o código do país — um link wa.me com só esses
+  // 10-11 dígitos não abre a conversa certa. Números já digitados com DDI
+  // (12-13 dígitos) não recebem prefixo de novo.
+  function whatsappDigitsWithCountryCode(phone){
+    const digits = String(phone || "").replace(/\D/g, "");
+    if(!digits) return "";
+    return digits.length <= 11 ? `55${digits}` : digits;
+  }
+  function whatsappUrl(phone, message){
+    const phoneDigits = whatsappDigitsWithCountryCode(phone);
+    if(!phoneDigits) return null;
+    return `https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`;
+  }
+
   function whatsappRecoveryUrl(order){
-    const phoneDigits = String(order.customer?.telefone || "").replace(/\D/g, "");
     const firstName = String(order.customer?.nome || "").trim().split(" ")[0] || "";
     const itemNames = order.items.map(i => i.name).join(", ");
     const msg = `Olá${firstName ? " " + firstName : ""}! Vi que você começou uma compra (${itemNames}) aqui na Adriana Melo Acessórios e queria saber se posso ajudar a finalizar 💗`;
-    return `https://wa.me/${phoneDigits}?text=${encodeURIComponent(msg)}`;
+    return whatsappUrl(order.customer?.telefone, msg);
+  }
+
+  // Mensagem padrão de suporte pós-venda (contato geral sobre um pedido já
+  // feito) — diferente da mensagem de recuperação de carrinho acima, que é
+  // sobre uma compra ainda não finalizada.
+  const WHATSAPP_POST_SALE_MESSAGE = "Olá, recebemos o seu pedido na Adriana Melo Acessórios e estamos à disposição para qualquer dúvida.";
+  function whatsappContactUrl(order){
+    return whatsappUrl(order.customer?.telefone, WHATSAPP_POST_SALE_MESSAGE);
   }
 
   function renderPendingCarts(orders){
@@ -208,7 +230,9 @@
       return;
     }
     pendingCartsSectionEl.classList.remove("d-none");
-    pendingCartsListEl.innerHTML = pending.map(order => `
+    pendingCartsListEl.innerHTML = pending.map(order => {
+      const recoveryUrl = whatsappRecoveryUrl(order);
+      return `
       <div class="order-card">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
           <div>
@@ -218,13 +242,15 @@
           <span class="order-status order-status-pending">${escapeHTML(order.items.length)} ${order.items.length === 1 ? "item" : "itens"} — ${formatMoney(order.total)}</span>
         </div>
         <div class="d-flex flex-wrap gap-2">
-          <a href="${whatsappRecoveryUrl(order)}" target="_blank" rel="noopener noreferrer" class="btn-outline-blush">
+          ${recoveryUrl ? `
+          <a href="${recoveryUrl}" target="_blank" rel="noopener noreferrer" class="btn-outline-blush">
             <i class="bi bi-whatsapp me-1"></i>Chamar no WhatsApp
-          </a>
+          </a>` : ""}
           <button type="button" class="btn-outline-blush delete-order-btn" data-ref="${escapeHTML(order.reference)}"><i class="bi bi-trash3 me-1"></i>Apagar carrinho</button>
         </div>
       </div>
-    `).join("");
+    `;
+    }).join("");
   }
 
   /* Apaga um pedido (usado tanto pelos cards de "Carrinhos pendentes"
@@ -460,6 +486,7 @@
     const status = STATUS_LABELS[order.status] || { label: escapeHTML(order.status), cls:"order-status-pending" };
     const ref = order.reference;
     const isPaid = order.status === "pago";
+    const contactUrl = whatsappContactUrl(order);
 
     const itemsHtml = order.items.map(item => `
       <li class="d-flex justify-content-between gap-3">
@@ -487,6 +514,13 @@
           ${order.customer?.email ? `<div><strong style="color:var(--ink)">E-mail da conta:</strong> ${escapeHTML(order.customer.email)}</div>` : ""}
           <div><strong style="color:var(--ink)">Entrega:</strong> ${escapeHTML(addressLine(order.address))}${order.shipping?.name ? ` — ${escapeHTML(order.shipping.name)}` : ""}</div>
         </div>
+
+        ${contactUrl ? `
+        <div class="mb-3">
+          <a href="${contactUrl}" target="_blank" rel="noopener noreferrer" class="btn-outline-blush" style="padding:.4rem 1rem;font-size:.82rem" title="Abrir conversa no WhatsApp com o cliente">
+            <i class="bi bi-whatsapp me-1"></i>Contatar via WhatsApp
+          </a>
+        </div>` : ""}
 
         <ul class="list-unstyled small mb-2">${itemsHtml}</ul>
 
