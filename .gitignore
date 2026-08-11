@@ -5,6 +5,10 @@
 .vscode/
 .idea/
 
+# Config local do Claude Code — fica só na máquina, nunca no repositório
+.claude/
+CLAUDE.md
+
 # Segredos e dados locais do back-end (ver também server/.gitignore)
 server/.env
 server/.env.*
