@@ -12,7 +12,16 @@
   --blush-700:#C05480;
   --ink:#54293C;
   --ink-soft:#8C6577;
- 
+
+  /* Dourado/bege suave e cinza limpo — usados como acento secundário no
+     dashboard (ticket médio, mês atual do gráfico de vendas), nunca
+     dominando a paleta rosa do resto do site. */
+  --gold-100:#F7EEDD;
+  --gold-500:#C9A66B;
+  --gold-700:#A9803F;
+  --stone-100:#F1EDEA;
+  --stone-600:#7A7370;
+
   --font-display:'Fraunces', serif;
   --font-body:'Poppins', sans-serif;
   --font-script:'Caveat', cursive;
@@ -615,14 +624,85 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .admin-tab-btn.is-active{ border-color:var(--blush-600); }
 }
 
-/* Visão geral */
-.stats-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; }
+/* ============ VISÃO GERAL — CARDS DE MÉTRICA ============ */
+.stats-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; }
 .stat-tile{
   background:var(--white); border:1px solid var(--blush-100); border-radius:var(--radius-md);
-  padding:1.1rem 1.3rem; box-shadow:0 10px 25px -20px rgba(84,41,60,.3);
+  padding:1.2rem 1.3rem; box-shadow:0 10px 25px -20px rgba(84,41,60,.3);
+  display:flex; align-items:center; gap:.9rem; transition:transform .2s ease, box-shadow .2s ease;
 }
-.stat-tile .stat-value{ font-family:var(--font-display); font-size:1.7rem; font-weight:600; color:var(--blush-700); display:block; }
-.stat-tile .stat-label{ font-size:.8rem; color:var(--ink-soft); }
+.stat-tile:hover{ transform:translateY(-3px); box-shadow:0 16px 32px -18px rgba(84,41,60,.4); }
+.stat-tile-icon{
+  width:46px; height:46px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:1.15rem;
+}
+/* Uma cor por tipo de métrica — rosa (vendas), cinza limpo (pedidos),
+   dourado (ticket médio) — mesma lógica de "acento por categoria" já
+   usada nos selos de produto, aqui aplicada às métricas do dashboard. */
+.stat-tile--revenue .stat-tile-icon{ background:var(--blush-100); color:var(--blush-700); }
+.stat-tile--orders .stat-tile-icon{ background:var(--stone-100); color:var(--stone-600); }
+.stat-tile--avg .stat-tile-icon{ background:var(--gold-100); color:var(--gold-700); }
+.stat-tile .stat-value{ font-family:var(--font-display); font-size:1.5rem; font-weight:600; color:var(--ink); display:block; line-height:1.25; }
+.stat-tile .stat-label{ font-size:.78rem; color:var(--ink-soft); }
+
+/* ============ GRÁFICO DE VENDAS POR MÊS ============
+   Barras em CSS puro (flexbox, altura via variável --bar-pct) — sem
+   canvas/SVG/biblioteca de gráfico. Tooltip também é CSS puro (opacidade
+   no :hover), então nenhum JS extra roda ao passar o mouse. */
+.dashboard-chart-card{
+  background:var(--white); border:1px solid var(--blush-100); border-radius:var(--radius-md);
+  padding:1.4rem 1.5rem 1.1rem; box-shadow:0 10px 25px -20px rgba(84,41,60,.3);
+  margin-top:1.25rem;
+}
+.dashboard-chart-header{
+  display:flex; align-items:baseline; justify-content:space-between; gap:1rem;
+  margin-bottom:1.4rem; flex-wrap:wrap;
+}
+.dashboard-chart-title{ font-family:var(--font-display); font-weight:600; font-size:1.05rem; margin:0; }
+.dashboard-chart-sub{ font-size:.78rem; color:var(--ink-soft); }
+
+.sales-chart{ display:flex; align-items:flex-end; gap:.9rem; height:160px; padding-top:2rem; }
+.sales-chart-bar-wrap{
+  flex:1 1 0; min-width:0; height:100%;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+  position:relative; cursor:default;
+}
+.sales-chart-bar{
+  width:100%; max-width:38px; height:var(--bar-pct, 2%); min-height:4px;
+  background:linear-gradient(180deg, var(--blush-500), var(--blush-600));
+  border-radius:8px 8px 3px 3px; transition:opacity .2s ease, transform .2s ease;
+}
+/* Mês atual: acento dourado (e não mais um tom de rosa) pra saltar aos
+   olhos entre os outros meses sem precisar de legenda. */
+.sales-chart-bar-wrap.is-current .sales-chart-bar{
+  background:linear-gradient(180deg, var(--gold-500), var(--gold-700));
+  box-shadow:0 8px 18px -10px rgba(169,128,63,.65);
+}
+.sales-chart-bar-wrap:hover .sales-chart-bar{ opacity:.85; transform:scaleX(1.08); }
+.sales-chart-month{
+  margin-top:.55rem; font-size:.72rem; color:var(--ink-soft); font-weight:600;
+  text-align:center; line-height:1.3; text-transform:capitalize;
+}
+.sales-chart-bar-wrap.is-current .sales-chart-month{ color:var(--gold-700); }
+.sales-chart-month small{
+  display:block; font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+}
+.sales-chart-tooltip{
+  position:absolute; bottom:100%; left:50%; transform:translate(-50%, 6px);
+  background:var(--ink); color:#fff; font-size:.74rem; font-weight:600; text-align:center;
+  padding:.4rem .65rem; border-radius:10px; white-space:nowrap; pointer-events:none;
+  opacity:0; transition:opacity .18s ease, transform .18s ease; z-index:2;
+  box-shadow:0 10px 20px -8px rgba(0,0,0,.4);
+}
+.sales-chart-tooltip small{ display:block; font-weight:400; opacity:.8; font-size:.66rem; }
+.sales-chart-bar-wrap:hover .sales-chart-tooltip{ opacity:1; transform:translate(-50%, 0); }
+@media (max-width: 480px){
+  .sales-chart{ gap:.4rem; height:130px; padding-top:1.7rem; }
+  .sales-chart-bar{ max-width:26px; }
+  .sales-chart-month{ font-size:.62rem; }
+  .sales-chart-month small{ font-size:.54rem; }
+  .sales-chart-tooltip{ font-size:.66rem; padding:.32rem .5rem; }
+}
 
 /* Produtos */
 .admin-table-wrap{

@@ -100,16 +100,81 @@
 
   /* ============================= VISÃO GERAL ============================= */
   function renderStats(stats){
+    // Ticket médio é derivado dos dois números que o servidor já manda
+    // (revenue/count) — não precisa de outra chamada nem de o servidor
+    // calcular isso separado, é aritmética determinística em cima de
+    // valor já confiável.
+    const avgTicket = stats.totalOrders ? stats.totalRevenue / stats.totalOrders : 0;
     statsRowEl.innerHTML = `
-      <div class="stat-tile">
-        <span class="stat-value">${formatMoney(stats.totalRevenue)}</span>
-        <span class="stat-label">Vendas totais (pedidos pagos)</span>
+      <div class="stat-tile stat-tile--revenue">
+        <div class="stat-tile-icon"><i class="bi bi-wallet2"></i></div>
+        <div>
+          <span class="stat-value">${formatMoney(stats.totalRevenue)}</span>
+          <span class="stat-label">Vendas totais</span>
+        </div>
       </div>
-      <div class="stat-tile">
-        <span class="stat-value">${stats.totalOrders}</span>
-        <span class="stat-label">Total de pedidos pagos</span>
+      <div class="stat-tile stat-tile--orders">
+        <div class="stat-tile-icon"><i class="bi bi-bag-check"></i></div>
+        <div>
+          <span class="stat-value">${stats.totalOrders}</span>
+          <span class="stat-label">Total de pedidos</span>
+        </div>
+      </div>
+      <div class="stat-tile stat-tile--avg">
+        <div class="stat-tile-icon"><i class="bi bi-graph-up-arrow"></i></div>
+        <div>
+          <span class="stat-value">${formatMoney(avgTicket)}</span>
+          <span class="stat-label">Ticket médio</span>
+        </div>
       </div>
     `;
+  }
+
+  /* ======================== GRÁFICO DE VENDAS POR MÊS ========================
+     Calculado inteiramente no navegador a partir dos pedidos que o painel
+     já buscou pra listagem de "Vendas e pedidos" (mesma resposta de
+     /api/admin/orders) — não existe uma segunda chamada nem endpoint novo
+     só pra alimentar o gráfico. */
+  const MONTH_LABELS = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  const salesChartEl = document.getElementById("salesChart");
+
+  function computeMonthlySales(orders, monthsWindow){
+    const now = new Date();
+    const buckets = [];
+    for(let i = monthsWindow - 1; i >= 0; i--){
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      buckets.push({ year: d.getFullYear(), month: d.getMonth(), revenue: 0, count: 0 });
+    }
+    orders
+      .filter(o => o.status === "pago")
+      .forEach(o => {
+        const d = new Date(o.createdAt);
+        const bucket = buckets.find(b => b.year === d.getFullYear() && b.month === d.getMonth());
+        if(bucket){ bucket.revenue += o.total; bucket.count += 1; }
+      });
+    return buckets;
+  }
+
+  function renderSalesChart(orders){
+    const buckets = computeMonthlySales(orders, 6);
+    const maxRevenue = Math.max(...buckets.map(b => b.revenue), 0);
+    const now = new Date();
+
+    salesChartEl.innerHTML = buckets.map(b => {
+      const isCurrent = b.year === now.getFullYear() && b.month === now.getMonth();
+      // Barra sempre visível (altura mínima) mesmo em R$0 — um mês sem
+      // venda nenhuma continua ocupando o lugar dele na linha do tempo,
+      // em vez de sumir e confundir a leitura das barras vizinhas.
+      const pct = maxRevenue > 0 ? Math.max((b.revenue / maxRevenue) * 100, 3) : 3;
+      const orderWord = b.count === 1 ? "pedido" : "pedidos";
+      return `
+        <div class="sales-chart-bar-wrap${isCurrent ? " is-current" : ""}">
+          <div class="sales-chart-tooltip">${formatMoney(b.revenue)}<small>${b.count} ${orderWord}</small></div>
+          <div class="sales-chart-bar" style="--bar-pct:${pct}%"></div>
+          <span class="sales-chart-month">${MONTH_LABELS[b.month]}${isCurrent ? "<small>atual</small>" : ""}</span>
+        </div>
+      `;
+    }).join("");
   }
 
   /* ======================== CARRINHOS PENDENTES ========================
@@ -721,6 +786,7 @@
       const orders = Array.isArray(ordersData.orders) ? ordersData.orders : [];
       showOnly(contentEl);
       renderStats(ordersData.stats || { totalRevenue: 0, totalOrders: 0 });
+      renderSalesChart(orders);
       renderPendingCarts(orders);
       renderProductsTable(Array.isArray(productsData.products) ? productsData.products : []);
       renderCouponsTable(Array.isArray(couponsData.coupons) ? couponsData.coupons : []);
