@@ -546,7 +546,7 @@
             <input type="text" class="form-control form-control-sm tracking-input" id="tracking-${escapeHTML(ref)}"
                    value="${escapeHTML(order.trackingCode || "")}" placeholder="Ex.: BR123456789BR" maxlength="60">
             <button type="button" class="btn-outline-blush save-tracking-btn" data-ref="${escapeHTML(ref)}">Salvar</button>
-            <button type="button" class="btn-outline-blush generate-label-btn" data-ref="${escapeHTML(ref)}" title="Compra a etiqueta no Melhor Envio e preenche o código automaticamente"><i class="bi bi-stars me-1"></i>Gerar código</button>
+            <button type="button" class="btn-outline-blush generate-label-btn" data-ref="${escapeHTML(ref)}" title="Compra a etiqueta no Melhor Envio e preenche o código automaticamente"><i class="bi bi-stars me-1"></i>Gerar código de barras</button>
           </div>
           <span class="small tracking-feedback" data-ref-feedback="${escapeHTML(ref)}"></span>
           <div class="tracking-barcode-wrap">

@@ -44,7 +44,11 @@
         email: document.getElementById("loginEmail").value.trim(),
         password: document.getElementById("loginPassword").value,
       });
-      window.location.href = "pedidos.html";
+      // /api/auth/login não devolve isAdmin — reusa o checkSession() de
+      // js/auth.js (mesma fonte que decide "Painel admin" na navbar) em vez
+      // de duplicar a checagem aqui.
+      const user = await window.PLCAuth.checkSession();
+      window.location.href = user?.isAdmin ? "admin.html" : "pedidos.html";
     }catch(err){
       showMessage(loginMsg, err.message, "error");
       setLoading(btn, false);
@@ -71,7 +75,8 @@
         email: document.getElementById("registerEmail").value.trim(),
         password,
       });
-      window.location.href = "pedidos.html";
+      const user = await window.PLCAuth.checkSession();
+      window.location.href = user?.isAdmin ? "admin.html" : "pedidos.html";
     }catch(err){
       showMessage(registerMsg, err.message, "error");
       setLoading(btn, false);
@@ -88,6 +93,11 @@
       authForms.classList.add("d-none");
       alreadyBox.classList.remove("d-none");
       document.getElementById("alreadyName").textContent = user.name;
+      const primaryLink = document.getElementById("alreadyPrimaryLink");
+      if(primaryLink && user.isAdmin){
+        primaryLink.href = "admin.html";
+        primaryLink.textContent = "Ir para o painel administrativo";
+      }
     }
   });
 })();

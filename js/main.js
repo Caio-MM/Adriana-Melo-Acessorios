@@ -994,6 +994,21 @@
     qvModal.hide();
   });
 
+  /* ---------- MENU MOBILE (offcanvas) ---------- */
+  // Os links/botões aqui dentro NÃO usam data-bs-dismiss="offcanvas": o
+  // Bootstrap resolve o alvo do dismiss pelo próprio href do elemento
+  // quando não há data-bs-target, então um link com href="#depoimentos" e
+  // data-bs-dismiss juntos faz o Bootstrap tentar fechar a SEÇÃO
+  // "#depoimentos" como se fosse um offcanvas (e cancela a navegação da
+  // âncora no processo) — o menu não fechava e o clique não ia a lugar
+  // nenhum. Fechamos manualmente aqui em vez disso.
+  const navOffcanvasEl = document.getElementById("navOffcanvas");
+  navOffcanvasEl?.addEventListener("click", (e) => {
+    if(e.target.closest("a, button")){
+      bootstrap.Offcanvas.getInstance(navOffcanvasEl)?.hide();
+    }
+  });
+
   /* ---------- NAVBAR SCROLL ---------- */
   const nav = document.getElementById("mainNav");
   const btnTop = document.getElementById("btnTop");
