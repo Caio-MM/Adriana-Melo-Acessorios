@@ -6,9 +6,10 @@
       "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
     }[ch]));
   }
-  function formatMoney(n){
-    return "R$ " + Number(n).toFixed(2).replace(".", ",");
-  }
+  // Mesma fonte única que a vitrine, o carrinho e o painel admin usam
+  // (js/pricing.js) — ver formatMoney lá para o porquê do espaço não
+  // separável e da proteção contra NaN.
+  const formatMoney = window.PLCPricing.formatMoney;
   function formatDate(ts){
     return new Date(ts).toLocaleDateString("pt-BR", { day:"2-digit", month:"short", year:"numeric" });
   }

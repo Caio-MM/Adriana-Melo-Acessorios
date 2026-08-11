@@ -79,7 +79,7 @@
            lado. O menu lateral (mobile) segue com o CTA. -->
 
       <!-- Botão Menu Hambúrguer: Apenas Mobile -->
-      <button class="navbar-toggler border-0 d-lg-none p-0 ms-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#navOffcanvas" style="color:var(--ink)">
+      <button class="navbar-toggler border-0 d-lg-none p-0 ms-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#navOffcanvas" aria-label="Abrir menu" aria-controls="navOffcanvas" style="color:var(--ink)">
         <i class="bi bi-list fs-2"></i>
       </button>
 
@@ -150,15 +150,15 @@
       <div id="addressFields" class="d-none mt-3 pt-3 border-top" style="border-color:var(--blush-100)!important">
         <div class="small fw-semibold mb-2">Endereço de entrega</div>
         <div class="row g-2">
-          <div class="col-12"><input type="text" class="form-control form-control-sm" id="addrNome" placeholder="Nome completo do destinatário" autocomplete="name"></div>
-          <div class="col-12"><input type="tel" class="form-control form-control-sm" id="addrTelefone" placeholder="Telefone / WhatsApp" autocomplete="tel"></div>
-          <div class="col-8"><input type="text" class="form-control form-control-sm" id="addrRua" placeholder="Rua" autocomplete="address-line1"></div>
-          <div class="col-4"><input type="text" class="form-control form-control-sm" id="addrNumero" placeholder="Número" autocomplete="off"></div>
-          <div class="col-12"><input type="text" class="form-control form-control-sm" id="addrComplemento" placeholder="Complemento (opcional)" autocomplete="address-line2"></div>
-          <div class="col-7"><input type="text" class="form-control form-control-sm" id="addrBairro" placeholder="Bairro" autocomplete="off"></div>
-          <div class="col-5"><input type="text" class="form-control form-control-sm" id="addrCidade" placeholder="Cidade" autocomplete="address-level2"></div>
+          <div class="col-12"><input type="text" class="form-control form-control-sm" id="addrNome" placeholder="Nome completo do destinatário" aria-label="Nome completo do destinatário" autocomplete="name"></div>
+          <div class="col-12"><input type="tel" class="form-control form-control-sm" id="addrTelefone" placeholder="Telefone / WhatsApp" aria-label="Telefone / WhatsApp" autocomplete="tel"></div>
+          <div class="col-8"><input type="text" class="form-control form-control-sm" id="addrRua" placeholder="Rua" aria-label="Rua" autocomplete="address-line1"></div>
+          <div class="col-4"><input type="text" class="form-control form-control-sm" id="addrNumero" placeholder="Número" aria-label="Número" autocomplete="off"></div>
+          <div class="col-12"><input type="text" class="form-control form-control-sm" id="addrComplemento" placeholder="Complemento (opcional)" aria-label="Complemento (opcional)" autocomplete="address-line2"></div>
+          <div class="col-7"><input type="text" class="form-control form-control-sm" id="addrBairro" placeholder="Bairro" aria-label="Bairro" autocomplete="off"></div>
+          <div class="col-5"><input type="text" class="form-control form-control-sm" id="addrCidade" placeholder="Cidade" aria-label="Cidade" autocomplete="address-level2"></div>
           <div class="col-12">
-            <select class="form-select form-select-sm" id="addrUf" autocomplete="address-level1">
+            <select class="form-select form-select-sm" id="addrUf" aria-label="Estado (UF)" autocomplete="address-level1">
               <option value="">UF</option>
               <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option>
             </select>

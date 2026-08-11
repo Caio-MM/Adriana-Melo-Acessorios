@@ -45,9 +45,12 @@ function normalizeEmail(v) {
   return String(v || "").trim().toLowerCase();
 }
 function isValidPassword(v) {
-  // 72 bytes é o limite efetivo do bcrypt; truncar silenciosamente seria
-  // uma falha sutil de segurança, então rejeitamos senhas maiores.
-  return typeof v === "string" && v.length >= 8 && v.length <= 72;
+  // 72 BYTES (não caracteres) é o limite efetivo do bcrypt — acima disso ele
+  // trunca silenciosamente, o que seria uma falha sutil de segurança. Por
+  // isso medimos Buffer.byteLength em vez de v.length: uma senha com
+  // acentos/emoji pode ter 72 *caracteres* e passar de 72 bytes em UTF-8
+  // (ex.: "á" = 2 bytes), e v.length não pegaria isso.
+  return typeof v === "string" && v.length >= 8 && Buffer.byteLength(v, "utf8") <= 72;
 }
 function isValidName(v) {
   return typeof v === "string" && v.trim().length >= 2 && v.trim().length <= 120;

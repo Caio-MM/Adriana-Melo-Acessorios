@@ -14,9 +14,11 @@
     const timer = setTimeout(() => controller.abort(), timeoutMs || 8000);
     return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
   }
-  function formatMoney(n){
-    return "R$ " + Number(n).toFixed(2).replace(".", ",");
-  }
+  // Mesma fonte única que a vitrine e o carrinho usam (js/pricing.js) —
+  // antes o painel tinha sua própria cópia, sem o espaço não separável
+  // entre "R$" e o valor nem a proteção contra NaN que a versão central
+  // já tinha (ver formatMoney em js/pricing.js).
+  const formatMoney = window.PLCPricing.formatMoney;
   function formatDate(ts){
     return new Date(ts).toLocaleString("pt-BR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
   }
