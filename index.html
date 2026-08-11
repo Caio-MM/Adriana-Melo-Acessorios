@@ -132,13 +132,19 @@
       <div id="cartRecsList" class="d-flex flex-column gap-2"></div>
     </div>
 
-    <div class="cart-shipping border-top pt-3 mt-3" style="border-color:var(--blush-100)!important">
-      <label class="form-label small fw-semibold mb-1" for="cepInput">Calcular frete</label>
-      <div class="d-flex gap-2">
+    <!-- Painel de checkout: tudo do frete ao botão de pagar vive num bloco
+         cinza claro, separado visualmente da lista de produtos acima. O
+         respiro entre as sub-seções vem do gap do painel, não de border-top
+         em cada bloco. -->
+    <div class="cart-checkout-panel" id="cartCheckoutPanel">
+
+    <div class="cart-panel-block">
+      <label class="cart-block-label" for="cepInput">Calcular frete</label>
+      <div class="cart-field-row">
         <input type="text" class="form-control" id="cepInput" placeholder="00000-000" inputmode="numeric" maxlength="9" autocomplete="postal-code">
-        <button class="btn-outline-blush flex-shrink-0" id="calcShippingBtn" type="button">Calcular</button>
+        <button class="btn-outline-blush cart-field-btn" id="calcShippingBtn" type="button">Calcular</button>
       </div>
-      <div class="small mt-1" id="shippingMsg" style="color:var(--ink-soft)"></div> 
+      <div class="cart-hint" id="shippingMsg"></div>
       <div id="shippingOptions" class="d-flex flex-column gap-2 mt-2"></div>
 
       <div id="addressFields" class="d-none mt-3 pt-3 border-top" style="border-color:var(--blush-100)!important">
@@ -161,64 +167,76 @@
       </div>
     </div>
 
-    <div class="cart-summary border-top pt-3 mt-3" style="border-color:var(--blush-100)!important">
-      <label class="form-label small fw-semibold mb-1" for="couponInput">Cupom de desconto</label>
-      <div class="d-flex gap-2">
-        <input type="text" class="form-control form-control-sm" id="couponInput" placeholder="Ex.: BEMVINDA10" maxlength="30" autocomplete="off">
-        <button class="btn-outline-blush flex-shrink-0" id="couponApplyBtn" type="button" style="padding:.4rem 1rem; font-size:.82rem">Aplicar</button>
+    <div class="cart-panel-block">
+      <label class="cart-block-label" for="couponInput">Cupom de desconto</label>
+      <div class="cart-field-row">
+        <input type="text" class="form-control" id="couponInput" placeholder="Ex.: BEMVINDA10" maxlength="30" autocomplete="off">
+        <button class="btn-outline-blush cart-field-btn" id="couponApplyBtn" type="button">Aplicar</button>
       </div>
-      <div class="small mt-1 mb-2" id="couponMsg" style="color:var(--ink-soft)"></div>
+      <div class="cart-hint" id="couponMsg"></div>
+    </div>
 
-      <div class="d-flex justify-content-between mb-1">
-        <span class="section-sub">Subtotal</span>
+    <div class="cart-panel-block cart-totals">
+      <div class="cart-total-line">
+        <span>Subtotal</span>
         <strong id="cartSubtotal">R$ 0,00</strong>
       </div>
-      <div class="d-flex justify-content-between align-items-start mb-1 d-none" id="cartDiscountRow" style="color:var(--blush-700)">
-        <span class="section-sub">Desconto <span id="cartCouponCode" style="color:var(--blush-700)"></span></span>
+      <div class="cart-total-line is-discount d-none" id="cartDiscountRow">
+        <span>Desconto <span id="cartCouponCode"></span></span>
         <strong id="cartDiscount">-R$ 0,00</strong>
       </div>
-      <div class="d-flex justify-content-between align-items-start mb-1 d-none" id="cartPixRow" style="color:var(--blush-700)">
-        <span class="section-sub">Desconto Pix <span id="cartPixPercent" style="color:var(--blush-700)"></span></span>
+      <div class="cart-total-line is-discount d-none" id="cartPixRow">
+        <span>Desconto Pix <span id="cartPixPercent"></span></span>
         <strong id="cartPixDiscount">-R$ 0,00</strong>
       </div>
-      <div class="d-flex justify-content-between mb-1">
-        <span class="section-sub">Frete</span>
+      <div class="cart-total-line">
+        <span>Frete</span>
         <strong id="cartShippingPrice">a calcular</strong>
       </div>
-      <div class="d-flex justify-content-between mb-2 pt-1 border-top" style="border-color:var(--blush-100)!important">
-        <span class="fw-semibold">Total</span>
-        <strong id="cartTotal" style="color:var(--blush-700)">R$ 0,00</strong>
+      <div class="cart-total-line is-grand">
+        <span>Total</span>
+        <strong id="cartTotal">R$ 0,00</strong>
       </div>
-      <div class="small mb-3" id="cartInstallmentNote" style="color:var(--ink-soft)"></div>
+      <div class="cart-hint" id="cartInstallmentNote"></div>
+    </div>
+
+    <div class="cart-panel-block">
 
       <!-- Forma de pagamento: a escolha aqui não é só visual — vai para o
            servidor, que aplica (ou não) o desconto do Pix E restringe os
            meios de pagamento na tela do Mercado Pago de acordo. Ver
            PAYMENT_METHODS em server/server.js. -->
-      <div class="pay-methods mb-3" id="payMethodGroup" role="radiogroup" aria-label="Forma de pagamento">
+      <label class="cart-block-label" id="payMethodLabel">Forma de pagamento</label>
+      <div class="pay-methods" id="payMethodGroup" role="radiogroup" aria-labelledby="payMethodLabel">
         <label class="pay-method">
           <input type="radio" name="payMethod" value="pix" checked>
+          <span class="pm-icon"><i class="bi bi-qr-code"></i></span>
           <span class="pm-body">
-            <span class="pm-name"><i class="bi bi-qr-code me-1"></i>Pix</span>
+            <span class="pm-name">Pix</span>
             <span class="pm-note" id="pmPixNote">à vista</span>
           </span>
           <span class="pm-price" id="pmPixPrice">R$ 0,00</span>
         </label>
         <label class="pay-method">
           <input type="radio" name="payMethod" value="card">
+          <span class="pm-icon"><i class="bi bi-credit-card"></i></span>
           <span class="pm-body">
-            <span class="pm-name"><i class="bi bi-credit-card me-1"></i>Cartão ou boleto</span>
+            <span class="pm-name">Cartão ou boleto</span>
             <span class="pm-note" id="pmCardNote"></span>
           </span>
           <span class="pm-price" id="pmCardPrice">R$ 0,00</span>
         </label>
       </div>
-
-      <button class="btn-blush w-100" id="checkoutBtn" disabled>
-        <i class="bi bi-lock-fill me-1"></i> Ir para pagamento
-      </button>
-      <div class="small mt-2 text-center" id="checkoutMsg" style="color:var(--blush-700)"></div>
     </div>
+
+    <div class="cart-panel-block">
+      <button class="btn-blush cart-checkout-btn" id="checkoutBtn" disabled>
+        <i class="bi bi-lock-fill"></i> Ir para pagamento
+      </button>
+      <div class="cart-hint text-center" id="checkoutMsg" style="color:var(--blush-700)"></div>
+    </div>
+
+    </div><!-- /.cart-checkout-panel -->
   </div>
 </div>
  

@@ -22,6 +22,11 @@
   --stone-100:#F1EDEA;
   --stone-600:#7A7370;
 
+  /* Fundo neutro de painel agrupador (resumo/checkout do carrinho) —
+     cinza quase branco, para separar do creme do resto sem introduzir
+     mais um tom de rosa. */
+  --panel-bg:#F9F9F9;
+
   --font-display:'Fraunces', serif;
   --font-body:'Poppins', sans-serif;
   --font-script:'Caveat', cursive;
@@ -478,13 +483,24 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .qv-card-inst{ font-size:.82rem; color:var(--ink-soft); }
 
 /* ============ FORMA DE PAGAMENTO (carrinho) ============ */
-.pay-methods{ display:flex; flex-direction:column; gap:.5rem; }
+.pay-methods{ display:flex; flex-direction:column; gap:.55rem; }
+/* Mesma borda/raio/tom das .shipping-option logo acima, para os dois
+   grupos de escolha do carrinho lerem como o mesmo componente. O fundo
+   branco destaca os cartões contra o cinza do painel. */
 .pay-method{
-  display:flex; align-items:center; gap:.7rem; cursor:pointer;
-  border:1.5px solid var(--blush-200); border-radius:12px; padding:.55rem .8rem;
+  display:flex; align-items:center; gap:.65rem; cursor:pointer;
+  border:1.5px solid var(--blush-200); border-radius:var(--radius-md);
+  padding:.65rem .85rem; background:var(--white);
   transition:border-color .2s ease, background .2s ease;
 }
 .pay-method:hover{ border-color:var(--blush-500); }
+.pay-method .pm-icon{
+  width:32px; height:32px; border-radius:50%; flex-shrink:0;
+  background:var(--blush-100); color:var(--blush-700);
+  display:flex; align-items:center; justify-content:center; font-size:.95rem;
+  transition:background .2s ease, color .2s ease;
+}
+.pay-method.selected .pm-icon{ background:var(--blush-600); color:#fff; }
 /* .selected vem do JS (mesmo padrão de .shipping-option acima) em vez de
    :has(input:checked) — o estado precisa aparecer também em navegador sem
    suporte a :has(). */
@@ -609,26 +625,95 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* ============ CART OFFCANVAS ============ */
 .cart-offcanvas{ background:var(--cream); max-width:420px; }
+.cart-offcanvas .offcanvas-header{
+  align-items:center; padding:1.1rem 1.25rem; border-bottom:1px solid var(--blush-100);
+}
+.cart-offcanvas .offcanvas-title{ font-size:1.15rem; font-weight:600; letter-spacing:.01em; }
+.cart-offcanvas .offcanvas-body{ padding:1.25rem; }
+
+/* Item: miniatura à esquerda, e à direita duas linhas — nome + preço
+   unitário (alinhado à direita), depois quantidade + lixeira. O
+   align-items:center centraliza esse bloco no eixo da miniatura. */
 .cart-item{
   display:flex; gap:.9rem; align-items:center; padding-bottom:.9rem;
   border-bottom:1px solid var(--blush-100);
 }
+/* O último item não leva risco: logo abaixo já vem a borda do bloco
+   seguinte (cross-sell ou painel), e as duas juntas viravam linha dupla. */
+.cart-item:last-child{ border-bottom:none; padding-bottom:0; }
 .cart-item-thumb{
   width:64px; height:64px; border-radius:12px; flex-shrink:0; overflow:hidden;
   background:var(--blush-100); display:flex; align-items:center; justify-content:center;
 }
 .cart-item-thumb img{ width:100%; height:100%; object-fit:cover; }
 .cart-item-thumb .bow-icon{ width:55%; }
-.cart-item-name{ font-family:var(--font-display); font-weight:600; font-size:.95rem; }
-.cart-item-price{ color:var(--ink-soft); font-size:.82rem; }
+.cart-item-body{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:.55rem; }
+.cart-item-head{ display:flex; align-items:baseline; justify-content:space-between; gap:.6rem; }
+.cart-item-name{
+  font-family:var(--font-display); font-weight:600; font-size:.95rem; line-height:1.25;
+  min-width:0; overflow-wrap:anywhere;
+}
+.cart-item-price{ color:var(--ink); font-size:.86rem; font-weight:600; white-space:nowrap; flex-shrink:0; }
+.cart-item-price small{ color:var(--ink-soft); font-weight:400; font-size:.72rem; margin-left:.2rem; }
+.cart-item-controls{ display:flex; align-items:center; justify-content:space-between; gap:.6rem; }
 .cart-qty{ display:flex; align-items:center; gap:.5rem; }
 .cart-qty button{
   width:26px; height:26px; border-radius:50%; border:1px solid var(--blush-200); background:var(--white);
   color:var(--blush-700); font-size:.85rem; line-height:1; display:flex; align-items:center; justify-content:center;
+  transition:background .2s ease, border-color .2s ease;
 }
 .cart-qty button:hover{ background:var(--blush-100); }
-.cart-item-remove{ color:var(--ink-soft); background:none; border:none; font-size:.9rem; }
-.cart-item-remove:hover{ color:var(--blush-700); }
+.cart-qty > span{ min-width:1.4rem; text-align:center; font-weight:600; font-size:.9rem; }
+.cart-item-remove{
+  color:var(--ink-soft); background:none; border:none; font-size:.9rem;
+  width:30px; height:30px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .2s ease, color .2s ease;
+}
+.cart-item-remove:hover{ background:var(--blush-100); color:var(--blush-700); }
+
+/* ---- Painel de checkout (frete → botão de pagar) ----
+   Fundo cinza claro num bloco só, para separar da lista de produtos. O
+   respiro entre sub-seções vem do gap daqui, não de border-top em cada
+   filho — assim nenhum bloco oculto (.d-none) deixa borda órfã. */
+.cart-checkout-panel{
+  background:var(--panel-bg); border:1px solid #EFEAEC; border-radius:var(--radius-md);
+  padding:1.25rem 1.1rem; margin-top:1.25rem;
+  display:flex; flex-direction:column; gap:1.35rem;
+}
+.cart-panel-block{ display:flex; flex-direction:column; }
+.cart-block-label{
+  font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+  color:var(--ink-soft); margin-bottom:.5rem;
+}
+/* Input elástico + botão de largura fixa: "Calcular" e "Aplicar" ficam do
+   mesmo tamanho e alinhados na vertical entre as duas sub-seções. */
+.cart-field-row{ display:flex; gap:.5rem; align-items:stretch; }
+.cart-field-row .form-control{ flex:1 1 auto; min-width:0; font-size:.88rem; }
+.cart-field-btn{
+  flex:0 0 96px; width:96px; padding:.45rem 0; font-size:.84rem;
+  display:flex; align-items:center; justify-content:center;
+}
+.cart-hint{ font-size:.76rem; color:var(--ink-soft); line-height:1.45; margin-top:.4rem; }
+.cart-hint:empty{ display:none; margin-top:0; }
+
+.cart-totals{ gap:.5rem; }
+.cart-total-line{ display:flex; align-items:baseline; justify-content:space-between; gap:.75rem; font-size:.88rem; }
+.cart-total-line > span{ color:var(--ink-soft); }
+.cart-total-line > strong{ font-weight:600; white-space:nowrap; }
+.cart-total-line.is-discount > span,
+.cart-total-line.is-discount > strong{ color:var(--blush-700); }
+.cart-total-line.is-grand{
+  margin-top:.35rem; padding-top:.7rem; border-top:1px solid #E6E0E2;
+}
+.cart-total-line.is-grand > span{ color:var(--ink); font-weight:600; font-size:.95rem; }
+.cart-total-line.is-grand > strong{ color:var(--blush-700); font-size:1.15rem; font-weight:700; }
+
+.cart-checkout-btn{
+  width:100%; display:flex; align-items:center; justify-content:center; gap:.45rem;
+  padding:.8rem 1.4rem; font-size:.95rem;
+}
+.cart-checkout-btn:disabled{ opacity:.55; }
 
 /* Cross-sell no carrinho ("Complete seu pedido") */
 .cart-rec-item{ display:flex; gap:.7rem; align-items:center; }

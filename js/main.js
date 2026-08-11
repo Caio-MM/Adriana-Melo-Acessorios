@@ -535,6 +535,12 @@
   }
 
   function renderCart(){
+    // Com o carrinho vazio o painel de checkout não tem o que resumir —
+    // some junto, senão sobra um bloco de frete/cupom/pagamento zerado
+    // logo abaixo do "seu carrinho está vazio".
+    const checkoutPanel = document.getElementById("cartCheckoutPanel");
+    checkoutPanel?.classList.toggle("d-none", cart.length === 0);
+
     if(cart.length === 0){
       cartItemsList.innerHTML = "";
       cartEmptyState.classList.remove("d-none");
@@ -549,14 +555,18 @@
             <div class="cart-item-thumb is-loading" style="background:${p.color}22">
               <img src="${imageFor(p)}" alt="${escapeHTML(p.name)}" width="64" height="64" loading="lazy" decoding="async">
             </div>
-            <div class="flex-grow-1">
-              <div class="cart-item-name">${escapeHTML(p.name)}</div>
-              <div class="cart-item-price">${formatMoney(p.price)} un.</div>
-              <div class="cart-qty mt-1">
-                <button type="button" class="cart-qty-minus" aria-label="Diminuir quantidade">−</button>
-                <span>${item.qty}</span>
-                <button type="button" class="cart-qty-plus" aria-label="Aumentar quantidade">+</button>
-                <button type="button" class="cart-item-remove ms-2" aria-label="Remover ${escapeHTML(p.name)}"><i class="bi bi-trash3"></i></button>
+            <div class="cart-item-body">
+              <div class="cart-item-head">
+                <span class="cart-item-name">${escapeHTML(p.name)}</span>
+                <span class="cart-item-price">${formatMoney(p.price)}<small>un.</small></span>
+              </div>
+              <div class="cart-item-controls">
+                <div class="cart-qty">
+                  <button type="button" class="cart-qty-minus" aria-label="Diminuir quantidade">−</button>
+                  <span>${item.qty}</span>
+                  <button type="button" class="cart-qty-plus" aria-label="Aumentar quantidade">+</button>
+                </div>
+                <button type="button" class="cart-item-remove" aria-label="Remover ${escapeHTML(p.name)}"><i class="bi bi-trash3"></i></button>
               </div>
             </div>
           </div>
@@ -590,7 +600,7 @@
 
     const otherCategories = candidates.filter(p => !inCartCats.has(p.cat)).sort(byBadgeFirst);
     const sameCategory = candidates.filter(p => inCartCats.has(p.cat)).sort(byBadgeFirst);
-    return [...otherCategories, ...sameCategory].slice(0, 3);
+    return [...otherCategories, ...sameCategory].slice(0, 2);
   }
 
   function renderCartRecommendations(){
