@@ -97,7 +97,7 @@
         <!-- ============ PRODUTOS ============ -->
         <section class="mb-5">
           <h2 class="admin-section-title">Produtos</h2>
-          <p class="section-sub mb-3" style="font-size:.88rem">Edite nome, preço e foto — a vitrine da loja atualiza sozinha em poucos segundos.</p>
+          <p class="section-sub mb-3" style="font-size:.88rem">Edite nome, preço, foto, categoria e selos de destaque — a vitrine da loja atualiza sozinha em poucos segundos.</p>
           <div class="table-responsive admin-table-wrap">
             <table class="table align-middle admin-products-table mb-0">
               <thead>
@@ -105,6 +105,8 @@
                   <th scope="col">Foto</th>
                   <th scope="col">Nome</th>
                   <th scope="col">Preço</th>
+                  <th scope="col">Categoria</th>
+                  <th scope="col">Selos</th>
                   <th scope="col"></th>
                 </tr>
               </thead>
@@ -195,10 +197,34 @@
             <input type="number" class="form-control" id="epPrice" required min="0.01" max="99999" step="0.01" inputmode="decimal">
           </div>
 
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" for="epPhotoFile">Foto</label>
+            <input type="file" class="form-control" id="epPhotoFile" accept="image/jpeg,image/png,image/webp,image/gif">
+            <div class="form-text">JPEG, PNG, WEBP ou GIF, até 4MB. Deixe sem escolher arquivo para manter a foto atual (ou a padrão do produto, se nunca enviou uma).</div>
+            <div id="epPhotoStatus" class="small mt-1"></div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" for="epCategory">Categoria</label>
+            <select class="form-select" id="epCategory">
+              <option value="maternidade">Maternidade</option>
+              <option value="festa">Festa</option>
+              <option value="batizado">Batizado</option>
+              <option value="dia-a-dia">Dia a dia</option>
+              <option value="presente">Presente</option>
+            </select>
+          </div>
+
           <div class="mb-1">
-            <label class="form-label small fw-semibold" for="epPhoto">URL da foto</label>
-            <input type="url" class="form-control" id="epPhoto" placeholder="https://...">
-            <div class="form-text">Link de uma imagem já hospedada. Deixe em branco para usar a foto padrão do produto.</div>
+            <label class="form-label small fw-semibold d-block">Selos de destaque</label>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="checkbox" id="epBadgeBestseller" value="Mais vendido">
+              <label class="form-check-label" for="epBadgeBestseller">Mais vendido</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="checkbox" id="epBadgeNew" value="Novo">
+              <label class="form-check-label" for="epBadgeNew">Novo</label>
+            </div>
           </div>
 
           <div id="epMsg" class="small account-msg" role="alert"></div>

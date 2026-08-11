@@ -69,6 +69,8 @@ db.exec(`
     name        TEXT,
     price       REAL,
     photo_url   TEXT,
+    category    TEXT,
+    badges      TEXT,
     updated_at  INTEGER NOT NULL
   );
 
@@ -105,6 +107,8 @@ ensureColumn("orders", "tracking_code", "TEXT");
 // (era a única opção), então o DEFAULT já deixa o histórico correto.
 ensureColumn("orders", "pix_discount", "REAL NOT NULL DEFAULT 0");
 ensureColumn("orders", "payment_method", "TEXT NOT NULL DEFAULT 'card'");
+ensureColumn("product_overrides", "category", "TEXT");
+ensureColumn("product_overrides", "badges", "TEXT");
 
 // Garante que o cupom que já existia fixo no código (BEMVINDA10) continua
 // funcionando depois da migração pra banco — só insere se a tabela
@@ -240,10 +244,11 @@ function deleteOrder(ref) {
 const stmtGetProductOverride = db.prepare(`SELECT * FROM product_overrides WHERE product_id = ?`);
 const stmtListProductOverrides = db.prepare(`SELECT * FROM product_overrides`);
 const stmtUpsertProductOverride = db.prepare(`
-  INSERT INTO product_overrides (product_id, name, price, photo_url, updated_at)
-  VALUES (?, ?, ?, ?, ?)
+  INSERT INTO product_overrides (product_id, name, price, photo_url, category, badges, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(product_id) DO UPDATE SET
-    name = excluded.name, price = excluded.price, photo_url = excluded.photo_url, updated_at = excluded.updated_at
+    name = excluded.name, price = excluded.price, photo_url = excluded.photo_url,
+    category = excluded.category, badges = excluded.badges, updated_at = excluded.updated_at
 `);
 
 function getProductOverride(productId) {
@@ -252,8 +257,23 @@ function getProductOverride(productId) {
 function listProductOverrides() {
   return stmtListProductOverrides.all();
 }
-function upsertProductOverride(productId, { name, price, photoUrl }) {
-  stmtUpsertProductOverride.run(productId, name ?? null, price ?? null, photoUrl ?? null, Date.now());
+// Merge parcial de propósito: `fields` só traz as chaves que o painel
+// administrativo realmente alterou (ver PATCH /api/admin/products/:id em
+// server.js — payload compacto, não manda o produto inteiro a cada
+// edição). Uma chave AUSENTE em `fields` preserva o valor já salvo; só uma
+// chave presente com valor vazio ("", null) apaga o override daquele campo
+// (volta a usar o padrão de PRODUCTS). Sem esse cuidado, salvar só um selo
+// novo apagaria silenciosamente nome/preço/foto já customizados.
+function upsertProductOverride(productId, fields) {
+  const current = getProductOverride(productId) || {};
+  const name = "name" in fields ? (fields.name || null) : (current.name ?? null);
+  const price = "price" in fields ? (fields.price ?? null) : (current.price ?? null);
+  const photoUrl = "photoUrl" in fields ? (fields.photoUrl || null) : (current.photo_url ?? null);
+  const category = "category" in fields ? (fields.category || null) : (current.category ?? null);
+  const badges = "badges" in fields
+    ? (fields.badges && fields.badges.length ? JSON.stringify(fields.badges) : null)
+    : (current.badges ?? null);
+  stmtUpsertProductOverride.run(productId, name, price, photoUrl, category, badges, Date.now());
   return getProductOverride(productId);
 }
 

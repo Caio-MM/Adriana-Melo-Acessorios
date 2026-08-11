@@ -19,11 +19,13 @@
 
 require("dotenv").config();
 
+const fs = require("fs");
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
+const multer = require("multer");
 const { randomUUID } = require("crypto");
 const rateLimit = require("express-rate-limit");
 const { MercadoPagoConfig, Preference, Payment } = require("mercadopago");
@@ -73,15 +75,22 @@ const mpClient = new MercadoPagoConfig({
    de 1 unidade do produto).
 ========================================================================= */
 const PRODUCTS = {
-  1: { name:"Laço Bailarina",        price:34.90, weight:0.05, width:16, height:2, length:11 },
-  2: { name:"Laço Duquesa",          price:49.90, weight:0.08, width:16, height:3, length:11 },
-  3: { name:"Laço Recém-nascida",    price:29.90, weight:0.04, width:16, height:2, length:11 },
-  4: { name:"Laço Pérola",           price:59.90, weight:0.08, width:16, height:3, length:11 },
-  5: { name:"Laço Borboleta",        price:44.90, weight:0.06, width:16, height:2, length:11 },
-  6: { name:"Kit Presente 3 Laços",  price:89.90, weight:0.20, width:20, height:6, length:15 },
-  7: { name:"Laço Tiara Flor",       price:39.90, weight:0.07, width:16, height:3, length:11 },
-  8: { name:"Laço Personalizado",    price:64.90, weight:0.08, width:16, height:3, length:11 },
+  1: { name:"Laço Bailarina",        price:34.90, weight:0.05, width:16, height:2, length:11, category:"dia-a-dia",   badges:[] },
+  2: { name:"Laço Duquesa",          price:49.90, weight:0.08, width:16, height:3, length:11, category:"festa",       badges:["Mais vendido"] },
+  3: { name:"Laço Recém-nascida",    price:29.90, weight:0.04, width:16, height:2, length:11, category:"maternidade", badges:[] },
+  4: { name:"Laço Pérola",           price:59.90, weight:0.08, width:16, height:3, length:11, category:"batizado",    badges:[] },
+  5: { name:"Laço Borboleta",        price:44.90, weight:0.06, width:16, height:2, length:11, category:"festa",       badges:[] },
+  6: { name:"Kit Presente 3 Laços",  price:89.90, weight:0.20, width:20, height:6, length:15, category:"presente",    badges:["Novo"] },
+  7: { name:"Laço Tiara Flor",       price:39.90, weight:0.07, width:16, height:3, length:11, category:"dia-a-dia",   badges:[] },
+  8: { name:"Laço Personalizado",    price:64.90, weight:0.08, width:16, height:3, length:11, category:"presente",    badges:["Novo"] },
 };
+
+/* Categoria/selos aceitos — precisam ficar em sincronia com os chips de
+   filtro em index.html (data-cat) e com os checkboxes do modal de edição
+   em admin.html. Único lugar validado no servidor (nunca confia em
+   categoria/selo vindo do painel sem checar contra esta lista). */
+const PRODUCT_CATEGORIES = ["maternidade", "festa", "batizado", "dia-a-dia", "presente"];
+const PRODUCT_BADGES = ["Mais vendido", "Novo"];
 
 /* Dimensões mínimas aceitas pelos Correios/transportadoras — nunca cotar
    abaixo disso, mesmo que o produto seja minúsculo. */
@@ -112,6 +121,8 @@ function effectiveProduct(id, overridesMap){
     name: override.name || base.name,
     price: override.price != null ? override.price : base.price,
     photoUrl: override.photo_url || null,
+    category: override.category || base.category,
+    badges: override.badges ? JSON.parse(override.badges) : base.badges,
   };
 }
 
@@ -279,6 +290,74 @@ app.use(express.static(SITE_ROOT, {
     if(filePath.endsWith(".html")) res.setHeader("Cache-Control", "no-cache");
   },
 }));
+
+/* =========================================================================
+   UPLOAD DE FOTO DE PRODUTO (painel administrativo)
+   -------------------------------------------------------------------------
+   Antes o painel só aceitava colar a URL de uma imagem já hospedada em
+   outro lugar. Agora a lojista pode enviar o arquivo direto do computador
+   dela — o multer grava em disco (img/products/, dentro da allowlist
+   acima, então já é servido estaticamente sem rota nova) e devolve o
+   caminho curto (ex.: "/img/products/laco-bailarina-a1b2c3.jpg") para o
+   painel salvar como `photoUrl`, exatamente como já fazia com uma URL
+   externa — ver POST /api/admin/products/:id/photo, mais abaixo.
+   Por que gravar em disco em vez de guardar a imagem em base64 no banco:
+   o `photoUrl` de cada produto viaja em TODA resposta de /api/products
+   (carregado por qualquer visitante da vitrine); um base64 de algumas
+   centenas de KB nesse payload, multiplicado por 8 produtos, pesaria a
+   página inicial do site inteiro. Um caminho de poucos bytes mantém o
+   payload do catálogo do tamanho de sempre, e a imagem em si é servida
+   (e cacheada pelo navegador) do mesmo jeito que qualquer outro arquivo
+   estático do site.
+========================================================================= */
+const PRODUCT_UPLOADS_DIR = path.join(SITE_ROOT, "img", "products");
+fs.mkdirSync(PRODUCT_UPLOADS_DIR, { recursive: true });
+
+const PRODUCT_PHOTO_MIME_EXT = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
+const productPhotoUpload = multer({
+  storage: multer.diskStorage({
+    destination: PRODUCT_UPLOADS_DIR,
+    // Nome gerado pelo servidor, nunca a partir do nome original do
+    // arquivo do cliente: evita path traversal (ex.: "../../server/.env")
+    // e colisão entre uploads de produtos diferentes.
+    filename(req, file, cb){
+      const ext = PRODUCT_PHOTO_MIME_EXT[file.mimetype];
+      cb(null, `produto-${req.params.id}-${Date.now()}.${ext}`);
+    },
+  }),
+  limits: { fileSize: 4 * 1024 * 1024, files: 1 }, // 4MB — folgado para foto de produto, sem deixar a requisição pesada
+  fileFilter(req, file, cb){
+    // O `accept="image/*"` no <input type="file"> do admin.html é só uma
+    // dica de UI — um cliente HTTP direto (curl/Postman) pode mandar
+    // qualquer coisa, então o tipo é revalidado aqui contra uma allowlist
+    // fixa antes de qualquer gravação em disco.
+    cb(null, Boolean(PRODUCT_PHOTO_MIME_EXT[file.mimetype]));
+  },
+});
+
+// Se o `photoUrl` sendo substituído aponta para um upload anterior nosso
+// (e não uma URL externa colada à mão), apaga o arquivo velho do disco —
+// best-effort: nunca deve derrubar a resposta do PATCH por causa disso.
+// Só chamado de dentro do PATCH, depois que o novo valor já foi
+// confirmado como o que vai ser salvo (nunca apaga um arquivo que ainda
+// está em uso, mesmo que a lojista tenha enviado uma foto nova e cancelado
+// o modal sem salvar — nesse caso o upload novo é que fica órfão, não o
+// antigo, que é sempre o lado mais seguro do erro).
+function deleteOldLocalPhoto(oldPhotoUrl){
+  if(!oldPhotoUrl || !oldPhotoUrl.startsWith("/img/products/")) return;
+  const filePath = path.join(SITE_ROOT, oldPhotoUrl);
+  fs.unlink(filePath, (err) => {
+    if(err && err.code !== "ENOENT"){
+      console.error("Não foi possível apagar a foto antiga do produto:", err);
+    }
+  });
+}
 
 /* =========================================================================
    Validação e montagem de itens a partir do que o CLIENTE enviou.
@@ -1109,7 +1188,7 @@ app.get("/api/products", (req, res) => {
   const overridesMap = getProductOverridesMap();
   const products = Object.keys(PRODUCTS).map(Number).map(id => {
     const p = effectiveProduct(id, overridesMap);
-    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl };
+    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, category: p.category, badges: p.badges };
   });
   // `paymentRules` viaja junto do catálogo (em vez de numa rota própria) para
   // não gastar mais uma das requisições do rate limit por carregamento de
@@ -1123,29 +1202,39 @@ app.get("/api/products", (req, res) => {
 /* =========================================================================
    GESTÃO DE PRODUTOS (painel administrativo) — /api/admin/products
    -------------------------------------------------------------------------
-   Só permite editar nome, preço e foto (photoUrl) dos produtos que já
-   existem em PRODUCTS — não cria nem remove produtos do catálogo. Peso e
-   dimensões (usados no cálculo de frete) não são editáveis por aqui.
+   Só permite editar nome, preço, foto, categoria e selos de destaque
+   ("Mais vendido"/"Novo") dos produtos que já existem em PRODUCTS — não
+   cria nem remove produtos do catálogo (um produto novo de verdade
+   também precisaria de peso/dimensões para o frete, que não são
+   editáveis por aqui). Peso e dimensões continuam vindo só de PRODUCTS.
 ========================================================================= */
 app.get("/api/admin/products", auth.requireAdmin, (req, res) => {
   const overridesMap = getProductOverridesMap();
   const products = Object.keys(PRODUCTS).map(Number).map(id => {
     const p = effectiveProduct(id, overridesMap);
-    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl };
+    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, category: p.category, badges: p.badges };
   });
-  res.json({ products });
+  res.json({ products, categories: PRODUCT_CATEGORIES, availableBadges: PRODUCT_BADGES });
 });
 
 function isValidProductPrice(v){
   return typeof v === "number" && Number.isFinite(v) && v > 0 && v < 100000;
 }
+// Padrão EXATO do nome de arquivo gerado por productPhotoUpload, acima —
+// nunca aceita um caminho local fora desse formato (bloqueia qualquer
+// tentativa de apontar `photoUrl` para outro arquivo do servidor, tipo
+// "/img/products/../../server/.env", mandando o PATCH direto sem passar
+// pelo upload).
+const LOCAL_UPLOAD_PATTERN = /^\/img\/products\/produto-\d+-\d+\.(jpe?g|png|webp|gif)$/;
 // Aceita vazio (remove a foto customizada, volta para o padrão calculado no
-// front-end a partir do nome) ou uma URL http(s) — nunca javascript:/data:
-// etc., que não fazem sentido como <img src> de um link colado por um
-// formulário.
+// front-end a partir do nome), uma URL http(s) (link colado à mão) ou um
+// caminho local de upload (gerado por POST /api/admin/products/:id/photo,
+// abaixo) — nunca javascript:/data: etc., que não fazem sentido como
+// <img src> de um formulário.
 function isValidPhotoUrl(v){
   if(!v) return true;
   if(typeof v !== "string" || v.length > 2000) return false;
+  if(LOCAL_UPLOAD_PATTERN.test(v)) return true;
   try{
     const parsed = new URL(v);
     return parsed.protocol === "http:" || parsed.protocol === "https:";
@@ -1153,7 +1242,24 @@ function isValidPhotoUrl(v){
     return false;
   }
 }
+function isValidBadges(v){
+  if(!Array.isArray(v)) return false;
+  if(v.length > PRODUCT_BADGES.length) return false;
+  return v.every(b => PRODUCT_BADGES.includes(b)) && new Set(v).size === v.length;
+}
 
+/* =========================================================================
+   PATCH /api/admin/products/:id
+   -------------------------------------------------------------------------
+   Parcial de verdade: só valida/grava os campos que vieram no corpo da
+   requisição (checados com `"campo" in req.body`, não truthiness — um
+   valor vazio de propósito, como apagar a URL da foto, ainda precisa ser
+   distinguível de "campo não enviado"). O painel manda só o que a lojista
+   realmente mudou naquele clique em "Salvar" (ver js/admin.js), em vez do
+   produto inteiro a cada edição — menos payload, e elimina o risco de um
+   campo antigo em cache no navegador sobrescrever por acidente uma edição
+   mais recente feita em outra aba.
+========================================================================= */
 app.patch("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -1161,32 +1267,98 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
       return res.status(404).json({ error: "Produto não encontrado." });
     }
 
-    const name = String(req.body?.name || "").trim();
-    const price = Number(req.body?.price);
-    const photoUrl = req.body?.photoUrl ? String(req.body.photoUrl).trim() : "";
+    const body = req.body || {};
+    const fields = {};
 
-    if(name.length < 2 || name.length > 120){
-      return res.status(400).json({ error: "Nome precisa ter entre 2 e 120 caracteres." });
+    if("name" in body){
+      const name = String(body.name || "").trim();
+      if(name.length < 2 || name.length > 120){
+        return res.status(400).json({ error: "Nome precisa ter entre 2 e 120 caracteres." });
+      }
+      fields.name = name;
     }
-    if(!isValidProductPrice(price)){
-      return res.status(400).json({ error: "Preço inválido. Use um valor entre R$ 0,01 e R$ 99.999,99." });
+    if("price" in body){
+      const price = Number(body.price);
+      if(!isValidProductPrice(price)){
+        return res.status(400).json({ error: "Preço inválido. Use um valor entre R$ 0,01 e R$ 99.999,99." });
+      }
+      fields.price = Math.round(price * 100) / 100;
     }
-    if(!isValidPhotoUrl(photoUrl)){
-      return res.status(400).json({ error: "URL da foto inválida. Use um link http(s) ou deixe em branco." });
+    if("photoUrl" in body){
+      const photoUrl = body.photoUrl ? String(body.photoUrl).trim() : "";
+      if(!isValidPhotoUrl(photoUrl)){
+        return res.status(400).json({ error: "URL da foto inválida. Use um link http(s) ou deixe em branco." });
+      }
+      const previousPhotoUrl = effectiveProduct(id, getProductOverridesMap())?.photoUrl;
+      if(previousPhotoUrl && previousPhotoUrl !== (photoUrl || null)){
+        deleteOldLocalPhoto(previousPhotoUrl);
+      }
+      fields.photoUrl = photoUrl || null;
+    }
+    if("category" in body){
+      const category = body.category ? String(body.category).trim() : "";
+      if(category && !PRODUCT_CATEGORIES.includes(category)){
+        return res.status(400).json({ error: "Categoria inválida." });
+      }
+      fields.category = category || null;
+    }
+    if("badges" in body){
+      if(!isValidBadges(body.badges)){
+        return res.status(400).json({ error: "Selo de destaque inválido." });
+      }
+      fields.badges = body.badges;
     }
 
-    db.upsertProductOverride(id, {
-      name,
-      price: Math.round(price * 100) / 100,
-      photoUrl: photoUrl || null,
-    });
+    if(Object.keys(fields).length === 0){
+      return res.status(400).json({ error: "Nada para salvar." });
+    }
+
+    db.upsertProductOverride(id, fields);
 
     const updated = effectiveProduct(id, getProductOverridesMap());
-    res.json({ id, name: updated.name, price: updated.price, photoUrl: updated.photoUrl });
+    res.json({ id, name: updated.name, price: updated.price, photoUrl: updated.photoUrl, category: updated.category, badges: updated.badges });
   } catch (err) {
     console.error("Erro ao atualizar produto:", err);
     res.status(500).json({ error: "Não foi possível salvar o produto agora." });
   }
+});
+
+/* =========================================================================
+   POST /api/admin/products/:id/photo — upload de arquivo
+   -------------------------------------------------------------------------
+   Rota separada do PATCH acima de propósito: o corpo aqui é
+   multipart/form-data (um arquivo), não JSON, então precisa de um parser
+   diferente (multer) — misturar os dois no mesmo handler exigiria detectar
+   o Content-Type manualmente e complicaria a rota que já funciona bem para
+   os outros campos. Só GRAVA o arquivo e devolve o caminho; quem decide
+   "salvar isso no produto" continua sendo o PATCH de sempre (ver
+   js/admin.js: o caminho devolvido aqui vira o valor de `photoUrl` no
+   próximo clique em "Salvar alterações", passando pelo mesmo payload
+   compacto e pela mesma validação de sempre) — assim um upload feito e
+   depois descartado (lojista fecha o modal sem salvar) nunca deixa o
+   produto apontando para um arquivo indevido.
+========================================================================= */
+app.post("/api/admin/products/:id/photo", auth.requireAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  if(!Number.isInteger(id) || !PRODUCTS[id]){
+    return res.status(404).json({ error: "Produto não encontrado." });
+  }
+  productPhotoUpload.single("photo")(req, res, (err) => {
+    if(err instanceof multer.MulterError){
+      if(err.code === "LIMIT_FILE_SIZE"){
+        return res.status(413).json({ error: "Imagem muito grande. O limite é 4MB." });
+      }
+      return res.status(400).json({ error: "Não foi possível enviar a imagem." });
+    }
+    if(err){
+      console.error("Erro no upload de foto:", err);
+      return res.status(500).json({ error: "Não foi possível enviar a imagem agora." });
+    }
+    if(!req.file){
+      return res.status(400).json({ error: "Envie um arquivo de imagem (JPEG, PNG, WEBP ou GIF)." });
+    }
+    res.status(201).json({ photoUrl: `/img/products/${req.file.filename}` });
+  });
 });
 
 /* DELETE /api/admin/orders/:reference — apaga um pedido (carrinho

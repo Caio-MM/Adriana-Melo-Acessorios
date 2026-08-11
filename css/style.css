@@ -256,8 +256,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   animation:shimmer 1.4s ease-in-out infinite;
 }
 @keyframes shimmer{ 0%{ background-position:150% 0; } 100%{ background-position:-50% 0; } }
+/* Wrapper posicionado; cada selo é uma pill própria dentro dele — um
+   produto pode ter mais de um selo ao mesmo tempo (ex.: "Novo" e "Mais
+   vendido" juntos), empilhados em vez de disputar o mesmo canto. */
+.product-badges{
+  position:absolute; top:12px; left:12px; z-index:1;
+  display:flex; flex-direction:column; align-items:flex-start; gap:6px;
+}
 .product-badge{
-  position:absolute; top:12px; left:12px; background:linear-gradient(135deg, var(--blush-600), var(--blush-700)); color:#fff;
+  background:linear-gradient(135deg, var(--blush-600), var(--blush-700)); color:#fff;
   font-size:.68rem; font-weight:700; padding:.35rem .7rem; border-radius:999px; letter-spacing:.02em;
   box-shadow:0 6px 14px -6px rgba(192,84,128,.6);
 }
@@ -546,8 +553,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .tracking-row .btn-outline-blush{ padding:.4rem 1rem; font-size:.82rem; white-space:nowrap; }
 .tracking-feedback{ min-height:1.1em; }
-.tracking-feedback.is-success{ color:#1E7F44; }
-.tracking-feedback.is-error{ color:#B3261E; }
+.tracking-feedback.is-success, #epPhotoStatus.is-success{ color:#1E7F44; }
+.tracking-feedback.is-error, #epPhotoStatus.is-error{ color:#B3261E; }
 .delete-order-icon-btn{
   width:30px; height:30px; border-radius:50%; border:1px solid var(--blush-100); background:var(--white);
   color:var(--ink-soft); display:flex; align-items:center; justify-content:center; font-size:.85rem;
@@ -584,6 +591,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   width:44px; height:44px; border-radius:10px; object-fit:cover; background:var(--blush-50); flex-shrink:0;
 }
 .admin-products-table .btn-outline-blush{ padding:.4rem 1rem; font-size:.82rem; white-space:nowrap; }
+.admin-badge-pill{
+  display:inline-block; background:var(--blush-100); color:var(--blush-700);
+  font-size:.7rem; font-weight:700; padding:.2rem .55rem; border-radius:999px; margin:0 .2rem .2rem 0;
+}
 .epPreview-img{
   width:120px; height:120px; border-radius:var(--radius-md); object-fit:cover; background:var(--blush-50);
 }

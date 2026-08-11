@@ -81,12 +81,38 @@ site/
     criada no Mercado Pago) mas nunca pagos, entre 1h e 14 dias atrás —
     botão "Chamar no WhatsApp" (mensagem pré-escrita) e "Apagar carrinho".
   - **Produtos**: tabela com todos os produtos do catálogo — "Editar" abre
-    um modal para trocar nome, preço e a URL da foto. Salvar grava em
-    `product_overrides` (server/db.js) e o preço novo já vale no próximo
-    checkout (server.js usa o mesmo `effectiveProduct()` tanto para montar
-    a vitrine quanto para cobrar) — nunca é só cosmético. A vitrine
-    (`js/main.js`) busca essas edições sozinha ao carregar a página, sem
-    precisar reiniciar o servidor.
+    um modal para trocar nome, preço, foto, categoria (Maternidade/Festa/
+    Batizado/Dia a dia/Presente) e selos de destaque ("Mais vendido"/
+    "Novo", pode marcar os dois ao mesmo tempo). Salvar grava em
+    `product_overrides` (server/db.js) e tudo já vale no próximo
+    carregamento da vitrine E no próximo checkout (server.js usa o mesmo
+    `effectiveProduct()` para montar a página e para cobrar) — nunca é só
+    cosmético. A vitrine (`js/main.js`) busca essas edições sozinha ao
+    carregar a página, sem precisar reiniciar o servidor.
+    - *Payload compacto*: o modal só envia no `PATCH
+      /api/admin/products/:id` os campos que a lojista realmente mudou
+      naquele clique em "Salvar" (comparação feita em `js/admin.js` contra
+      os valores de quando o modal abriu) — editar só o preço não reenvia
+      nome/foto/categoria/selos. O servidor trata a ausência de uma chave
+      como "não mexeu nisso", nunca como "apagar".
+    - *Foto do produto*: em vez de colar uma URL, a lojista escolhe um
+      arquivo do computador (`<input type="file">`). O navegador lê o
+      arquivo com a `FileReader` API só para mostrar a pré-visualização na
+      hora (nunca sai da máquina dela) e, em paralelo, envia o arquivo de
+      verdade via `FormData`/multipart para `POST
+      /api/admin/products/:id/photo`, que grava em `img/products/`
+      (servido como arquivo estático normal) e devolve um caminho curto
+      (ex.: `/img/products/produto-2-1699999999999.jpg`). Esse caminho só
+      é gravado no produto quando a lojista clica em "Salvar alterações"
+      — se ela fechar o modal sem salvar, o arquivo já enviado fica órfão
+      (nunca um arquivo referenciado por um produto é apagado sem
+      confirmação). Ao salvar uma foto nova, o arquivo antigo (se também
+      tiver sido um upload nosso) é apagado do disco automaticamente. Por
+      que não guardar a imagem em base64 no banco: o `photoUrl` de cada
+      produto viaja em toda resposta pública de `/api/products` — um
+      base64 de centenas de KB nesse payload pesaria a vitrine inteira
+      para qualquer visitante; um caminho curto mantém esse payload do
+      tamanho de sempre.
   - **Cupons**: criar/apagar cupons de desconto percentual (tabela
     `coupons`, server/db.js) — um cupom criado aqui já vale no checkout do
     cliente na hora, sem editar código nem reiniciar o servidor.
@@ -160,6 +186,8 @@ Render, Railway, Fly.io ou uma VPS, e use a URL real de produção.
 - `bcryptjs` — hash de senha das contas de cliente
 - `nodemailer` — envio do e-mail de aviso por SMTP (único serviço de e-mail
   do projeto; WhatsApp e Melhor Envio usam `fetch` nativo, sem SDK)
+- `multer` — recebe o upload de foto de produto (multipart/form-data) no
+  painel administrativo e grava em `img/products/`
 
 Banco de dados: `node:sqlite` (nativo do Node, sem dependência extra). O
 arquivo fica em `server/data.db` (fora do git — apagar esse arquivo reseta
@@ -269,3 +297,9 @@ Pix pelo caminho do cartão sem receber o desconto que era devido.
   extra fácil de somar.
 - E-mail transacional de recuperação de senha (hoje só existe o aviso de
   pedido pago, `server/email.js`).
+- Criar produtos novos pelo painel (hoje só edita os 8 já existentes em
+  `PRODUCTS`, server.js). Um SKU novo de verdade também precisa de peso/
+  dimensões para o cálculo de frete, que hoje só existem nesse catálogo
+  fixo — vale a pena migrar `PRODUCTS` inteiro para uma tabela no banco
+  antes de expor "criar produto" no painel, para não deixar um produto
+  sem essas medidas quebrar o checkout.

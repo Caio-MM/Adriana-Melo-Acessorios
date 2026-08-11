@@ -34,6 +34,16 @@
   // Espelha PAYMENT_METHODS em server/server.js.
   const PAYMENT_METHOD_LABELS = { pix: "Pix", card: "Cartão ou boleto" };
 
+  // Espelha PRODUCT_CATEGORIES em server/server.js e os chips de filtro em
+  // index.html (data-cat) — mesmos slugs em todo o site.
+  const CATEGORY_LABELS = {
+    "maternidade": "Maternidade",
+    "festa": "Festa",
+    "batizado": "Batizado",
+    "dia-a-dia": "Dia a dia",
+    "presente": "Presente",
+  };
+
   const STATUS_LABELS = {
     "pendente":    { label:"Pagamento pendente", cls:"order-status-pending" },
     "em análise":  { label:"Pagamento em análise", cls:"order-status-pending" },
@@ -162,6 +172,8 @@
         <td><img class="admin-product-thumb" src="${imageFor(p)}" alt="${escapeHTML(p.name)}" width="44" height="44" loading="lazy"></td>
         <td>${escapeHTML(p.name)}</td>
         <td>${formatMoney(p.price)}</td>
+        <td class="small" style="color:var(--ink-soft)">${escapeHTML(CATEGORY_LABELS[p.category] || p.category || "—")}</td>
+        <td>${(p.badges && p.badges.length) ? p.badges.map(b => `<span class="admin-badge-pill">${escapeHTML(b)}</span>`).join("") : "—"}</td>
         <td class="text-end">
           <button type="button" class="btn-outline-blush edit-product-btn" data-id="${p.id}">Editar</button>
         </td>
@@ -175,10 +187,28 @@
   const epId = document.getElementById("epId");
   const epName = document.getElementById("epName");
   const epPrice = document.getElementById("epPrice");
-  const epPhoto = document.getElementById("epPhoto");
+  const epPhotoFile = document.getElementById("epPhotoFile");
+  const epPhotoStatus = document.getElementById("epPhotoStatus");
+  const epCategory = document.getElementById("epCategory");
+  const epBadgeBestseller = document.getElementById("epBadgeBestseller");
+  const epBadgeNew = document.getElementById("epBadgeNew");
   const epPreview = document.getElementById("epPreview");
   const epMsg = document.getElementById("epMsg");
   const epSaveBtn = document.getElementById("epSaveBtn");
+
+  // Valores do produto no instante em que o modal foi aberto — comparados
+  // no submit para montar um PATCH só com o que realmente mudou (ver
+  // comentário no handler de submit, abaixo).
+  let editOriginal = null;
+  // `photoUrl` que vai entrar no PATCH se a lojista salvar: começa igual
+  // ao valor atual do produto e só muda depois de um upload TERMINAR com
+  // sucesso (nunca aponta para um arquivo ainda enviando ou que falhou).
+  let pendingPhotoUrl = "";
+  let photoUploadInFlight = false;
+
+  function selectedBadges(){
+    return [epBadgeBestseller, epBadgeNew].filter(cb => cb.checked).map(cb => cb.value);
+  }
 
   function openEditModal(productId){
     const product = productsCache.find(p => p.id === productId);
@@ -186,17 +216,89 @@
     epId.value = product.id;
     epName.value = product.name;
     epPrice.value = product.price;
-    epPhoto.value = product.photoUrl || "";
+    epPhotoFile.value = "";
+    epCategory.value = product.category || "";
+    epBadgeBestseller.checked = (product.badges || []).includes("Mais vendido");
+    epBadgeNew.checked = (product.badges || []).includes("Novo");
     epPreview.src = imageFor(product);
     epMsg.textContent = "";
     epMsg.className = "small account-msg";
+    epPhotoStatus.textContent = "";
+    epPhotoStatus.className = "small mt-1";
+    pendingPhotoUrl = product.photoUrl || "";
+    photoUploadInFlight = false;
+    editOriginal = {
+      name: product.name,
+      price: product.price,
+      photoUrl: product.photoUrl || "",
+      category: product.category || "",
+      badges: [...(product.badges || [])].sort(),
+    };
     editModal.show();
   }
 
-  // Pré-visualização ao vivo enquanto a lojista cola/edita a URL da foto.
-  epPhoto.addEventListener("input", () => {
-    const product = productsCache.find(p => p.id === Number(epId.value));
-    epPreview.src = epPhoto.value.trim() || (product ? imageFor(product) : "");
+  /* =====================================================================
+     UPLOAD DE FOTO — como funciona
+     ---------------------------------------------------------------------
+     1) Ao escolher um arquivo, a FileReader API lê os bytes localmente e
+        gera uma data URL (base64) só para a pré-visualização instantânea
+        (`epPreview.src`) — nunca sai do navegador, é só pra lojista ver o
+        que escolheu na hora, sem esperar rede nenhuma.
+     2) Em paralelo, o arquivo original (não o base64) é enviado via
+        `FormData`/multipart para POST /api/admin/products/:id/photo, que
+        grava em disco no servidor e devolve um caminho curto
+        (ex.: "/img/products/produto-2-1699999999999.jpg").
+     3) Esse caminho fica guardado em `pendingPhotoUrl` até a lojista
+        clicar em "Salvar alterações" — só então ele entra no PATCH normal
+        do produto (mesmo payload compacto dos outros campos), junto com
+        nome/preço/categoria/selos que também tenham mudado.
+     Por que não mandar o base64 direto pro servidor: um arquivo de imagem
+     em base64 fica ~33% maior que o arquivo original, e viajaria dentro
+     de um JSON comum — o multipart/FormData manda os bytes originais,
+     sem esse inchaço, e permite ao servidor limitar/validar o upload
+     (tamanho, tipo) antes mesmo de tentar interpretar o corpo como JSON.
+  ===================================================================== */
+  epPhotoFile.addEventListener("change", () => {
+    const file = epPhotoFile.files[0];
+    if(!file) return;
+
+    epMsg.textContent = "";
+    epMsg.className = "small account-msg";
+
+    const reader = new FileReader();
+    reader.onload = () => { epPreview.src = reader.result; };
+    reader.readAsDataURL(file);
+
+    const id = Number(epId.value);
+    const formData = new FormData();
+    formData.append("photo", file);
+
+    photoUploadInFlight = true;
+    epSaveBtn.disabled = true;
+    epPhotoStatus.textContent = "Enviando imagem...";
+    epPhotoStatus.className = "small mt-1";
+
+    fetchWithTimeout(`/api/admin/products/${id}/photo`, { method: "POST", body: formData }, 20000)
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if(!res.ok) throw new Error(data.error || "Não foi possível enviar a imagem.");
+        pendingPhotoUrl = data.photoUrl;
+        epPhotoStatus.textContent = "Imagem enviada.";
+        epPhotoStatus.classList.add("is-success");
+      })
+      .catch((err) => {
+        epPhotoStatus.textContent = err.message || "Erro ao enviar a imagem.";
+        epPhotoStatus.classList.add("is-error");
+        // Upload falhou: volta a pré-visualização pro que já estava salvo,
+        // e desfaz a seleção do arquivo pra não sugerir que ele "pegou".
+        const product = productsCache.find(p => p.id === id);
+        epPreview.src = product ? imageFor(product) : "";
+        epPhotoFile.value = "";
+      })
+      .finally(() => {
+        photoUploadInFlight = false;
+        epSaveBtn.disabled = false;
+      });
   });
 
   productsTableBodyEl.addEventListener("click", (e) => {
@@ -207,10 +309,29 @@
 
   editForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if(photoUploadInFlight) return; // botão já fica desabilitado, isto é só uma segunda trava
     const id = Number(epId.value);
     const name = epName.value.trim();
     const price = Number(epPrice.value);
-    const photoUrl = epPhoto.value.trim();
+    const category = epCategory.value;
+    const badges = selectedBadges();
+
+    // Payload compacto: manda só os campos que mudaram desde que o modal
+    // abriu, em vez do produto inteiro a cada "Salvar" — ver PATCH
+    // /api/admin/products/:id em server.js, que trata ausência de uma
+    // chave como "não mexeu nisso" (preserva o valor já salvo).
+    const patch = {};
+    if(name !== editOriginal.name) patch.name = name;
+    if(price !== editOriginal.price) patch.price = price;
+    if(pendingPhotoUrl !== editOriginal.photoUrl) patch.photoUrl = pendingPhotoUrl;
+    if(category !== editOriginal.category) patch.category = category;
+    const sortedBadges = [...badges].sort();
+    if(JSON.stringify(sortedBadges) !== JSON.stringify(editOriginal.badges)) patch.badges = badges;
+
+    if(Object.keys(patch).length === 0){
+      editModal.hide();
+      return;
+    }
 
     epMsg.textContent = "";
     epMsg.className = "small account-msg";
@@ -221,7 +342,7 @@
       const res = await fetch(`/api/admin/products/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, price, photoUrl }),
+        body: JSON.stringify(patch),
       });
       const data = await res.json().catch(() => ({}));
       if(!res.ok) throw new Error(data.error || "Não foi possível salvar o produto.");

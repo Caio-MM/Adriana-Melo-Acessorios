@@ -12,14 +12,14 @@
      com PRODUCTS em server/server.js.
   ===================================================================== */
   const products = [
-    { id:1, name:"Laço Bailarina", cat:"dia-a-dia", catLabel:"Dia a dia", price:34.90, color:"#F4B4CC", rating:5, desc:"Laço em cetim rosa bebê, leve e confortável para o dia a dia." },
-    { id:2, name:"Laço Duquesa", cat:"festa", catLabel:"Festa", price:49.90, color:"#DD6E9B", rating:5, badge:"Mais vendido", desc:"Cetim duplo com volume extra, perfeito para festas e ensaios." },
-    { id:3, name:"Laço Recém-nascida", cat:"maternidade", catLabel:"Maternidade", price:29.90, color:"#FBEAF0", rating:5, desc:"Presilha macia em algodão, indicada para os primeiros meses." },
-    { id:4, name:"Laço Pérola", cat:"batizado", catLabel:"Batizado", price:59.90, color:"#F8ECF1", rating:5, desc:"Detalhes em pérolas para o dia especial do batizado." },
-    { id:5, name:"Laço Borboleta", cat:"festa", catLabel:"Festa", price:44.90, color:"#EA8FB4", rating:4, desc:"Formato de borboleta com fita de organza, ideal para festas infantis." },
-    { id:6, name:"Kit Presente 3 Laços", cat:"presente", catLabel:"Presente", price:89.90, color:"#C05480", rating:5, badge:"Novo", desc:"Trio de laços em tons de rosa, embalado em caixa para presente." },
-    { id:7, name:"Laço Tiara Flor", cat:"dia-a-dia", catLabel:"Dia a dia", price:39.90, color:"#F4B4CC", rating:4, desc:"Tiara macia com flor de tecido, confortável para uso prolongado." },
-    { id:8, name:"Laço Personalizado", cat:"presente", catLabel:"Presente", price:64.90, color:"#DD6E9B", rating:5, badge:"Novo", desc:"Bordado com o nome que você escolher, embalagem para presente." },
+    { id:1, name:"Laço Bailarina", cat:"dia-a-dia", catLabel:"Dia a dia", price:34.90, color:"#F4B4CC", rating:5, badges:[], desc:"Laço em cetim rosa bebê, leve e confortável para o dia a dia." },
+    { id:2, name:"Laço Duquesa", cat:"festa", catLabel:"Festa", price:49.90, color:"#DD6E9B", rating:5, badges:["Mais vendido"], desc:"Cetim duplo com volume extra, perfeito para festas e ensaios." },
+    { id:3, name:"Laço Recém-nascida", cat:"maternidade", catLabel:"Maternidade", price:29.90, color:"#FBEAF0", rating:5, badges:[], desc:"Presilha macia em algodão, indicada para os primeiros meses." },
+    { id:4, name:"Laço Pérola", cat:"batizado", catLabel:"Batizado", price:59.90, color:"#F8ECF1", rating:5, badges:[], desc:"Detalhes em pérolas para o dia especial do batizado." },
+    { id:5, name:"Laço Borboleta", cat:"festa", catLabel:"Festa", price:44.90, color:"#EA8FB4", rating:4, badges:[], desc:"Formato de borboleta com fita de organza, ideal para festas infantis." },
+    { id:6, name:"Kit Presente 3 Laços", cat:"presente", catLabel:"Presente", price:89.90, color:"#C05480", rating:5, badges:["Novo"], desc:"Trio de laços em tons de rosa, embalado em caixa para presente." },
+    { id:7, name:"Laço Tiara Flor", cat:"dia-a-dia", catLabel:"Dia a dia", price:39.90, color:"#F4B4CC", rating:4, badges:[], desc:"Tiara macia com flor de tecido, confortável para uso prolongado." },
+    { id:8, name:"Laço Personalizado", cat:"presente", catLabel:"Presente", price:64.90, color:"#DD6E9B", rating:5, badges:["Novo"], desc:"Bordado com o nome que você escolher, embalagem para presente." },
   ];
 
   /* =====================================================================
@@ -190,9 +190,9 @@
       const pay = pricing.paymentSummaryFor(p.price);
       return `
       <div class="col-6 col-md-4 col-lg-3 reveal reveal-delay-${i % 4}">
-        <div class="product-card${p.badge ? " is-featured" : ""}" data-id="${p.id}">
+        <div class="product-card${p.badges?.length ? " is-featured" : ""}" data-id="${p.id}">
           <div class="product-thumb is-loading" style="background:${p.color}22">
-            ${p.badge ? `<span class="product-badge">${escapeHTML(p.badge)}</span>` : ""}
+            ${p.badges?.length ? `<div class="product-badges">${p.badges.map(b => `<span class="product-badge">${escapeHTML(b)}</span>`).join("")}</div>` : ""}
             <button type="button" class="product-quickview" aria-label="Ver detalhes de ${escapeHTML(p.name)}"><i class="bi bi-eye"></i></button>
             <img
               src="${imageFor(p)}"
@@ -223,15 +223,26 @@
   }
   renderProducts();
 
-  /* Busca eventuais edições de nome/preço/foto feitas no painel
-     administrativo (server/server.js > /api/products) e aplica por cima
-     do catálogo estático acima, sem bloquear a primeira renderização (que
-     já aconteceu, com os dados estáticos, na linha de cima) — se a busca
-     falhar ou demorar, a vitrine continua funcionando normalmente com o
-     catálogo padrão. Como `products`/`productsById` guardam referências
-     mutáveis, atualizar `p.name`/`p.price`/`p.image` aqui já é suficiente
-     para o carrinho e a quick view (que sempre leem do mesmo objeto)
-     mostrarem o valor novo, sem precisar duplicar essa lógica em cada um. */
+  // Rótulo de exibição de uma categoria (ex.: "dia-a-dia" → "Dia a dia"),
+  // lido direto dos chips de filtro — que já são a única fonte visível
+  // desses nomes na página — em vez de duplicar o mapa aqui.
+  function categoryLabelFor(catSlug){
+    const chip = document.querySelector(`#filterGroup .chip[data-cat="${CSS.escape(catSlug)}"]`);
+    return chip ? chip.textContent.trim() : catSlug;
+  }
+  function sameBadges(a, b){
+    return a.length === b.length && a.every((v, i) => v === b[i]);
+  }
+
+  /* Busca eventuais edições de nome/preço/foto/categoria/selos feitas no
+     painel administrativo (server/server.js > /api/products) e aplica por
+     cima do catálogo estático acima, sem bloquear a primeira renderização
+     (que já aconteceu, com os dados estáticos, na linha de cima) — se a
+     busca falhar ou demorar, a vitrine continua funcionando normalmente
+     com o catálogo padrão. Como `products`/`productsById` guardam
+     referências mutáveis, atualizar os campos aqui já é suficiente para o
+     carrinho e a quick view (que sempre leem do mesmo objeto) mostrarem o
+     valor novo, sem precisar duplicar essa lógica em cada um. */
   async function loadProductOverrides(){
     try{
       const res = await fetch("/api/products");
@@ -244,6 +255,15 @@
         if(o.name && o.name !== p.name){ p.name = o.name; changed = true; }
         if(o.price != null && o.price !== p.price){ p.price = o.price; changed = true; }
         if(o.photoUrl && o.photoUrl !== p.image){ p.image = o.photoUrl; changed = true; }
+        if(o.category && o.category !== p.cat){
+          p.cat = o.category;
+          p.catLabel = categoryLabelFor(o.category);
+          changed = true;
+        }
+        if(Array.isArray(o.badges) && !sameBadges(o.badges, p.badges || [])){
+          p.badges = o.badges;
+          changed = true;
+        }
       });
       if(changed){ renderProducts(); renderCart(); }
       verifyPaymentRules(data.paymentRules);
@@ -566,7 +586,7 @@
     const inCartIds = new Set(cart.map(i => i.id));
     const inCartCats = new Set(cart.map(i => findProduct(i.id)?.cat).filter(Boolean));
     const candidates = products.filter(p => !inCartIds.has(p.id));
-    const byBadgeFirst = (a, b) => (b.badge ? 1 : 0) - (a.badge ? 1 : 0);
+    const byBadgeFirst = (a, b) => (b.badges?.length ? 1 : 0) - (a.badges?.length ? 1 : 0);
 
     const otherCategories = candidates.filter(p => !inCartCats.has(p.cat)).sort(byBadgeFirst);
     const sameCategory = candidates.filter(p => inCartCats.has(p.cat)).sort(byBadgeFirst);
