@@ -266,13 +266,27 @@ const SITE_ROOT = path.join(__dirname, "..");
 const PUBLIC_TOP_LEVEL = new Set([
   "index.html", "conta.html", "pedidos.html", "admin.html",
   "pagamento-sucesso.html", "pagamento-erro.html", "pagamento-pendente.html",
-  "css", "js", "img",
+  "404.html", "css", "js", "img",
 ]);
+// Usada tanto pelo bloqueio de allowlist abaixo quanto pelo catch-all no fim
+// do arquivo (depois de express.static e de todas as rotas). Navegação de
+// página (GET/HEAD aceitando HTML) recebe a 404 com a identidade do site;
+// o resto (chamada de API, asset que faltou, etc.) recebe uma resposta
+// simples do jeito que já era antes.
+function sendNotFound(req, res){
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "Rota não encontrada." });
+  }
+  if ((req.method === "GET" || req.method === "HEAD") && req.accepts("html")) {
+    return res.status(404).sendFile(path.join(SITE_ROOT, "404.html"));
+  }
+  return res.status(404).send("Não encontrado.");
+}
 app.use((req, res, next) => {
   if (req.path === "/" || req.path.startsWith("/api/")) return next();
   const firstSegment = req.path.split("/").filter(Boolean)[0];
   if (firstSegment && PUBLIC_TOP_LEVEL.has(firstSegment)) return next();
-  return res.status(404).send("Não encontrado.");
+  return sendNotFound(req, res);
 });
 // maxAge de 1h para tudo (css/js/img) — deixa o navegador reaproveitar
 // esses arquivos sem baixar de novo ao navegar entre páginas ou voltar ao
@@ -1478,6 +1492,12 @@ app.post("/api/admin/orders/:reference/generate-label", auth.requireAdmin, async
     res.status(502).json({ error: "Não foi possível gerar a etiqueta agora. Confira as credenciais do Melhor Envio ou gere manualmente no painel deles." });
   }
 });
+
+// Sobra daqui quem passou pela allowlist acima (então é um caminho dentro de
+// css/js/img ou /api) mas não bateu com nenhum arquivo real do
+// express.static nem com nenhuma rota da API — ex.: /css/arquivo-que-nao-
+// existe.css ou /api/rota-que-nao-existe.
+app.use(sendNotFound);
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);

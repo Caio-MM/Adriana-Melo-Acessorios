@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pagamento aprovado — Adriana Melo Acessórios</title>
-<meta name="description" content="Seu pagamento foi aprovado. Obrigada pela compra na Adriana Melo Acessórios.">
+<title>Página não encontrada — Adriana Melo Acessórios</title>
+<meta name="description" content="A página que você procurava não existe ou foi movida.">
 <meta name="robots" content="noindex, nofollow">
 
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://cdnjs.cloudflare.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' https: data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
@@ -18,7 +18,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Poppins:wght@300;400;500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 </head>
-<body data-payment-result="sucesso">
+<body>
 
 <svg width="0" height="0" style="position:absolute">
   <symbol id="bow-shape" viewBox="0 0 100 70">
@@ -42,16 +42,13 @@
 
 <main class="account-main">
   <div class="container">
-    <div class="mx-auto" style="max-width:440px">
+    <div class="mx-auto text-center" style="max-width:440px">
       <div class="account-card text-center">
-        <i class="bi bi-check-circle" style="font-size:2.6rem; color:#1E7F44"></i>
-        <h1 class="section-title mt-3 mb-2" style="font-size:1.5rem">Pagamento aprovado!</h1>
-        <p class="section-sub mb-1" id="orderRefLine">Seu pedido foi confirmado.</p>
-        <p class="section-sub mb-4">Em instantes a lojista recebe o aviso e começa a preparar seu laço. Você pode acompanhar o status a qualquer momento em "Meus pedidos".</p>
-        <div class="d-flex flex-column gap-2">
-          <a href="pedidos.html" class="btn-blush">Ver meus pedidos</a>
-          <a href="index.html" class="btn-outline-blush">Continuar comprando</a>
-        </div>
+        <svg class="bow-icon" style="width:56px; height:40px; color:var(--blush-500)"><use href="#bow-shape"/></svg>
+        <p class="section-eyebrow justify-content-center mt-3 mb-1">404</p>
+        <h1 class="section-title mb-2" style="font-size:1.5rem">Essa página não foi encontrada</h1>
+        <p class="section-sub mb-4">O link pode estar desatualizado ou a página foi movida. Que tal voltar para conferir nossos laços?</p>
+        <a href="index.html" class="btn-blush">Voltar ao Início</a>
       </div>
     </div>
   </div>
@@ -60,6 +57,5 @@
 <script src="js/error-boundary.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js" defer></script>
 <script src="js/auth.js" defer></script>
-<script src="js/pagamento-retorno.js" defer></script>
 </body>
 </html>
