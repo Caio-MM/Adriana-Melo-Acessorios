@@ -58,17 +58,12 @@
   const pricing = window.PLCPricing;
   const formatMoney = pricing.formatMoney;
 
-  function slugify(str){
-    return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-      .toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
-  }
-
-  /* Imagem "placeholder real" (foto de verdade, não SVG) via Picsum —
-     serviço público, sem chave de API. O "seed" fixa sempre a mesma foto
-     para o mesmo produto. Troque pela foto real do produto quando tiver:
-     basta apontar `image` para o arquivo (ex.: "img/produtos/laco-1.jpg"). */
+  /* Sem foto própria cadastrada (`image`, via upload no painel admin), não
+     usa nenhuma foto de placeholder — mostra só o fundo na cor do produto
+     com o laço em SVG por cima (.product-thumb/.bow-icon no style.css).
+     Retorna "" (não uma URL) para o chamador decidir se renderiza a <img>. */
   function imageFor(p){
-    return p.image || `https://picsum.photos/seed/${encodeURIComponent(slugify(p.name))}/600/600`;
+    return p.image || "";
   }
 
   let cartCount = 0;
@@ -188,17 +183,18 @@
     const list = currentFilter === "todos" ? products : products.filter(p => p.cat === currentFilter);
     grid.innerHTML = list.map((p, i) => {
       const pay = pricing.paymentSummaryFor(p.price);
+      const photo = imageFor(p);
       return `
       <div class="col-6 col-md-4 col-lg-3 reveal reveal-delay-${i % 4}">
         <div class="product-card${p.badges?.length ? " is-featured" : ""}" data-id="${p.id}">
-          <div class="product-thumb is-loading" style="background:${p.color}22">
+          <div class="product-thumb${photo ? " is-loading" : ""}" style="background:${p.color}22">
             ${p.badges?.length ? `<div class="product-badges">${p.badges.map(b => `<span class="product-badge">${escapeHTML(b)}</span>`).join("")}</div>` : ""}
             <button type="button" class="product-quickview" aria-label="Ver detalhes de ${escapeHTML(p.name)}"><i class="bi bi-eye"></i></button>
-            <img
-              src="${imageFor(p)}"
+            ${photo ? `<img
+              src="${escapeHTML(photo)}"
               alt="${escapeHTML(p.name)} — ${escapeHTML(p.catLabel)}"
               width="600" height="600"
-              loading="lazy" decoding="async">
+              loading="lazy" decoding="async">` : ""}
             <svg class="bow-icon" style="color:${p.color}; position:absolute"><use href="#bow-shape"/></svg>
           </div>
           <div class="product-body">
@@ -550,10 +546,12 @@
       cartItemsList.innerHTML = cart.map(item => {
         const p = findProduct(item.id);
         if(!p) return "";
+        const photo = imageFor(p);
         return `
           <div class="cart-item" data-id="${p.id}">
-            <div class="cart-item-thumb is-loading" style="background:${p.color}22">
-              <img src="${imageFor(p)}" alt="${escapeHTML(p.name)}" width="64" height="64" loading="lazy" decoding="async">
+            <div class="cart-item-thumb${photo ? " is-loading" : ""}" style="background:${p.color}22">
+              ${photo ? `<img src="${escapeHTML(photo)}" alt="${escapeHTML(p.name)}" width="64" height="64" loading="lazy" decoding="async">` : ""}
+              <svg class="bow-icon" style="color:${p.color}"><use href="#bow-shape"/></svg>
             </div>
             <div class="cart-item-body">
               <div class="cart-item-head">
@@ -610,10 +608,13 @@
       return;
     }
     cartRecommendationsEl.classList.remove("d-none");
-    cartRecsListEl.innerHTML = recs.map(p => `
+    cartRecsListEl.innerHTML = recs.map(p => {
+      const photo = imageFor(p);
+      return `
       <div class="cart-rec-item" data-id="${p.id}">
-        <div class="cart-rec-thumb">
-          <img src="${imageFor(p)}" alt="${escapeHTML(p.name)}" width="44" height="44" loading="lazy" decoding="async">
+        <div class="cart-rec-thumb" style="background:${p.color}22">
+          ${photo ? `<img src="${escapeHTML(photo)}" alt="${escapeHTML(p.name)}" width="44" height="44" loading="lazy" decoding="async">` : ""}
+          <svg class="bow-icon" style="color:${p.color}"><use href="#bow-shape"/></svg>
         </div>
         <div class="flex-grow-1">
           <div class="cart-rec-name">${escapeHTML(p.name)}</div>
@@ -621,7 +622,8 @@
         </div>
         <button type="button" class="cart-rec-add" data-id="${p.id}" aria-label="Adicionar ${escapeHTML(p.name)} ao carrinho"><i class="bi bi-plus-lg"></i></button>
       </div>
-    `).join("");
+    `;
+    }).join("");
     cartRecsListEl.querySelectorAll(".cart-rec-thumb img").forEach(wireImage);
   }
 
@@ -946,9 +948,15 @@
     // foto do produto anterior ficaria visível (classe is-loaded) enquanto a
     // nova carrega, e um erro anterior (is-error) esconderia a nova.
     img.classList.remove("is-loaded", "is-error");
-    thumb.classList.add("is-loading");
     img.alt = p.name;
-    img.src = imageFor(p);
+    const photo = imageFor(p);
+    if(photo){
+      thumb.classList.add("is-loading");
+      img.src = photo;
+    } else {
+      thumb.classList.remove("is-loading");
+      img.removeAttribute("src");
+    }
 
     renderQuickViewPayment();
     qvModal.show();

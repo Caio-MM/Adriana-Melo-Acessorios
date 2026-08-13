@@ -374,7 +374,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   position:relative; background:var(--blush-50); overflow:hidden;
 }
 .product-thumb .bow-icon{ width:46%; height:auto; }
+/* A foto COBRE o laço quando existe (mesma ideia de .cart-item-thumb e
+   .qv-thumb) — o laço é o fundo de quem não tem foto cadastrada, não uma
+   marca d'água por cima da foto do produto. O z-index é necessário aqui
+   porque o laço também é absoluto neste thumb (posicionado inline em
+   js/main.js): sem ele, os dois empatam e a ordem do DOM deixaria o laço
+   por cima. */
 .product-thumb img{
+  position:absolute; inset:0; z-index:1;
   width:100%; height:100%; object-fit:cover; display:block;
   opacity:0; transition:opacity .4s ease;
 }
@@ -642,11 +649,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    seguinte (cross-sell ou painel), e as duas juntas viravam linha dupla. */
 .cart-item:last-child{ border-bottom:none; padding-bottom:0; }
 .cart-item-thumb{
-  width:64px; height:64px; border-radius:12px; flex-shrink:0; overflow:hidden;
+  position:relative; width:64px; height:64px; border-radius:12px; flex-shrink:0; overflow:hidden;
   background:var(--blush-100); display:flex; align-items:center; justify-content:center;
 }
-.cart-item-thumb img{ width:100%; height:100%; object-fit:cover; }
-.cart-item-thumb .bow-icon{ width:55%; }
+.cart-item-thumb img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+/* Foto que falhou ao carregar sai da frente e deixa o laço aparecer, em
+   vez de deixar o ícone de imagem quebrada por cima dele. */
+.cart-item-thumb img.is-error{ display:none; }
+.cart-item-thumb .bow-icon{ width:55%; height:auto; }
 .cart-item-body{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:.55rem; }
 .cart-item-head{ display:flex; align-items:baseline; justify-content:space-between; gap:.6rem; }
 .cart-item-name{
@@ -718,11 +728,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* Cross-sell no carrinho ("Complete seu pedido") */
 .cart-rec-item{ display:flex; gap:.7rem; align-items:center; }
 .cart-rec-thumb{
-  width:44px; height:44px; border-radius:10px; flex-shrink:0; overflow:hidden;
+  position:relative; width:44px; height:44px; border-radius:10px; flex-shrink:0; overflow:hidden;
   background:var(--blush-100); display:flex; align-items:center; justify-content:center;
 }
-.cart-rec-thumb img{ width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity .3s ease; }
+.cart-rec-thumb img{
+  position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  opacity:0; transition:opacity .3s ease;
+}
 .cart-rec-thumb img.is-loaded{ opacity:1; }
+.cart-rec-thumb .bow-icon{ width:55%; height:auto; }
 .cart-rec-name{ font-size:.85rem; font-weight:600; line-height:1.2; }
 .cart-rec-price{ color:var(--blush-700); font-size:.8rem; font-weight:600; }
 .cart-rec-add{
@@ -963,6 +977,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .epPreview-img{
   width:120px; height:120px; border-radius:var(--radius-md); object-fit:cover; background:var(--blush-50);
 }
+/* Placeholder de "produto sem foto cadastrada" — mesmo laço em SVG que a
+   vitrine mostra nesse caso, para o painel não sugerir uma foto que a
+   loja não tem. */
+.epPreview-placeholder, .admin-thumb-placeholder{
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:var(--radius-md); background:var(--blush-50); color:var(--blush-300);
+}
+.epPreview-placeholder{ width:120px; height:120px; }
+.epPreview-placeholder .bow-icon{ width:52px; height:auto; }
+.admin-thumb-placeholder{ width:44px; height:44px; border-radius:10px; vertical-align:middle; }
+.admin-thumb-placeholder .bow-icon{ width:24px; height:auto; }
 @media (max-width: 575.98px){
   .admin-products-table{ font-size:.82rem; }
   .admin-products-table th, .admin-products-table td{ padding:.55rem .5rem; }

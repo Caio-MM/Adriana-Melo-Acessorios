@@ -47,7 +47,12 @@
      admin" e "Sair" no mobile, então na barra do topo eles só aparecem a
      partir de lg — o mobile fica com Conta + Carrinho, sem apertar.
      Nas demais páginas não existe menu lateral: lá eles ficam sempre
-     visíveis, senão o cliente perderia o botão de sair no celular. */
+     visíveis, senão o cliente perderia o botão de sair no celular.
+
+     ⚠️ Os links do menu lateral NÃO levam data-bs-dismiss="offcanvas": o
+     Bootstrap chama preventDefault() em todo <a> que tenha esse atributo,
+     o que matava a navegação (o link fechava o menu e não ia a lugar
+     nenhum). Quem fecha o menu é o listener delegado em js/main.js. */
   const secondaryOnlyDesktop = navAccountMobile ? " d-none d-lg-inline-flex" : "";
 
   function renderLoggedOut(){
@@ -56,14 +61,14 @@
         `<a href="conta.html" class="account-pill" aria-label="Entrar na sua conta">${pill("user", "Entrar")}</a>`;
     }
     if(navAccountMobile){
-      navAccountMobile.innerHTML = `<a href="conta.html" class="plc-nav-link" data-bs-dismiss="offcanvas"><i class="bi bi-person me-1"></i>Entrar / Cadastrar</a>`;
+      navAccountMobile.innerHTML = `<a href="conta.html" class="plc-nav-link"><i class="bi bi-person me-1"></i>Entrar / Cadastrar</a>`;
     }
   }
 
   function renderLoggedIn(user){
     const firstName = escapeHTML(String(user.name || "").trim().split(" ")[0] || "cliente");
     const adminLinkMobile = user.isAdmin
-      ? `<a href="admin.html" class="plc-nav-link" data-bs-dismiss="offcanvas"><i class="bi bi-shield-lock me-1"></i>Painel admin</a>` : "";
+      ? `<a href="admin.html" class="plc-nav-link"><i class="bi bi-shield-lock me-1"></i>Painel admin</a>` : "";
     if(navAccount){
       const adminPill = user.isAdmin
         ? `<a href="admin.html" class="account-pill${secondaryOnlyDesktop}" aria-label="Painel administrativo">${pill("admin", "Admin")}</a>` : "";
@@ -77,7 +82,7 @@
     if(navAccountMobile){
       navAccountMobile.innerHTML = `
         ${adminLinkMobile}
-        <a href="pedidos.html" class="plc-nav-link" data-bs-dismiss="offcanvas"><i class="bi bi-bag-check me-1"></i>Meus pedidos</a>
+        <a href="pedidos.html" class="plc-nav-link"><i class="bi bi-bag-check me-1"></i>Meus pedidos</a>
         <button type="button" class="plc-nav-link text-start p-0 border-0 bg-transparent" id="logoutBtnMobile">Sair (${firstName})</button>
       `;
       document.getElementById("logoutBtnMobile")?.addEventListener("click", logout);

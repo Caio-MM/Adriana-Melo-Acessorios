@@ -22,16 +22,13 @@
   function formatDate(ts){
     return new Date(ts).toLocaleString("pt-BR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
   }
-  function slugify(str){
-    return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-      .toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
-  }
-  // Mesma regra de fallback de imagem usada na vitrine (js/main.js:imageFor)
-  // — sem foto customizada, mostra a mesma foto "de placeholder" que o
-  // cliente já vê hoje, em vez de um ícone genérico/quebrado no painel.
+  // Mesma regra da vitrine (js/main.js:imageFor): sem foto cadastrada não
+  // existe imagem nenhuma — quem chama mostra o laço em SVG no lugar, para
+  // o painel refletir exatamente o que o cliente vê na loja.
   function imageFor(product){
-    return product.photoUrl || `https://picsum.photos/seed/${encodeURIComponent(slugify(product.name))}/200/200`;
+    return product.photoUrl || "";
   }
+  const BOW_PLACEHOLDER = `<span class="admin-thumb-placeholder" aria-hidden="true"><svg class="bow-icon"><use href="#bow-shape"/></svg></span>`;
 
   // Espelha PAYMENT_METHODS em server/server.js.
   const PAYMENT_METHOD_LABELS = { pix: "Pix", card: "Cartão ou boleto" };
@@ -189,12 +186,20 @@
 
   // O telefone é digitado pela cliente no checkout como DDD + número (ex.:
   // "(11) 99999-8888"), sem o código do país — um link wa.me com só esses
-  // 10-11 dígitos não abre a conversa certa. Números já digitados com DDI
-  // (12-13 dígitos) não recebem prefixo de novo.
+  // 10-11 dígitos não abre a conversa certa.
+  //
+  // Não dá para decidir pelo comprimento sozinho: "011 99999-8888" (hábito
+  // antigo de pôr o 0 da operadora antes do DDD) também dá 12 dígitos e
+  // NÃO tem DDI. Por isso o 0 da frente sai primeiro, e só é considerado
+  // "já tem DDI" o número que começa com 55 E tem 12-13 dígitos. Um número
+  // do DDD 55 (Rio Grande do Sul) sem DDI tem no máximo 11 dígitos, então
+  // não cai nesse caso por engano.
   function whatsappDigitsWithCountryCode(phone){
-    const digits = String(phone || "").replace(/\D/g, "");
+    let digits = String(phone || "").replace(/\D/g, "");
     if(!digits) return "";
-    return digits.length <= 11 ? `55${digits}` : digits;
+    if(digits.length > 11) digits = digits.replace(/^0+/, "");
+    if(digits.length >= 12 && digits.startsWith("55")) return digits;
+    return `55${digits}`;
   }
   function whatsappUrl(phone, message){
     const phoneDigits = whatsappDigitsWithCountryCode(phone);
@@ -282,7 +287,9 @@
     productsCache = products;
     productsTableBodyEl.innerHTML = products.map(p => `
       <tr data-product-id="${p.id}">
-        <td><img class="admin-product-thumb" src="${imageFor(p)}" alt="${escapeHTML(p.name)}" width="44" height="44" loading="lazy"></td>
+        <td>${imageFor(p)
+          ? `<img class="admin-product-thumb" src="${escapeHTML(imageFor(p))}" alt="${escapeHTML(p.name)}" width="44" height="44" loading="lazy">`
+          : BOW_PLACEHOLDER}</td>
         <td>${escapeHTML(p.name)}</td>
         <td>${formatMoney(p.price)}</td>
         <td class="small" style="color:var(--ink-soft)">${escapeHTML(CATEGORY_LABELS[p.category] || p.category || "—")}</td>
@@ -306,6 +313,7 @@
   const epBadgeBestseller = document.getElementById("epBadgeBestseller");
   const epBadgeNew = document.getElementById("epBadgeNew");
   const epPreview = document.getElementById("epPreview");
+  const epPreviewPlaceholder = document.getElementById("epPreviewPlaceholder");
   const epMsg = document.getElementById("epMsg");
   const epSaveBtn = document.getElementById("epSaveBtn");
 
@@ -323,6 +331,18 @@
     return [epBadgeBestseller, epBadgeNew].filter(cb => cb.checked).map(cb => cb.value);
   }
 
+  /* Único lugar que mexe na pré-visualização do modal. Sem foto, esconde a
+     <img> e mostra o laço — em vez de deixar `src=""`, que o navegador
+     resolve como a própria URL da página e transforma numa requisição
+     inútil (e num ícone de imagem quebrada). */
+  function setPreviewPhoto(url){
+    const hasPhoto = Boolean(url);
+    if(hasPhoto) epPreview.src = url;
+    else epPreview.removeAttribute("src");
+    epPreview.classList.toggle("d-none", !hasPhoto);
+    epPreviewPlaceholder.classList.toggle("d-none", hasPhoto);
+  }
+
   function openEditModal(productId){
     const product = productsCache.find(p => p.id === productId);
     if(!product) return;
@@ -333,7 +353,7 @@
     epCategory.value = product.category || "";
     epBadgeBestseller.checked = (product.badges || []).includes("Mais vendido");
     epBadgeNew.checked = (product.badges || []).includes("Novo");
-    epPreview.src = imageFor(product);
+    setPreviewPhoto(imageFor(product));
     epMsg.textContent = "";
     epMsg.className = "small account-msg";
     epPhotoStatus.textContent = "";
@@ -379,7 +399,7 @@
     epMsg.className = "small account-msg";
 
     const reader = new FileReader();
-    reader.onload = () => { epPreview.src = reader.result; };
+    reader.onload = () => { setPreviewPhoto(reader.result); };
     reader.readAsDataURL(file);
 
     const id = Number(epId.value);
@@ -405,7 +425,7 @@
         // Upload falhou: volta a pré-visualização pro que já estava salvo,
         // e desfaz a seleção do arquivo pra não sugerir que ele "pegou".
         const product = productsCache.find(p => p.id === id);
-        epPreview.src = product ? imageFor(product) : "";
+        setPreviewPhoto(product ? imageFor(product) : "");
         epPhotoFile.value = "";
       })
       .finally(() => {
@@ -486,7 +506,11 @@
     const status = STATUS_LABELS[order.status] || { label: escapeHTML(order.status), cls:"order-status-pending" };
     const ref = order.reference;
     const isPaid = order.status === "pago";
-    const contactUrl = whatsappContactUrl(order);
+    // Só em pedido pago: a mensagem é de suporte pós-venda ("recebemos o seu
+    // pedido"), que seria falsa num carrinho abandonado ou num pagamento
+    // recusado/cancelado. Carrinho pendente já tem o botão de recuperação,
+    // com a mensagem certa, na seção "Carrinhos pendentes".
+    const contactUrl = isPaid ? whatsappContactUrl(order) : null;
 
     const itemsHtml = order.items.map(item => `
       <li class="d-flex justify-content-between gap-3">

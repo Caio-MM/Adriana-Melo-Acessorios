@@ -193,4 +193,8 @@ module.exports = {
   attachUser,
   requireAuth,
   requireAdmin,
+  // Exportado só para o login/cadastro poderem devolver `isAdmin` junto da
+  // resposta (o front decide para onde redirecionar). Continua sendo o
+  // servidor quem calcula — nada que o navegador mande é levado em conta.
+  isAdminEmail,
 };

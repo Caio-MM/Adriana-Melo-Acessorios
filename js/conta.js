@@ -32,6 +32,14 @@
     return data;
   }
 
+  /* Para onde ir depois de entrar/criar conta. `isAdmin` vem calculado pelo
+     servidor na própria resposta do login/cadastro (nunca é declarado pelo
+     navegador) — o painel em si continua protegido por auth.requireAdmin no
+     servidor, isso aqui é só a escolha do destino. */
+  function destinationFor(user){
+    return user?.isAdmin ? "admin.html" : "pedidos.html";
+  }
+
   const loginForm = document.getElementById("loginForm");
   const loginMsg = document.getElementById("loginMsg");
   loginForm?.addEventListener("submit", async (e) => {
@@ -40,15 +48,11 @@
     showMessage(loginMsg, "", null);
     setLoading(btn, true, "Entrando...");
     try{
-      await postJSON("/api/auth/login", {
+      const user = await postJSON("/api/auth/login", {
         email: document.getElementById("loginEmail").value.trim(),
         password: document.getElementById("loginPassword").value,
       });
-      // /api/auth/login não devolve isAdmin — reusa o checkSession() de
-      // js/auth.js (mesma fonte que decide "Painel admin" na navbar) em vez
-      // de duplicar a checagem aqui.
-      const user = await window.PLCAuth.checkSession();
-      window.location.href = user?.isAdmin ? "admin.html" : "pedidos.html";
+      window.location.href = destinationFor(user);
     }catch(err){
       showMessage(loginMsg, err.message, "error");
       setLoading(btn, false);
@@ -70,13 +74,12 @@
 
     setLoading(btn, true, "Criando conta...");
     try{
-      await postJSON("/api/auth/register", {
+      const user = await postJSON("/api/auth/register", {
         name: document.getElementById("registerName").value.trim(),
         email: document.getElementById("registerEmail").value.trim(),
         password,
       });
-      const user = await window.PLCAuth.checkSession();
-      window.location.href = user?.isAdmin ? "admin.html" : "pedidos.html";
+      window.location.href = destinationFor(user);
     }catch(err){
       showMessage(registerMsg, err.message, "error");
       setLoading(btn, false);

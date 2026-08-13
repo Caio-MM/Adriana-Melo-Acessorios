@@ -1012,7 +1012,9 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
     const passwordHash = await auth.hashPassword(password);
     const user = db.createUser({ name, email, passwordHash });
     auth.issueSession(res, user.id);
-    res.status(201).json({ id: user.id, name: user.name, email: user.email });
+    // isAdmin vai junto para o front saber para onde redirecionar sem
+    // precisar de uma segunda chamada a /api/auth/me logo em seguida.
+    res.status(201).json({ id: user.id, name: user.name, email: user.email, isAdmin: auth.isAdminEmail(user.email) });
   } catch (err) {
     console.error("Erro ao criar conta:", err);
     res.status(500).json({ error: "Não foi possível criar a conta agora. Tente novamente em instantes." });
@@ -1038,7 +1040,7 @@ app.post("/api/auth/login", authLimiter, async (req, res) => {
     }
 
     auth.issueSession(res, user.id);
-    res.json({ id: user.id, name: user.name, email: user.email });
+    res.json({ id: user.id, name: user.name, email: user.email, isAdmin: auth.isAdminEmail(user.email) });
   } catch (err) {
     console.error("Erro ao fazer login:", err);
     res.status(500).json({ error: "Não foi possível entrar agora. Tente novamente em instantes." });
