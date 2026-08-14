@@ -41,61 +41,99 @@
 
 <main class="account-main">
   <div class="container">
-    <div class="account-card mx-auto">
 
-      <div id="alreadyLoggedIn" class="d-none text-center py-3">
-        <i class="bi bi-check-circle" style="font-size:2rem; color:var(--blush-600)"></i>
-        <p class="mt-3 mb-1">Você já está logado como</p>
-        <p class="fw-semibold font-display mb-4" id="alreadyName" style="font-size:1.2rem"></p>
-        <a href="pedidos.html" id="alreadyPrimaryLink" class="btn-blush d-block w-100 mb-2">Ver meus pedidos</a>
-        <a href="index.html" class="btn-outline-blush d-block w-100">Voltar para a loja</a>
+    <div id="alreadyLoggedIn" class="account-card mx-auto d-none text-center py-3">
+      <i class="bi bi-check-circle" style="font-size:2rem; color:var(--blush-600)"></i>
+      <p class="mt-3 mb-1">Você já está logado como</p>
+      <p class="fw-semibold font-display mb-4" id="alreadyName" style="font-size:1.2rem"></p>
+      <a href="pedidos.html" id="alreadyPrimaryLink" class="btn-blush d-block w-100 mb-2">Ver meus pedidos</a>
+      <a href="index.html" class="btn-outline-blush d-block w-100">Voltar para a loja</a>
+    </div>
+
+    <!-- data-mode ("login" | "register") é o único estado desta tela: o CSS
+         posiciona o painel do laço e revela o formulário certo a partir dele,
+         e js/conta.js só troca esse atributo. -->
+    <div id="authForms" class="auth-shell" data-mode="login">
+
+      <!-- Painel decorativo: desliza para a direita no cadastro e para a
+           esquerda no login (só a partir de lg; no mobile vira o topo fixo). -->
+      <div class="auth-deco">
+        <svg class="auth-deco-motif auth-deco-motif-1" aria-hidden="true"><use href="#bow-shape"/></svg>
+        <svg class="auth-deco-motif auth-deco-motif-2" aria-hidden="true"><use href="#bow-shape"/></svg>
+
+        <span class="auth-bow-wrap" aria-hidden="true">
+          <svg class="auth-bow"><use href="#bow-shape"/></svg>
+        </span>
+
+        <p class="auth-deco-mobile-title d-lg-none">Sua conta Adriana Melo</p>
+
+        <div class="auth-deco-copies">
+          <div class="auth-deco-copy" data-deco-for="login">
+            <p class="auth-deco-script">é a sua primeira vez por aqui?</p>
+            <h2 class="auth-deco-title">Ainda não tem conta?</h2>
+            <p class="auth-deco-text">Crie a sua e acompanhe cada pedido de perto.</p>
+            <button type="button" class="auth-switch" data-auth-mode="register">Criar minha conta</button>
+          </div>
+          <div class="auth-deco-copy" data-deco-for="register">
+            <p class="auth-deco-script">que bom te ver de novo</p>
+            <h2 class="auth-deco-title">Já tem uma conta?</h2>
+            <p class="auth-deco-text">Entre para ver seus pedidos e novidades.</p>
+            <button type="button" class="auth-switch" data-auth-mode="login">Entrar</button>
+          </div>
+        </div>
       </div>
 
-      <div id="authForms">
-        <ul class="nav account-tabs mb-4" id="authTabs" role="tablist">
-          <li class="nav-item flex-fill" role="presentation">
-            <button class="nav-link active w-100" id="tab-login-btn" data-bs-toggle="pill" data-bs-target="#tab-login" type="button" role="tab" aria-selected="true">Entrar</button>
-          </li>
-          <li class="nav-item flex-fill" role="presentation">
-            <button class="nav-link w-100" id="tab-register-btn" data-bs-toggle="pill" data-bs-target="#tab-register" type="button" role="tab" aria-selected="false">Criar conta</button>
-          </li>
-        </ul>
+      <!-- No mobile não há espaço para o painel deslizante lateral: a troca
+           passa a ser por abas, com o formulário entrando em fade/slide. -->
+      <div class="auth-tabs d-lg-none" role="tablist">
+        <button type="button" class="auth-tab" role="tab" aria-selected="true" data-auth-mode="login">Entrar</button>
+        <button type="button" class="auth-tab" role="tab" aria-selected="false" data-auth-mode="register">Criar conta</button>
+      </div>
 
-        <div class="tab-content">
-          <div class="tab-pane fade show active" id="tab-login" role="tabpanel">
-            <form id="loginForm" novalidate>
-              <div class="mb-3">
-                <label class="form-label small fw-semibold" for="loginEmail">E-mail</label>
-                <input type="email" class="form-control" id="loginEmail" required autocomplete="email">
-              </div>
-              <div class="mb-3">
-                <label class="form-label small fw-semibold" for="loginPassword">Senha</label>
-                <input type="password" class="form-control" id="loginPassword" required autocomplete="current-password" minlength="8">
-              </div>
-              <button class="btn-blush w-100" type="submit" id="loginSubmitBtn">Entrar</button>
-              <div class="small mt-2 account-msg" id="loginMsg" role="alert"></div>
-            </form>
-          </div>
+      <div class="auth-pane auth-pane-login">
+        <div class="auth-form">
+          <p class="auth-eyebrow">bem-vinda de volta</p>
+          <h1 class="auth-title">Entrar</h1>
+          <p class="auth-subtitle">Acesse sua conta para acompanhar seus pedidos.</p>
+          <form id="loginForm" novalidate>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold" for="loginEmail">E-mail</label>
+              <input type="email" class="form-control" id="loginEmail" required autocomplete="email">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold" for="loginPassword">Senha</label>
+              <input type="password" class="form-control" id="loginPassword" required autocomplete="current-password" minlength="8">
+            </div>
+            <button class="btn-blush w-100" type="submit" id="loginSubmitBtn">Entrar</button>
+            <div class="small mt-2 account-msg" id="loginMsg" role="alert"></div>
+            <p class="auth-foot"><i class="bi bi-shield-check"></i>Seus dados ficam protegidos.</p>
+          </form>
+        </div>
+      </div>
 
-          <div class="tab-pane fade" id="tab-register" role="tabpanel">
-            <form id="registerForm" novalidate>
-              <div class="mb-3">
-                <label class="form-label small fw-semibold" for="registerName">Nome completo</label>
-                <input type="text" class="form-control" id="registerName" required autocomplete="name" minlength="2">
-              </div>
-              <div class="mb-3">
-                <label class="form-label small fw-semibold" for="registerEmail">E-mail</label>
-                <input type="email" class="form-control" id="registerEmail" required autocomplete="email">
-              </div>
-              <div class="mb-3">
-                <label class="form-label small fw-semibold" for="registerPassword">Senha</label>
-                <input type="password" class="form-control" id="registerPassword" required autocomplete="new-password" minlength="8">
-                <div class="form-text">Mínimo de 8 caracteres.</div>
-              </div>
-              <button class="btn-blush w-100" type="submit" id="registerSubmitBtn">Criar conta</button>
-              <div class="small mt-2 account-msg" id="registerMsg" role="alert"></div>
-            </form>
-          </div>
+      <div class="auth-pane auth-pane-register">
+        <div class="auth-form">
+          <p class="auth-eyebrow">prazer em te conhecer</p>
+          <h1 class="auth-title">Criar conta</h1>
+          <p class="auth-subtitle">Leva menos de um minuto — e seus pedidos ficam salvos.</p>
+          <form id="registerForm" novalidate>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold" for="registerName">Nome completo</label>
+              <input type="text" class="form-control" id="registerName" required autocomplete="name" minlength="2">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold" for="registerEmail">E-mail</label>
+              <input type="email" class="form-control" id="registerEmail" required autocomplete="email">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold" for="registerPassword">Senha</label>
+              <input type="password" class="form-control" id="registerPassword" required autocomplete="new-password" minlength="8">
+              <div class="form-text">Mínimo de 8 caracteres.</div>
+            </div>
+            <button class="btn-blush w-100" type="submit" id="registerSubmitBtn">Criar minha conta</button>
+            <div class="small mt-2 account-msg" id="registerMsg" role="alert"></div>
+            <p class="auth-foot"><i class="bi bi-shield-check"></i>Seus dados ficam protegidos.</p>
+          </form>
         </div>
       </div>
 

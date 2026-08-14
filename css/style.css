@@ -818,6 +818,254 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .account-tabs .nav-link.active{ background:var(--blush-600); color:#fff; }
 .account-msg:empty{ display:none; }
 
+/* ============ TELA DE LOGIN/CADASTRO (painel deslizante) ============
+   Todo o estado da tela é o atributo data-mode ("login" | "register") em
+   #authForms.auth-shell — js/conta.js só troca esse valor e o CSS abaixo
+   move o painel do laço e revela o formulário correspondente.
+
+   A partir de lg os dois formulários ocupam metades opostas e o painel
+   decorativo (z-index maior) desliza por cima para cobrir o inativo:
+     login    → painel à ESQUERDA,  formulário de entrar à direita;
+     register → painel à DIREITA,   formulário de cadastro à esquerda.
+   Abaixo de lg não há largura para isso: tudo volta ao fluxo normal, o
+   laço vira um topo fixo e a troca passa a ser por abas. */
+.auth-shell{
+  position:relative; overflow:hidden;
+  max-width:980px; margin:0 auto;
+  background:var(--white); border:1px solid var(--blush-100);
+  border-radius:var(--radius-lg); box-shadow:var(--shadow-soft);
+}
+
+/* ---- Painel decorativo ---- */
+/* Gradiente de 3 paradas (em vez de 2): a faixa intermediária evita a
+   transição "chapada" e dá volume à coluna, que é estreita e por isso
+   mostra pouco do degradê. */
+.auth-deco{
+  position:relative; overflow:hidden; isolation:isolate;
+  background:linear-gradient(150deg, var(--blush-500) 0%, var(--blush-600) 45%, var(--blush-700) 100%);
+  color:#fff; text-align:center;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:2.25rem 1.75rem;
+}
+/* Luz ambiente no topo e sombra no pé — profundidade sem pesar a paleta. */
+.auth-deco::before{
+  content:""; position:absolute; z-index:-1;
+  top:-25%; left:-30%; width:160%; height:80%;
+  background:radial-gradient(ellipse at 50% 40%, rgba(255,255,255,.22), rgba(255,255,255,0) 65%);
+  pointer-events:none;
+}
+.auth-deco::after{
+  content:""; position:absolute; z-index:-1; inset:auto 0 0 0; height:45%;
+  background:linear-gradient(to top, rgba(84,41,60,.28), rgba(84,41,60,0));
+  pointer-events:none;
+}
+/* Laços de fundo em marca d'água — mesmo recurso já usado em .plc-cta. */
+.auth-deco-motif{
+  position:absolute; z-index:-1; opacity:.13; color:#fff;
+  fill:currentColor; pointer-events:none;
+}
+.auth-deco-motif-1{ top:-14px; right:-26px; width:112px; height:78px; transform:rotate(-18deg); }
+.auth-deco-motif-2{ bottom:-20px; left:-30px; width:130px; height:91px; transform:rotate(14deg); }
+
+.auth-bow-wrap{
+  position:relative; display:inline-flex; align-items:center; justify-content:center;
+  margin-bottom:1.35rem;
+}
+/* Brilho pulsante atrás do laço — puramente decorativo. */
+.auth-bow-wrap::before{
+  content:""; position:absolute; left:50%; top:50%;
+  width:250px; height:250px; border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle, rgba(255,255,255,.34), rgba(255,255,255,0) 68%);
+  animation:auth-glow 4.5s ease-in-out infinite;
+}
+/* Anel fino ao redor do laço: dá um "selo" de marca e ancora o elemento,
+   que sozinho flutuaria solto no meio da coluna. */
+.auth-bow-wrap::after{
+  content:""; position:absolute; left:50%; top:50%;
+  width:172px; height:172px; border-radius:50%;
+  transform:translate(-50%,-50%);
+  border:1px solid rgba(255,255,255,.28);
+}
+.auth-bow{
+  position:relative;
+  width:124px; height:87px; fill:currentColor; color:#fff;
+  filter:drop-shadow(0 16px 30px rgba(84,41,60,.4));
+  animation:auth-bow-float 4.5s ease-in-out infinite;
+}
+/* Respiração/flutuação contínua do laço. Só transform/opacity, e a regra
+   global de prefers-reduced-motion (animation:none) já desliga tudo. */
+@keyframes auth-bow-float{
+  0%, 100%{ transform:translateY(0) rotate(-1.5deg) scale(1); }
+  50%{ transform:translateY(-9px) rotate(1.5deg) scale(1.04); }
+}
+@keyframes auth-glow{
+  0%, 100%{ opacity:.5; transform:translate(-50%,-50%) scale(.9); }
+  50%{ opacity:1; transform:translate(-50%,-50%) scale(1.1); }
+}
+/* Grid de uma célula só: os dois textos ficam empilhados no mesmo espaço
+   (então a altura acompanha o maior) e alternam por opacidade. */
+.auth-deco-copies{ display:grid; width:100%; }
+.auth-deco-copy{
+  grid-area:1 / 1;
+  display:flex; flex-direction:column; align-items:center;
+  opacity:0; visibility:hidden; transform:translateY(10px);
+  transition:opacity .4s ease, transform .4s ease, visibility .4s;
+}
+.auth-shell[data-mode="login"] .auth-deco-copy[data-deco-for="login"],
+.auth-shell[data-mode="register"] .auth-deco-copy[data-deco-for="register"]{
+  opacity:1; visibility:visible; transform:translateY(0);
+  transition-delay:.15s;
+}
+.auth-deco-script{
+  font-family:var(--font-script); font-size:1.3rem;
+  color:var(--blush-150); margin-bottom:.1rem;
+}
+.auth-deco-title{
+  font-family:var(--font-display); font-size:1.4rem; color:#fff;
+  margin-bottom:.5rem; letter-spacing:-0.01em;
+}
+.auth-deco-text{
+  font-size:.9rem; color:rgba(255,255,255,.88); line-height:1.6;
+  max-width:290px; margin-bottom:0;
+}
+.auth-deco-mobile-title{
+  font-family:var(--font-display); font-size:1.15rem; color:#fff; margin-bottom:0;
+}
+.auth-switch{
+  margin-top:1.15rem;
+  background:transparent; color:#fff;
+  border:1.5px solid rgba(255,255,255,.6); border-radius:999px;
+  padding:.55rem 1.5rem; font-weight:600; font-size:.88rem;
+  transition:background .25s ease, border-color .25s ease, transform .25s ease;
+}
+.auth-switch:hover{ background:rgba(255,255,255,.16); border-color:#fff; transform:translateY(-2px); }
+.auth-switch:active{ transform:translateY(0) scale(.97); }
+/* O foco global é blush-600, que some contra o gradiente rosa deste painel. */
+.auth-switch:focus-visible{ outline:3px solid #fff; outline-offset:3px; }
+
+/* ---- Formulários ---- */
+.auth-form{ width:100%; max-width:360px; margin:0 auto; }
+.auth-eyebrow{
+  font-family:var(--font-script); font-size:1.35rem; color:var(--blush-700);
+  margin-bottom:.05rem;
+}
+.auth-title{
+  font-family:var(--font-display); font-size:1.9rem;
+  letter-spacing:-0.015em; margin-bottom:.3rem;
+}
+.auth-subtitle{ color:var(--ink-soft); font-size:.88rem; margin-bottom:1.6rem; }
+.auth-form .form-label{ color:var(--ink); margin-bottom:.35rem; }
+.auth-pane .form-control{
+  border:1.5px solid var(--blush-150); border-radius:14px;
+  padding:.78rem 1rem; font-size:.92rem; background:var(--cream);
+  transition:border-color .25s ease, background .25s ease;
+}
+.auth-pane .form-control:hover{ border-color:var(--blush-300); }
+/* box-shadow:none tira o anel azul padrão do Bootstrap; quem marca o foco
+   aqui é o outline global em blush-600 (mesmo padrão do resto do site). */
+.auth-pane .form-control:focus{
+  border-color:var(--blush-500); background:var(--white); box-shadow:none;
+}
+/* CTA do formulário reflete o gradiente do painel do laço — os dois lados
+   passam a ler como uma peça só. */
+.auth-pane .btn-blush{
+  padding:.82rem 1.4rem; font-size:.95rem; border:none;
+  background:linear-gradient(135deg, var(--blush-500), var(--blush-700));
+  box-shadow:0 12px 24px -14px rgba(192,84,128,.9);
+}
+.auth-pane .btn-blush:hover{
+  background:linear-gradient(135deg, var(--blush-600), var(--blush-700));
+}
+.auth-foot{
+  display:flex; align-items:center; justify-content:center; gap:.4rem;
+  margin-top:1.15rem; font-size:.76rem; color:var(--ink-soft);
+}
+/* Entrada escalonada do conteúdo do formulário: a regra volta a casar a
+   cada troca de data-mode, então a animação reinicia sozinha na transição. */
+.auth-shell[data-mode="login"] .auth-pane-login .auth-form > *,
+.auth-shell[data-mode="register"] .auth-pane-register .auth-form > *{
+  animation:auth-rise .55s cubic-bezier(.22,.9,.3,1) both;
+}
+.auth-form > *:nth-child(2){ animation-delay:.06s; }
+.auth-form > *:nth-child(3){ animation-delay:.12s; }
+.auth-form > *:nth-child(4){ animation-delay:.18s; }
+@keyframes auth-rise{
+  from{ opacity:0; transform:translateY(12px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+/* ---- Abas (só abaixo de lg) ---- */
+.auth-tabs{
+  display:flex; gap:.4rem; margin:1.35rem 1.4rem 0;
+  background:var(--blush-50); padding:.35rem; border-radius:999px;
+}
+.auth-tab{
+  flex:1 1 0; border:none; background:transparent; border-radius:999px;
+  color:var(--ink-soft); font-weight:600; font-size:.88rem; padding:.55rem .8rem;
+  transition:background .25s ease, color .25s ease;
+}
+.auth-tab[aria-selected="true"]{ background:var(--blush-600); color:#fff; }
+
+/* ---- Desktop: painel deslizante ---- */
+@media (min-width: 992px){
+  .auth-shell{ min-height:580px; }
+  .auth-deco{
+    position:absolute; top:0; left:0; z-index:2;
+    width:30%; height:100%;
+    padding:2.5rem 1.5rem;
+    transform:translateX(0);
+    transition:transform .6s cubic-bezier(.65, 0, .35, 1);
+  }
+  /* translateX é relativo à largura do próprio painel (30% do container),
+     então percorrer os 70% restantes equivale a 70/30 da largura dele. */
+  .auth-shell[data-mode="register"] .auth-deco{ transform:translateX(calc(100% * 70 / 30)); }
+
+  /* Coluna estreita: título/texto menores para não quebrarem em muitas linhas.
+     O laço NÃO encolhe aqui — ele é o herói visual do painel. */
+  .auth-deco-title{ font-size:1.2rem; }
+  .auth-deco-text{ font-size:.84rem; max-width:none; }
+  .auth-deco-script{ font-size:1.15rem; }
+  .auth-switch{ padding:.5rem 1.15rem; font-size:.84rem; }
+
+  .auth-pane{
+    position:absolute; top:0; height:100%; width:70%;
+    display:flex; align-items:center; justify-content:center;
+    padding:2.5rem 2.75rem;
+    opacity:0; visibility:hidden;
+    /* Atrasado para o formulário só aparecer quando o painel já saiu da
+       frente — senão ele "pisca" por baixo do laço no meio do caminho. */
+    transition:opacity .45s ease .18s, visibility .45s .18s;
+  }
+  .auth-pane-login{ right:0; }
+  .auth-pane-register{ left:0; }
+  .auth-shell[data-mode="login"] .auth-pane-login,
+  .auth-shell[data-mode="register"] .auth-pane-register{ opacity:1; visibility:visible; }
+}
+
+/* ---- Mobile/tablet: laço no topo + abas ---- */
+@media (max-width: 991.98px){
+  .auth-shell{ max-width:460px; }
+  .auth-bow{ width:66px; height:46px; }
+  .auth-bow-wrap{ margin-bottom:.75rem; }
+  .auth-bow-wrap::before{ width:140px; height:140px; }
+  /* O painel vira uma faixa baixa aqui: o anel não caberia sem cruzar o
+     título logo abaixo do laço. */
+  .auth-bow-wrap::after{ display:none; }
+  /* Sem o painel lateral, esses textos apenas repetiriam o que as abas já
+     dizem — no lugar deles fica só o título curto. */
+  .auth-deco-copies{ display:none; }
+  .auth-pane{ display:none; padding:1.5rem 1.4rem 1.9rem; }
+  .auth-shell[data-mode="login"] .auth-pane-login,
+  .auth-shell[data-mode="register"] .auth-pane-register{
+    display:block; animation:auth-pane-in .45s ease;
+  }
+}
+@keyframes auth-pane-in{
+  from{ opacity:0; transform:translateY(14px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
 .orders-wrap{ max-width:640px; }
 .orders-list{ display:flex; flex-direction:column; gap:1rem; }
 .order-card{

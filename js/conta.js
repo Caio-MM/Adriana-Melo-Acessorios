@@ -40,6 +40,40 @@
     return user?.isAdmin ? "admin.html" : "pedidos.html";
   }
 
+  /* =====================================================================
+     PAINEL DESLIZANTE — alternar entre "Entrar" e "Criar conta".
+     Todo o visual (posição do painel do laço, qual formulário aparece,
+     aba ativa) sai do atributo data-mode no .auth-shell, via CSS. Aqui só
+     trocamos esse valor e cuidamos do que o CSS não faz: aria-selected das
+     abas e levar o foco para o primeiro campo do formulário que entrou.
+  ===================================================================== */
+  const authShell = document.getElementById("authForms");
+  const modeButtons = document.querySelectorAll("[data-auth-mode]");
+
+  function setAuthMode(mode, moveFocus){
+    if(!authShell || authShell.dataset.mode === mode) return;
+    authShell.dataset.mode = mode;
+    modeButtons.forEach((btn) => {
+      // Só as abas têm role="tab"; o botão do painel decorativo não.
+      if(btn.getAttribute("role") === "tab"){
+        btn.setAttribute("aria-selected", String(btn.dataset.authMode === mode));
+      }
+    });
+    if(!moveFocus) return;
+    // Sem isso o foco fica no botão que sumiu/trocou de rótulo, e quem usa
+    // teclado teria de tabular a tela inteira de novo. O atraso espera a
+    // transição do CSS: enquanto o painel está visibility:hidden o campo
+    // não é focável.
+    const firstField = mode === "login"
+      ? document.getElementById("loginEmail")
+      : document.getElementById("registerName");
+    setTimeout(() => firstField?.focus(), 650);
+  }
+
+  modeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => setAuthMode(btn.dataset.authMode, true));
+  });
+
   const loginForm = document.getElementById("loginForm");
   const loginMsg = document.getElementById("loginMsg");
   loginForm?.addEventListener("submit", async (e) => {
