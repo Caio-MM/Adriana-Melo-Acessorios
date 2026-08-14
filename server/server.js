@@ -1752,6 +1752,43 @@ app.post("/api/admin/orders/:reference/generate-label", auth.requireAdmin, async
 // existe.css ou /api/rota-que-nao-existe.
 app.use(sendNotFound);
 
+/* =========================================================================
+   TRATAMENTO DE ERRO — última camada (tem que vir DEPOIS de tudo)
+   -------------------------------------------------------------------------
+   Sem isto, um erro não capturado (ex.: corpo JSON malformado, que o
+   express.json rejeita antes de chegar em qualquer rota) cai no handler
+   padrão do Express, que devolve uma página HTML com o STACK TRACE
+   completo — caminhos absolutos do servidor, nome de usuário do sistema,
+   versões das bibliotecas. Isso é entrega de informação para um atacante.
+
+   Aqui o stack vai só para o log do servidor (onde a lojista/dev vê), e o
+   cliente recebe uma resposta genérica: JSON para /api/*, texto para o
+   resto. Assinatura de 4 argumentos (err primeiro) é o que faz o Express
+   reconhecer isto como error handler.
+========================================================================= */
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  // Corpo malformado é erro do cliente (400), não falha do servidor (500) —
+  // e não merece nem entrar no log como se fosse um bug.
+  const isBadJson = err.type === "entity.parse.failed" || err instanceof SyntaxError;
+  const status = isBadJson ? 400 : (err.status || err.statusCode || 500);
+
+  if(!isBadJson){
+    console.error("Erro não tratado:", err);
+  }
+  // Resposta já iniciada (raro): delega ao Express fechar a conexão.
+  if(res.headersSent) return next(err);
+
+  const message = isBadJson
+    ? "Requisição malformada."
+    : "Erro interno. Tente novamente em instantes.";
+
+  if(req.path.startsWith("/api/")){
+    return res.status(status).json({ error: message });
+  }
+  return res.status(status).type("text/plain").send(message);
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
 });
