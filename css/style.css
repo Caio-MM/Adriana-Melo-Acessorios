@@ -551,17 +551,47 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   background-size:14px 2px; background-repeat:repeat-x; z-index:0;
 }
  
-/* ============ TESTIMONIALS ============ */
+/* ============ TESTIMONIALS ============
+   #testiCarousel usa .carousel-fade (crossfade) em vez do slide padrão do
+   Bootstrap: com "slide" os dois cards ficam lado a lado por um instante
+   durante a transição, e como cada um tem largura própria (max-width:680px,
+   texto podendo ter alturas diferentes) dava a impressão de dois cards
+   "colados" com texto cortado. O fade nunca desloca os cards, só cruza a
+   opacidade — sem esse artefato, e mais elegante para uma citação. */
 .testi-card{
-  background:var(--white); border-radius:var(--radius-lg); padding:2.4rem 2.2rem;
+  position:relative; overflow:hidden;
+  background:var(--white); border-radius:var(--radius-lg); padding:2.6rem 2.2rem 2.4rem;
   border:1px solid var(--blush-100); max-width:680px; margin:0 auto; text-align:center;
 }
-.testi-quote{ font-family:var(--font-display); font-style:italic; font-size:1.25rem; color:var(--ink); line-height:1.6; }
-.testi-avatar{
-  width:52px; height:52px; border-radius:50%; background:var(--blush-500); color:#fff;
-  display:flex; align-items:center; justify-content:center; font-weight:700; margin:1.3rem auto .6rem;
+/* Aspas decorativas em marca d'água — puramente ornamental (aria-hidden via
+   ::before não entra na árvore de acessibilidade), fica atrás do texto. */
+.testi-card::before{
+  content:"\201C";
+  position:absolute; top:-.4rem; left:50%; transform:translateX(-50%);
+  font-family:var(--font-display); font-size:7rem; line-height:1;
+  color:var(--blush-100); z-index:0; pointer-events:none;
 }
-.carousel-indicators [data-bs-target]{ background:var(--blush-400,#EA8FB4); width:8px; height:8px; border-radius:50%; }
+.testi-stars{
+  position:relative; z-index:1;
+  display:flex; align-items:center; justify-content:center; gap:.2rem;
+  color:var(--gold-500); font-size:.8rem; margin-bottom:.9rem;
+}
+.testi-quote{
+  position:relative; z-index:1;
+  font-family:var(--font-display); font-style:italic; font-size:1.25rem; color:var(--ink); line-height:1.6;
+}
+.testi-avatar{
+  position:relative; z-index:1;
+  width:52px; height:52px; border-radius:50%; color:#fff; font-weight:700;
+  background:linear-gradient(135deg, var(--blush-500), var(--blush-700));
+  box-shadow:0 0 0 4px var(--blush-50);
+  display:flex; align-items:center; justify-content:center; margin:1.4rem auto .7rem;
+}
+.carousel-indicators [data-bs-target]{
+  background:var(--blush-300); width:8px; height:8px; border-radius:50%;
+  transition:background .25s ease, width .25s ease;
+}
+.carousel-indicators [data-bs-target].active{ background:var(--blush-700); width:22px; border-radius:999px; }
  
 /* ============ NEWSLETTER / CTA ============ */
 .plc-cta{
