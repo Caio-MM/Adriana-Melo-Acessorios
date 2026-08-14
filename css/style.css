@@ -597,6 +597,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .plc-cta input.form-control{
   border-radius:999px; border:none; padding:.8rem 1.2rem;
 }
+/* Código do cupom devolvido pela inscrição — precisa saltar aos olhos, é o
+   que a cliente vai copiar para o carrinho. */
+.newsletter-coupon{
+  display:inline-block;
+  background:rgba(255,255,255,.2); border:1px dashed rgba(255,255,255,.75);
+  border-radius:8px; padding:.1rem .5rem; margin:0 .1rem;
+  color:#fff; font-weight:700; letter-spacing:.08em;
+}
 .plc-cta .btn-blush{ background:var(--ink); border-color:var(--ink); }
 .plc-cta .btn-blush:hover{ background:#3d1e2c; }
  

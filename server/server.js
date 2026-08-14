@@ -970,15 +970,45 @@ app.post("/api/webhook", async (req, res) => {
    qualquer pessoa pode chamar a API diretamente (curl/Postman) pulando o
    HTML. Por isso validamos e limitamos tudo de novo aqui.
 ========================================================================= */
-app.post("/api/newsletter", strictLimiter, (req, res) => {
-  const email = (req.body?.email || "").trim();
-  if(!auth.isValidEmail(email)){
+// Cupom prometido pelo bloco "Ganhe 10% na primeira compra" da home. É uma
+// linha de verdade na tabela `coupons` (semeada em db.js) — a mesma que o
+// checkout valida — e não um código solto escrito só aqui.
+const WELCOME_COUPON_CODE = "BEMVINDA10";
+
+app.post("/api/newsletter", strictLimiter, async (req, res) => {
+  const emailAddress = auth.normalizeEmail(req.body?.email);
+  if(!auth.isValidEmail(emailAddress)){
     return res.status(400).json({ error: "E-mail inválido." });
   }
-  // TODO: salvar em uma lista (ex.: tabela `newsletter_subscribers`) e/ou
-  // integrar com um provedor de e-mail marketing.
-  console.log("Nova inscrição na newsletter:", email);
-  res.json({ ok: true });
+
+  db.addNewsletterSubscriber(emailAddress);
+
+  const coupon = db.getCoupon(WELCOME_COUPON_CODE);
+  if(!coupon){
+    // Cupom apagado no painel: ainda registra a inscrição, mas não promete
+    // um desconto que o checkout recusaria.
+    console.warn(`Cupom de boas-vindas ${WELCOME_COUPON_CODE} não existe — inscrição salva sem cupom.`);
+    return res.json({ ok: true, coupon: null });
+  }
+
+  // O código também volta na resposta e é mostrado na tela. Assim a cliente
+  // recebe o que foi prometido mesmo se o e-mail falhar (SMTP fora do ar,
+  // caixa cheia, endereço com erro de digitação) — o e-mail vira reforço,
+  // não o único caminho.
+  let emailed = false;
+  try {
+    await email.sendWelcomeCouponEmail({
+      to: emailAddress,
+      couponCode: coupon.code,
+      percentOff: coupon.percent_off,
+      shopUrl: `${CLIENT_ORIGIN}/index.html#colecoes`,
+    });
+    emailed = true;
+  } catch (err) {
+    console.error("Falha ao enviar o cupom de boas-vindas por e-mail:", err.message);
+  }
+
+  res.json({ ok: true, coupon: coupon.code, percentOff: coupon.percent_off, emailed });
 });
 
 app.post("/api/contact", strictLimiter, (req, res) => {

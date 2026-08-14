@@ -89,6 +89,13 @@ db.exec(`
   -- vez que o servidor sobe com um banco novo/antigo sem essa tabela (ver
   -- seedDefaultCoupon logo abaixo) — depois disso, este banco é a única
   -- fonte da verdade pra cupom (nada mais fica hardcoded em server.js).
+  -- Quem pediu o cupom de boas-vindas na home. Antes o e-mail só ia para o
+  -- console e se perdia — a lista da loja nascia e morria no log.
+  CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+    email      TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS coupons (
     code         TEXT PRIMARY KEY,
     percent_off  REAL NOT NULL,
@@ -317,6 +324,24 @@ function upsertProductOverride(productId, fields) {
 }
 
 /* ------------------------------ COUPONS ------------------------------ */
+/* ------------------------- NEWSLETTER ------------------------- */
+// OR IGNORE: pedir o cupom de novo com o mesmo e-mail não é erro — só não
+// duplica a linha (e a data original de inscrição é preservada).
+const stmtInsertSubscriber = db.prepare(
+  `INSERT OR IGNORE INTO newsletter_subscribers (email, created_at) VALUES (?, ?)`
+);
+const stmtListSubscribers = db.prepare(
+  `SELECT * FROM newsletter_subscribers ORDER BY created_at DESC`
+);
+
+function addNewsletterSubscriber(email) {
+  stmtInsertSubscriber.run(email, Date.now());
+}
+function listNewsletterSubscribers() {
+  return stmtListSubscribers.all();
+}
+
+/* -------------------------- CUPONS -------------------------- */
 const stmtGetCoupon = db.prepare(`SELECT * FROM coupons WHERE code = ?`);
 const stmtListCoupons = db.prepare(`SELECT * FROM coupons ORDER BY created_at DESC`);
 const stmtInsertCoupon = db.prepare(
@@ -362,6 +387,8 @@ module.exports = {
   getProductOverride,
   listProductOverrides,
   upsertProductOverride,
+  addNewsletterSubscriber,
+  listNewsletterSubscribers,
   getCoupon,
   listCoupons,
   createCoupon,

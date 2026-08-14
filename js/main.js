@@ -1116,8 +1116,19 @@
     btn.disabled = true;
     msg.textContent = "Enviando...";
     try{
-      await postForm("/api/newsletter", { email });
-      msg.textContent = "Pronto! Em instantes o cupom chega no seu e-mail. 🎀";
+      const data = await postForm("/api/newsletter", { email });
+      // O cupom aparece na tela, não só no e-mail: antes a mensagem prometia
+      // um e-mail que nem chegava a ser enviado. Mostrando o código aqui, a
+      // promessa se cumpre na hora e o e-mail é só a cópia de segurança.
+      if(data.coupon){
+        const emailLine = data.emailed
+          ? "Também enviamos no seu e-mail."
+          : "Anote o código — use no carrinho antes de finalizar.";
+        msg.innerHTML = `Pronto! Seu cupom de ${escapeHTML(String(data.percentOff))}% é `
+          + `<strong class="newsletter-coupon">${escapeHTML(data.coupon)}</strong> 🎀<br>${emailLine}`;
+      } else {
+        msg.textContent = "Pronto! Você está na nossa lista de novidades. 🎀";
+      }
       input.value = "";
     }catch(err){
       console.error("Falha ao inscrever na newsletter:", err);

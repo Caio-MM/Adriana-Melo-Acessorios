@@ -182,4 +182,50 @@ async function sendPasswordResetEmail({ to, name, resetUrl, expiresInMinutes }) 
   await sendEmail({ to, subject, text, html });
 }
 
-module.exports = { formatOrderEmail, sendEmail, notifyOwnerOfPaidOrder, sendPasswordResetEmail };
+/**
+ * Cupom de boas-vindas, enviado para quem se inscreve na newsletter da home.
+ * Propaga erro — quem chama (server.js) trata como melhor esforço, porque a
+ * inscrição em si já foi gravada e o código também volta na resposta HTTP.
+ */
+async function sendWelcomeCouponEmail({ to, couponCode, percentOff, shopUrl }) {
+  const subject = `🎀 Seu cupom de ${percentOff}% — Adriana Melo Acessórios`;
+
+  const text = [
+    "Obrigada por se cadastrar!",
+    "",
+    `Seu cupom de ${percentOff}% de desconto na primeira compra:`,
+    couponCode,
+    "",
+    "É só usar no carrinho, no campo de cupom, antes de finalizar o pedido.",
+    "",
+    `Ver a coleção: ${shopUrl}`,
+  ].join("\n");
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#3a2230;max-width:480px;margin:0 auto">
+      <h2 style="color:#c05480;margin-bottom:4px">🎀 Obrigada por se cadastrar!</h2>
+      <p style="margin:0 0 18px">Aqui está o seu cupom de <strong>${escapeHTML(String(percentOff))}% de desconto</strong> na primeira compra:</p>
+      <p style="margin:0 0 18px;text-align:center">
+        <span style="display:inline-block;padding:14px 28px;background:#fde7ef;border:2px dashed #c05480;border-radius:14px;font-size:22px;font-weight:bold;letter-spacing:2px;color:#c05480">
+          ${escapeHTML(couponCode)}
+        </span>
+      </p>
+      <p style="margin:0 0 20px">É só usar no carrinho, no campo de cupom, antes de finalizar o pedido.</p>
+      <p style="margin:0 0 16px">
+        <a href="${escapeHTML(shopUrl)}" style="display:inline-block;padding:10px 20px;background:#c05480;color:#fff;text-decoration:none;border-radius:999px;font-weight:600">
+          Ver a coleção
+        </a>
+      </p>
+    </div>
+  `;
+
+  await sendEmail({ to, subject, text, html });
+}
+
+module.exports = {
+  formatOrderEmail,
+  sendEmail,
+  notifyOwnerOfPaidOrder,
+  sendPasswordResetEmail,
+  sendWelcomeCouponEmail,
+};
