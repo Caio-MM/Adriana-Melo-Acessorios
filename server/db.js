@@ -126,6 +126,14 @@ ensureColumn("orders", "pix_discount", "REAL NOT NULL DEFAULT 0");
 ensureColumn("orders", "payment_method", "TEXT NOT NULL DEFAULT 'card'");
 ensureColumn("product_overrides", "category", "TEXT");
 ensureColumn("product_overrides", "badges", "TEXT");
+// Telefone só com dígitos, copiado do endereço na hora de gravar o pedido.
+// É o único identificador que sobra para quem compra sem conta — sem uma
+// coluna própria, casar "(61) 98274-9808" com "61982749808" dentro do JSON
+// do endereço seria frágil demais para valer como controle de uso de cupom.
+ensureColumn("orders", "customer_phone", "TEXT");
+// Cupom de uso único por cliente (ex.: o de boas-vindas). Fica no cupom, e
+// não no código, para a loja poder ter os dois tipos.
+ensureColumn("coupons", "once_per_customer", "INTEGER NOT NULL DEFAULT 0");
 
 // Garante que o cupom que já existia fixo no código (BEMVINDA10) continua
 // funcionando depois da migração pra banco — só insere se a tabela
@@ -136,9 +144,14 @@ function seedDefaultCoupon() {
   const { count } = db.prepare(`SELECT COUNT(*) AS count FROM coupons`).get();
   if (count === 0) {
     db.prepare(
-      `INSERT INTO coupons (code, percent_off, description, created_at) VALUES (?, ?, ?, ?)`
+      `INSERT INTO coupons (code, percent_off, description, created_at, once_per_customer)
+       VALUES (?, ?, ?, ?, 1)`
     ).run("BEMVINDA10", 10, "10% de desconto — primeira compra", Date.now());
   }
+  // Bancos criados antes da coluna existir têm BEMVINDA10 com o DEFAULT 0.
+  // Ele é o cupom de "primeira compra": tem que ser de uso único mesmo em
+  // quem já rodava o site antes desta versão.
+  db.prepare(`UPDATE coupons SET once_per_customer = 1 WHERE code = 'BEMVINDA10'`).run();
 }
 seedDefaultCoupon();
 
@@ -217,8 +230,8 @@ const stmtInsertOrder = db.prepare(`
   INSERT INTO orders (
     external_reference, user_id, status, items_json, address_json, shipping_json,
     coupon_code, subtotal, discount, pix_discount, payment_method,
-    shipping_price, total, created_at, updated_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    shipping_price, total, customer_phone, created_at, updated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const stmtGetOrderByRef = db.prepare(`SELECT * FROM orders WHERE external_reference = ?`);
 const stmtUpdateOrderStatus = db.prepare(
@@ -254,10 +267,31 @@ function createOrder(order) {
     order.paymentMethod ?? "card",
     order.shippingPrice,
     order.total,
+    order.customerPhone ?? null,
     now,
     now
   );
   return getOrderByExternalReference(order.externalReference);
+}
+
+/* Já existe pedido PAGO desta cliente usando este cupom?
+   Só conta status 'pago' de propósito: um carrinho abandonado (que fica
+   'pendente' para sempre) não pode queimar o cupom de quem nunca chegou a
+   comprar. `userId` e `phone` são checados em OR — quem comprou logada e
+   depois volta sem entrar na conta continua sendo reconhecida pelo
+   telefone, e vice-versa. */
+const stmtCouponUsedByUser = db.prepare(
+  `SELECT 1 FROM orders WHERE coupon_code = ? AND status = 'pago' AND user_id = ? LIMIT 1`
+);
+const stmtCouponUsedByPhone = db.prepare(
+  `SELECT 1 FROM orders WHERE coupon_code = ? AND status = 'pago' AND customer_phone = ? LIMIT 1`
+);
+
+function hasUsedCoupon({ code, userId, phone }) {
+  if (!code) return false;
+  if (userId && stmtCouponUsedByUser.get(code, userId)) return true;
+  if (phone && stmtCouponUsedByPhone.get(code, phone)) return true;
+  return false;
 }
 function getOrderByExternalReference(ref) {
   return stmtGetOrderByRef.get(ref) || null;
@@ -384,6 +418,7 @@ module.exports = {
   updateOrderTracking,
   getOrderStats,
   deleteOrder,
+  hasUsedCoupon,
   getProductOverride,
   listProductOverrides,
   upsertProductOverride,

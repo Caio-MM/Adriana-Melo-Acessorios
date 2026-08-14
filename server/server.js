@@ -139,8 +139,23 @@ function findCoupon(rawCode){
   if(!code) return null;
   const row = db.getCoupon(code);
   if(!row) return null;
-  return { code: row.code, percentOff: row.percent_off, description: row.description };
+  return {
+    code: row.code,
+    percentOff: row.percent_off,
+    description: row.description,
+    oncePerCustomer: Boolean(row.once_per_customer),
+  };
 }
+
+// Mesma normalização usada na gravação do pedido e na consulta de uso: sem
+// isso, "(61) 98274-9808" e "61982749808" seriam clientes diferentes e o
+// limite de uso único não valeria nada.
+function phoneDigits(value){
+  return String(value || "").replace(/\D/g, "") || null;
+}
+
+const COUPON_ALREADY_USED_MESSAGE =
+  "Este cupom é de uso único e já foi usado nesta conta. Remova-o para continuar.";
 
 /* =========================================================================
    FORMAS DE PAGAMENTO — Pix (com desconto) x cartão/boleto
@@ -553,6 +568,13 @@ app.post("/api/validate-coupon", strictLimiter, (req, res) => {
     if(!coupon){
       return res.status(404).json({ error: "Cupom inválido ou expirado." });
     }
+    // Aviso adiantado, ainda no carrinho: aqui só dá para reconhecer quem
+    // está logada (não há telefone digitado nesta etapa). Quem compra sem
+    // conta só é barrada no checkout, onde o telefone existe — por isso a
+    // checagem de lá é a que vale, e esta é conveniência.
+    if(coupon.oncePerCustomer && req.user && db.hasUsedCoupon({ code: coupon.code, userId: req.user.id })){
+      return res.status(409).json({ error: COUPON_ALREADY_USED_MESSAGE });
+    }
     const validatedItems = buildValidatedItems(req.body?.items);
     const subtotal = validatedItems.reduce((sum, { qty, product }) => sum + product.price * qty, 0);
     const discount = Math.round(subtotal * (coupon.percentOff / 100) * 100) / 100;
@@ -614,6 +636,22 @@ app.post("/api/create-preference", strictLimiter, async (req, res) => {
     if(req.body?.coupon && !coupon){
       return res.status(409).json({ error: "Esse cupom não é mais válido. Remova-o e tente novamente." });
     }
+
+    // Ponto de decisão do uso único. Fica AQUI, e não só no /validate-coupon,
+    // porque este é o passo que realmente cria o pedido — quem chamar a API
+    // direto, pulando o carrinho, esbarra no mesmo bloqueio.
+    const customerPhone = phoneDigits(address.telefone);
+    if(coupon?.oncePerCustomer){
+      const alreadyUsed = db.hasUsedCoupon({
+        code: coupon.code,
+        userId: req.user ? req.user.id : null,
+        phone: customerPhone,
+      });
+      if(alreadyUsed){
+        return res.status(409).json({ error: COUPON_ALREADY_USED_MESSAGE });
+      }
+    }
+
     const couponFactor = coupon ? (1 - coupon.percentOff / 100) : 1;
 
     /* Descontos aplicados no PREÇO UNITÁRIO e somados item a item (em vez de
@@ -711,6 +749,7 @@ app.post("/api/create-preference", strictLimiter, async (req, res) => {
       address: { ...address, cep },
       shipping: chosenShipping,
       couponCode: coupon ? coupon.code : null,
+      customerPhone,
       subtotal,
       discount,
       pixDiscount,
