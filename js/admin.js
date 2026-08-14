@@ -176,6 +176,136 @@
     }).join("");
   }
 
+  /* ==================== VISÕES DO DASHBOARD ====================
+     Tudo aqui é calculado no navegador a partir dos pedidos e produtos que
+     loadDashboard() já buscou — nenhuma chamada extra à API.
+
+     ⚠️ "Valor" nestas visões é o preço de catálogo dos itens
+     (unitPrice × qty), NÃO o total do pedido: o total inclui frete e
+     desconta cupom/Pix, que não pertencem a nenhuma categoria ou produto
+     específico. Por isso a soma daqui não bate com "Vendas totais" — os
+     subtítulos no HTML dizem "sem frete" para deixar isso explícito. */
+
+  /* Uma lista de barras horizontais serve as quatro visões. Cada item é
+     { label, value, display, meta } e a barra é proporcional ao maior. */
+  function renderBarList(el, items, emptyMessage){
+    if(!el) return;
+    if(!items.length){
+      el.innerHTML = `<p class="section-sub mb-0" style="font-size:.85rem">${escapeHTML(emptyMessage)}</p>`;
+      return;
+    }
+    const max = Math.max(...items.map(i => i.value), 0);
+    el.innerHTML = items.map(item => {
+      // Mínimo de 2% para um item com valor baixo ainda desenhar uma barra
+      // visível, em vez de virar uma linha invisível ao lado do maior.
+      const pct = max > 0 ? Math.max((item.value / max) * 100, 2) : 2;
+      return `
+        <div class="bar-row">
+          <div class="bar-row-head">
+            <span class="bar-row-label">${escapeHTML(item.label)}</span>
+            <span class="bar-row-value">${escapeHTML(item.display)}</span>
+          </div>
+          <div class="bar-row-track"><div class="bar-row-fill" style="width:${pct}%"></div></div>
+          ${item.meta ? `<span class="bar-row-meta">${escapeHTML(item.meta)}</span>` : ""}
+        </div>`;
+    }).join("");
+  }
+
+  const paidOrdersOf = (orders) => orders.filter(o => o.status === "pago");
+
+  /* Percorre os itens dos pedidos pagos somando unidades e valor por chave
+     (categoria ou produto), devolvendo já ordenado do maior para o menor. */
+  function tallyItems(orders, keyOf){
+    const totals = new Map();
+    for(const order of paidOrdersOf(orders)){
+      for(const item of order.items || []){
+        const key = keyOf(item);
+        if(key == null) continue;
+        const acc = totals.get(key) || { units: 0, revenue: 0 };
+        acc.units += item.qty;
+        acc.revenue += (item.unitPrice || 0) * item.qty;
+        totals.set(key, acc);
+      }
+    }
+    return [...totals.entries()]
+      .map(([key, v]) => ({ key, ...v }))
+      .sort((a, b) => b.revenue - a.revenue);
+  }
+
+  function renderCategoryChart(orders, products){
+    const categoryOf = new Map(products.map(p => [p.id, p.category]));
+    const rows = tallyItems(orders, item => categoryOf.get(item.id) || "sem-categoria");
+    renderBarList(
+      document.getElementById("categoryChart"),
+      rows.map(r => ({
+        label: CATEGORY_LABELS[r.key] || "Sem categoria",
+        value: r.revenue,
+        display: formatMoney(r.revenue),
+        meta: `${r.units} ${r.units === 1 ? "unidade" : "unidades"}`,
+      })),
+      "Nenhuma venda paga ainda."
+    );
+  }
+
+  function renderTopProductsChart(orders){
+    // Ordena por unidades (e não por valor): "mais vendido" no dia a dia da
+    // loja é o que sai mais, não o que fatura mais.
+    const rows = tallyItems(orders, item => item.name || `Produto #${item.id}`)
+      .sort((a, b) => b.units - a.units)
+      .slice(0, 5);
+    renderBarList(
+      document.getElementById("topProductsChart"),
+      rows.map(r => ({
+        label: r.key,
+        value: r.units,
+        display: `${r.units} un.`,
+        meta: formatMoney(r.revenue),
+      })),
+      "Nenhuma venda paga ainda."
+    );
+  }
+
+  function renderStatusChart(orders){
+    const counts = new Map();
+    for(const order of orders){
+      counts.set(order.status, (counts.get(order.status) || 0) + 1);
+    }
+    const rows = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    const total = orders.length;
+    renderBarList(
+      document.getElementById("statusChart"),
+      rows.map(([status, count]) => ({
+        label: STATUS_LABELS[status]?.label || status,
+        value: count,
+        display: String(count),
+        meta: total > 0 ? `${Math.round((count / total) * 100)}% dos pedidos` : "",
+      })),
+      "Nenhum pedido registrado ainda."
+    );
+  }
+
+  function renderPaymentChart(orders){
+    const totals = new Map();
+    for(const order of paidOrdersOf(orders)){
+      const method = order.paymentMethod || "card";
+      const acc = totals.get(method) || { count: 0, revenue: 0 };
+      acc.count += 1;
+      acc.revenue += order.total;
+      totals.set(method, acc);
+    }
+    const rows = [...totals.entries()].sort((a, b) => b[1].revenue - a[1].revenue);
+    renderBarList(
+      document.getElementById("paymentChart"),
+      rows.map(([method, v]) => ({
+        label: PAYMENT_METHOD_LABELS[method] || method,
+        value: v.revenue,
+        display: formatMoney(v.revenue),
+        meta: `${v.count} ${v.count === 1 ? "pedido" : "pedidos"}`,
+      })),
+      "Nenhuma venda paga ainda."
+    );
+  }
+
   /* ======================== CARRINHOS PENDENTES ========================
      Recuperação de carrinho abandonado: pedidos "pendente" (checkout
      iniciado no Mercado Pago, pagamento nunca confirmado) entre 1h e 14
@@ -986,10 +1116,15 @@
 
       const orders = Array.isArray(ordersData.orders) ? ordersData.orders : [];
       showOnly(contentEl);
+      const products = Array.isArray(productsData.products) ? productsData.products : [];
       renderStats(ordersData.stats || { totalRevenue: 0, totalOrders: 0 });
       renderSalesChart(orders);
+      renderCategoryChart(orders, products);
+      renderTopProductsChart(orders);
+      renderStatusChart(orders);
+      renderPaymentChart(orders);
       renderPendingCarts(orders);
-      renderProductsTable(Array.isArray(productsData.products) ? productsData.products : []);
+      renderProductsTable(products);
       renderCouponsTable(Array.isArray(couponsData.coupons) ? couponsData.coupons : []);
       renderOrders(orders);
 

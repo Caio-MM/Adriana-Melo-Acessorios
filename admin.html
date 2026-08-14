@@ -102,6 +102,43 @@
               </div>
               <div class="sales-chart" id="salesChart" role="img" aria-label="Gráfico de barras com o total vendido em cada um dos últimos 6 meses"></div>
             </div>
+
+            <!-- Todas estas visões são calculadas no navegador a partir dos
+                 pedidos e produtos que o painel já carregou — nenhuma
+                 chamada extra à API. -->
+            <div class="dashboard-grid">
+              <div class="dashboard-chart-card">
+                <div class="dashboard-chart-header">
+                  <h3 class="dashboard-chart-title">Vendas por categoria</h3>
+                  <span class="dashboard-chart-sub">valor dos produtos, sem frete</span>
+                </div>
+                <div id="categoryChart"></div>
+              </div>
+
+              <div class="dashboard-chart-card">
+                <div class="dashboard-chart-header">
+                  <h3 class="dashboard-chart-title">Mais vendidos</h3>
+                  <span class="dashboard-chart-sub">top 5 · unidades</span>
+                </div>
+                <div id="topProductsChart"></div>
+              </div>
+
+              <div class="dashboard-chart-card">
+                <div class="dashboard-chart-header">
+                  <h3 class="dashboard-chart-title">Situação dos pedidos</h3>
+                  <span class="dashboard-chart-sub">todos os pedidos</span>
+                </div>
+                <div id="statusChart"></div>
+              </div>
+
+              <div class="dashboard-chart-card">
+                <div class="dashboard-chart-header">
+                  <h3 class="dashboard-chart-title">Forma de pagamento</h3>
+                  <span class="dashboard-chart-sub">pedidos pagos</span>
+                </div>
+                <div id="paymentChart"></div>
+              </div>
+            </div>
           </section>
 
           <!-- ============ PRODUTOS ============ -->

@@ -1214,6 +1214,34 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .dashboard-chart-title{ font-family:var(--font-display); font-weight:600; font-size:1.05rem; margin:0; }
 .dashboard-chart-sub{ font-size:.78rem; color:var(--ink-soft); }
 
+/* Cartões de visão do dashboard. auto-fit + minmax deixa o navegador
+   escolher 1 ou 2 colunas conforme a largura, sem media query. */
+.dashboard-grid{
+  display:grid; gap:1.25rem; margin-top:1.25rem;
+  grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));
+}
+.dashboard-grid .dashboard-chart-card{ margin-top:0; }
+
+/* Barras horizontais usadas por categoria, mais vendidos, situação e
+   forma de pagamento (renderBarList em js/admin.js). */
+.bar-row + .bar-row{ margin-top:.95rem; }
+.bar-row-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:.75rem; margin-bottom:.3rem;
+}
+.bar-row-label{
+  font-size:.88rem; font-weight:600; color:var(--ink);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.bar-row-value{ font-size:.85rem; font-weight:700; color:var(--blush-700); white-space:nowrap; }
+.bar-row-track{ height:8px; border-radius:999px; background:var(--blush-50); overflow:hidden; }
+.bar-row-fill{
+  height:100%; border-radius:999px;
+  background:linear-gradient(90deg, var(--blush-500), var(--blush-700));
+  transition:width .5s cubic-bezier(.22,.9,.3,1);
+}
+.bar-row-meta{ display:block; font-size:.75rem; color:var(--ink-soft); margin-top:.25rem; }
+
 .sales-chart{ display:flex; align-items:flex-end; gap:.9rem; height:160px; padding-top:2rem; }
 .sales-chart-bar-wrap{
   flex:1 1 0; min-width:0; height:100%;
