@@ -551,13 +551,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   background-size:14px 2px; background-repeat:repeat-x; z-index:0;
 }
  
-/* ============ TESTIMONIALS ============
-   #testiCarousel usa .carousel-fade (crossfade) em vez do slide padrão do
-   Bootstrap: com "slide" os dois cards ficam lado a lado por um instante
-   durante a transição, e como cada um tem largura própria (max-width:680px,
-   texto podendo ter alturas diferentes) dava a impressão de dois cards
-   "colados" com texto cortado. O fade nunca desloca os cards, só cruza a
-   opacidade — sem esse artefato, e mais elegante para uma citação. */
+/* ============ TESTIMONIALS ============ */
 .testi-card{
   position:relative; overflow:hidden;
   background:var(--white); border-radius:var(--radius-lg); padding:2.6rem 2.2rem 2.4rem;
