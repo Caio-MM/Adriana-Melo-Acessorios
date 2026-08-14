@@ -80,6 +80,12 @@
             <p class="auth-deco-text">Entre para ver seus pedidos e novidades.</p>
             <button type="button" class="auth-switch" data-auth-mode="login">Entrar</button>
           </div>
+          <div class="auth-deco-copy" data-deco-for="forgot">
+            <p class="auth-deco-script">calma, acontece</p>
+            <h2 class="auth-deco-title">Vamos recuperar</h2>
+            <p class="auth-deco-text">Enviamos um link no seu e-mail para criar uma nova senha.</p>
+            <button type="button" class="auth-switch" data-auth-mode="login">Voltar ao login</button>
+          </div>
         </div>
       </div>
 
@@ -101,12 +107,34 @@
               <input type="email" class="form-control" id="loginEmail" required autocomplete="email">
             </div>
             <div class="mb-3">
-              <label class="form-label small fw-semibold" for="loginPassword">Senha</label>
+              <div class="auth-label-row">
+                <label class="form-label small fw-semibold mb-0" for="loginPassword">Senha</label>
+                <button type="button" class="auth-link" data-auth-mode="forgot">Esqueci a senha</button>
+              </div>
               <input type="password" class="form-control" id="loginPassword" required autocomplete="current-password" minlength="8">
             </div>
             <button class="btn-blush w-100" type="submit" id="loginSubmitBtn">Entrar</button>
             <div class="small mt-2 account-msg" id="loginMsg" role="alert"></div>
             <p class="auth-foot"><i class="bi bi-shield-check"></i>Seus dados ficam protegidos.</p>
+          </form>
+        </div>
+      </div>
+
+      <div class="auth-pane auth-pane-forgot">
+        <div class="auth-form">
+          <p class="auth-eyebrow">sem problema</p>
+          <h1 class="auth-title">Esqueci a senha</h1>
+          <p class="auth-subtitle">Informe seu e-mail e enviaremos um link para você criar uma nova senha.</p>
+          <form id="forgotForm" novalidate>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold" for="forgotEmail">E-mail</label>
+              <input type="email" class="form-control" id="forgotEmail" required autocomplete="email">
+            </div>
+            <button class="btn-blush w-100" type="submit" id="forgotSubmitBtn">Enviar link de redefinição</button>
+            <div class="small mt-2 account-msg" id="forgotMsg" role="alert"></div>
+            <p class="auth-foot">
+              <button type="button" class="auth-link" data-auth-mode="login">Voltar para o login</button>
+            </p>
           </form>
         </div>
       </div>

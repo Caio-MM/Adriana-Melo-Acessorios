@@ -266,7 +266,7 @@ const SITE_ROOT = path.join(__dirname, "..");
 const PUBLIC_TOP_LEVEL = new Set([
   "index.html", "conta.html", "pedidos.html", "admin.html",
   "pagamento-sucesso.html", "pagamento-erro.html", "pagamento-pendente.html",
-  "404.html", "css", "js", "img",
+  "redefinir-senha.html", "404.html", "css", "js", "img",
 ]);
 // Usada tanto pelo bloqueio de allowlist abaixo quanto pelo catch-all no fim
 // do arquivo (depois de express.static e de todas as rotas). Navegação de
@@ -1064,6 +1064,89 @@ app.post("/api/auth/login", authLimiter, async (req, res) => {
 app.post("/api/auth/logout", (req, res) => {
   auth.clearSession(req, res);
   res.json({ ok: true });
+});
+
+/* -------------------------------------------------------------------------
+   REDEFINIÇÃO DE SENHA — "esqueci a senha"
+   -------------------------------------------------------------------------
+   Ponto central: a resposta é SEMPRE a mesma, exista ou não uma conta com
+   o e-mail informado. Responder "e-mail não encontrado" transformaria esta
+   rota num verificador de quem é cliente da loja (enumeração de contas) —
+   é o mesmo motivo do erro genérico no login.
+------------------------------------------------------------------------- */
+app.post("/api/auth/forgot-password", authLimiter, async (req, res) => {
+  // Declarada fora do try: mesma resposta no caminho feliz, no e-mail
+  // inexistente e numa falha de envio.
+  const genericOk = () => res.json({
+    ok: true,
+    message: "Se existir uma conta com esse e-mail, enviamos o link de redefinição.",
+  });
+
+  try {
+    const emailAddress = auth.normalizeEmail(req.body?.email);
+    if(!auth.isValidEmail(emailAddress)){
+      return genericOk();
+    }
+
+    const user = db.getUserByEmail(emailAddress);
+    if(!user){
+      return genericOk();
+    }
+
+    const token = auth.issuePasswordReset(user.id);
+    const resetUrl = `${CLIENT_ORIGIN}/redefinir-senha.html?token=${encodeURIComponent(token)}`;
+    const expiresInMinutes = Math.round(auth.PASSWORD_RESET_TTL_MS / 60000);
+
+    try {
+      await email.sendPasswordResetEmail({
+        to: user.email,
+        name: user.name,
+        resetUrl,
+        expiresInMinutes,
+      });
+    } catch (mailErr) {
+      // Sem SMTP configurado o link não tem como sair daqui. Registrar no
+      // console é o único jeito de a loja conseguir usar/testar o fluxo
+      // enquanto o SMTP não é preenchido — e só acontece nesse caso.
+      console.error("Falha ao enviar e-mail de redefinição de senha:", mailErr.message);
+      console.warn(`[redefinição de senha] Link para ${user.email}: ${resetUrl}`);
+    }
+
+    return genericOk();
+  } catch (err) {
+    console.error("Erro ao processar pedido de redefinição de senha:", err);
+    return genericOk();
+  }
+});
+
+app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
+  try {
+    const token = String(req.body?.token || "");
+    const password = String(req.body?.password || "");
+
+    if(!auth.isValidPassword(password)){
+      return res.status(400).json({ error: "A senha precisa ter entre 8 e 72 caracteres." });
+    }
+
+    const userId = auth.consumePasswordReset(token);
+    if(!userId){
+      return res.status(400).json({ error: "Este link de redefinição é inválido ou já expirou. Peça um novo." });
+    }
+
+    const passwordHash = await auth.hashPassword(password);
+    db.updateUserPassword(userId, passwordHash);
+    // Trocar a senha derruba todas as sessões: se alguém tinha entrado com a
+    // senha antiga (o motivo provável de a cliente estar redefinindo), esse
+    // acesso morre aqui. Inclui a sessão de quem está redefinindo — daí o
+    // front mandar para a tela de login em seguida.
+    db.deleteAllSessionsForUser(userId);
+    auth.clearSession(req, res);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Erro ao redefinir senha:", err);
+    res.status(500).json({ error: "Não foi possível redefinir a senha agora. Tente novamente em instantes." });
+  }
 });
 
 app.get("/api/auth/me", (req, res) => {

@@ -109,6 +109,37 @@ function clearSession(req, res) {
   res.clearCookie(SESSION_COOKIE_NAME, { ...cookieOptions(), maxAge: undefined });
 }
 
+/* ------------------- REDEFINIÇÃO DE SENHA ------------------- */
+// Mesmo desenho das sessões: token aleatório entregue por e-mail, só o
+// HASH gravado no banco. Validade curta (1h) e uso único — um link que
+// vaze depois (histórico do navegador, e-mail encaminhado) não serve mais.
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
+
+function issuePasswordReset(userId) {
+  // Um link válido por vez: pedir um novo invalida o anterior, então um
+  // link antigo esquecido na caixa de entrada deixa de funcionar.
+  db.deletePasswordResetsForUser(userId);
+  const token = crypto.randomBytes(32).toString("hex");
+  db.createPasswordReset({
+    tokenHash: hashToken(token),
+    userId,
+    expiresAt: Date.now() + PASSWORD_RESET_TTL_MS,
+  });
+  return token;
+}
+
+// Devolve o userId ou null. O registro é apagado ANTES da checagem de
+// validade, de propósito: mesmo um token expirado é consumido na primeira
+// tentativa, então ninguém pode ficar testando o mesmo valor repetidamente.
+function consumePasswordReset(token) {
+  if (!token || typeof token !== "string") return null;
+  const row = db.getPasswordReset(hashToken(token));
+  if (!row) return null;
+  db.deletePasswordReset(row.token_hash);
+  if (row.expires_at < Date.now()) return null;
+  return row.user_id;
+}
+
 /* ------------------------------ ADMIN ------------------------------ */
 // Não existe uma tabela/coluna "role": o acesso de administrador é dado por
 // e-mail, via ADMIN_EMAIL_HASHES no .env (lista de hashes SHA-256,
@@ -190,6 +221,9 @@ module.exports = {
   isValidName,
   issueSession,
   clearSession,
+  issuePasswordReset,
+  consumePasswordReset,
+  PASSWORD_RESET_TTL_MS,
   attachUser,
   requireAuth,
   requireAdmin,

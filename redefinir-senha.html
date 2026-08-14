@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Criar nova senha — Adriana Melo Acessórios</title>
+<meta name="description" content="Escolha uma nova senha para a sua conta na Adriana Melo Acessórios.">
+<meta name="robots" content="noindex, nofollow">
+
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://cdnjs.cloudflare.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' https: data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
+<!-- O link traz o token na query: no-referrer impede que ele vaze no
+     cabeçalho Referer para qualquer host externo (fontes, CDN). -->
+<meta name="referrer" content="no-referrer">
+
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Poppins:wght@300;400;500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="bow-shape" viewBox="0 0 100 70">
+    <path d="M50 35 C50 35 38 6 15 10 C-4 13 -4 47 15 51 C36 56 50 35 50 35 Z"/>
+    <path d="M50 35 C50 35 62 6 85 10 C104 13 104 47 85 51 C64 56 50 35 50 35 Z"/>
+    <rect x="42" y="26" width="16" height="18" rx="5"/>
+    <path d="M45 44 L38 68 L48 60 Z"/>
+    <path d="M55 44 L62 68 L52 60 Z"/>
+  </symbol>
+</svg>
+
+<header class="simple-header">
+  <div class="container d-flex align-items-center justify-content-between">
+    <a href="index.html" class="plc-brand">
+      <svg class="bow-icon"><use href="#bow-shape"/></svg>
+      Adriana Melo Acessórios
+    </a>
+    <div id="navAccount" class="d-flex align-items-center gap-2"></div>
+  </div>
+</header>
+
+<main class="account-main">
+  <div class="container">
+    <div class="account-card mx-auto">
+
+      <div class="text-center mb-4">
+        <span class="auth-bow-wrap auth-bow-wrap-solo" aria-hidden="true">
+          <svg class="auth-bow"><use href="#bow-shape"/></svg>
+        </span>
+        <h1 class="auth-title mt-3">Criar nova senha</h1>
+        <p class="auth-subtitle mb-0">Escolha uma senha nova para a sua conta.</p>
+      </div>
+
+      <!-- Sem token na URL não há o que redefinir: o formulário nem aparece. -->
+      <div id="resetInvalid" class="d-none text-center">
+        <p class="section-sub">Este link de redefinição está incompleto ou já expirou.</p>
+        <a href="conta.html" class="btn-blush d-block w-100">Pedir um novo link</a>
+      </div>
+
+      <div id="resetDone" class="d-none text-center">
+        <i class="bi bi-check-circle" style="font-size:2rem; color:var(--blush-600)"></i>
+        <p class="section-sub mt-3">Senha alterada! Agora é só entrar com ela.</p>
+        <a href="conta.html" class="btn-blush d-block w-100">Ir para o login</a>
+      </div>
+
+      <form id="resetForm" class="d-none" novalidate>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold" for="resetPassword">Nova senha</label>
+          <input type="password" class="form-control" id="resetPassword" required autocomplete="new-password" minlength="8">
+          <div class="form-text">Mínimo de 8 caracteres.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold" for="resetPasswordConfirm">Repita a nova senha</label>
+          <input type="password" class="form-control" id="resetPasswordConfirm" required autocomplete="new-password" minlength="8">
+        </div>
+        <button class="btn-blush w-100" type="submit" id="resetSubmitBtn">Salvar nova senha</button>
+        <div class="small mt-2 account-msg" id="resetMsg" role="alert"></div>
+      </form>
+
+    </div>
+  </div>
+</main>
+
+<script src="js/error-boundary.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js" defer></script>
+<script src="js/auth.js" defer></script>
+<script src="js/redefinir-senha.js" defer></script>
+</body>
+</html>

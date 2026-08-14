@@ -35,6 +35,16 @@ db.exec(`
     expires_at INTEGER NOT NULL
   );
 
+  -- Redefinição de senha: mesma ideia da tabela sessions — só o HASH do
+  -- token fica gravado, então nem quem lê o banco consegue reconstruir um
+  -- link de redefinição válido.
+  CREATE TABLE IF NOT EXISTS password_resets (
+    token_hash TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS orders (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
     external_reference  TEXT NOT NULL UNIQUE,
@@ -164,6 +174,35 @@ function deleteSession(tokenHash) {
 }
 function deleteAllSessionsForUser(userId) {
   stmtDeleteUserSessions.run(userId);
+}
+
+/* --------------------- REDEFINIÇÃO DE SENHA --------------------- */
+const stmtInsertPasswordReset = db.prepare(
+  `INSERT INTO password_resets (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)`
+);
+const stmtGetPasswordReset = db.prepare(`SELECT * FROM password_resets WHERE token_hash = ?`);
+const stmtDeletePasswordReset = db.prepare(`DELETE FROM password_resets WHERE token_hash = ?`);
+const stmtDeleteUserPasswordResets = db.prepare(`DELETE FROM password_resets WHERE user_id = ?`);
+const stmtDeleteExpiredPasswordResets = db.prepare(`DELETE FROM password_resets WHERE expires_at < ?`);
+const stmtUpdateUserPassword = db.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`);
+
+function createPasswordReset({ tokenHash, userId, expiresAt }) {
+  stmtInsertPasswordReset.run(tokenHash, userId, Date.now(), expiresAt);
+}
+function getPasswordReset(tokenHash) {
+  // Mesmo padrão de getSessionByTokenHash: a limpeza dos expirados acontece
+  // na leitura, então não é preciso uma rotina agendada só para isso.
+  stmtDeleteExpiredPasswordResets.run(Date.now());
+  return stmtGetPasswordReset.get(tokenHash) || null;
+}
+function deletePasswordReset(tokenHash) {
+  stmtDeletePasswordReset.run(tokenHash);
+}
+function deletePasswordResetsForUser(userId) {
+  stmtDeleteUserPasswordResets.run(userId);
+}
+function updateUserPassword(userId, passwordHash) {
+  stmtUpdateUserPassword.run(passwordHash, userId);
 }
 
 /* ---------------------------- ORDERS ---------------------------- */
@@ -307,6 +346,11 @@ module.exports = {
   getSessionByTokenHash,
   deleteSession,
   deleteAllSessionsForUser,
+  createPasswordReset,
+  getPasswordReset,
+  deletePasswordReset,
+  deletePasswordResetsForUser,
+  updateUserPassword,
   createOrder,
   getOrderByExternalReference,
   updateOrderStatus,

@@ -913,7 +913,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   transition:opacity .4s ease, transform .4s ease, visibility .4s;
 }
 .auth-shell[data-mode="login"] .auth-deco-copy[data-deco-for="login"],
-.auth-shell[data-mode="register"] .auth-deco-copy[data-deco-for="register"]{
+.auth-shell[data-mode="register"] .auth-deco-copy[data-deco-for="register"],
+.auth-shell[data-mode="forgot"] .auth-deco-copy[data-deco-for="forgot"]{
   opacity:1; visibility:visible; transform:translateY(0);
   transition-delay:.15s;
 }
@@ -981,10 +982,26 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display:flex; align-items:center; justify-content:center; gap:.4rem;
   margin-top:1.15rem; font-size:.76rem; color:var(--ink-soft);
 }
+/* Link textual (não é <a>: não navega, só troca o modo do painel). */
+.auth-label-row{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-bottom:.35rem; }
+.auth-link{
+  border:none; background:none; padding:0;
+  color:var(--blush-700); font-size:.78rem; font-weight:600;
+  text-decoration:underline; text-underline-offset:3px;
+  transition:color .2s ease;
+}
+.auth-link:hover{ color:var(--blush-600); }
+/* Laço fora do painel rosa (redefinir-senha.html): usa a cor da marca, e
+   sem o gradiente atrás o brilho branco não teria contraste nenhum. */
+.auth-bow-wrap-solo{ margin-bottom:0; }
+.auth-bow-wrap-solo .auth-bow{ width:74px; height:52px; color:var(--blush-500); filter:none; }
+.auth-bow-wrap-solo::before{ background:radial-gradient(circle, var(--blush-50), rgba(255,255,255,0) 70%); width:150px; height:150px; }
+.auth-bow-wrap-solo::after{ display:none; }
 /* Entrada escalonada do conteúdo do formulário: a regra volta a casar a
    cada troca de data-mode, então a animação reinicia sozinha na transição. */
 .auth-shell[data-mode="login"] .auth-pane-login .auth-form > *,
-.auth-shell[data-mode="register"] .auth-pane-register .auth-form > *{
+.auth-shell[data-mode="register"] .auth-pane-register .auth-form > *,
+.auth-shell[data-mode="forgot"] .auth-pane-forgot .auth-form > *{
   animation:auth-rise .55s cubic-bezier(.22,.9,.3,1) both;
 }
 .auth-form > *:nth-child(2){ animation-delay:.06s; }
@@ -1037,10 +1054,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
        frente — senão ele "pisca" por baixo do laço no meio do caminho. */
     transition:opacity .45s ease .18s, visibility .45s .18s;
   }
-  .auth-pane-login{ right:0; }
+  /* "forgot" é uma etapa do login, então fica do mesmo lado dele e o painel
+     do laço nem se move ao entrar/sair dessa etapa. */
+  .auth-pane-login, .auth-pane-forgot{ right:0; }
   .auth-pane-register{ left:0; }
   .auth-shell[data-mode="login"] .auth-pane-login,
-  .auth-shell[data-mode="register"] .auth-pane-register{ opacity:1; visibility:visible; }
+  .auth-shell[data-mode="register"] .auth-pane-register,
+  .auth-shell[data-mode="forgot"] .auth-pane-forgot{ opacity:1; visibility:visible; }
 }
 
 /* ---- Mobile/tablet: laço no topo + abas ---- */
@@ -1057,7 +1077,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .auth-deco-copies{ display:none; }
   .auth-pane{ display:none; padding:1.5rem 1.4rem 1.9rem; }
   .auth-shell[data-mode="login"] .auth-pane-login,
-  .auth-shell[data-mode="register"] .auth-pane-register{
+  .auth-shell[data-mode="register"] .auth-pane-register,
+  .auth-shell[data-mode="forgot"] .auth-pane-forgot{
     display:block; animation:auth-pane-in .45s ease;
   }
 }

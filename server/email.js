@@ -139,4 +139,47 @@ async function notifyOwnerOfPaidOrder(order) {
   await sendEmail({ to: ownerEmail, subject, text, html });
 }
 
-module.exports = { formatOrderEmail, sendEmail, notifyOwnerOfPaidOrder };
+/**
+ * E-mail de redefinição de senha, enviado para a CLIENTE (diferente dos
+ * demais, que vão para a lojista). Propaga erro se o SMTP não estiver
+ * configurado — quem chama (server.js) decide o que registrar.
+ */
+async function sendPasswordResetEmail({ to, name, resetUrl, expiresInMinutes }) {
+  const firstName = String(name || "").trim().split(" ")[0] || "cliente";
+  const subject = "Redefinição de senha — Adriana Melo Acessórios";
+
+  const text = [
+    `Olá, ${firstName}!`,
+    "",
+    "Recebemos um pedido para redefinir a senha da sua conta na Adriana Melo Acessórios.",
+    "",
+    `Abra este link para escolher uma nova senha (vale por ${expiresInMinutes} minutos):`,
+    resetUrl,
+    "",
+    "Se não foi você que pediu, pode ignorar esta mensagem — sua senha atual continua valendo.",
+  ].join("\n");
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#3a2230;max-width:480px;margin:0 auto">
+      <h2 style="color:#c05480;margin-bottom:4px">🎀 Redefinição de senha</h2>
+      <p style="margin:0 0 12px">Olá, ${escapeHTML(firstName)}!</p>
+      <p style="margin:0 0 16px">
+        Recebemos um pedido para redefinir a senha da sua conta.
+        Clique no botão abaixo para escolher uma nova — o link vale por
+        <strong>${escapeHTML(String(expiresInMinutes))} minutos</strong>.
+      </p>
+      <p style="margin:0 0 20px">
+        <a href="${escapeHTML(resetUrl)}" style="display:inline-block;padding:10px 20px;background:#c05480;color:#fff;text-decoration:none;border-radius:999px;font-weight:600">
+          Criar nova senha
+        </a>
+      </p>
+      <p style="margin:0;font-size:13px;color:#8c6577">
+        Se não foi você que pediu, pode ignorar esta mensagem — sua senha atual continua valendo.
+      </p>
+    </div>
+  `;
+
+  await sendEmail({ to, subject, text, html });
+}
+
+module.exports = { formatOrderEmail, sendEmail, notifyOwnerOfPaidOrder, sendPasswordResetEmail };

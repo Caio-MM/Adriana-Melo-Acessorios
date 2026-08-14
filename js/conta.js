@@ -53,10 +53,14 @@
   function setAuthMode(mode, moveFocus){
     if(!authShell || authShell.dataset.mode === mode) return;
     authShell.dataset.mode = mode;
+    // "forgot" é uma etapa dentro do fluxo de entrar, e não existe aba para
+    // ela — a aba "Entrar" continua marcada para o mobile não ficar sem
+    // nenhuma aba ativa.
+    const tabMode = mode === "forgot" ? "login" : mode;
     modeButtons.forEach((btn) => {
-      // Só as abas têm role="tab"; o botão do painel decorativo não.
+      // Só as abas têm role="tab"; os botões do painel/links não.
       if(btn.getAttribute("role") === "tab"){
-        btn.setAttribute("aria-selected", String(btn.dataset.authMode === mode));
+        btn.setAttribute("aria-selected", String(btn.dataset.authMode === tabMode));
       }
     });
     if(!moveFocus) return;
@@ -64,10 +68,8 @@
     // teclado teria de tabular a tela inteira de novo. O atraso espera a
     // transição do CSS: enquanto o painel está visibility:hidden o campo
     // não é focável.
-    const firstField = mode === "login"
-      ? document.getElementById("loginEmail")
-      : document.getElementById("registerName");
-    setTimeout(() => firstField?.focus(), 650);
+    const firstFieldId = { login: "loginEmail", register: "registerName", forgot: "forgotEmail" }[mode];
+    setTimeout(() => document.getElementById(firstFieldId)?.focus(), 650);
   }
 
   modeButtons.forEach((btn) => {
@@ -116,6 +118,35 @@
       window.location.href = destinationFor(user);
     }catch(err){
       showMessage(registerMsg, err.message, "error");
+      setLoading(btn, false);
+    }
+  });
+
+  /* "Esqueci a senha": o servidor responde a mesma coisa exista ou não uma
+     conta com aquele e-mail (evita virar um verificador de quem é cliente
+     da loja), então a mensagem aqui é sempre a de sucesso — inclusive
+     quando o e-mail não está cadastrado. */
+  const forgotForm = document.getElementById("forgotForm");
+  const forgotMsg = document.getElementById("forgotMsg");
+  forgotForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("forgotSubmitBtn");
+    showMessage(forgotMsg, "", null);
+
+    const emailValue = document.getElementById("forgotEmail").value.trim();
+    if(!emailValue){
+      showMessage(forgotMsg, "Informe o e-mail da sua conta.", "error");
+      return;
+    }
+
+    setLoading(btn, true, "Enviando...");
+    try{
+      const data = await postJSON("/api/auth/forgot-password", { email: emailValue });
+      showMessage(forgotMsg, data.message || "Se existir uma conta com esse e-mail, enviamos o link de redefinição.", "success");
+      forgotForm.reset();
+    }catch(err){
+      showMessage(forgotMsg, err.message, "error");
+    }finally{
       setLoading(btn, false);
     }
   });
