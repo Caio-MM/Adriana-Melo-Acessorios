@@ -1059,10 +1059,11 @@ app.post("/api/contact", strictLimiter, (req, res) => {
   if(!nome || !telefone || !mensagem){
     return res.status(400).json({ error: "Preencha nome, telefone e mensagem." });
   }
-  // TODO: encaminhar por e-mail (ex.: com Nodemailer) ou salvar em um CRM.
-  // Sempre trate nome/mensagem como texto puro (nunca insira em HTML sem
-  // escapar, e nunca use em comandos de sistema/SQL sem parametrização).
-  console.log("Novo contato:", { nome, telefone, ocasiao });
+  // Gravado no banco (e lido na aba "Clientes" do painel). Antes isso só ia
+  // para o console: uma mensagem escrita com o log fechado se perdia.
+  // Continua valendo tratar nome/mensagem como texto puro — a exibição no
+  // painel escapa tudo (js/admin.js) e as queries são parametrizadas.
+  db.createContactMessage({ nome, telefone, ocasiao, mensagem });
   res.json({ ok: true });
 });
 
@@ -1325,6 +1326,106 @@ app.get("/api/admin/orders", auth.requireAdmin, (req, res) => {
   } catch (err) {
     console.error("Erro ao listar pedidos (admin):", err);
     res.status(500).json({ error: "Não foi possível carregar os pedidos agora." });
+  }
+});
+
+/* =========================================================================
+   GET /api/admin/customers — quem já comprou, com histórico e total gasto
+   -------------------------------------------------------------------------
+   Agrupado em JS (e não em SQL) de propósito: o nome da cliente mora dentro
+   do address_json e o e-mail vem da tabela users, então em SQL isso viraria
+   json_extract + LEFT JOIN para uma loja que tem dezenas — não milhões — de
+   pedidos. Ler `listAllOrders()` e agrupar aqui é mais simples de acompanhar
+   e rápido o bastante nessa escala.
+
+   A chave de agrupamento é a mesma do limite de cupom (conta OU telefone):
+   quem comprou logada e depois sem entrar continua sendo a mesma pessoa.
+
+   Faturamento só conta pedido 'pago' — carrinho abandonado não é receita.
+========================================================================= */
+app.get("/api/admin/customers", auth.requireAdmin, (req, res) => {
+  try {
+    const byIdentity = new Map();
+
+    for(const row of db.listAllOrders()){
+      const address = JSON.parse(row.address_json);
+      const account = row.user_id ? db.getUserById(row.user_id) : null;
+      // Prefere a conta: um telefone pode ser digitado diferente a cada
+      // compra, o id da conta não muda.
+      const identity = row.user_id ? `conta:${row.user_id}` : `tel:${row.customer_phone || row.external_reference}`;
+
+      let entry = byIdentity.get(identity);
+      if(!entry){
+        entry = {
+          identity,
+          nome: address?.nome || account?.name || "—",
+          email: account?.email || null,
+          telefone: address?.telefone || null,
+          hasAccount: Boolean(row.user_id),
+          totalOrders: 0,
+          paidOrders: 0,
+          totalSpent: 0,
+          lastOrderAt: 0,
+          orders: [],
+        };
+        byIdentity.set(identity, entry);
+      }
+
+      entry.totalOrders += 1;
+      if(row.status === "pago"){
+        entry.paidOrders += 1;
+        entry.totalSpent += row.total;
+      }
+      // listAllOrders vem do mais recente para o mais antigo, então o
+      // primeiro que chega já é o dado mais atual de nome/telefone.
+      if(row.created_at > entry.lastOrderAt){
+        entry.lastOrderAt = row.created_at;
+        entry.nome = address?.nome || entry.nome;
+        entry.telefone = address?.telefone || entry.telefone;
+      }
+      if(account?.email) entry.email = account.email;
+
+      entry.orders.push({
+        reference: row.external_reference,
+        status: row.status,
+        total: row.total,
+        couponCode: row.coupon_code || null,
+        createdAt: row.created_at,
+      });
+    }
+
+    const customers = [...byIdentity.values()]
+      .map(c => ({ ...c, totalSpent: Math.round(c.totalSpent * 100) / 100 }))
+      .sort((a, b) => b.totalSpent - a.totalSpent);
+
+    res.json({ customers });
+  } catch (err) {
+    console.error("Erro ao listar clientes (admin):", err);
+    res.status(500).json({ error: "Não foi possível carregar os clientes agora." });
+  }
+});
+
+/* GET /api/admin/leads — quem demonstrou interesse mas pode não ter comprado:
+   inscritos na newsletter e mensagens do formulário de contato. */
+app.get("/api/admin/leads", auth.requireAdmin, (req, res) => {
+  try {
+    res.json({
+      subscribers: db.listNewsletterSubscribers().map(s => ({
+        email: s.email,
+        createdAt: s.created_at,
+      })),
+      messages: db.listContactMessages().map(m => ({
+        id: m.id,
+        nome: m.nome,
+        telefone: m.telefone,
+        ocasiao: m.ocasiao || null,
+        mensagem: m.mensagem,
+        createdAt: m.created_at,
+      })),
+    });
+  } catch (err) {
+    console.error("Erro ao listar contatos (admin):", err);
+    res.status(500).json({ error: "Não foi possível carregar os contatos agora." });
   }
 });
 

@@ -96,6 +96,18 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
 
+  -- Mensagens do formulário "Vamos criar seu laço?" da home. Antes iam só
+  -- para o console: quem escrevesse enquanto o servidor estivesse fora do
+  -- ar, ou quando ninguém lesse o log, era simplesmente perdida.
+  CREATE TABLE IF NOT EXISTS contact_messages (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome       TEXT NOT NULL,
+    telefone   TEXT NOT NULL,
+    ocasiao    TEXT,
+    mensagem   TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS coupons (
     code         TEXT PRIMARY KEY,
     percent_off  REAL NOT NULL,
@@ -375,6 +387,22 @@ function listNewsletterSubscribers() {
   return stmtListSubscribers.all();
 }
 
+/* ---------------------- CONTATOS ---------------------- */
+const stmtInsertContactMessage = db.prepare(
+  `INSERT INTO contact_messages (nome, telefone, ocasiao, mensagem, created_at)
+   VALUES (?, ?, ?, ?, ?)`
+);
+const stmtListContactMessages = db.prepare(
+  `SELECT * FROM contact_messages ORDER BY created_at DESC`
+);
+
+function createContactMessage({ nome, telefone, ocasiao, mensagem }) {
+  stmtInsertContactMessage.run(nome, telefone, ocasiao || null, mensagem, Date.now());
+}
+function listContactMessages() {
+  return stmtListContactMessages.all();
+}
+
 /* -------------------------- CUPONS -------------------------- */
 const stmtGetCoupon = db.prepare(`SELECT * FROM coupons WHERE code = ?`);
 const stmtListCoupons = db.prepare(`SELECT * FROM coupons ORDER BY created_at DESC`);
@@ -424,6 +452,8 @@ module.exports = {
   upsertProductOverride,
   addNewsletterSubscriber,
   listNewsletterSubscribers,
+  createContactMessage,
+  listContactMessages,
   getCoupon,
   listCoupons,
   createCoupon,

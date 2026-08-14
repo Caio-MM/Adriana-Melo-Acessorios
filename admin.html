@@ -85,6 +85,7 @@
           <button type="button" class="admin-tab-btn" data-tab="produtos"><i class="bi bi-tags"></i> Produtos</button>
           <button type="button" class="admin-tab-btn" data-tab="cupons"><i class="bi bi-ticket-perforated"></i> Cupons</button>
           <button type="button" class="admin-tab-btn" data-tab="pedidos"><i class="bi bi-bag-check"></i> Vendas e pedidos</button>
+          <button type="button" class="admin-tab-btn" data-tab="clientes"><i class="bi bi-people"></i> Clientes</button>
         </nav>
 
         <div class="admin-tab-panels">
@@ -186,6 +187,67 @@
             </div>
 
             <div id="adminList" class="orders-list d-none"></div>
+          </section>
+
+          <!-- Dados só do admin: telefone, e-mail e histórico de compras de
+               cada cliente. As rotas por trás (/api/admin/customers e
+               /api/admin/leads) passam por auth.requireAdmin, então nem uma
+               chamada direta à API devolve isso para uma cliente comum. -->
+          <section class="admin-tab-panel d-none" data-tab-panel="clientes">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+              <h2 class="admin-section-title mb-0">Clientes</h2>
+              <button type="button" class="btn-outline-blush" id="exportCustomersBtn" style="padding:.4rem 1rem;font-size:.82rem">
+                <i class="bi bi-download me-1"></i>Baixar CSV
+              </button>
+            </div>
+            <p class="section-sub mb-3" style="font-size:.88rem">Quem já comprou, ordenado por quanto gastou. Clique numa linha para ver os pedidos.</p>
+
+            <div id="customersEmpty" class="account-card text-center d-none">
+              <i class="bi bi-people" style="font-size:2rem; color:var(--blush-300)"></i>
+              <p class="section-sub mt-3 mb-0">Nenhuma cliente com pedido ainda.</p>
+            </div>
+            <div class="table-responsive d-none" id="customersTableWrap">
+              <table class="table admin-products-table align-middle" id="customersTable">
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Contato</th>
+                    <th class="text-center">Pedidos</th>
+                    <th class="text-end">Total gasto</th>
+                    <th>Última compra</th>
+                  </tr>
+                </thead>
+                <tbody id="customersTableBody"></tbody>
+              </table>
+            </div>
+
+            <h2 class="admin-section-title mt-5">Mensagens recebidas</h2>
+            <p class="section-sub mb-3" style="font-size:.88rem">Enviadas pelo formulário “Vamos criar seu laço?” da página inicial.</p>
+            <div id="messagesEmpty" class="account-card text-center d-none">
+              <i class="bi bi-chat-dots" style="font-size:2rem; color:var(--blush-300)"></i>
+              <p class="section-sub mt-3 mb-0">Nenhuma mensagem recebida ainda.</p>
+            </div>
+            <div id="messagesList" class="orders-list d-none"></div>
+
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-5 mb-1">
+              <h2 class="admin-section-title mb-0">Lista de e-mails</h2>
+              <button type="button" class="btn-outline-blush" id="exportSubscribersBtn" style="padding:.4rem 1rem;font-size:.82rem">
+                <i class="bi bi-download me-1"></i>Baixar CSV
+              </button>
+            </div>
+            <p class="section-sub mb-3" style="font-size:.88rem">Quem pediu o cupom de boas-vindas na página inicial.</p>
+            <div id="subscribersEmpty" class="account-card text-center d-none">
+              <i class="bi bi-envelope-heart" style="font-size:2rem; color:var(--blush-300)"></i>
+              <p class="section-sub mt-3 mb-0">Ninguém cadastrado ainda.</p>
+            </div>
+            <div class="table-responsive d-none" id="subscribersTableWrap">
+              <table class="table admin-products-table align-middle">
+                <thead>
+                  <tr><th>E-mail</th><th>Cadastrou em</th></tr>
+                </thead>
+                <tbody id="subscribersTableBody"></tbody>
+              </table>
+            </div>
           </section>
 
         </div>

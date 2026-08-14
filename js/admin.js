@@ -766,6 +766,113 @@
   });
 
   /* ================================ CUPONS ================================ */
+  /* ==================== CLIENTES E CONTATOS ====================
+     Dados que só o admin vê (telefone, e-mail, histórico). O servidor já
+     barra por auth.requireAdmin — o que é feito aqui é só a exibição. */
+  function toggleBlock(el, show){
+    el?.classList.toggle("d-none", !show);
+  }
+
+  function renderCustomers(customers){
+    const body = document.getElementById("customersTableBody");
+    const wrap = document.getElementById("customersTableWrap");
+    const empty = document.getElementById("customersEmpty");
+    if(!body) return;
+
+    toggleBlock(wrap, customers.length > 0);
+    toggleBlock(empty, customers.length === 0);
+    if(!customers.length){ body.innerHTML = ""; return; }
+
+    body.innerHTML = customers.map((c, i) => {
+      const contactUrl = whatsappUrl(c.telefone, WHATSAPP_POST_SALE_MESSAGE);
+      const historyRows = c.orders.map(o => `
+        <div class="d-flex justify-content-between gap-2 py-1" style="font-size:.82rem">
+          <span>${formatDate(o.createdAt)}</span>
+          <span>${escapeHTML(o.reference)}</span>
+          <span>${escapeHTML(STATUS_LABELS[o.status]?.label || o.status)}${o.couponCode ? ` · ${escapeHTML(o.couponCode)}` : ""}</span>
+          <strong>${formatMoney(o.total)}</strong>
+        </div>`).join("");
+
+      return `
+      <tr class="customer-row" data-customer-index="${i}" style="cursor:pointer">
+        <td>
+          <strong>${escapeHTML(c.nome)}</strong>
+          ${c.hasAccount ? '<span class="admin-badge-pill ms-1">tem conta</span>' : ""}
+        </td>
+        <td style="font-size:.84rem">
+          ${c.email ? escapeHTML(c.email) + "<br>" : ""}
+          ${c.telefone ? escapeHTML(c.telefone) : "—"}
+          ${contactUrl ? ` <a href="${contactUrl}" target="_blank" rel="noopener noreferrer" title="Abrir conversa no WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ""}
+        </td>
+        <td class="text-center">${c.paidOrders}<span style="color:var(--ink-soft)">/${c.totalOrders}</span></td>
+        <td class="text-end"><strong>${formatMoney(c.totalSpent)}</strong></td>
+        <td style="font-size:.84rem">${formatDate(c.lastOrderAt)}</td>
+      </tr>
+      <tr class="customer-history d-none" data-history-for="${i}">
+        <td colspan="5" style="background:var(--blush-50)">${historyRows}</td>
+      </tr>`;
+    }).join("");
+
+    body.querySelectorAll(".customer-row").forEach(row => {
+      row.addEventListener("click", () => {
+        const target = body.querySelector(`[data-history-for="${row.dataset.customerIndex}"]`);
+        target?.classList.toggle("d-none");
+      });
+    });
+  }
+
+  function renderContactMessages(messages){
+    const list = document.getElementById("messagesList");
+    const empty = document.getElementById("messagesEmpty");
+    if(!list) return;
+
+    toggleBlock(list, messages.length > 0);
+    toggleBlock(empty, messages.length === 0);
+    list.innerHTML = messages.map(m => {
+      const contactUrl = whatsappUrl(m.telefone, "Olá! Recebemos a sua mensagem na Adriana Melo Acessórios.");
+      return `
+      <div class="order-card">
+        <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+          <strong>${escapeHTML(m.nome)}</strong>
+          <span class="section-sub" style="font-size:.8rem">${formatDate(m.createdAt)}</span>
+        </div>
+        <p class="mb-2" style="font-size:.9rem">${escapeHTML(m.mensagem)}</p>
+        <div class="d-flex flex-wrap align-items-center gap-2" style="font-size:.84rem">
+          <span>${escapeHTML(m.telefone)}</span>
+          ${m.ocasiao ? `<span class="admin-badge-pill">${escapeHTML(m.ocasiao)}</span>` : ""}
+          ${contactUrl ? `<a href="${contactUrl}" target="_blank" rel="noopener noreferrer" class="btn-outline-blush" style="padding:.3rem .8rem;font-size:.78rem"><i class="bi bi-whatsapp me-1"></i>Responder</a>` : ""}
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderSubscribers(subscribers){
+    const body = document.getElementById("subscribersTableBody");
+    const wrap = document.getElementById("subscribersTableWrap");
+    const empty = document.getElementById("subscribersEmpty");
+    if(!body) return;
+
+    toggleBlock(wrap, subscribers.length > 0);
+    toggleBlock(empty, subscribers.length === 0);
+    body.innerHTML = subscribers.map(s =>
+      `<tr><td>${escapeHTML(s.email)}</td><td style="font-size:.84rem">${formatDate(s.createdAt)}</td></tr>`
+    ).join("");
+  }
+
+  /* CSV para abrir no Excel/Planilhas. O BOM (﻿) no início é o que faz
+     o Excel reconhecer UTF-8 — sem ele, "Ação" vira "AÃ§Ã£o". */
+  function downloadCSV(filename, header, rows){
+    const escapeCell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = [header, ...rows].map(r => r.map(escapeCell).join(",")).join("\r\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   function renderCouponsTable(coupons){
     if(!coupons.length){
       couponsTableBodyEl.innerHTML = `<tr><td colspan="4" class="text-center small py-3" style="color:var(--ink-soft)">Nenhum cupom cadastrado.</td></tr>`;
@@ -826,22 +933,56 @@
   });
 
   /* ============================ CARREGAMENTO ============================ */
+  /* Os botões de exportar são religados a cada carga do painel porque os
+     dados vêm por closure. `onclick` (e não addEventListener) de propósito:
+     substitui o handler anterior em vez de empilhar um novo a cada
+     recarregamento, que baixaria o mesmo CSV várias vezes. */
+  function wireExports(customers, subscribers){
+    const customersBtn = document.getElementById("exportCustomersBtn");
+    if(customersBtn){
+      customersBtn.onclick = () => downloadCSV(
+        "clientes.csv",
+        ["Nome", "E-mail", "Telefone", "Pedidos pagos", "Pedidos totais", "Total gasto", "Última compra"],
+        customers.map(c => [
+          c.nome, c.email || "", c.telefone || "",
+          c.paidOrders, c.totalOrders,
+          c.totalSpent.toFixed(2).replace(".", ","),
+          formatDate(c.lastOrderAt),
+        ])
+      );
+    }
+    const subsBtn = document.getElementById("exportSubscribersBtn");
+    if(subsBtn){
+      subsBtn.onclick = () => downloadCSV(
+        "lista-de-emails.csv",
+        ["E-mail", "Cadastrou em"],
+        subscribers.map(s => [s.email, formatDate(s.createdAt)])
+      );
+    }
+  }
+
   async function loadDashboard(){
     showOnly(stateLoading);
     try{
-      const [ordersRes, productsRes, couponsRes] = await Promise.all([
+      const responses = await Promise.all([
         fetchWithTimeout("/api/admin/orders"),
         fetchWithTimeout("/api/admin/products"),
         fetchWithTimeout("/api/admin/coupons"),
+        fetchWithTimeout("/api/admin/customers"),
+        fetchWithTimeout("/api/admin/leads"),
       ]);
-      if([ordersRes, productsRes, couponsRes].some(r => r.status === 401)){ showOnly(stateLoggedOut); return; }
-      if([ordersRes, productsRes, couponsRes].some(r => r.status === 403)){ showOnly(stateForbidden); return; }
-      if(!ordersRes.ok || !productsRes.ok || !couponsRes.ok){
-        throw new Error("Falha ao carregar o painel (HTTP " + (ordersRes.status || productsRes.status || couponsRes.status) + ").");
+      const [ordersRes, productsRes, couponsRes, customersRes, leadsRes] = responses;
+      if(responses.some(r => r.status === 401)){ showOnly(stateLoggedOut); return; }
+      if(responses.some(r => r.status === 403)){ showOnly(stateForbidden); return; }
+      const failed = responses.find(r => !r.ok);
+      if(failed){
+        throw new Error("Falha ao carregar o painel (HTTP " + failed.status + ").");
       }
       const ordersData = await ordersRes.json();
       const productsData = await productsRes.json();
       const couponsData = await couponsRes.json();
+      const customersData = await customersRes.json();
+      const leadsData = await leadsRes.json();
 
       const orders = Array.isArray(ordersData.orders) ? ordersData.orders : [];
       showOnly(contentEl);
@@ -851,6 +992,13 @@
       renderProductsTable(Array.isArray(productsData.products) ? productsData.products : []);
       renderCouponsTable(Array.isArray(couponsData.coupons) ? couponsData.coupons : []);
       renderOrders(orders);
+
+      const customers = Array.isArray(customersData.customers) ? customersData.customers : [];
+      const subscribers = Array.isArray(leadsData.subscribers) ? leadsData.subscribers : [];
+      renderCustomers(customers);
+      renderContactMessages(Array.isArray(leadsData.messages) ? leadsData.messages : []);
+      renderSubscribers(subscribers);
+      wireExports(customers, subscribers);
     }catch(err){
       console.error("Erro ao carregar painel administrativo:", err);
       showOnly(stateError);
