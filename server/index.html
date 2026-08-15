@@ -12,13 +12,12 @@
   - Uma CSP via <meta> é uma camada extra, não substitui o header HTTP `Content-Security-Policy`
     que o servidor/hospedagem deve enviar (veja server/server.js, uso de helmet()).
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://cdnjs.cloudflare.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' https: data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 
 <!-- Bootstrap 5 -->
-<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link rel="stylesheet" href="css/vendor/bootstrap.min.css">
+<link rel="stylesheet" href="css/vendor/bootstrap-icons.min.css">
 <!-- Fontes -->
 <link rel="stylesheet" href="css/fonts.css">
 
@@ -668,7 +667,7 @@
 </div>
  
 <script src="js/error-boundary.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js" defer></script>
+<script src="js/vendor/bootstrap.bundle.min.js" defer></script>
 
 <!--
   SDK do Mercado Pago (v2) — necessário apenas se você usar Wallet Brick / pagamento embutido.
