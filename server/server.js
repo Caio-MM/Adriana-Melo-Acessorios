@@ -318,6 +318,9 @@ const PUBLIC_TOP_LEVEL = new Set([
   "pagamento-sucesso.html", "pagamento-erro.html", "pagamento-pendente.html",
   "pagamento-pix.html",
   "redefinir-senha.html", "404.html", "css", "js", "img",
+  // Buscadores e navegadores pedem estes três na raiz, por convenção —
+  // sem entrar aqui eles caem no 404 mesmo existindo em disco.
+  "robots.txt", "sitemap.xml", "favicon.svg",
 ]);
 // Usada tanto pelo bloqueio de allowlist abaixo quanto pelo catch-all no fim
 // do arquivo (depois de express.static e de todas as rotas). Navegação de

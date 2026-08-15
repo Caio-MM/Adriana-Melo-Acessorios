@@ -1,0 +1,17 @@
+# Páginas de conta, painel e retorno de pagamento não devem ser indexadas:
+# são privadas (ou só fazem sentido no meio de uma compra) e apareceriam
+# soltas na busca. A loja em si fica liberada.
+User-agent: *
+Allow: /$
+Allow: /index.html
+Disallow: /admin.html
+Disallow: /conta.html
+Disallow: /pedidos.html
+Disallow: /redefinir-senha.html
+Disallow: /pagamento-sucesso.html
+Disallow: /pagamento-erro.html
+Disallow: /pagamento-pendente.html
+Disallow: /pagamento-pix.html
+Disallow: /api/
+
+Sitemap: https://adrianameloacessorios.com/sitemap.xml

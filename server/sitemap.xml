@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Só a home: as demais páginas são privadas ou etapas de compra, e estão
+     bloqueadas no robots.txt. As seções da loja (coleções, história,
+     depoimentos) vivem dentro da própria home por âncora, então não têm
+     URL própria para listar aqui. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://adrianameloacessorios.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
