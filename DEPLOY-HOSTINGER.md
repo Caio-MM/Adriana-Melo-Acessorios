@@ -19,23 +19,23 @@ nem inicia.
 ## 2. Como o projeto está organizado (importante na hora de configurar)
 
 ```
-Adriana-Melo-Acessorios/     ← o site (index.html, css/, js/, img/)
-└── server/
+Adriana-Melo-Acessorios/
+└── server/                  ← o site inteiro mora aqui (index.html, css/,
+    ├── index.html              js/, img/) junto com o back-end
+    ├── css/, js/, img/
     ├── package.json         ← as dependências estão AQUI, não na raiz
     ├── server.js            ← arquivo de entrada
     └── data.db              ← banco (criado sozinho no primeiro boot)
 ```
 
-O `server.js` serve os arquivos do site a partir da pasta **acima** dele
-(`path.join(__dirname, "..")`). Ou seja:
+`server.js` serve os arquivos do site a partir da própria pasta onde está
+(`SITE_ROOT = __dirname`). Isso é proposital: builders de deploy como o da
+Hostinger só deixam escolher uma pasta *existente* do repositório como raiz
+da aplicação (não a raiz do repositório em si), então a pasta escolhida
+precisa conter tudo — site e servidor juntos.
 
-- **Suba o repositório inteiro**, não só a pasta `server/`.
-- Configure a aplicação apontando para a pasta **`server`** (é onde está o
-  `package.json`), com arquivo de entrada **`server.js`** e comando de
-  início **`npm start`**.
-
-Se o painel insistir em procurar `package.json` na raiz do repositório,
-avise que eu crio um na raiz redirecionando para o `server/`.
+Configure a aplicação apontando o **diretório raiz** para **`server`**, com
+arquivo de entrada **`server.js`** e comando de início **`npm start`**.
 
 ---
 

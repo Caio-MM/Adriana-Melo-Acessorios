@@ -37,7 +37,7 @@ const { colorLabelFor } = require("./orderFormatting");
 // Mesmo arquivo que a vitrine e o carrinho carregam no navegador (js/pricing.js,
 // em formato UMD) — é o que garante que o "5% no Pix" e o "3x sem juros"
 // mostrados na tela do produto sejam exatamente os valores cobrados aqui.
-const pricing = require("../js/pricing.js");
+const pricing = require("./js/pricing.js");
 
 const app = express();
 const PORT = process.env.PORT || 3333;
@@ -283,7 +283,7 @@ const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
    isso impede que a pasta server/ (código-fonte do back-end) seja servida
    por engano caso alguém peça, por exemplo, /server/server.js.
 ========================================================================= */
-const SITE_ROOT = path.join(__dirname, "..");
+const SITE_ROOT = __dirname;
 const PUBLIC_TOP_LEVEL = new Set([
   "index.html", "conta.html", "pedidos.html", "admin.html",
   "pagamento-sucesso.html", "pagamento-erro.html", "pagamento-pendente.html",

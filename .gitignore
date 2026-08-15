@@ -22,4 +22,4 @@ server/*.db-shm
 # Fotos de produto enviadas pelo painel administrativo (conteúdo do
 # usuário, não código-fonte — ver POST /api/admin/products/:id/photo em
 # server/server.js)
-img/products/
+server/img/products/

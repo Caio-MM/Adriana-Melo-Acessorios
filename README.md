@@ -4,11 +4,11 @@ Este pacote contém o site e o back-end que processa pagamentos (Mercado
 Pago), frete (Melhor Envio), contas de cliente e histórico de pedidos.
 
 ```
-site/
-├── index.html            ← loja
-├── conta.html             ← login / cadastro
-├── pedidos.html           ← histórico de pedidos (exige login)
-├── admin.html             ← painel administrativo (exige login + ADMIN_EMAIL_HASHES)
+server/                     ← tudo fica aqui (site + back-end Node.js — ver seção 3)
+├── index.html              ← loja
+├── conta.html              ← login / cadastro
+├── pedidos.html            ← histórico de pedidos (exige login)
+├── admin.html              ← painel administrativo (exige login + ADMIN_EMAIL_HASHES)
 ├── css/style.css
 ├── js/
 │   ├── main.js            ← catálogo, carrinho, frete, cupom, checkout
@@ -19,17 +19,19 @@ site/
 │   ├── pedidos.js          ← histórico de pedidos
 │   ├── pagamento-retorno.js ← páginas de retorno do Mercado Pago
 │   └── admin.js            ← painel administrativo (lista + código de rastreio)
-└── server/                 ← back-end Node.js (também serve o site, ver seção 3)
-    ├── server.js
-    ├── db.js                ← usuários, sessões e pedidos (SQLite embutido)
-    ├── auth.js              ← hashing de senha, sessão por cookie, checagem de admin
-    ├── whatsapp.js           ← aviso de WhatsApp p/ lojista (WhatsApp Cloud API)
-    ├── email.js              ← aviso de e-mail p/ lojista (Nodemailer/SMTP)
-    ├── orderFormatting.js    ← cor/moeda/data compartilhados entre os avisos
-    ├── package.json
-    ├── .env.example
-    └── .gitignore
+├── server.js
+├── db.js                   ← usuários, sessões e pedidos (SQLite embutido)
+├── auth.js                 ← hashing de senha, sessão por cookie, checagem de admin
+├── whatsapp.js              ← aviso de WhatsApp p/ lojista (WhatsApp Cloud API)
+├── email.js                 ← aviso de e-mail p/ lojista (Nodemailer/SMTP)
+├── orderFormatting.js       ← cor/moeda/data compartilhados entre os avisos
+├── package.json
+├── .env.example
+└── .gitignore
 ```
+
+Tudo mora dentro de `server/` — inclusive o site — porque é essa a pasta que
+serviços de deploy (Hostinger incluída) tratam como raiz da aplicação Node.
 
 ## 1. O que tem aqui
 
@@ -172,8 +174,9 @@ Para o **webhook** (`/api/webhook`) funcionar, o Mercado Pago precisa
 conseguir chamar seu servidor pela internet. Em desenvolvimento, use algo
 como [ngrok](https://ngrok.com) para gerar uma URL pública temporária e
 configure-a em `SERVER_PUBLIC_URL` (no `.env`) e no painel do Mercado Pago.
-Em produção, publique a pasta inteira (site + `server/`) em um serviço como
-Render, Railway, Fly.io ou uma VPS, e use a URL real de produção.
+Em produção, publique a pasta `server/` (que já contém o site inteiro) em um
+serviço como Render, Railway, Fly.io, Hostinger ou uma VPS, e use a URL real
+de produção.
 
 ### Dependências (instaladas via `npm install`)
 
@@ -260,7 +263,7 @@ const PAYMENT_RULES = {
 
 Esse arquivo é carregado **pelos dois lados**: pelo navegador (vitrine,
 tela do produto e carrinho) e pelo servidor (`server/server.js` faz
-`require("../js/pricing.js")` para cobrar). Mudar um número ali muda, de uma
+`require("./js/pricing.js")` para cobrar). Mudar um número ali muda, de uma
 vez só: os preços da vitrine, a tela de detalhes do produto, os totais do
 carrinho, os selos do rodapé e o valor efetivamente cobrado. Não existe
 segundo lugar para editar — e é de propósito: um desconto anunciado que a
