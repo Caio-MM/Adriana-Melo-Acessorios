@@ -780,6 +780,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .cart-checkout-btn:disabled{ opacity:.55; }
 
+/* Aviso de que o pagamento acontece no Mercado Pago, abaixo do botão */
+.cart-gateway-note{
+  display:flex; gap:.4rem; align-items:flex-start; justify-content:center;
+  margin:.7rem 0 0; padding:0 .2rem;
+  font-size:.74rem; line-height:1.45; color:var(--ink-soft); text-align:left;
+}
+.cart-gateway-note i{ flex-shrink:0; font-size:.85rem; line-height:1.5; color:var(--blush-700); }
+.cart-gateway-note strong{ color:var(--ink); font-weight:600; }
+
 /* Aviso de "entre na sua conta" acima do botão de pagamento */
 .cart-login-notice{
   display:flex; gap:.55rem; align-items:flex-start;

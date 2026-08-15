@@ -242,6 +242,13 @@
         <i class="bi bi-lock-fill"></i> Ir para pagamento
       </button>
       <div class="cart-hint text-center" id="checkoutMsg" style="color:var(--blush-700)"></div>
+      <!-- Avisa que o pagamento abre no Mercado Pago. Sem isso a cliente
+           é jogada num domínio que não reconhece bem na hora de pagar, que
+           é exatamente onde a compra costuma ser abandonada. -->
+      <p class="cart-gateway-note">
+        <i class="bi bi-shield-lock-fill"></i>
+        <span>Pagamento processado pelo <strong>Mercado Pago</strong> — você vai concluir a compra no ambiente seguro deles.</span>
+      </p>
     </div>
 
     </div><!-- /.cart-checkout-panel -->
