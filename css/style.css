@@ -814,6 +814,26 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* ============ PÁGINAS DE CONTA (login/cadastro/pedidos) ============ */
 .account-main{ padding:2.5rem 0 4rem; min-height:70vh; }
+
+/* Página de entrar/criar conta: ocupa a janela inteira, com o cartão
+   centralizado na sobra. Sem isto o cartão (altura fixa) encostava no topo
+   e deixava todo o vazio embaixo.
+
+   O flex na <body> — em vez de min-height na <main> — é o que dispensa
+   saber a altura do cabeçalho: o header ocupa o que precisa e a main fica
+   com o resto, qualquer que seja ele.
+
+   100dvh (e não 100vh) porque no celular a barra do navegador entra e sai:
+   com 100vh a tela ficaria mais alta que o visível e nasceria uma rolagem
+   fantasma. A linha 100vh antes serve de reserva para navegador sem dvh. */
+.auth-page{ display:flex; flex-direction:column; min-height:100vh; min-height:100dvh; }
+.auth-page .account-main{
+  flex:1 1 auto;
+  display:flex; align-items:center;
+  min-height:0;             /* deixa encolher em janela baixa, sem cortar */
+  padding-top:2rem; padding-bottom:2rem;
+}
+.auth-page .account-main > .container{ width:100%; }
 .account-card{
   background:var(--white); border:1px solid var(--blush-100); border-radius:var(--radius-md);
   padding:1.75rem 1.4rem; max-width:440px; box-shadow:var(--shadow-soft);
@@ -839,7 +859,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    laço vira um topo fixo e a troca passa a ser por abas. */
 .auth-shell{
   position:relative; overflow:hidden;
-  max-width:980px; margin:0 auto;
+  /* 980px deixava faixas vazias grandes nas laterais em telas largas.
+     92vw é o piso em janelas médias (não estica até vazar do padding do
+     .container); 1180px é o teto — mais que isso e a coluna de formulário
+     (max-width fixo em .auth-form) vira um vão de vazio à sua própria
+     direita/esquerda dentro do painel, sem ganhar nada em legibilidade. */
+  max-width:min(92vw, 1180px); margin:0 auto;
   background:var(--white); border:1px solid var(--blush-100);
   border-radius:var(--radius-lg); box-shadow:var(--shadow-soft);
 }
@@ -954,7 +979,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .auth-switch:focus-visible{ outline:3px solid #fff; outline-offset:3px; }
 
 /* ---- Formulários ---- */
-.auth-form{ width:100%; max-width:360px; margin:0 auto; }
+.auth-form{ width:100%; max-width:380px; margin:0 auto; }
 .auth-eyebrow{
   font-family:var(--font-script); font-size:1.35rem; color:var(--blush-700);
   margin-bottom:.05rem;
@@ -1034,7 +1059,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* ---- Desktop: painel deslizante ---- */
 @media (min-width: 992px){
-  .auth-shell{ min-height:580px; }
+  /* Cresce com a janela em vez de ficar preso em 580px, que deixava uma
+     faixa vazia grande embaixo. Os três valores do clamp importam:
+       piso 660px  — os painéis são `position:absolute`, então NÃO empurram
+                     a altura do cartão: conteúdo mais alto que ele é
+                     simplesmente cortado pelo overflow:hidden. 660px é o
+                     que o formulário de cadastro (o mais alto: 3 campos +
+                     dica + rodapé) precisa com o padding. Em janela mais
+                     baixa que isso a página rola — cortar seria pior;
+       ideal       — a janela menos o cabeçalho e um respiro;
+       teto 780px  — num monitor muito alto, um cartão de login esticado
+                     até embaixo pareceria defeito, não design. */
+  .auth-shell{ min-height:clamp(660px, calc(100dvh - 9.5rem), 780px); }
   .auth-deco{
     position:absolute; top:0; left:0; z-index:2;
     width:30%; height:100%;
