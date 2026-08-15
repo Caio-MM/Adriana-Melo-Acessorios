@@ -165,12 +165,21 @@ const COUPON_ALREADY_USED_MESSAGE =
      1) aplica (ou não) o desconto do Pix no preço de cada item;
      2) restringe, na própria preferência do Mercado Pago, quais meios de
         pagamento aparecem na tela de checkout.
-   O (2) é o que impede as duas fraudes óbvias do (1): escolher "Pix" para
-   ganhar os 5% e pagar no cartão na tela seguinte, e o inverso — escolher
-   cartão e pagar no Pix sem o desconto que era devido. `account_money`
-   (saldo do Mercado Pago) fica junto do Pix por ser igualmente à vista e
-   instantâneo; deixá-lo no lado do cartão faria o cliente pagar mais por
-   uma forma de pagamento que, para a loja, é idêntica ao Pix.
+   O (2) é o que impede a fraude óbvia do (1): escolher "Pix" para ganhar
+   os 5% e pagar no cartão na tela seguinte. É por isso que o lado do Pix
+   exclui todo tipo de cartão — essa é a exclusão que protege a loja.
+
+   ⚠️ `account_money` (saldo do Mercado Pago) NÃO pode entrar em nenhuma
+   das listas: a API do Mercado Pago recusa a preferência inteira com
+   "account_money cannot be excluded" (HTTP 400), e o cliente não
+   consegue nem chegar na tela de pagamento. Ele já esteve na lista do
+   cartão e deixava cartão/boleto 100% quebrados, com a loja recebendo
+   só por Pix sem ninguém perceber — a tela de erro genérica não
+   distinguia isso de uma instabilidade do Mercado Pago.
+
+   O efeito de deixá-lo passar nos dois lados é só de justiça, não de
+   segurança: quem escolheu "cartão" e paga com saldo acaba pagando o
+   preço cheio, sem o desconto do Pix. Paga a mais, nunca a menos.
    IDs conforme a documentação de payment types do Mercado Pago.
 ========================================================================= */
 const PAYMENT_METHODS = {
@@ -180,7 +189,7 @@ const PAYMENT_METHODS = {
   },
   card: {
     label: "Cartão ou boleto",
-    excludedPaymentTypes: ["bank_transfer", "account_money"],
+    excludedPaymentTypes: ["bank_transfer"],
   },
 };
 
