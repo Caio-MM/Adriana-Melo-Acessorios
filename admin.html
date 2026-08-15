@@ -7,7 +7,7 @@
 <meta name="description" content="Painel administrativo de pedidos da Adriana Melo Acessórios.">
 <meta name="robots" content="noindex, nofollow">
 
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://cdnjs.cloudflare.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' https: data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://cdnjs.cloudflare.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' https: data: blob:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
@@ -305,9 +305,50 @@
         <div class="modal-body">
           <input type="hidden" id="epId">
 
-          <div class="mb-3 text-center">
-            <img id="epPreview" src="" alt="Pré-visualização" class="epPreview-img d-none">
-            <span class="epPreview-placeholder" id="epPreviewPlaceholder" aria-hidden="true"><svg class="bow-icon"><use href="#bow-shape"/></svg></span>
+          <!-- Pré-visualização no formato REAL da vitrine: um mini card de
+               produto, e não um thumb solto. A foto na loja é recortada em
+               1:1 (.product-thumb), então mostrar um retângulo aqui escondia
+               justamente o que o recorte come. -->
+          <div class="ep-preview-wrap mb-3">
+            <span class="ep-preview-caption">Como a cliente vê na loja</span>
+            <div class="ep-mini-card">
+              <div class="ep-mini-thumb">
+                <img id="epPreview" src="" alt="Pré-visualização da foto do produto" class="d-none">
+                <span class="epPreview-placeholder" id="epPreviewPlaceholder" aria-hidden="true"><svg class="bow-icon"><use href="#bow-shape"/></svg></span>
+              </div>
+              <div class="ep-mini-body">
+                <div class="ep-mini-name" id="epPreviewName"></div>
+                <div class="ep-mini-price" id="epPreviewPrice"></div>
+              </div>
+            </div>
+            <button type="button" class="btn-outline-blush ep-recrop-btn d-none" id="epRecropBtn">
+              <i class="bi bi-crop me-1"></i>Ajustar recorte
+            </button>
+          </div>
+
+          <!-- Recorte: aparece ao escolher um arquivo (ou em "Ajustar
+               recorte"). O quadrado é o mesmo 1:1 da vitrine — o que sobra
+               fora dele é exatamente o que a cliente não vai ver. -->
+          <div class="ep-cropper d-none" id="epCropper">
+            <div class="ep-crop-head">
+              <strong class="ep-crop-title">Ajuste o recorte</strong>
+              <span class="ep-crop-hint">Arraste a foto e use o zoom até enquadrar do jeito que quiser.</span>
+            </div>
+            <div class="ep-crop-stage" id="epCropStage" tabindex="0" role="application"
+                 aria-label="Área de recorte. Arraste com o mouse ou use as setas do teclado para mover a foto.">
+              <img id="epCropImg" alt="" draggable="false">
+              <div class="ep-crop-guides" aria-hidden="true"></div>
+            </div>
+            <div class="ep-crop-zoom">
+              <i class="bi bi-zoom-out" aria-hidden="true"></i>
+              <input type="range" class="form-range" id="epCropZoom" min="1" max="3" step="0.01" value="1"
+                     aria-label="Aproximar a foto">
+              <i class="bi bi-zoom-in" aria-hidden="true"></i>
+            </div>
+            <div class="ep-crop-actions">
+              <button type="button" class="btn-outline-blush" id="epCropCancel">Cancelar</button>
+              <button type="button" class="btn-blush" id="epCropConfirm">Usar esta foto</button>
+            </div>
           </div>
 
           <div class="mb-3">

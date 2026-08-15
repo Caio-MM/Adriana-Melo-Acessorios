@@ -204,7 +204,13 @@ app.use(helmet({
       // customizada era silenciosamente bloqueada pela CSP e a vitrine ficava
       // sem imagem. Continua barrando http:// e, principalmente, o que a CSP
       // realmente protege aqui (script/style/connect) segue restrito.
-      imgSrc: ["'self'", "https:", "data:"],
+      // blob: é para o recorte de foto do painel (js/admin.js): a imagem
+      // escolhida é lida como object URL para a lojista enquadrar antes de
+      // subir. É um endereço gerado pela própria página e válido só nela —
+      // não abre caminho para carregar nada de fora.
+      // ⚠️ Espelhado no <meta> de cada página HTML — os dois têm que mudar
+      // juntos (ver "CSP is duplicated" no CLAUDE.md).
+      imgSrc: ["'self'", "https:", "data:", "blob:"],
       connectSrc: ["'self'", "https://api.mercadopago.com", "https://viacep.com.br"],
       frameSrc: ["https://www.mercadopago.com", "https://www.mercadopago.com.br"],
       objectSrc: ["'none'"],

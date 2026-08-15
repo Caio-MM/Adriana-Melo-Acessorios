@@ -444,6 +444,15 @@
   const epBadgeNew = document.getElementById("epBadgeNew");
   const epPreview = document.getElementById("epPreview");
   const epPreviewPlaceholder = document.getElementById("epPreviewPlaceholder");
+  const epPreviewName = document.getElementById("epPreviewName");
+  const epPreviewPrice = document.getElementById("epPreviewPrice");
+  const epRecropBtn = document.getElementById("epRecropBtn");
+  const epCropper = document.getElementById("epCropper");
+  const epCropStage = document.getElementById("epCropStage");
+  const epCropImg = document.getElementById("epCropImg");
+  const epCropZoom = document.getElementById("epCropZoom");
+  const epCropCancel = document.getElementById("epCropCancel");
+  const epCropConfirm = document.getElementById("epCropConfirm");
   const epMsg = document.getElementById("epMsg");
   const epSaveBtn = document.getElementById("epSaveBtn");
 
@@ -471,7 +480,20 @@
     else epPreview.removeAttribute("src");
     epPreview.classList.toggle("d-none", !hasPhoto);
     epPreviewPlaceholder.classList.toggle("d-none", hasPhoto);
+    // Só dá para reenquadrar o que já existe.
+    epRecropBtn.classList.toggle("d-none", !hasPhoto);
   }
+
+  /* Nome e preço do mini card acompanham o que está sendo digitado — a
+     pré-visualização é "como fica na loja", então tem que refletir a edição
+     em andamento, não o valor salvo. */
+  function syncPreviewText(){
+    epPreviewName.textContent = epName.value.trim() || "Nome do produto";
+    const price = Number(epPrice.value);
+    epPreviewPrice.textContent = Number.isFinite(price) && price > 0 ? formatMoney(price) : "—";
+  }
+  epName.addEventListener("input", syncPreviewText);
+  epPrice.addEventListener("input", syncPreviewText);
 
   function openEditModal(productId){
     const product = productsCache.find(p => p.id === productId);
@@ -484,6 +506,10 @@
     epBadgeBestseller.checked = (product.badges || []).includes("Mais vendido");
     epBadgeNew.checked = (product.badges || []).includes("Novo");
     setPreviewPhoto(imageFor(product));
+    syncPreviewText();
+    // Reabrir o modal noutro produto não pode herdar um recorte aberto do
+    // anterior.
+    closeCropper();
     epMsg.textContent = "";
     epMsg.className = "small account-msg";
     epPhotoStatus.textContent = "";
@@ -501,59 +527,194 @@
   }
 
   /* =====================================================================
-     UPLOAD DE FOTO — como funciona
+     FOTO DO PRODUTO — recorte no navegador e depois upload
      ---------------------------------------------------------------------
-     1) Ao escolher um arquivo, a FileReader API lê os bytes localmente e
-        gera uma data URL (base64) só para a pré-visualização instantânea
-        (`epPreview.src`) — nunca sai do navegador, é só pra lojista ver o
-        que escolheu na hora, sem esperar rede nenhuma.
-     2) Em paralelo, o arquivo original (não o base64) é enviado via
-        `FormData`/multipart para POST /api/admin/products/:id/photo, que
-        grava em disco no servidor e devolve um caminho curto
-        (ex.: "/img/products/produto-2-1699999999999.jpg").
-     3) Esse caminho fica guardado em `pendingPhotoUrl` até a lojista
-        clicar em "Salvar alterações" — só então ele entra no PATCH normal
-        do produto (mesmo payload compacto dos outros campos), junto com
-        nome/preço/categoria/selos que também tenham mudado.
-     Por que não mandar o base64 direto pro servidor: um arquivo de imagem
-     em base64 fica ~33% maior que o arquivo original, e viajaria dentro
-     de um JSON comum — o multipart/FormData manda os bytes originais,
-     sem esse inchaço, e permite ao servidor limitar/validar o upload
-     (tamanho, tipo) antes mesmo de tentar interpretar o corpo como JSON.
+     A vitrine mostra a foto num quadrado 1:1 com object-fit:cover
+     (.product-thumb), ou seja: SEMPRE recorta. Antes esse recorte era
+     decidido pelo navegador (centro da imagem) e a lojista só descobria o
+     resultado depois de salvar. Agora ela escolhe o enquadramento aqui.
+
+     1) Ao escolher um arquivo, ele NÃO é enviado ainda: abre o recorte com
+        a imagem lida localmente (object URL). Nada sai do navegador.
+     2) Em "Usar esta foto", o trecho escolhido é desenhado num <canvas> e
+        exportado como JPEG — o arquivo que sobe já é o quadrado final, do
+        tamanho que a loja precisa. Isso resolve duas coisas de uma vez: o
+        recorte fica gravado (não depende do CSS do dia) e uma foto de
+        celular de 4000px vira ~800px, deixando a vitrine bem mais leve.
+     3) O upload continua igual: multipart para
+        POST /api/admin/products/:id/photo, que grava em disco e devolve um
+        caminho curto guardado em `pendingPhotoUrl` até "Salvar alterações".
+
+     Por que multipart e não base64 num JSON: base64 incha o arquivo ~33% e
+     impede o servidor de validar tipo/tamanho antes de ler o corpo inteiro.
   ===================================================================== */
-  epPhotoFile.addEventListener("change", () => {
-    const file = epPhotoFile.files[0];
-    if(!file) return;
 
-    epMsg.textContent = "";
-    epMsg.className = "small account-msg";
+  // 800px = 2× os ~400px que o card ocupa na vitrine, para não borrar em
+  // tela retina. Acima disso só peso: o card nunca exibe maior que isso.
+  const CROP_OUTPUT_SIZE = 800;
+  const CROP_JPEG_QUALITY = 0.9;
 
-    const reader = new FileReader();
-    reader.onload = () => { setPreviewPhoto(reader.result); };
-    reader.readAsDataURL(file);
+  /* Estado do recorte. `zoom` 1 = imagem no menor tamanho que ainda cobre o
+     quadrado inteiro; offsets são o canto superior-esquerdo da imagem
+     dentro do palco, em px de tela. */
+  const crop = { natW: 0, natH: 0, baseScale: 1, zoom: 1, x: 0, y: 0, objectUrl: null, stage: 0 };
 
+  function cropClampAndRender(){
+    const dispW = crop.natW * crop.baseScale * crop.zoom;
+    const dispH = crop.natH * crop.baseScale * crop.zoom;
+    // A imagem nunca pode descolar da borda: sem isso sobraria fundo vazio
+    // dentro do quadrado, que na loja viraria uma faixa cinza.
+    crop.x = Math.min(0, Math.max(crop.stage - dispW, crop.x));
+    crop.y = Math.min(0, Math.max(crop.stage - dispH, crop.y));
+    epCropImg.style.width = `${dispW}px`;
+    epCropImg.style.height = `${dispH}px`;
+    epCropImg.style.transform = `translate(${crop.x}px, ${crop.y}px)`;
+  }
+
+  /* Aproxima/afasta mantendo fixo o ponto sob o cursor (ou o centro, quando
+     vem do slider) — sem isso o zoom "foge" do que a lojista está mirando. */
+  function cropSetZoom(nextZoom, anchorX, anchorY){
+    const clamped = Math.min(Number(epCropZoom.max), Math.max(Number(epCropZoom.min), nextZoom));
+    const ax = anchorX ?? crop.stage / 2;
+    const ay = anchorY ?? crop.stage / 2;
+    const ratio = clamped / crop.zoom;
+    crop.x = ax - (ax - crop.x) * ratio;
+    crop.y = ay - (ay - crop.y) * ratio;
+    crop.zoom = clamped;
+    epCropZoom.value = String(clamped);
+    cropClampAndRender();
+  }
+
+  function openCropper(src){
+    epCropper.classList.remove("d-none");
+    epCropImg.onload = () => {
+      crop.natW = epCropImg.naturalWidth;
+      crop.natH = epCropImg.naturalHeight;
+      crop.stage = epCropStage.clientWidth;
+      // "cover": a menor escala em que a imagem ainda tapa o quadrado todo.
+      crop.baseScale = Math.max(crop.stage / crop.natW, crop.stage / crop.natH);
+      crop.zoom = 1;
+      epCropZoom.value = "1";
+      // Começa centralizado — o mesmo enquadramento que o navegador faria
+      // sozinho, então quem não quer mexer em nada é só confirmar.
+      crop.x = (crop.stage - crop.natW * crop.baseScale) / 2;
+      crop.y = (crop.stage - crop.natH * crop.baseScale) / 2;
+      cropClampAndRender();
+      epCropStage.focus();
+    };
+    epCropImg.src = src;
+  }
+
+  function closeCropper(){
+    epCropper.classList.remove("is-zooming");
+    epCropper.classList.add("d-none");
+    epCropStage.classList.remove("is-dragging");
+    if(crop.objectUrl){
+      // Object URL segura o arquivo inteiro na memória até ser revogado.
+      URL.revokeObjectURL(crop.objectUrl);
+      crop.objectUrl = null;
+    }
+  }
+
+  // ---- Arrastar (mouse e toque, via Pointer Events) ----
+  let dragging = false, dragStartX = 0, dragStartY = 0, dragOriginX = 0, dragOriginY = 0;
+  epCropStage.addEventListener("pointerdown", (e) => {
+    if(!epCropImg.src) return;
+    dragging = true;
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    dragOriginX = crop.x; dragOriginY = crop.y;
+    epCropStage.classList.add("is-dragging");
+    epCropStage.setPointerCapture(e.pointerId);
+  });
+  epCropStage.addEventListener("pointermove", (e) => {
+    if(!dragging) return;
+    crop.x = dragOriginX + (e.clientX - dragStartX);
+    crop.y = dragOriginY + (e.clientY - dragStartY);
+    cropClampAndRender();
+  });
+  const endDrag = () => { dragging = false; epCropStage.classList.remove("is-dragging"); };
+  epCropStage.addEventListener("pointerup", endDrag);
+  epCropStage.addEventListener("pointercancel", endDrag);
+
+  // ---- Zoom pela roda do mouse, ancorado no cursor ----
+  epCropStage.addEventListener("wheel", (e) => {
+    if(!epCropImg.src) return;
+    e.preventDefault();
+    const rect = epCropStage.getBoundingClientRect();
+    cropSetZoom(crop.zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08), e.clientX - rect.left, e.clientY - rect.top);
+  }, { passive: false });
+
+  epCropZoom.addEventListener("input", () => {
+    epCropper.classList.add("is-zooming");
+    cropSetZoom(Number(epCropZoom.value));
+  });
+  epCropZoom.addEventListener("change", () => epCropper.classList.remove("is-zooming"));
+
+  // ---- Teclado: setas movem, +/- aproximam (o arraste sozinho deixaria
+  //      quem não usa mouse sem nenhuma forma de enquadrar) ----
+  epCropStage.addEventListener("keydown", (e) => {
+    if(!epCropImg.src) return;
+    const step = e.shiftKey ? 20 : 5;
+    const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+    if(moves[e.key]){
+      e.preventDefault();
+      crop.x += moves[e.key][0];
+      crop.y += moves[e.key][1];
+      cropClampAndRender();
+      return;
+    }
+    if(e.key === "+" || e.key === "="){ e.preventDefault(); cropSetZoom(crop.zoom * 1.1); }
+    if(e.key === "-" || e.key === "_"){ e.preventDefault(); cropSetZoom(crop.zoom / 1.1); }
+  });
+
+  /* Desenha só o pedaço visível do palco, em CROP_OUTPUT_SIZE. O fundo
+     branco vai antes porque PNG/GIF com transparência viraria preto no
+     JPEG — branco combina com o card da vitrine. */
+  function exportCroppedBlob(){
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = CROP_OUTPUT_SIZE;
+      canvas.height = CROP_OUTPUT_SIZE;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, CROP_OUTPUT_SIZE, CROP_OUTPUT_SIZE);
+      // Do palco (px de tela) de volta para pixels reais da imagem.
+      const scale = crop.baseScale * crop.zoom;
+      const srcSize = crop.stage / scale;
+      ctx.drawImage(epCropImg, -crop.x / scale, -crop.y / scale, srcSize, srcSize,
+                    0, 0, CROP_OUTPUT_SIZE, CROP_OUTPUT_SIZE);
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error("Não foi possível preparar a imagem recortada.")),
+        "image/jpeg",
+        CROP_JPEG_QUALITY
+      );
+    });
+  }
+
+  function uploadPhotoBlob(blob){
     const id = Number(epId.value);
     const formData = new FormData();
-    formData.append("photo", file);
+    formData.append("photo", new File([blob], `produto-${id}.jpg`, { type: "image/jpeg" }));
 
     photoUploadInFlight = true;
     epSaveBtn.disabled = true;
+    epCropConfirm.disabled = true;
     epPhotoStatus.textContent = "Enviando imagem...";
     epPhotoStatus.className = "small mt-1";
 
-    fetchWithTimeout(`/api/admin/products/${id}/photo`, { method: "POST", body: formData }, 20000)
+    return fetchWithTimeout(`/api/admin/products/${id}/photo`, { method: "POST", body: formData }, 20000)
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if(!res.ok) throw new Error(data.error || "Não foi possível enviar a imagem.");
         pendingPhotoUrl = data.photoUrl;
-        epPhotoStatus.textContent = "Imagem enviada.";
+        epPhotoStatus.textContent = "Imagem enviada. Clique em salvar para publicar.";
         epPhotoStatus.classList.add("is-success");
       })
       .catch((err) => {
         epPhotoStatus.textContent = err.message || "Erro ao enviar a imagem.";
         epPhotoStatus.classList.add("is-error");
-        // Upload falhou: volta a pré-visualização pro que já estava salvo,
-        // e desfaz a seleção do arquivo pra não sugerir que ele "pegou".
+        // Volta a pré-visualização para o que já estava salvo — deixar o
+        // recorte na tela sugeriria que ele "pegou".
         const product = productsCache.find(p => p.id === id);
         setPreviewPhoto(product ? imageFor(product) : "");
         epPhotoFile.value = "";
@@ -561,7 +722,50 @@
       .finally(() => {
         photoUploadInFlight = false;
         epSaveBtn.disabled = false;
+        epCropConfirm.disabled = false;
       });
+  }
+
+  epPhotoFile.addEventListener("change", () => {
+    const file = epPhotoFile.files[0];
+    if(!file) return;
+    epMsg.textContent = "";
+    epMsg.className = "small account-msg";
+    epPhotoStatus.textContent = "";
+    epPhotoStatus.className = "small mt-1";
+    if(crop.objectUrl) URL.revokeObjectURL(crop.objectUrl);
+    crop.objectUrl = URL.createObjectURL(file);
+    openCropper(crop.objectUrl);
+  });
+
+  // Reenquadrar a foto que já está publicada, sem precisar reenviar o
+  // arquivo. Mesma origem, então o canvas não fica "sujo" (tainted) e a
+  // exportação funciona igual.
+  epRecropBtn.addEventListener("click", () => {
+    const current = epPreview.getAttribute("src");
+    if(!current) return;
+    epCropImg.crossOrigin = "anonymous";
+    openCropper(current);
+  });
+
+  epCropCancel.addEventListener("click", () => {
+    closeCropper();
+    epPhotoFile.value = "";
+    const product = productsCache.find(p => p.id === Number(epId.value));
+    setPreviewPhoto(product ? imageFor(product) : "");
+  });
+
+  epCropConfirm.addEventListener("click", async () => {
+    try{
+      const blob = await exportCroppedBlob();
+      // Mostra o recorte final no mini card antes mesmo do upload terminar.
+      setPreviewPhoto(URL.createObjectURL(blob));
+      closeCropper();
+      await uploadPhotoBlob(blob);
+    }catch(err){
+      epPhotoStatus.textContent = err.message || "Não foi possível recortar a imagem.";
+      epPhotoStatus.className = "small mt-1 is-error";
+    }
   });
 
   productsTableBodyEl.addEventListener("click", (e) => {

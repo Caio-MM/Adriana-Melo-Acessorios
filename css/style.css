@@ -1460,6 +1460,88 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display:inline-block; background:var(--blush-100); color:var(--blush-700);
   font-size:.7rem; font-weight:700; padding:.2rem .55rem; border-radius:999px; margin:0 .2rem .2rem 0;
 }
+/* ---- Pré-visualização "como a cliente vê" ----
+   Reproduz o card da vitrine em miniatura: mesmo quadrado 1:1 e mesmo
+   object-fit:cover de .product-thumb. É de propósito uma cópia visual, e
+   não a classe .product-card reaproveitada — o card real traz hover,
+   sombra, selos e botão de espiada que aqui só seriam ruído. */
+.ep-preview-wrap{ display:flex; flex-direction:column; align-items:center; gap:.6rem; }
+.ep-preview-caption{
+  font-family:var(--font-script); font-size:1.1rem; color:var(--blush-700);
+}
+.ep-mini-card{
+  width:170px; background:var(--white);
+  border:1px solid var(--blush-100); border-radius:var(--radius-md);
+  overflow:hidden; box-shadow:0 10px 24px -20px rgba(84,41,60,.45);
+}
+.ep-mini-thumb{
+  position:relative; aspect-ratio:1/1;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--blush-50); overflow:hidden;
+}
+.ep-mini-thumb img{
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; display:block;
+}
+.ep-mini-body{ padding:.55rem .7rem .7rem; }
+.ep-mini-name{
+  font-family:var(--font-display); font-size:.86rem; color:var(--ink);
+  line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.ep-mini-price{ font-size:.85rem; font-weight:700; color:var(--blush-700); margin-top:.15rem; }
+.ep-recrop-btn{ padding:.35rem .9rem; font-size:.78rem; }
+
+/* ---- Recorte ---- */
+.ep-cropper{
+  border:1px solid var(--blush-100); border-radius:var(--radius-md);
+  background:var(--cream); padding:1rem; margin-bottom:1rem;
+  animation:auth-pane-slide-back .4s cubic-bezier(.22, .9, .3, 1);
+}
+.ep-crop-head{ display:flex; flex-direction:column; gap:.15rem; margin-bottom:.7rem; }
+.ep-crop-title{ font-size:.9rem; color:var(--ink); }
+.ep-crop-hint{ font-size:.76rem; color:var(--ink-soft); line-height:1.4; }
+/* O palco É o recorte: o que passa da borda está fora do que a cliente vê.
+   min() para caber no modal do Bootstrap em telas estreitas. */
+.ep-crop-stage{
+  position:relative; width:min(280px, 68vw); aspect-ratio:1/1; margin:0 auto;
+  overflow:hidden; border-radius:var(--radius-md);
+  background:var(--blush-50); cursor:grab; touch-action:none;
+  outline-offset:3px;
+}
+.ep-crop-stage:active,
+.ep-crop-stage.is-dragging{ cursor:grabbing; }
+.ep-crop-stage img{
+  position:absolute; top:0; left:0; transform-origin:0 0;
+  max-width:none; user-select:none; -webkit-user-drag:none;
+}
+/* Guias de terços: só durante o arraste/zoom. Fixas o tempo todo virariam
+   ruído por cima da foto que a lojista está justamente tentando avaliar. */
+.ep-crop-guides{
+  position:absolute; inset:0; pointer-events:none;
+  opacity:0; transition:opacity var(--nav-dur) var(--nav-ease);
+  background:
+    linear-gradient(to right, transparent calc(33.333% - .5px), rgba(255,255,255,.55) calc(33.333% - .5px), rgba(255,255,255,.55) calc(33.333% + .5px), transparent calc(33.333% + .5px)),
+    linear-gradient(to right, transparent calc(66.666% - .5px), rgba(255,255,255,.55) calc(66.666% - .5px), rgba(255,255,255,.55) calc(66.666% + .5px), transparent calc(66.666% + .5px)),
+    linear-gradient(to bottom, transparent calc(33.333% - .5px), rgba(255,255,255,.55) calc(33.333% - .5px), rgba(255,255,255,.55) calc(33.333% + .5px), transparent calc(33.333% + .5px)),
+    linear-gradient(to bottom, transparent calc(66.666% - .5px), rgba(255,255,255,.55) calc(66.666% - .5px), rgba(255,255,255,.55) calc(66.666% + .5px), transparent calc(66.666% + .5px));
+}
+.ep-crop-stage.is-dragging .ep-crop-guides,
+.ep-crop-stage:focus-visible .ep-crop-guides,
+.ep-cropper.is-zooming .ep-crop-guides{ opacity:1; }
+
+.ep-crop-zoom{ display:flex; align-items:center; gap:.6rem; margin:.9rem auto 0; max-width:min(280px, 68vw); }
+.ep-crop-zoom i{ color:var(--blush-500); font-size:.9rem; }
+/* O .form-range do Bootstrap pinta o thumb com a cor primária dele
+   (azul) direto nos pseudo-elementos, que ganham de accent-color — por
+   isso os dois vendors aparecem escritos à mão aqui. */
+.ep-crop-zoom .form-range{ accent-color:var(--blush-600); }
+.ep-crop-zoom .form-range::-webkit-slider-thumb{ background:var(--blush-600); }
+.ep-crop-zoom .form-range::-moz-range-thumb{ background:var(--blush-600); border:none; }
+.ep-crop-zoom .form-range:focus::-webkit-slider-thumb{ box-shadow:0 0 0 3px var(--blush-150); }
+.ep-crop-zoom .form-range:focus::-moz-range-thumb{ box-shadow:0 0 0 3px var(--blush-150); }
+.ep-crop-actions{ display:flex; gap:.5rem; margin-top:.9rem; }
+.ep-crop-actions button{ flex:1 1 0; padding:.6rem 1rem; font-size:.86rem; }
+
 .epPreview-img{
   width:120px; height:120px; border-radius:var(--radius-md); object-fit:cover; background:var(--blush-50);
 }
