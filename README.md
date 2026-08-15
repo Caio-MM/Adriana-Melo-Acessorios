@@ -1,4 +1,4 @@
-# Petit Laço / Adriana Melo Acessórios — guia de configuração
+Adriana Melo Acessórios — guia de configuração
 
 Este pacote contém o site e o back-end que processa pagamentos (Mercado
 Pago), frete (Melhor Envio), contas de cliente e histórico de pedidos.
