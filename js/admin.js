@@ -700,7 +700,8 @@
             <input type="text" class="form-control form-control-sm tracking-input" id="tracking-${escapeHTML(ref)}"
                    value="${escapeHTML(order.trackingCode || "")}" placeholder="Ex.: BR123456789BR" maxlength="60">
             <button type="button" class="btn-outline-blush save-tracking-btn" data-ref="${escapeHTML(ref)}">Salvar</button>
-            <button type="button" class="btn-outline-blush generate-label-btn" data-ref="${escapeHTML(ref)}" title="Compra a etiqueta no Melhor Envio e preenche o código automaticamente"><i class="bi bi-stars me-1"></i>Gerar código de barras</button>
+            <button type="button" class="btn-outline-blush show-barcode-btn" data-ref="${escapeHTML(ref)}" title="Desenha o código digitado acima como código de barras"><i class="bi bi-upc-scan me-1"></i>Gerar código de barras</button>
+            <button type="button" class="btn-outline-blush generate-label-btn" data-ref="${escapeHTML(ref)}" title="Compra a etiqueta no Melhor Envio (gasta saldo real) e preenche o código automaticamente"><i class="bi bi-stars me-1"></i>Comprar etiqueta</button>
           </div>
           <span class="small tracking-feedback" data-ref-feedback="${escapeHTML(ref)}"></span>
           <div class="tracking-barcode-wrap">
@@ -869,9 +870,27 @@
 
   listEl.addEventListener("click", (e) => {
     const trackBtn = e.target.closest(".save-tracking-btn");
+    const barcodeBtn = e.target.closest(".show-barcode-btn");
     const labelBtn = e.target.closest(".generate-label-btn");
     const deleteBtn = e.target.closest(".delete-order-btn");
     const downloadBtn = e.target.closest(".barcode-download-btn");
+
+    /* Desenha o que está digitado no campo, sem passar pelo servidor: o
+       JsBarcode roda inteiro no navegador. Não exige "Salvar" antes de
+       propósito — a lojista pode conferir a barra antes de gravar. */
+    if(barcodeBtn){
+      const ref = barcodeBtn.dataset.ref;
+      const input = document.getElementById(`tracking-${ref}`);
+      const feedbackEl = listEl.querySelector(`[data-ref-feedback="${ref}"]`);
+      const code = input ? input.value.trim() : "";
+      if(feedbackEl){
+        feedbackEl.classList.remove("is-success", "is-error");
+        feedbackEl.textContent = code ? "" : "Digite o código de rastreio primeiro.";
+        if(!code) feedbackEl.classList.add("is-error");
+      }
+      if(code) renderBarcode(ref, code);
+      return;
+    }
 
     if(trackBtn){
       const ref = trackBtn.dataset.ref;
