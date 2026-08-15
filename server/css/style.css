@@ -695,7 +695,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .shipping-option .so-price{ margin-left:auto; font-weight:700; color:var(--blush-700); white-space:nowrap; }
 
 /* ============ CART OFFCANVAS ============ */
-.cart-offcanvas{ background:var(--cream); max-width:420px; }
+/* ⚠️ width, e não só max-width: o Bootstrap fixa .offcanvas-end em 400px,
+   e max-width sozinho não segura isso abaixo desse valor. Em qualquer
+   telefone mais estreito que 400px (iPhone SE/13/14 têm 375–390) o painel
+   transbordava para a esquerda e cortava miniatura e título dos itens. */
+.cart-offcanvas{ background:var(--cream); width:min(400px, 100%); max-width:100%; }
 .cart-offcanvas .offcanvas-header{
   align-items:center; padding:1.1rem 1.25rem; border-bottom:1px solid var(--blush-100);
 }
@@ -705,13 +709,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* Item: miniatura à esquerda, e à direita duas linhas — nome + preço
    unitário (alinhado à direita), depois quantidade + lixeira. O
    align-items:center centraliza esse bloco no eixo da miniatura. */
+/* Cada item num cartão branco em vez de separado por fio: com dois ou
+   três laços a lista de fios lia como uma tabela solta, e a miniatura
+   (rosa clara) se perdia no fundo creme do painel. O cartão dá borda ao
+   produto e deixa claro onde um termina e o outro começa. */
 .cart-item{
-  display:flex; gap:.9rem; align-items:center; padding-bottom:.9rem;
-  border-bottom:1px solid var(--blush-100);
+  display:flex; gap:.9rem; align-items:center;
+  background:var(--white); border:1px solid #F1EAED; border-radius:14px;
+  padding:.8rem .85rem;
 }
 /* O último item não leva risco: logo abaixo já vem a borda do bloco
    seguinte (cross-sell ou painel), e as duas juntas viravam linha dupla. */
-.cart-item:last-child{ border-bottom:none; padding-bottom:0; }
 .cart-item-thumb{
   position:relative; width:64px; height:64px; border-radius:12px; flex-shrink:0; overflow:hidden;
   background:var(--blush-100); display:flex; align-items:center; justify-content:center;
@@ -756,10 +764,20 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display:flex; flex-direction:column; gap:1.35rem;
 }
 .cart-panel-block{ display:flex; flex-direction:column; }
+/* Rótulo padrão de toda sub-seção do carrinho (frete, endereço, cupom,
+   pagamento e "Complete seu pedido"). display:block porque é usado tanto
+   como <label> quanto como <span> solto — inline deixaria o campo seguinte
+   subir para a mesma linha. */
 .cart-block-label{
+  display:block;
   font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
   color:var(--ink-soft); margin-bottom:.5rem;
 }
+
+/* Cross-sell ("Complete seu pedido"): separado da lista de produtos por
+   respiro, não por fio — o fio competia com as bordas dos cartões de item
+   logo acima. */
+.cart-recs{ margin-top:1.5rem; }
 /* Input elástico + botão de largura fixa: "Calcular" e "Aplicar" ficam do
    mesmo tamanho e alinhados na vertical entre as duas sub-seções. */
 .cart-field-row{ display:flex; gap:.5rem; align-items:stretch; }
@@ -778,7 +796,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    O respiro acima vem de margin, não de border-top: o painel já separa
    as sub-seções pelo gap, e a linha extra pesava demais aqui. */
 .cart-address{ margin-top:1.1rem; }
-.cart-address .cart-block-label{ display:block; }
 .cart-address .form-control,
 .cart-address .form-select{ font-size:.88rem; }
 
@@ -788,11 +805,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .cart-total-line > strong{ font-weight:600; white-space:nowrap; }
 .cart-total-line.is-discount > span,
 .cart-total-line.is-discount > strong{ color:var(--blush-700); }
+/* O total é a informação que a cliente mais procura antes de decidir —
+   ganha fundo próprio e mais corpo, em vez de ser só mais uma linha de
+   texto igual às de cima. */
 .cart-total-line.is-grand{
-  margin-top:.35rem; padding-top:.7rem; border-top:1px solid #E6E0E2;
+  margin-top:.55rem; padding:.75rem .85rem;
+  background:var(--blush-100); border-radius:12px;
+  align-items:center;
 }
 .cart-total-line.is-grand > span{ color:var(--ink); font-weight:600; font-size:.95rem; }
-.cart-total-line.is-grand > strong{ color:var(--blush-700); font-size:1.15rem; font-weight:700; }
+.cart-total-line.is-grand > strong{ color:var(--blush-700); font-size:1.25rem; font-weight:700; }
 
 .cart-checkout-btn{
   width:100%; display:flex; align-items:center; justify-content:center; gap:.45rem;
