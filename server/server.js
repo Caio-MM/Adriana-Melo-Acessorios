@@ -43,6 +43,22 @@ const app = express();
 const PORT = process.env.PORT || 3333;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:3333";
 
+/* ⚠️ Em produção este processo roda ATRÁS do proxy da hospedagem (a
+   Hostinger serve por LiteSpeed), então o IP da conexão é sempre o do
+   proxy — o IP real da cliente vem no cabeçalho X-Forwarded-For.
+
+   Sem isto, o express-rate-limit contava TODO MUNDO como um visitante só
+   e derrubava clientes legítimas com "muitas requisições" assim que o
+   tráfego somado passasse do limite (100 req/15min). Era isso que o log
+   da Hostinger vinha acusando (ERR_ERL_UNEXPECTED_X_FORWARDED_FOR).
+
+   O valor é 1, e não `true`: confia em UM salto, o proxy imediato. Com
+   `true` o Express aceitaria qualquer X-Forwarded-For que chegasse, e aí
+   bastaria forjar o cabeçalho para furar o limite de tentativas de login.
+   Em desenvolvimento não há proxy nenhum e o cabeçalho não existe, então
+   o IP continua vindo direto da conexão. */
+app.set("trust proxy", 1);
+
 /* -----------------------------------------------------------------------
    🔑 ONDE COLOCAR SUAS CREDENCIAIS
    -------------------------------------------------------------------------
