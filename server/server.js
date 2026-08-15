@@ -204,8 +204,11 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       baseUri: ["'self'"],
       scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://sdk.mercadopago.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
-      fontSrc: ["https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
+      // Sem os hosts do Google Fonts: as fontes agora são servidas daqui
+      // mesmo (css/fonts.css + css/fonts/), então 'self' cobre. cdnjs
+      // continua porque o Bootstrap Icons ainda vem de lá.
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+      fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
       // `https:` (qualquer origem https) em vez de uma lista fixa: o painel
       // administrativo deixa a lojista colar a URL de uma foto hospedada em
       // qualquer lugar (Google Drive, Imgur, CDN da loja...), e não há como
