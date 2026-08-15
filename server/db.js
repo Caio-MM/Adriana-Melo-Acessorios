@@ -115,8 +115,35 @@ db.exec(`
     created_at   INTEGER NOT NULL
   );
 
+  /* Índices. Sem eles o SQLite varre a tabela inteira a cada consulta —
+     imperceptível com centenas de pedidos, caro com dezenas de milhares.
+     Só entram colunas que aparecem de fato em WHERE/ORDER BY das queries
+     deste arquivo; índice que ninguém usa não acelera leitura nenhuma e
+     ainda encarece toda escrita.
+
+     Não estão aqui, de propósito: as colunas com UNIQUE ou PRIMARY KEY
+     (users.email, orders.external_reference, coupons.code,
+     sessions.token_hash, ...), porque o SQLite já cria um índice
+     implícito para elas — declarar de novo seria duplicar. */
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
+
+  /* Painel filtrando por status e ordenando por data. As duas colunas
+     no mesmo índice, nesta ordem: com um índice só de status o SQLite
+     achava as linhas mas ainda ordenava tudo à parte (USE TEMP B-TREE);
+     incluindo created_at DESC a ordem já sai pronta do índice.
+
+     Não há índice de coupon_code: medindo com 20 mil pedidos, o
+     otimizador sempre prefere user_id ou customer_phone na validação de
+     cupom (são bem mais seletivos que um código repetido em milhares de
+     pedidos). Um índice que nunca é escolhido não acelera leitura e
+     encarece toda escrita. */
+  CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at DESC);
+  -- Histórico do cliente e listagens sem filtro, do mais recente ao mais antigo.
+  CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
+  -- Limpeza de sessões/tokens vencidos (WHERE expires_at < agora).
+  CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+  CREATE INDEX IF NOT EXISTS idx_resets_expires ON password_resets(expires_at);
 `);
 
 // `orders` já existia (com dados reais) antes da coluna `tracking_code` ser
@@ -143,6 +170,10 @@ ensureColumn("product_overrides", "badges", "TEXT");
 // coluna própria, casar "(61) 98274-9808" com "61982749808" dentro do JSON
 // do endereço seria frágil demais para valer como controle de uso de cupom.
 ensureColumn("orders", "customer_phone", "TEXT");
+// O índice de customer_phone fica AQUI, e não junto dos demais lá em cima:
+// a coluna é criada por este ensureColumn, então num banco antigo ela ainda
+// não existiria no momento em que o bloco CREATE TABLE roda.
+db.exec(`CREATE INDEX IF NOT EXISTS idx_orders_phone ON orders(customer_phone);`);
 // Cupom de uso único por cliente (ex.: o de boas-vindas). Fica no cupom, e
 // não no código, para a loja poder ter os dois tipos.
 ensureColumn("coupons", "once_per_customer", "INTEGER NOT NULL DEFAULT 0");
