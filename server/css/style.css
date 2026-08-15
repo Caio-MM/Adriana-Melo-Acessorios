@@ -37,7 +37,7 @@
   --nav-pad-y:18px;
   --nav-pad-y-scrolled:10px;
   --nav-gap:.15rem;
-  --nav-link-pad-x:.62rem;
+  --nav-link-pad-x:.48rem;
   --nav-link-pad-y:.5rem;
   --nav-dur:.25s;
   --nav-ease:cubic-bezier(.4,0,.2,1);
@@ -190,21 +190,30 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* Só na barra do topo: com conta + carrinho ao lado, o padding de 1rem
    por link estourava o container. No menu lateral (offcanvas) o padding
-   original continua valendo. */
-#mainNav .plc-nav-link{ padding:var(--nav-link-pad-y) var(--nav-link-pad-x) !important; }
+   original continua valendo — lá sobra espaço, e alvo de toque menor no
+   celular seria pior, não melhor.
+   A fonte também é menor aqui: com seis itens (o último deles "Nossa
+   história", que é largo) mais conta e carrinho, .92rem só cabia
+   espremido nas telas de ~1000–1200px. */
+#mainNav .plc-nav-link{
+  font-size:.84rem;
+  padding:var(--nav-link-pad-y) var(--nav-link-pad-x) !important;
+}
 #mainNav .plc-nav-link::after{ left:var(--nav-link-pad-x); right:var(--nav-link-pad-x); }
-#mainNav .d-none.d-lg-flex{ gap:var(--nav-gap) !important; }
+#mainNav .d-none.d-xl-flex{ gap:var(--nav-gap) !important; }
 
 /* "Contato" fecha a lista como botão-fantasma: pesa mais que um link,
    menos que o rosa sólido dos CTAs do corpo da página. */
 .nav-cta{
   display:inline-flex; align-items:center; white-space:nowrap;
-  padding:var(--nav-link-pad-y) .9rem;
+  padding:var(--nav-link-pad-y) .8rem;
   margin-left:.2rem;
   border-radius:999px;
   border:1.5px solid var(--blush-200);
   background:var(--blush-50);
-  color:var(--blush-700); font-size:.92rem; font-weight:600;
+  /* Acompanha o .84rem dos links vizinhos: em .92rem ele ficava
+     visivelmente maior que o resto da barra. */
+  color:var(--blush-700); font-size:.84rem; font-weight:600;
   text-decoration:none;
   transition:background var(--nav-dur) var(--nav-ease),
              border-color var(--nav-dur) var(--nav-ease),

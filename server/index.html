@@ -51,8 +51,13 @@
     </a>
 
     <!-- 2. Menu de Links (Apenas Desktop). O item ativo ganha .is-active
-         + aria-current por js/main.js, conforme a seção visível. -->
-    <div class="d-none d-lg-flex align-items-center">
+         + aria-current por js/main.js, conforme a seção visível.
+
+         Aparece só a partir de xl (1200px), não de lg: entre 992 e 1199 o
+         .container do Bootstrap trava em 960px, e os seis links mais conta
+         e carrinho precisam de ~1020px — o carrinho ficava cortado fora da
+         tela. Abaixo disso vale o menu lateral, que tem os mesmos itens. -->
+    <div class="d-none d-xl-flex align-items-center">
       <a href="#inicio" class="plc-nav-link">Início</a>
       <a href="#colecoes" class="plc-nav-link">Coleções</a>
       <a href="#historia" class="plc-nav-link">Nossa história</a>
@@ -80,7 +85,7 @@
            lado. O menu lateral (mobile) segue com o CTA. -->
 
       <!-- Botão Menu Hambúrguer: Apenas Mobile -->
-      <button class="navbar-toggler border-0 d-lg-none p-0 ms-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#navOffcanvas" aria-label="Abrir menu" aria-controls="navOffcanvas" style="color:var(--ink)">
+      <button class="navbar-toggler border-0 d-xl-none p-0 ms-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#navOffcanvas" aria-label="Abrir menu" aria-controls="navOffcanvas" style="color:var(--ink)">
         <i class="bi bi-list fs-2"></i>
       </button>
 

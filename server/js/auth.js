@@ -45,7 +45,10 @@
 
   /* Em index.html o menu lateral (#navAccountMobile) já carrega "Painel
      admin" e "Sair" no mobile, então na barra do topo eles só aparecem a
-     partir de lg — o mobile fica com Conta + Carrinho, sem apertar.
+     partir de xl — o mobile fica com Conta + Carrinho, sem apertar.
+     xl, e não lg, para casar com o breakpoint dos links em index.html:
+     abaixo de 1200px quem manda é o menu lateral, e somar estas pílulas à
+     barra do topo ali dentro empurraria o carrinho para fora da tela.
      Nas demais páginas não existe menu lateral: lá eles ficam sempre
      visíveis, senão o cliente perderia o botão de sair no celular.
 
@@ -53,7 +56,7 @@
      Bootstrap chama preventDefault() em todo <a> que tenha esse atributo,
      o que matava a navegação (o link fechava o menu e não ia a lugar
      nenhum). Quem fecha o menu é o listener delegado em js/main.js. */
-  const secondaryOnlyDesktop = navAccountMobile ? " d-none d-lg-inline-flex" : "";
+  const secondaryOnlyDesktop = navAccountMobile ? " d-none d-xl-inline-flex" : "";
 
   function renderLoggedOut(){
     if(navAccount){
