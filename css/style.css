@@ -1052,15 +1052,31 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* ---- Abas (só abaixo de lg) ---- */
 .auth-tabs{
+  position:relative;
   display:flex; gap:.4rem; margin:1.35rem 1.4rem 0;
   background:var(--blush-50); padding:.35rem; border-radius:999px;
 }
+/* Pílula ativa como UM elemento que desliza entre as abas, em vez de duas
+   pílulas que acendem/apagam: o movimento é o que conta para a pessoa
+   entender que trocou de lado. Mesma curva do painel do desktop, para os
+   dois breakpoints falarem a mesma língua.
+   A largura desconta o padding do container (.35rem × 2) e o gap (.4rem);
+   por isso o deslocamento é 100% da própria pílula MAIS o gap. */
+.auth-tabs::before{
+  content:""; position:absolute; z-index:0;
+  top:.35rem; bottom:.35rem; left:.35rem;
+  width:calc((100% - .7rem - .4rem) / 2);
+  background:var(--blush-600); border-radius:999px;
+  transition:transform .45s cubic-bezier(.65, 0, .35, 1);
+}
+.auth-shell[data-mode="register"] .auth-tabs::before{ transform:translateX(calc(100% + .4rem)); }
 .auth-tab{
+  position:relative; z-index:1;
   flex:1 1 0; border:none; background:transparent; border-radius:999px;
   color:var(--ink-soft); font-weight:600; font-size:.88rem; padding:.55rem .8rem;
-  transition:background .25s ease, color .25s ease;
+  transition:color .3s ease;
 }
-.auth-tab[aria-selected="true"]{ background:var(--blush-600); color:#fff; }
+.auth-tab[aria-selected="true"]{ color:#fff; }
 
 /* ---- Desktop: painel deslizante ---- */
 @media (min-width: 992px){
@@ -1172,15 +1188,38 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
      dizem — no lugar deles fica só o título curto. */
   .auth-deco-copies{ display:none; }
   .auth-pane{ display:none; padding:1.5rem 1.4rem 1.9rem; }
+  /* No desktop o painel do laço desliza na horizontal para revelar o outro
+     formulário. Aqui esse painel não existe, então quem carrega a direção é
+     o próprio formulário: entra pelo lado para onde a pessoa foi. Antes era
+     só um fade com 14px na vertical, que passava despercebido — daí o
+     relato de "não tem transição nenhuma no celular".
+     data-dir vem de js/conta.js; o display:none→block já reinicia a
+     animação sozinho a cada troca. */
   .auth-shell[data-mode="login"] .auth-pane-login,
   .auth-shell[data-mode="register"] .auth-pane-register,
   .auth-shell[data-mode="forgot"] .auth-pane-forgot{
-    display:block; animation:auth-pane-in .45s ease;
+    display:block;
+    animation:auth-pane-slide-back .5s cubic-bezier(.22, .9, .3, 1) both;
   }
+  .auth-shell[data-dir="forward"] .auth-pane{ animation-name:auth-pane-slide-fwd; }
+
+  /* O laço reage à troca com um pulso curto. Fica no wrapper, e não no
+     .auth-bow, porque o laço já tem a animação de flutuar infinita — duas
+     animações disputando o mesmo transform se anulariam. */
+  .auth-deco-pulse .auth-bow-wrap{ animation:auth-bow-pop .5s cubic-bezier(.22, .9, .3, 1); }
 }
-@keyframes auth-pane-in{
-  from{ opacity:0; transform:translateY(14px); }
-  to{ opacity:1; transform:translateY(0); }
+@keyframes auth-pane-slide-fwd{
+  from{ opacity:0; transform:translateX(2.5rem); }
+  to{ opacity:1; transform:translateX(0); }
+}
+@keyframes auth-pane-slide-back{
+  from{ opacity:0; transform:translateX(-2.5rem); }
+  to{ opacity:1; transform:translateX(0); }
+}
+@keyframes auth-bow-pop{
+  0%{ transform:scale(1); }
+  45%{ transform:scale(1.12); }
+  100%{ transform:scale(1); }
 }
 
 .orders-wrap{ max-width:640px; }

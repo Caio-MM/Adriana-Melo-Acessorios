@@ -50,8 +50,24 @@
   const authShell = document.getElementById("authForms");
   const modeButtons = document.querySelectorAll("[data-auth-mode]");
 
+  /* Ordem dos modos na horizontal, para o celular saber de que lado o
+     formulário deve entrar (o desktop já mostra isso pelo painel do laço
+     deslizando). "forgot" tem o mesmo índice de "login" porque é uma etapa
+     dentro de entrar, não um terceiro destino. */
+  const MODE_ORDER = { login: 0, forgot: 0, register: 1 };
+
   function setAuthMode(mode, moveFocus){
     if(!authShell || authShell.dataset.mode === mode) return;
+    authShell.dataset.dir = MODE_ORDER[mode] >= MODE_ORDER[authShell.dataset.mode] ? "forward" : "back";
+
+    /* Pulso do laço: remover, forçar reflow e recolocar é o que reinicia uma
+       animação CSS — só readicionar uma classe que já está lá não dispara
+       nada. Sem isso o laço reagiria à primeira troca e ficaria parado nas
+       seguintes. */
+    authShell.classList.remove("auth-deco-pulse");
+    void authShell.offsetWidth;
+    authShell.classList.add("auth-deco-pulse");
+
     authShell.dataset.mode = mode;
     // "forgot" é uma etapa dentro do fluxo de entrar, e não existe aba para
     // ela — a aba "Entrar" continua marcada para o mobile não ficar sem
