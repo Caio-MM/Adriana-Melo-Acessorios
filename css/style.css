@@ -643,6 +643,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .pay-badge:hover{ border-color:var(--blush-400); color:#fff; }
 
+/* Selos das bandeiras aceitas — fundo branco de propósito: são logos
+   coloridas desenhadas para fundo claro (a maioria vem sem fundo próprio
+   no arquivo), e ficariam ilegíveis direto sobre o rodapé escuro. */
+.pay-logos{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.7rem; }
+.pay-logo-badge{
+  display:flex; align-items:center; justify-content:center;
+  height:34px; padding:.3rem .65rem;
+  background:#fff; border-radius:8px;
+  opacity:.92; transition:opacity .2s ease, transform .2s ease;
+}
+.pay-logo-badge:hover{ opacity:1; transform:translateY(-1px); }
+.pay-logo-badge img{ height:100%; width:auto; max-width:50px; object-fit:contain; display:block; }
+/* Único selo sem logo própria (boleto não é uma marca, é um meio de
+   pagamento) — mesma altura/fundo dos demais para a fileira ficar alinhada. */
+.pay-logo-badge.is-icon{ gap:.35rem; color:var(--ink); font-size:.72rem; font-weight:700; }
+.pay-logo-badge.is-icon i{ font-size:1rem; color:var(--blush-700); }
+
 /* Barra inferior: direitos autorais + "feito em" numa linha só, com um
    ponto sutil separando — quebra para duas linhas centralizadas em telas
    estreitas, onde o separador some para não sobrar solto entre elas. */
