@@ -365,7 +365,26 @@
     return true;
   }
 
+  /* Guarda o que a visitante tentou adicionar antes de entrar, para o
+     item cair no carrinho sozinho quando ela voltar do login — senão ela
+     faz login e descobre o carrinho vazio, tendo que procurar o laço de
+     novo. sessionStorage: vale só para esta janela, como a intenção. */
+  const PENDING_ITEM_KEY = "plc_item_pendente";
+
   function addToCart(id, qty){
+    // Montar carrinho exige conta, mesma regra do checkout. Os três
+    // caminhos de "adicionar" (vitrine, tela do produto e cross-sell do
+    // carrinho) passam por aqui, então esta é a única checagem necessária.
+    if(!currentUser){
+      try{
+        sessionStorage.setItem(PENDING_ITEM_KEY, JSON.stringify({ id, qty }));
+      }catch(err){
+        console.warn("Não foi possível guardar o item pendente:", err);
+      }
+      window.location.href = "conta.html?retorno=carrinho";
+      return;
+    }
+
     const existing = cart.find(i => i.id === id);
     if(existing){
       existing.qty = Math.min(10, existing.qty + qty);
@@ -528,8 +547,26 @@
     // Só depois do evento (assíncrono) é seguro mexer em cepInput/addrInputs:
     // eles são declarados mais abaixo neste mesmo arquivo.
     prefillFromAccount();
+    resgatarItemPendente();
     updateTotals();
   });
+
+  /* Recupera o laço que a visitante tentou adicionar antes de entrar (ver
+     addToCart). Roda só com sessão válida — deslogada, addToCart mandaria
+     para o login de novo e viraria um laço infinito. */
+  function resgatarItemPendente(){
+    if(!currentUser) return;
+    let pendente = null;
+    try{
+      pendente = JSON.parse(sessionStorage.getItem(PENDING_ITEM_KEY) || "null");
+    }catch(err){
+      console.warn("Item pendente ilegível:", err);
+    }
+    // Removido antes de adicionar: se algo falhar no meio, o item não
+    // fica preso tentando entrar a cada carregamento da página.
+    sessionStorage.removeItem(PENDING_ITEM_KEY);
+    if(pendente?.id) addToCart(Number(pendente.id), Number(pendente.qty) || 1);
+  }
   renderAuthGate();
 
   function syncPayMethodSelection(){
