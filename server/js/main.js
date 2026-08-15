@@ -381,6 +381,14 @@
       }catch(err){
         console.warn("Não foi possível guardar o item pendente:", err);
       }
+      // Enquanto a checagem de sessão não voltou, currentUser é null mesmo
+      // para quem já está logada — mandar para o login aqui expulsaria a
+      // cliente do meio da vitrine à toa. O item fica guardado e o
+      // listener de "plc:auth" resolve: adiciona (logada) ou redireciona.
+      if(!sessionChecked){
+        redirectAoSaberDaSessao = true;
+        return;
+      }
       window.location.href = "conta.html?retorno=carrinho";
       return;
     }
@@ -461,6 +469,11 @@
      este valor for null, o botão leva para conta.html em vez de chamar
      /api/create-preference (que também recusa sem sessão). */
   let currentUser = null;
+
+  /* false até "plc:auth" chegar. Distingue "sem conta" de "ainda não sei",
+     que sem isto seriam a mesma coisa (currentUser === null) — ver addToCart. */
+  let sessionChecked = false;
+  let redirectAoSaberDaSessao = false;
 
   /* Estado do cupom aplicado. Guardamos só o percentual (não o valor de
      desconto em R$) — assim o desconto mostrado acompanha automaticamente
@@ -543,10 +556,17 @@
   }
   document.addEventListener("plc:auth", (e) => {
     currentUser = e.detail.user;
+    sessionChecked = true;
     renderAuthGate();
     // Só depois do evento (assíncrono) é seguro mexer em cepInput/addrInputs:
     // eles são declarados mais abaixo neste mesmo arquivo.
     prefillFromAccount();
+    // Clicou em "Adicionar" antes da sessão chegar e não tem conta: agora
+    // dá para mandar para o login com segurança (o laço ficou guardado).
+    if(!currentUser && redirectAoSaberDaSessao){
+      window.location.href = "conta.html?retorno=carrinho";
+      return;
+    }
     resgatarItemPendente();
     updateTotals();
   });
