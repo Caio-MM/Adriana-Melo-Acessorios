@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pague com Pix — Adriana Melo Acessórios</title>
+<meta name="description" content="Finalize seu pedido pagando com Pix, sem sair do site.">
+<meta name="robots" content="noindex, nofollow">
+
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://cdnjs.cloudflare.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' https: data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Poppins:wght@300;400;500;600;700&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="bow-shape" viewBox="0 0 100 70">
+    <path d="M50 35 C50 35 38 6 15 10 C-4 13 -4 47 15 51 C36 56 50 35 50 35 Z"/>
+    <path d="M50 35 C50 35 62 6 85 10 C104 13 104 47 85 51 C64 56 50 35 50 35 Z"/>
+    <rect x="42" y="26" width="16" height="18" rx="5"/>
+    <path d="M45 44 L38 68 L48 60 Z"/>
+    <path d="M55 44 L62 68 L52 60 Z"/>
+  </symbol>
+</svg>
+
+<header class="simple-header">
+  <div class="container d-flex align-items-center justify-content-between">
+    <a href="index.html" class="plc-brand">
+      <svg class="bow-icon"><use href="#bow-shape"/></svg>
+      Adriana Melo Acessórios
+    </a>
+    <div id="navAccount" class="d-flex align-items-center gap-2"></div>
+  </div>
+</header>
+
+<main class="account-main">
+  <div class="container">
+    <div class="mx-auto" style="max-width:440px">
+
+      <!-- 1. AGUARDANDO — QR na tela, cliente paga pelo app do banco -->
+      <div class="account-card text-center" id="statePagar">
+        <span class="pix-badge"><i class="bi bi-qr-code"></i> Pix</span>
+        <h1 class="section-title mt-3 mb-1" style="font-size:1.5rem">Quase lá!</h1>
+        <p class="section-sub mb-3">Abra o app do seu banco e escaneie o código abaixo.</p>
+
+        <p class="pix-amount" id="pixAmount">R$ 0,00</p>
+
+        <img id="pixQrImg" class="pix-qr" alt="QR Code para pagamento via Pix" width="220" height="220">
+
+        <p class="pix-or">ou copie o código</p>
+        <div class="pix-copy-row">
+          <input type="text" class="form-control" id="pixCode" readonly aria-label="Código Pix copia e cola">
+          <button class="btn-outline-blush pix-copy-btn" id="pixCopyBtn" type="button">
+            <i class="bi bi-clipboard"></i> Copiar
+          </button>
+        </div>
+
+        <p class="pix-status" id="pixStatus">
+          <span class="pix-spinner" aria-hidden="true"></span>
+          Aguardando o pagamento…
+        </p>
+        <p class="cart-hint" id="pixExpiry"></p>
+      </div>
+
+      <!-- 2. CONFIRMADO — o webhook marcou o pedido como pago -->
+      <div class="account-card text-center d-none" id="statePago">
+        <i class="bi bi-check-circle" style="font-size:2.6rem; color:#1E7F44"></i>
+        <h1 class="section-title mt-3 mb-2" style="font-size:1.5rem">Pagamento confirmado!</h1>
+        <p class="section-sub mb-4">Recebemos seu Pix. A lojista já foi avisada e vai começar a preparar seu laço.</p>
+        <div class="d-flex flex-column gap-2">
+          <a href="pedidos.html" class="btn-blush">Ver meus pedidos</a>
+          <a href="index.html" class="btn-outline-blush">Continuar comprando</a>
+        </div>
+      </div>
+
+      <!-- 3. SEM DADOS — recarregou a página depois de sair, ou entrou direto -->
+      <div class="account-card text-center d-none" id="stateSemDados">
+        <i class="bi bi-hourglass" style="font-size:2.4rem; color:var(--blush-700)"></i>
+        <h1 class="section-title mt-3 mb-2" style="font-size:1.5rem">Código não encontrado</h1>
+        <p class="section-sub mb-4">Esse código Pix não está mais disponível nesta janela. Se você já pagou, o pedido aparece em "Meus pedidos" assim que o banco confirmar.</p>
+        <div class="d-flex flex-column gap-2">
+          <a href="pedidos.html" class="btn-blush">Ver meus pedidos</a>
+          <a href="index.html" class="btn-outline-blush">Voltar à loja</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script src="js/error-boundary.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js" defer></script>
+<script src="js/auth.js" defer></script>
+<script src="js/pagamento-pix.js" defer></script>
+</body>
+</html>

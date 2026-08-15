@@ -922,9 +922,14 @@
     checkoutMsg.classList.add("show");
     checkoutMsg.innerHTML = `<i class="bi bi-hourglass-split"></i><span>Preparando pagamento...</span>`;
 
+    // Pix é gerado aqui mesmo e mostrado em pagamento-pix.html (a cliente
+    // não sai do site); cartão e boleto seguem pelo Checkout Pro, que é
+    // quem cuida da tokenização do cartão.
+    const rota = paymentMethod === "pix" ? "/api/create-pix-payment" : "/api/create-preference";
+
     let res;
     try{
-      res = await fetchWithTimeout("/api/create-preference", {
+      res = await fetchWithTimeout(rota, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -946,6 +951,21 @@
     try{
       const data = await res.json().catch(() => ({}));
       if(!res.ok) throw new Error(data.error || `Erro inesperado (HTTP ${res.status}).`);
+
+      if(paymentMethod === "pix"){
+        if(!data.qrCode) throw new Error("O servidor não devolveu o código Pix. Tente novamente.");
+        // O QR não é segredo (é feito para ser mostrado na tela), mas
+        // vale só para esta compra: sessionStorage some ao fechar a aba,
+        // que é exatamente o tempo de vida que queremos.
+        sessionStorage.setItem("plc_pix_pendente", JSON.stringify(data));
+        // Carrinho NÃO é esvaziado aqui: o Pix ainda não foi pago, e quem
+        // desiste no meio precisa achar os itens de volta. Quem limpa é a
+        // confirmação (js/pagamento-pix.js), mesmo critério do retorno do
+        // Checkout Pro (js/pagamento-retorno.js).
+        window.location.href = "pagamento-pix.html";
+        return;
+      }
+
       if(!data.init_point) throw new Error("O servidor não devolveu o link de pagamento. Tente novamente.");
       window.location.href = data.init_point;
     } catch(err){

@@ -296,6 +296,7 @@ const SITE_ROOT = __dirname;
 const PUBLIC_TOP_LEVEL = new Set([
   "index.html", "conta.html", "pedidos.html", "admin.html",
   "pagamento-sucesso.html", "pagamento-erro.html", "pagamento-pendente.html",
+  "pagamento-pix.html",
   "redefinir-senha.html", "404.html", "css", "js", "img",
 ]);
 // Usada tanto pelo bloqueio de allowlist abaixo quanto pelo catch-all no fim
@@ -653,88 +654,139 @@ app.post("/api/validate-coupon", strictLimiter, (req, res) => {
    que todo pedido tenha um dono e apareça em "Meus pedidos". O aviso no
    carrinho (js/main.js) é só conveniência — a trava é esta.
 ========================================================================= */
+/* Valida o pedido que chegou do carrinho e recalcula tudo do lado do
+   servidor: itens, cupom, desconto do Pix e frete. É o miolo compartilhado
+   entre as duas formas de cobrar — Checkout Pro (create-preference, cartão
+   e boleto) e Pix nativo (create-pix-payment) —, para que as duas cobrem
+   exatamente o mesmo valor pelas mesmas regras. Se divergirem um dia, o
+   preço anunciado no carrinho deixa de bater com o cobrado.
+
+   Lança { status, message } (objeto simples, não Error) nos erros de
+   validação, que é a convenção que os catch das rotas usam para saber que a
+   mensagem pode ser mostrada ao cliente. */
+async function buildCheckoutDraft(req){
+  const { cep: rawCep, shipping_service_id, address } = req.body || {};
+  const cep = String(rawCep || "").replace(/\D/g, "");
+  if(!/^\d{8}$/.test(cep)){
+    throw { status: 400, message: "CEP inválido." };
+  }
+  if(!shipping_service_id){
+    throw { status: 400, message: "Escolha uma opção de frete." };
+  }
+  const paymentMethod = String(req.body?.paymentMethod || "card").toLowerCase();
+  if(!PAYMENT_METHODS[paymentMethod]){
+    throw { status: 400, message: "Forma de pagamento inválida." };
+  }
+  const requiredAddress = ["nome","telefone","rua","numero","bairro","cidade","uf"];
+  if(!address || requiredAddress.some(f => !String(address[f] || "").trim())){
+    throw { status: 400, message: "Endereço de entrega incompleto." };
+  }
+
+  const validatedItems = buildValidatedItems(req.body?.items);
+
+  // Cupom opcional: revalidado aqui, nunca confiando no desconto do front.
+  const coupon = req.body?.coupon ? findCoupon(req.body.coupon) : null;
+  if(req.body?.coupon && !coupon){
+    throw { status: 409, message: "Esse cupom não é mais válido. Remova-o e tente novamente." };
+  }
+
+  // Ponto de decisão do uso único. Fica AQUI, e não só no /validate-coupon,
+  // porque este é o passo que realmente cria o pedido — quem chamar a API
+  // direto, pulando o carrinho, esbarra no mesmo bloqueio.
+  const customerPhone = phoneDigits(address.telefone);
+  if(coupon?.oncePerCustomer){
+    const alreadyUsed = db.hasUsedCoupon({
+      code: coupon.code,
+      userId: req.user ? req.user.id : null,
+      phone: customerPhone,
+    });
+    if(alreadyUsed){
+      throw { status: 409, message: COUPON_ALREADY_USED_MESSAGE };
+    }
+  }
+
+  const couponFactor = coupon ? (1 - coupon.percentOff / 100) : 1;
+
+  /* Descontos aplicados no PREÇO UNITÁRIO e somados item a item (em vez de
+     calculados de uma vez sobre o subtotal): o Mercado Pago cobra
+     `unit_price * quantity` já arredondado por item, então somar os
+     descontos do mesmo jeito é o que faz o "Total" gravado no pedido bater
+     exatamente com o valor cobrado — calcular por fora sobre o subtotal
+     deixaria uma diferença de centavos entre o recibo e a cobrança. */
+  let subtotal = 0, couponDiscount = 0, pixDiscount = 0;
+  const preferenceItems = validatedItems.map(({ id, qty, product }) => {
+    const afterCoupon = pricing.round2(product.price * couponFactor);
+    const unitPrice = paymentMethod === "pix" ? pricing.pixPriceFor(afterCoupon) : afterCoupon;
+    subtotal += product.price * qty;
+    couponDiscount += (product.price - afterCoupon) * qty;
+    pixDiscount += (afterCoupon - unitPrice) * qty;
+    return {
+      id: String(id),
+      title: product.name,
+      quantity: qty,
+      unit_price: unitPrice,   // <- preço vem do servidor, não do cliente
+      currency_id: "BRL",
+    };
+  });
+  subtotal = pricing.round2(subtotal);
+  const discount = pricing.round2(couponDiscount);
+  pixDiscount = pricing.round2(pixDiscount);
+
+  // Recalcula o frete de novo (nunca confia no preço que o front mostrou)
+  const shippingOptions = await quoteShipping(cep, validatedItems);
+  const chosenShipping = shippingOptions.find(o => String(o.service_id) === String(shipping_service_id));
+  if(!chosenShipping){
+    throw { status: 409, message: "Essa opção de frete expirou ou não está mais disponível. Recalcule o frete e tente de novo." };
+  }
+  preferenceItems.push({
+    id: "frete",
+    title: `Frete — ${chosenShipping.name}`,
+    quantity: 1,
+    unit_price: chosenShipping.price,
+    currency_id: "BRL",
+  });
+
+  return {
+    cep, address, paymentMethod, validatedItems, preferenceItems,
+    coupon, customerPhone, chosenShipping, subtotal, discount, pixDiscount,
+    total: pricing.round2(subtotal - discount - pixDiscount + chosenShipping.price),
+  };
+}
+
+/* Monta o registro do pedido a partir do rascunho acima. Separado de
+   buildCheckoutDraft porque as duas formas de cobrar gravam o pedido em
+   momentos diferentes: o Checkout Pro só depois que o Mercado Pago aceita a
+   preferência, o Pix só depois que o QR existe. */
+function orderRowFrom(draft, orderRef, userId){
+  return {
+    externalReference: orderRef,
+    userId: userId ?? null,
+    status: "pendente",
+    // Guarda o preço de CATÁLOGO no momento da compra (não só id/qty) —
+    // o histórico de pedidos precisa continuar exibindo o valor correto
+    // mesmo se o preço do produto mudar depois. É o preço "de tabela"
+    // (sem o desconto do cupom, que já aparece como uma linha separada
+    // de "Desconto" no resumo), igual a um item de nota fiscal.
+    items: draft.validatedItems.map(({ id, qty, product }) => ({
+      id, qty, price: product.price,
+    })),
+    address: { ...draft.address, cep: draft.cep },
+    shipping: draft.chosenShipping,
+    couponCode: draft.coupon ? draft.coupon.code : null,
+    customerPhone: draft.customerPhone,
+    subtotal: draft.subtotal,
+    discount: draft.discount,
+    pixDiscount: draft.pixDiscount,
+    paymentMethod: draft.paymentMethod,
+    shippingPrice: draft.chosenShipping.price,
+    total: draft.total,
+  };
+}
+
 app.post("/api/create-preference", strictLimiter, auth.requireAuth, async (req, res) => {
   try {
-    const { cep: rawCep, shipping_service_id, address } = req.body || {};
-    const cep = String(rawCep || "").replace(/\D/g, "");
-    if(!/^\d{8}$/.test(cep)){
-      return res.status(400).json({ error: "CEP inválido." });
-    }
-    if(!shipping_service_id){
-      return res.status(400).json({ error: "Escolha uma opção de frete." });
-    }
-    const paymentMethod = String(req.body?.paymentMethod || "card").toLowerCase();
-    if(!PAYMENT_METHODS[paymentMethod]){
-      return res.status(400).json({ error: "Forma de pagamento inválida." });
-    }
-    const requiredAddress = ["nome","telefone","rua","numero","bairro","cidade","uf"];
-    if(!address || requiredAddress.some(f => !String(address[f] || "").trim())){
-      return res.status(400).json({ error: "Endereço de entrega incompleto." });
-    }
-
-    const validatedItems = buildValidatedItems(req.body?.items);
-
-    // Cupom opcional: revalidado aqui, nunca confiando no desconto do front.
-    const coupon = req.body?.coupon ? findCoupon(req.body.coupon) : null;
-    if(req.body?.coupon && !coupon){
-      return res.status(409).json({ error: "Esse cupom não é mais válido. Remova-o e tente novamente." });
-    }
-
-    // Ponto de decisão do uso único. Fica AQUI, e não só no /validate-coupon,
-    // porque este é o passo que realmente cria o pedido — quem chamar a API
-    // direto, pulando o carrinho, esbarra no mesmo bloqueio.
-    const customerPhone = phoneDigits(address.telefone);
-    if(coupon?.oncePerCustomer){
-      const alreadyUsed = db.hasUsedCoupon({
-        code: coupon.code,
-        userId: req.user ? req.user.id : null,
-        phone: customerPhone,
-      });
-      if(alreadyUsed){
-        return res.status(409).json({ error: COUPON_ALREADY_USED_MESSAGE });
-      }
-    }
-
-    const couponFactor = coupon ? (1 - coupon.percentOff / 100) : 1;
-
-    /* Descontos aplicados no PREÇO UNITÁRIO e somados item a item (em vez de
-       calculados de uma vez sobre o subtotal): o Mercado Pago cobra
-       `unit_price * quantity` já arredondado por item, então somar os
-       descontos do mesmo jeito é o que faz o "Total" gravado no pedido bater
-       exatamente com o valor cobrado — calcular por fora sobre o subtotal
-       deixaria uma diferença de centavos entre o recibo e a cobrança. */
-    let subtotal = 0, couponDiscount = 0, pixDiscount = 0;
-    const preferenceItems = validatedItems.map(({ id, qty, product }) => {
-      const afterCoupon = pricing.round2(product.price * couponFactor);
-      const unitPrice = paymentMethod === "pix" ? pricing.pixPriceFor(afterCoupon) : afterCoupon;
-      subtotal += product.price * qty;
-      couponDiscount += (product.price - afterCoupon) * qty;
-      pixDiscount += (afterCoupon - unitPrice) * qty;
-      return {
-        id: String(id),
-        title: product.name,
-        quantity: qty,
-        unit_price: unitPrice,   // <- preço vem do servidor, não do cliente
-        currency_id: "BRL",
-      };
-    });
-    subtotal = pricing.round2(subtotal);
-    const discount = pricing.round2(couponDiscount);
-    pixDiscount = pricing.round2(pixDiscount);
-
-    // Recalcula o frete de novo (nunca confia no preço que o front mostrou)
-    const shippingOptions = await quoteShipping(cep, validatedItems);
-    const chosenShipping = shippingOptions.find(o => String(o.service_id) === String(shipping_service_id));
-    if(!chosenShipping){
-      return res.status(409).json({ error: "Essa opção de frete expirou ou não está mais disponível. Recalcule o frete e tente de novo." });
-    }
-    preferenceItems.push({
-      id: "frete",
-      title: `Frete — ${chosenShipping.name}`,
-      quantity: 1,
-      unit_price: chosenShipping.price,
-      currency_id: "BRL",
-    });
+    const draft = await buildCheckoutDraft(req);
+    const { address, paymentMethod, preferenceItems } = draft;
 
     const orderRef = randomUUID();
 
@@ -777,29 +829,7 @@ app.post("/api/create-preference", strictLimiter, auth.requireAuth, async (req, 
       },
     });
 
-    db.createOrder({
-      externalReference: orderRef,
-      userId: req.user ? req.user.id : null,
-      status: "pendente",
-      // Guarda o preço de CATÁLOGO no momento da compra (não só id/qty) —
-      // o histórico de pedidos precisa continuar exibindo o valor correto
-      // mesmo se o preço do produto mudar depois. É o preço "de tabela"
-      // (sem o desconto do cupom, que já aparece como uma linha separada
-      // de "Desconto" no resumo), igual a um item de nota fiscal.
-      items: validatedItems.map(({ id, qty, product }) => ({
-        id, qty, price: product.price,
-      })),
-      address: { ...address, cep },
-      shipping: chosenShipping,
-      couponCode: coupon ? coupon.code : null,
-      customerPhone,
-      subtotal,
-      discount,
-      pixDiscount,
-      paymentMethod,
-      shippingPrice: chosenShipping.price,
-      total: pricing.round2(subtotal - discount - pixDiscount + chosenShipping.price),
-    });
+    db.createOrder(orderRowFrom(draft, orderRef, req.user?.id));
 
     // init_point = link de pagamento (Checkout Pro) para redirecionar o cliente
     res.json({ id: result.id, init_point: result.init_point });
@@ -814,6 +844,88 @@ app.post("/api/create-preference", strictLimiter, auth.requireAuth, async (req, 
     console.error("Erro ao criar preferência:", err);
     res.status(500).json({ error: "Não foi possível iniciar o pagamento. Tente novamente em instantes." });
   }
+});
+
+/* =========================================================================
+   POST /api/create-pix-payment — Pix sem sair do site
+   -------------------------------------------------------------------------
+   Mesmo cálculo do Checkout Pro (buildCheckoutDraft), mas em vez de devolver
+   um link para o site do Mercado Pago, cria o pagamento Pix direto pela API
+   e devolve o QR Code para a página exibir. A cliente paga pelo app do banco
+   e nunca sai de adrianameloacessorios.com.
+
+   Quem confirma o pagamento continua sendo o webhook (/api/webhook), nunca
+   esta resposta: aqui o pagamento nasce sempre "pending" — o QR acabou de
+   ser gerado e ninguém pagou ainda. A página consulta
+   GET /api/orders/:reference/status para saber quando virou "pago".
+========================================================================= */
+app.post("/api/create-pix-payment", strictLimiter, auth.requireAuth, async (req, res) => {
+  try {
+    const draft = await buildCheckoutDraft(req);
+    if(draft.paymentMethod !== "pix"){
+      return res.status(400).json({ error: "Esta rota é só para pagamento via Pix." });
+    }
+
+    const orderRef = randomUUID();
+    const payment = new Payment(mpClient);
+    const result = await payment.create({
+      body: {
+        transaction_amount: draft.total,
+        description: `Pedido ${orderRef.slice(0, 8)} — Adriana Melo Acessórios`,
+        payment_method_id: "pix",
+        external_reference: orderRef,
+        notification_url: `${process.env.SERVER_PUBLIC_URL || "https://SEU-DOMINIO-DO-SERVIDOR.com"}/api/webhook`,
+        payer: {
+          email: req.user.email,
+          first_name: draft.address.nome,
+        },
+      },
+      // Sem isso, um duplo-clique no botão (ou um retry de rede) geraria
+      // dois Pix de verdade para o mesmo pedido. A referência do pedido é
+      // única por definição, então serve de chave.
+      requestOptions: { idempotencyKey: orderRef },
+    });
+
+    const tx = result.point_of_interaction?.transaction_data;
+    if(!tx?.qr_code){
+      // Sem QR não há como pagar: não deixa um pedido órfão no histórico.
+      console.error("Pix criado sem QR Code:", result.id, result.status);
+      return res.status(502).json({ error: "Não foi possível gerar o código Pix agora. Tente novamente em instantes." });
+    }
+
+    db.createOrder(orderRowFrom(draft, orderRef, req.user.id));
+    db.updateOrderStatus(orderRef, "pendente", String(result.id));
+
+    res.json({
+      reference: orderRef,
+      total: draft.total,
+      qrCode: tx.qr_code,                 // "copia e cola"
+      qrCodeBase64: tx.qr_code_base64,    // imagem PNG já pronta
+      expiresAt: result.date_of_expiration || null,
+    });
+  } catch (err) {
+    if(!(err instanceof Error) && err.status && err.message){
+      return res.status(err.status).json({ error: err.message });
+    }
+    console.error("Erro ao criar pagamento Pix:", err);
+    res.status(500).json({ error: "Não foi possível gerar o Pix agora. Tente novamente em instantes." });
+  }
+});
+
+/* =========================================================================
+   GET /api/orders/:reference/status — usado pela página do Pix
+   -------------------------------------------------------------------------
+   Devolve só o status, e só para a dona do pedido (o filtro por user_id é o
+   que impede alguém adivinhar/enumerar referências e espiar pedido alheio).
+   Mantido minúsculo de propósito: é chamado de poucos em poucos segundos
+   enquanto a página do Pix está aberta.
+========================================================================= */
+app.get("/api/orders/:reference/status", auth.requireAuth, (req, res) => {
+  const order = db.getOrderByExternalReference(req.params.reference);
+  if(!order || order.user_id !== req.user.id){
+    return res.status(404).json({ error: "Pedido não encontrado." });
+  }
+  res.json({ status: order.status });
 });
 
 /* =========================================================================

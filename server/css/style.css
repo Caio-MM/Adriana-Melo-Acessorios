@@ -780,6 +780,48 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .cart-checkout-btn:disabled{ opacity:.55; }
 
+/* ====================== PÁGINA DO PIX (pagamento-pix.html) ====================== */
+.pix-badge{
+  display:inline-flex; align-items:center; gap:.35rem;
+  background:var(--blush-100); color:var(--blush-700);
+  padding:.3rem .7rem; border-radius:999px;
+  font-size:.75rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+}
+.pix-amount{
+  font-size:1.6rem; font-weight:700; color:var(--blush-700); margin:0 0 1rem;
+}
+.pix-qr{
+  display:block; margin:0 auto; width:220px; height:220px;
+  border:1px solid #EFEAEC; border-radius:14px; padding:.5rem; background:#fff;
+}
+.pix-or{
+  margin:1.1rem 0 .5rem; font-size:.78rem; color:var(--ink-soft);
+  text-transform:uppercase; letter-spacing:.06em;
+}
+.pix-copy-row{ display:flex; gap:.5rem; align-items:stretch; }
+.pix-copy-row .form-control{
+  flex:1 1 auto; min-width:0; font-size:.78rem; font-family:ui-monospace, monospace;
+}
+.pix-copy-btn{
+  flex:0 0 104px; padding:.45rem 0; font-size:.82rem;
+  display:flex; align-items:center; justify-content:center; gap:.3rem;
+}
+.pix-status{
+  display:flex; align-items:center; justify-content:center; gap:.45rem; flex-wrap:wrap;
+  margin:1.2rem 0 0; font-size:.85rem; color:var(--ink-soft);
+}
+.pix-spinner{
+  width:14px; height:14px; flex-shrink:0; border-radius:50%;
+  border:2px solid var(--blush-100); border-top-color:var(--blush-700);
+  animation:pix-spin .8s linear infinite;
+}
+@keyframes pix-spin{ to{ transform:rotate(360deg); } }
+/* Quem prefere menos movimento não perde informação: o texto ao lado já
+   diz que está aguardando — a animação é só reforço visual. */
+@media (prefers-reduced-motion: reduce){
+  .pix-spinner{ animation:none; }
+}
+
 /* Aviso de que o pagamento acontece no Mercado Pago, abaixo do botão */
 .cart-gateway-note{
   display:flex; gap:.4rem; align-items:flex-start; justify-content:center;
