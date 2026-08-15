@@ -118,6 +118,15 @@
 
   const registerForm = document.getElementById("registerForm");
   const registerMsg = document.getElementById("registerMsg");
+  const registerCep = document.getElementById("registerCep");
+
+  // Máscara 00000-000, igual à do carrinho (js/main.js) — o servidor
+  // recebe só os dígitos de qualquer jeito.
+  registerCep?.addEventListener("input", () => {
+    let v = registerCep.value.replace(/\D/g, "").slice(0, 8);
+    if(v.length > 5) v = v.slice(0, 5) + "-" + v.slice(5);
+    registerCep.value = v;
+  });
   registerForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = document.getElementById("registerSubmitBtn");
@@ -128,12 +137,18 @@
       showMessage(registerMsg, "A senha precisa ter pelo menos 8 caracteres.", "error");
       return;
     }
+    const cep = registerCep.value.replace(/\D/g, "");
+    if(cep.length !== 8){
+      showMessage(registerMsg, "Informe um CEP válido, com 8 dígitos.", "error");
+      return;
+    }
 
     setLoading(btn, true, "Criando conta...");
     try{
       const user = await postJSON("/api/auth/register", {
         name: document.getElementById("registerName").value.trim(),
         email: document.getElementById("registerEmail").value.trim(),
+        cep,
         password,
       });
       window.location.href = destinationFor(user);

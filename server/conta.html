@@ -157,6 +157,16 @@
               <label class="form-label small fw-semibold" for="registerEmail">E-mail</label>
               <input type="email" class="form-control" id="registerEmail" required autocomplete="email">
             </div>
+            <!-- CEP no cadastro para o carrinho já abrir com o frete e o
+                 endereço preenchidos (ver js/main.js). inputmode=numeric
+                 abre o teclado numérico no celular; a máscara fica em
+                 js/conta.js. -->
+            <div class="mb-3">
+              <label class="form-label small fw-semibold" for="registerCep">CEP</label>
+              <input type="text" class="form-control" id="registerCep" required autocomplete="postal-code"
+                     inputmode="numeric" placeholder="00000-000" maxlength="9">
+              <div class="form-text">Usamos para calcular o frete mais rápido no seu pedido.</div>
+            </div>
             <div class="mb-3">
               <label class="form-label small fw-semibold" for="registerPassword">Senha</label>
               <input type="password" class="form-control" id="registerPassword" required autocomplete="new-password" minlength="8">

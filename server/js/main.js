@@ -525,6 +525,9 @@
   document.addEventListener("plc:auth", (e) => {
     currentUser = e.detail.user;
     renderAuthGate();
+    // Só depois do evento (assíncrono) é seguro mexer em cepInput/addrInputs:
+    // eles são declarados mais abaixo neste mesmo arquivo.
+    prefillFromAccount();
     updateTotals();
   });
   renderAuthGate();
@@ -723,6 +726,24 @@
   function isAddressComplete(){
     const a = getAddress();
     return a.nome && a.telefone && a.rua && a.numero && a.bairro && a.cidade && a.uf;
+  }
+
+  /* Aproveita o que a cliente já informou no cadastro (nome e CEP) para
+     ela não digitar de novo no carrinho. Chamada quando a sessão chega
+     (evento "plc:auth").
+
+     Só preenche campo VAZIO: se ela já estiver digitando um endereço de
+     entrega diferente do cadastro (presente para outra pessoa, por
+     exemplo), nada é sobrescrito. */
+  function prefillFromAccount(){
+    if(!currentUser) return;
+    if(currentUser.name && !addrInputs.nome.value.trim()){
+      addrInputs.nome.value = currentUser.name;
+    }
+    if(currentUser.cep && !cepInput.value.trim()){
+      const d = String(currentUser.cep).replace(/\D/g, "").slice(0, 8);
+      cepInput.value = d.length > 5 ? `${d.slice(0,5)}-${d.slice(5)}` : d;
+    }
   }
 
   /* Autopreenche rua/bairro/cidade/UF a partir do CEP usando o ViaCEP —

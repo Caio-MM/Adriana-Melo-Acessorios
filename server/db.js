@@ -146,6 +146,10 @@ ensureColumn("orders", "customer_phone", "TEXT");
 // Cupom de uso único por cliente (ex.: o de boas-vindas). Fica no cupom, e
 // não no código, para a loja poder ter os dois tipos.
 ensureColumn("coupons", "once_per_customer", "INTEGER NOT NULL DEFAULT 0");
+// CEP informado no cadastro (só dígitos), usado para já preencher o frete
+// e o endereço no carrinho. Fica nulo para quem criou conta antes disso
+// existir — o carrinho simplesmente não pré-preenche nesse caso.
+ensureColumn("users", "cep", "TEXT");
 
 // Garante que o cupom que já existia fixo no código (BEMVINDA10) continua
 // funcionando depois da migração pra banco — só insere se a tabela
@@ -169,13 +173,13 @@ seedDefaultCoupon();
 
 /* ---------------------------- USERS ---------------------------- */
 const stmtInsertUser = db.prepare(
-  `INSERT INTO users (name, email, password_hash, created_at) VALUES (?, ?, ?, ?)`
+  `INSERT INTO users (name, email, password_hash, cep, created_at) VALUES (?, ?, ?, ?, ?)`
 );
 const stmtGetUserByEmail = db.prepare(`SELECT * FROM users WHERE email = ?`);
 const stmtGetUserById = db.prepare(`SELECT * FROM users WHERE id = ?`);
 
-function createUser({ name, email, passwordHash }) {
-  const info = stmtInsertUser.run(name, email, passwordHash, Date.now());
+function createUser({ name, email, passwordHash, cep }) {
+  const info = stmtInsertUser.run(name, email, passwordHash, cep || null, Date.now());
   return getUserById(Number(info.lastInsertRowid));
 }
 function getUserByEmail(email) {

@@ -55,6 +55,14 @@ function isValidPassword(v) {
 function isValidName(v) {
   return typeof v === "string" && v.trim().length >= 2 && v.trim().length <= 120;
 }
+// CEP guardado só com dígitos, para casar com o que o carrinho manda para
+// /api/calculate-shipping (que também tira a máscara antes de consultar).
+function normalizeCep(v) {
+  return String(v || "").replace(/\D/g, "");
+}
+function isValidCep(v) {
+  return /^\d{8}$/.test(v);
+}
 
 /* ------------------------------ COOKIES ------------------------------ */
 function parseCookies(req) {
@@ -183,7 +191,7 @@ function getUserFromRequest(req) {
   if (!session) return null;
   const user = db.getUserById(session.user_id);
   if (!user) return null;
-  return { id: user.id, name: user.name, email: user.email, isAdmin: isAdminEmail(user.email) };
+  return { id: user.id, name: user.name, email: user.email, cep: user.cep || null, isAdmin: isAdminEmail(user.email) };
 }
 
 /* ------------------------------ MIDDLEWARES ------------------------------ */
@@ -219,6 +227,8 @@ module.exports = {
   normalizeEmail,
   isValidPassword,
   isValidName,
+  normalizeCep,
+  isValidCep,
   issueSession,
   clearSession,
   issuePasswordReset,

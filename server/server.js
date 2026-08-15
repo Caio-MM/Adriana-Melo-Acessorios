@@ -481,8 +481,13 @@ async function meFetch(path, { method = "GET", body } = {}){
 /* Transportadoras que a loja oferece. O Melhor Envio cota TODAS as que
    atendem o CEP (Jadlog, JeT, Total Express, Azul...), o que enche o
    carrinho de opções parecidas e trava a cliente na hora de escolher.
-   A vitrine fica só com Loggi e o SEDEX dos Correios — os dois serviços
-   que a loja realmente usa para postar.
+   A vitrine fica com dois serviços, os que a loja realmente usa para
+   postar: Loggi Express e o SEDEX dos Correios.
+
+   Os outros serviços da própria Loggi ficam de fora de propósito:
+   "Loggi Ponto" exige a cliente retirar num ponto (não é entrega em
+   casa, e quem escolhe sem ler reclama depois) e "Loggi Coleta" custa
+   quase o triplo do Express pela coleta em domicílio.
 
    Se um CEP não for atendido por nenhum dos dois, a cotação volta vazia
    e o carrinho já mostra "nenhuma transportadora disponível" (o caminho
@@ -490,7 +495,7 @@ async function meFetch(path, { method = "GET", body } = {}){
 function isOfferedCarrier(companyName, serviceName){
   const company = String(companyName || "").toLowerCase();
   const service = String(serviceName || "").toLowerCase();
-  if(company.includes("loggi")) return true;
+  if(company.includes("loggi") && service.includes("express")) return true;
   if(company.includes("correios") && service.includes("sedex")) return true;
   return false;
 }
@@ -1108,6 +1113,7 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
     const name = String(req.body?.name || "").trim();
     const email = auth.normalizeEmail(req.body?.email);
     const password = String(req.body?.password || "");
+    const cep = auth.normalizeCep(req.body?.cep);
 
     if(!auth.isValidName(name)){
       return res.status(400).json({ error: "Informe seu nome completo." });
@@ -1118,16 +1124,19 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
     if(!auth.isValidPassword(password)){
       return res.status(400).json({ error: "A senha precisa ter entre 8 e 72 caracteres." });
     }
+    if(!auth.isValidCep(cep)){
+      return res.status(400).json({ error: "CEP inválido — informe os 8 dígitos." });
+    }
     if(db.getUserByEmail(email)){
       return res.status(409).json({ error: "Já existe uma conta com este e-mail." });
     }
 
     const passwordHash = await auth.hashPassword(password);
-    const user = db.createUser({ name, email, passwordHash });
+    const user = db.createUser({ name, email, passwordHash, cep });
     auth.issueSession(res, user.id);
     // isAdmin vai junto para o front saber para onde redirecionar sem
     // precisar de uma segunda chamada a /api/auth/me logo em seguida.
-    res.status(201).json({ id: user.id, name: user.name, email: user.email, isAdmin: auth.isAdminEmail(user.email) });
+    res.status(201).json({ id: user.id, name: user.name, email: user.email, cep: user.cep, isAdmin: auth.isAdminEmail(user.email) });
   } catch (err) {
     console.error("Erro ao criar conta:", err);
     res.status(500).json({ error: "Não foi possível criar a conta agora. Tente novamente em instantes." });
@@ -1153,7 +1162,7 @@ app.post("/api/auth/login", authLimiter, async (req, res) => {
     }
 
     auth.issueSession(res, user.id);
-    res.json({ id: user.id, name: user.name, email: user.email, isAdmin: auth.isAdminEmail(user.email) });
+    res.json({ id: user.id, name: user.name, email: user.email, cep: user.cep || null, isAdmin: auth.isAdminEmail(user.email) });
   } catch (err) {
     console.error("Erro ao fazer login:", err);
     res.status(500).json({ error: "Não foi possível entrar agora. Tente novamente em instantes." });
