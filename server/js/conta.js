@@ -37,7 +37,12 @@
      navegador) — o painel em si continua protegido por auth.requireAdmin no
      servidor, isso aqui é só a escolha do destino. */
   function destinationFor(user){
-    return user?.isAdmin ? "admin.html" : "pedidos.html";
+    if(user?.isAdmin) return "admin.html";
+    // Quem chegou aqui pelo botão de pagamento do carrinho volta para lá
+    // (js/main.js reabre o carrinho com ?carrinho=1) em vez de cair em
+    // "Meus pedidos" e ter que refazer o caminho.
+    const retorno = new URLSearchParams(location.search).get("retorno");
+    return retorno === "carrinho" ? "index.html?carrinho=1" : "pedidos.html";
   }
 
   /* =====================================================================

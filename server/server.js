@@ -478,10 +478,28 @@ async function meFetch(path, { method = "GET", body } = {}){
   return data;
 }
 
+/* Transportadoras que a loja oferece. O Melhor Envio cota TODAS as que
+   atendem o CEP (Jadlog, JeT, Total Express, Azul...), o que enche o
+   carrinho de opções parecidas e trava a cliente na hora de escolher.
+   A vitrine fica só com Loggi e o SEDEX dos Correios — os dois serviços
+   que a loja realmente usa para postar.
+
+   Se um CEP não for atendido por nenhum dos dois, a cotação volta vazia
+   e o carrinho já mostra "nenhuma transportadora disponível" (o caminho
+   de lista vazia em /api/calculate-shipping). */
+function isOfferedCarrier(companyName, serviceName){
+  const company = String(companyName || "").toLowerCase();
+  const service = String(serviceName || "").toLowerCase();
+  if(company.includes("loggi")) return true;
+  if(company.includes("correios") && service.includes("sedex")) return true;
+  return false;
+}
+
 /* Pede a cotação ao Melhor Envio e devolve só as opções utilizáveis,
    já normalizadas para o formato que o front-end espera. Filtra os
    serviços que vieram com erro (ex.: transportadora indisponível para
-   aquela rota) e ordena do mais barato para o mais caro. */
+   aquela rota) e os de transportadora que a loja não usa
+   (isOfferedCarrier), e ordena do mais barato para o mais caro. */
 async function quoteShipping(cepDestino, validatedItems){
   const pkg = buildPackage(validatedItems);
 
@@ -507,6 +525,7 @@ async function quoteShipping(cepDestino, validatedItems){
 
   return quotes
     .filter(q => !q.error && (q.custom_price || q.price))
+    .filter(q => isOfferedCarrier(q.company?.name, q.name))
     .map(q => ({
       service_id: q.id,
       name: `${q.company?.name ? q.company.name + " · " : ""}${q.name}`,
@@ -611,12 +630,16 @@ app.post("/api/validate-coupon", strictLimiter, (req, res) => {
         pagamento escolhida, e restringe a preferência aos meios de
         pagamento correspondentes (ver PAYMENT_METHODS);
      5) grava o pedido no banco (server/db.js), vinculado ao usuário logado
-        quando houver sessão (req.user, ver server/auth.js) — é isso que
-        permite ao cliente ver o pedido depois em "Meus pedidos";
+        (req.user, ver server/auth.js) — é isso que permite ao cliente ver
+        o pedido depois em "Meus pedidos";
      6) cria a preferência no Mercado Pago com o frete somado como um
         item da compra.
+
+   Exige sessão (auth.requireAuth): comprar sem conta não é permitido, para
+   que todo pedido tenha um dono e apareça em "Meus pedidos". O aviso no
+   carrinho (js/main.js) é só conveniência — a trava é esta.
 ========================================================================= */
-app.post("/api/create-preference", strictLimiter, async (req, res) => {
+app.post("/api/create-preference", strictLimiter, auth.requireAuth, async (req, res) => {
   try {
     const { cep: rawCep, shipping_service_id, address } = req.body || {};
     const cep = String(rawCep || "").replace(/\D/g, "");

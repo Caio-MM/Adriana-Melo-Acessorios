@@ -231,6 +231,13 @@
     </div>
 
     <div class="cart-panel-block">
+      <!-- Aviso de conta obrigatória: só aparece deslogada (js/main.js).
+           É conveniência — quem trava o pedido sem sessão é o servidor
+           (auth.requireAuth em /api/create-preference). -->
+      <div class="cart-login-notice d-none" id="cartLoginNotice">
+        <i class="bi bi-person-circle"></i>
+        <span>Entre na sua conta para finalizar — é assim que você acompanha a entrega em "Meus pedidos".</span>
+      </div>
       <button class="btn-blush cart-checkout-btn" id="checkoutBtn" disabled>
         <i class="bi bi-lock-fill"></i> Ir para pagamento
       </button>

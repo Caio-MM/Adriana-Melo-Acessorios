@@ -425,6 +425,7 @@
   const pmCardNoteEl = document.getElementById("pmCardNote");
   const checkoutBtn = document.getElementById("checkoutBtn");
   const checkoutMsg = document.getElementById("checkoutMsg");
+  const cartLoginNotice = document.getElementById("cartLoginNotice");
   const couponInput = document.getElementById("couponInput");
   const couponApplyBtn = document.getElementById("couponApplyBtn");
   const couponMsgEl = document.getElementById("couponMsg");
@@ -434,6 +435,13 @@
      então é mais seguro pedir para recalcular do que arriscar mostrar
      um valor de frete desatualizado. */
   let shipping = null; // { service_id, name, price, delivery_time }
+
+  /* Sessão do cliente. Preenchida pelo evento "plc:auth" que js/auth.js
+     dispara ao terminar a checagem de sessão — não consultamos
+     /api/auth/me de novo aqui. Fechar o pedido exige conta: enquanto
+     este valor for null, o botão leva para conta.html em vez de chamar
+     /api/create-preference (que também recusa sem sessão). */
+  let currentUser = null;
 
   /* Estado do cupom aplicado. Guardamos só o percentual (não o valor de
      desconto em R$) — assim o desconto mostrado acompanha automaticamente
@@ -498,8 +506,28 @@
       ? `ou ${pricing.installmentLabelFor(total)} no cartão`
       : "";
 
-    checkoutBtn.disabled = cart.length === 0 || !shipping || !isAddressComplete();
+    // Deslogada o botão continua clicável (leva para o login) desde que
+    // haja algo no carrinho — só o pedido em si é que exige frete e
+    // endereço completos.
+    checkoutBtn.disabled = cart.length === 0
+      || (!!currentUser && (!shipping || !isAddressComplete()));
   }
+
+  /* Troca o rótulo do botão e mostra/esconde o aviso de conta conforme a
+     sessão. Chamada quando "plc:auth" chega (js/auth.js). */
+  function renderAuthGate(){
+    const loggedOut = !currentUser;
+    cartLoginNotice?.classList.toggle("d-none", !loggedOut);
+    checkoutBtn.innerHTML = loggedOut
+      ? `<i class="bi bi-box-arrow-in-right"></i> Entrar para finalizar`
+      : `<i class="bi bi-lock-fill"></i> Ir para pagamento`;
+  }
+  document.addEventListener("plc:auth", (e) => {
+    currentUser = e.detail.user;
+    renderAuthGate();
+    updateTotals();
+  });
+  renderAuthGate();
 
   function syncPayMethodSelection(){
     payMethodGroupEl.querySelectorAll(".pay-method").forEach(label => {
@@ -860,6 +888,14 @@
      server/server.js para o passo a passo completo de configuração.
   ===================================================================== */
   async function goToCheckout(){
+    // Sem conta não há pedido: manda para o login avisando de onde veio,
+    // para voltar ao carrinho já aberto em vez de cair em "Meus pedidos"
+    // (ver destinationFor em js/conta.js e a abertura por ?carrinho=1
+    // logo abaixo).
+    if(!currentUser){
+      window.location.href = "conta.html?retorno=carrinho";
+      return;
+    }
     if(cart.length === 0 || !shipping || !isAddressComplete()) return;
     checkoutBtn.disabled = true;
     checkoutMsg.classList.add("show");
@@ -898,6 +934,14 @@
     }
   }
   checkoutBtn.addEventListener("click", goToCheckout);
+
+  /* Volta do login (conta.html?retorno=carrinho) já com o carrinho aberto,
+     para a cliente continuar de onde parou. Limpa o parâmetro da URL para
+     não reabrir o carrinho a cada F5. */
+  if(new URLSearchParams(location.search).get("carrinho") === "1"){
+    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById("cartOffcanvas")).show();
+    history.replaceState(null, "", location.pathname);
+  }
 
   /* =====================================================================
      QUICK VIEW — tela de detalhes do produto
