@@ -113,7 +113,10 @@
                 <label class="form-label small fw-semibold mb-0" for="loginPassword">Senha</label>
                 <button type="button" class="auth-link" data-auth-mode="forgot">Esqueci a senha</button>
               </div>
-              <input type="password" class="form-control" id="loginPassword" required autocomplete="current-password" minlength="8">
+              <div class="password-field">
+                <input type="password" class="form-control" id="loginPassword" required autocomplete="current-password" minlength="8">
+                <button type="button" class="password-toggle-btn" data-target="loginPassword" aria-label="Mostrar senha" aria-pressed="false"><i class="bi bi-eye"></i></button>
+              </div>
             </div>
             <button class="btn-blush w-100" type="submit" id="loginSubmitBtn">Entrar</button>
             <div class="small mt-2 account-msg" id="loginMsg" role="alert"></div>
@@ -167,7 +170,10 @@
             </div>
             <div class="mb-3">
               <label class="form-label small fw-semibold" for="registerPassword">Senha</label>
-              <input type="password" class="form-control" id="registerPassword" required autocomplete="new-password" minlength="8">
+              <div class="password-field">
+                <input type="password" class="form-control" id="registerPassword" required autocomplete="new-password" minlength="8">
+                <button type="button" class="password-toggle-btn" data-target="registerPassword" aria-label="Mostrar senha" aria-pressed="false"><i class="bi bi-eye"></i></button>
+              </div>
               <div class="form-text">Mínimo de 8 caracteres.</div>
             </div>
             <button class="btn-blush w-100" type="submit" id="registerSubmitBtn">Criar minha conta</button>

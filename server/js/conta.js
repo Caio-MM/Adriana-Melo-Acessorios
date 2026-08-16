@@ -187,6 +187,21 @@
     }
   });
 
+  // Mostrar/ocultar senha — um listener delegado só, então funciona para
+  // qualquer campo marcado com .password-toggle-btn + data-target (o id do
+  // input ao lado), sem precisar registrar cada campo aqui um por um.
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".password-toggle-btn");
+    if(!btn) return;
+    const input = document.getElementById(btn.dataset.target);
+    if(!input) return;
+    const showing = input.type === "text";
+    input.type = showing ? "password" : "text";
+    btn.setAttribute("aria-pressed", String(!showing));
+    btn.setAttribute("aria-label", showing ? "Mostrar senha" : "Ocultar senha");
+    btn.querySelector("i").className = showing ? "bi bi-eye" : "bi bi-eye-slash";
+  });
+
   // Se a sessão já existir (checada por js/auth.js), mostra um aviso em vez
   // dos formulários — evita a confusão de "por que estou vendo login de novo".
   document.addEventListener("plc:auth", (e) => {

@@ -1217,6 +1217,20 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   transition:color .2s ease;
 }
 .auth-link:hover{ color:var(--blush-600); }
+/* Botão "mostrar/ocultar senha": olho dentro do próprio campo, no canto
+   direito — padding no input abre espaço pra ele não ficar por cima do
+   texto digitado. */
+.password-field{ position:relative; }
+.password-field .form-control{ padding-right:2.6rem; }
+.password-toggle-btn{
+  position:absolute; top:50%; right:.5rem; transform:translateY(-50%);
+  display:flex; align-items:center; justify-content:center;
+  width:2rem; height:2rem; border:none; background:none; border-radius:8px;
+  color:var(--ink-soft); font-size:1.05rem; padding:0;
+  transition:color .15s ease, background-color .15s ease;
+}
+.password-toggle-btn:hover{ color:var(--blush-700); background:var(--blush-50); }
+.password-toggle-btn:focus-visible{ outline:2px solid var(--blush-300); outline-offset:1px; }
 /* Laço fora do painel rosa (redefinir-senha.html): usa a cor da marca, e
    sem o gradiente atrás o brilho branco não teria contraste nenhum. */
 .auth-bow-wrap-solo{ margin-bottom:0; }
@@ -1367,11 +1381,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @media (max-width: 991.98px){
   .auth-shell{ max-width:460px; }
   .auth-bow{ width:66px; height:46px; }
+  .auth-logo{ width:160px; }
   .auth-bow-wrap{ margin-bottom:.75rem; }
   .auth-bow-wrap::before{ width:140px; height:140px; }
-  /* O painel vira uma faixa baixa aqui: o anel não caberia sem cruzar o
-     título logo abaixo do laço. */
-  .auth-bow-wrap::after{ display:none; }
+  /* O anel (::after) ficou de fora do encolhimento responsivo original —
+     continuava 172px ao redor de um laço de 66px, quase 4x maior que o
+     ícone, e chegava a cobrir o texto abaixo dele. Mesma proporção do
+     desktop (anel = 69% do brilho) aplicada aqui: 140 × 0,69 ≈ 96px, para
+     o anel abraçar o laço em vez de flutuar solto. */
+  .auth-bow-wrap::after{ width:96px; height:96px; }
   /* Sem o painel lateral, esses textos apenas repetiriam o que as abas já
      dizem — no lugar deles fica só o título curto. */
   .auth-deco-copies{ display:none; }
