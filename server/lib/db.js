@@ -454,6 +454,7 @@ const stmtUpdateCustomProduct = db.prepare(`
     name = ?, price = ?, category = ?, photo_url = ?, badges = ?, updated_at = ?
   WHERE id = ?
 `);
+const stmtDeleteCustomProduct = db.prepare(`DELETE FROM custom_products WHERE id = ?`);
 
 function listCustomProducts() {
   return stmtListCustomProducts.all();
@@ -492,6 +493,15 @@ function updateCustomProduct(id, fields) {
     : current.badges;
   stmtUpdateCustomProduct.run(name, price, category, photoUrl, badges, Date.now(), id);
   return getCustomProduct(id);
+}
+// Não apaga a foto em disco — quem chama (server.js) já leu photo_url ANTES
+// de chamar isto, e cuida do arquivo separado, do mesmo jeito que o PATCH
+// de troca de foto já faz (deleteOldLocalPhoto). Pedidos antigos que
+// referenciam este id continuam funcionando: effectiveProduct() devolve
+// null e quem monta nome/preço para exibição já trata isso com um
+// "Produto #<id>" de reserva (ver server.js).
+function deleteCustomProduct(id) {
+  stmtDeleteCustomProduct.run(id);
 }
 
 /* ------------------------- CUSTOM CATEGORIES ------------------------- */
@@ -603,6 +613,7 @@ module.exports = {
   getCustomProduct,
   insertCustomProduct,
   updateCustomProduct,
+  deleteCustomProduct,
   listCustomCategories,
   insertCustomCategory,
   addNewsletterSubscriber,

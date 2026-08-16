@@ -1999,6 +1999,38 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
 });
 
 /* =========================================================================
+   DELETE /api/admin/products/:id
+   -------------------------------------------------------------------------
+   Só apaga produto criado pelo painel (id >= CUSTOM_PRODUCT_ID_START,
+   guardado em custom_products) — os 8 do catálogo fixo (PRODUCTS) são
+   código-fonte, não uma linha de banco: não existe "apagar" um valor que
+   está em server.js sem editar o arquivo. Um pedido antigo que referencia
+   este id continua abrindo normalmente: effectiveProduct() devolve null
+   para ele, e cada lugar que mostra o item (e-mail, painel, etiqueta) já
+   trata isso com um "Produto #<id>" de reserva, em vez de quebrar.
+========================================================================= */
+app.delete("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if(!Number.isInteger(id) || id < CUSTOM_PRODUCT_ID_START){
+      return res.status(400).json({
+        error: "Este produto faz parte do catálogo fixo e não pode ser excluído — edite-o ou peça para removê-lo do código.",
+      });
+    }
+    const product = db.getCustomProduct(id);
+    if(!product){
+      return res.status(404).json({ error: "Produto não encontrado." });
+    }
+    deleteOldLocalPhoto(product.photo_url);
+    db.deleteCustomProduct(id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Erro ao apagar produto:", err);
+    res.status(500).json({ error: "Não foi possível apagar o produto agora." });
+  }
+});
+
+/* =========================================================================
    POST /api/admin/products/:id/photo — upload de arquivo
    -------------------------------------------------------------------------
    Rota separada do PATCH acima de propósito: o corpo aqui é

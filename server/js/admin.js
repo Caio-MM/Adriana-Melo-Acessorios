@@ -451,9 +451,16 @@
   /* ============================== PRODUTOS ============================== */
   let productsCache = [];
 
+  // Espelha CUSTOM_PRODUCT_ID_START em server/server.js: só produto criado
+  // pelo painel ("+ Adicionar produto") vive numa linha do banco — os 8 do
+  // catálogo fixo são código-fonte, não têm como ser apagados por aqui.
+  const CUSTOM_PRODUCT_ID_START = 1000;
+
   function renderProductsTable(products){
     productsCache = products;
-    productsTableBodyEl.innerHTML = products.map(p => `
+    productsTableBodyEl.innerHTML = products.map(p => {
+      const isCustom = p.id >= CUSTOM_PRODUCT_ID_START;
+      return `
       <tr data-product-id="${p.id}">
         <td>${imageFor(p)
           ? `<img class="admin-product-thumb" src="${escapeHTML(imageFor(p))}" alt="${escapeHTML(p.name)}" width="44" height="44" loading="lazy">`
@@ -464,9 +471,13 @@
         <td>${(p.badges && p.badges.length) ? p.badges.map(b => `<span class="admin-badge-pill">${escapeHTML(b)}</span>`).join("") : "—"}</td>
         <td class="text-end">
           <button type="button" class="btn-outline-blush edit-product-btn" data-id="${p.id}">Editar</button>
+          ${isCustom
+            ? `<button type="button" class="delete-product-btn ms-2" data-id="${p.id}" aria-label="Excluir produto" style="border:none;background:none;color:var(--ink-soft);padding:.3rem"><i class="bi bi-trash3"></i></button>`
+            : `<button type="button" class="ms-2" disabled title="Produto do catálogo original — não pode ser excluído, só editado" style="border:none;background:none;color:var(--blush-100);padding:.3rem;cursor:not-allowed"><i class="bi bi-trash3"></i></button>`}
         </td>
       </tr>
-    `).join("");
+    `;
+    }).join("");
   }
 
   const editModalEl = document.getElementById("editProductModal");
@@ -817,10 +828,27 @@
   });
 
   productsTableBodyEl.addEventListener("click", (e) => {
-    const btn = e.target.closest(".edit-product-btn");
-    if(!btn) return;
-    openEditModal(Number(btn.dataset.id));
+    const editBtn = e.target.closest(".edit-product-btn");
+    if(editBtn){ openEditModal(Number(editBtn.dataset.id)); return; }
+    const deleteBtn = e.target.closest(".delete-product-btn");
+    if(deleteBtn) deleteProductWithConfirm(Number(deleteBtn.dataset.id));
   });
+
+  /* Mesmo racional do confirm() de pedido/mensagem, acima: única rede
+     contra clique errado, já que o servidor recusa (400) qualquer id do
+     catálogo fixo antes de chegar perto de apagar algo. */
+  async function deleteProductWithConfirm(id){
+    if(!confirm("Excluir este produto? Essa ação não pode ser desfeita.")) return;
+    try{
+      const res = await fetchWithTimeout(`/api/admin/products/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível excluir o produto.");
+      productsCache = productsCache.filter(p => p.id !== id);
+      renderProductsTable(productsCache);
+    }catch(err){
+      alert(err.message || "Não foi possível excluir o produto agora.");
+    }
+  }
 
   editForm.addEventListener("submit", async (e) => {
     e.preventDefault();
