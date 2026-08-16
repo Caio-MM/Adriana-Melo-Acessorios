@@ -363,6 +363,73 @@ app.use((req, res, next) => {
    mudança = pode cachear por muito tempo sem risco, e é o que segura a
    nota de velocidade no PageSpeed. */
 const REVALIDATE_ALWAYS = /\.(html|css|js)$/i;
+
+/* Versão no endereço do CSS/JS — o que impede HTML novo com estilo antigo
+   -------------------------------------------------------------------------
+   `no-cache` acima resolve para navegador que obedece. O navegador embutido
+   do WhatsApp não obedeceu: serviu o HTML novo com o style.css antigo do
+   cache, e sem a regra que dimensiona o logo ele apareceu no tamanho do
+   arquivo, por cima do título.
+
+   A cura é o endereço mudar quando o conteúdo muda: `style.css?v=a1b2c3d4`
+   é outro endereço, então um cache antigo nunca casa com HTML novo. O hash
+   sai do próprio arquivo.
+
+   Feito aqui, no servidor, e não escrito à mão no HTML: à mão dependeria
+   de alguém lembrar de trocar a versão a cada mudança de CSS, e é
+   exatamente esse tipo de esquecimento que produziu o bug.
+
+   O resultado fica em memória com a assinatura (mtime + tamanho) do
+   arquivo junto, e é refeito quando ela muda. Sem isso o hash congelaria
+   no primeiro acesso: `node --watch` reinicia por arquivo .js, não por
+   .css, então editar o estilo em desenvolvimento não derrubaria o cache. */
+const CACHE_ASSET = new Map();
+function versaoDoAsset(relativo){
+  const absoluto = path.join(SITE_ROOT, relativo);
+  let assinatura;
+  try {
+    const st = fs.statSync(absoluto);
+    assinatura = `${st.mtimeMs}:${st.size}`;
+  } catch {
+    return ""; // Arquivo ausente: segue sem versão em vez de derrubar a página.
+  }
+  const cacheado = CACHE_ASSET.get(relativo);
+  if(cacheado && cacheado.assinatura === assinatura) return cacheado.versao;
+  const versao = require("crypto")
+    .createHash("sha256").update(fs.readFileSync(absoluto)).digest("hex").slice(0, 8);
+  CACHE_ASSET.set(relativo, { assinatura, versao });
+  return versao;
+}
+
+// Pega href/src de css/… e js/… que ainda não tenham query própria.
+const REF_ASSET = /\b(href|src)="((?:css|js)\/[^"?#]+\.(?:css|js))"/g;
+// O HTML é relido a cada pedido de propósito: são poucos KB que o sistema
+// já mantém em cache, e guardar o resultado exigiria invalidar por página
+// E por asset — complexidade que não se paga no volume desta loja.
+function htmlVersionado(absoluto){
+  return fs.readFileSync(absoluto, "utf8").replace(REF_ASSET, (inteiro, attr, rel) => {
+    const v = versaoDoAsset(rel);
+    return v ? `${attr}="${rel}?v=${v}"` : inteiro;
+  });
+}
+
+app.use((req, res, next) => {
+  if(req.method !== "GET" && req.method !== "HEAD") return next();
+  let rota = decodeURIComponent(req.path);
+  if(rota === "/") rota = "/index.html";
+  if(!rota.endsWith(".html") || rota.includes("..")) return next();
+  const arquivo = path.join(SITE_ROOT, rota);
+  // Só serve o que está dentro da pasta do site e na allowlist — as mesmas
+  // duas travas que o restante do arquivo já aplica.
+  if(!arquivo.startsWith(SITE_ROOT + path.sep)) return next();
+  if(!PUBLIC_TOP_LEVEL.has(rota.split("/")[1])) return next();
+  let html;
+  try { html = htmlVersionado(arquivo); } catch { return next(); }
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache");
+  return res.send(html);
+});
+
 app.use(express.static(SITE_ROOT, {
   extensions: ["html"],
   dotfiles: "ignore",
