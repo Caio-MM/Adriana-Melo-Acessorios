@@ -357,8 +357,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    emenda pulava. Agora cada cópia é um grupo que carrega o próprio
    espaçamento à direita, e -25% de 4 grupos é exatamente um deles. */
 .plc-marquee-track{ display:flex; width:max-content; animation:scrollx 26s linear infinite; }
-.plc-marquee-group{ display:flex; flex:none; gap:3rem; padding-right:3rem; }
+.plc-marquee-group{ display:flex; align-items:center; flex:none; gap:3rem; padding-right:3rem; }
 .plc-marquee span{ font-family:var(--font-script); font-size:1.15rem; display:inline-flex; align-items:center; gap:.6rem; white-space:nowrap; }
+/* O laço tinha largura no atributo mas nunca altura, e SVG sem altura vale
+   150px por padrão — era isso que inflava a faixa para 172px. */
+.plc-marquee span svg{ width:16px; height:11px; flex:none; }
+@media (max-width: 575.98px){
+  .plc-marquee{ padding:.5rem 0; }
+  .plc-marquee span{ font-size:1rem; }
+  .plc-marquee-group{ gap:2rem; padding-right:2rem; }
+}
 @keyframes scrollx{ from{ transform:translateX(0);} to{ transform:translateX(-25%);} }
 @media (prefers-reduced-motion: reduce){
   .plc-marquee-track{ animation:none; }
