@@ -119,6 +119,38 @@ db.exec(`
     created_at   INTEGER NOT NULL
   );
 
+  -- Produtos criados pelo painel administrativo (botão "Adicionar produto"),
+  -- em vez de editados no catálogo fixo PRODUCTS (server.js). Diferente de
+  -- product_overrides (que só sobrepõe nome/preço/foto por cima de uma base
+  -- fixa), esta tabela é a base inteira: também guarda peso/dimensões,
+  -- porque não existe entrada em PRODUCTS para herdar isso. O id é atribuído
+  -- pelo código (ver nextCustomProductId), a partir de 1000, para nunca
+  -- colidir com os ids 1-8 do catálogo fixo.
+  CREATE TABLE IF NOT EXISTS custom_products (
+    id          INTEGER PRIMARY KEY,
+    name        TEXT NOT NULL,
+    price       REAL NOT NULL,
+    weight      REAL NOT NULL,
+    width       REAL NOT NULL,
+    height      REAL NOT NULL,
+    length      REAL NOT NULL,
+    category    TEXT,
+    photo_url   TEXT,
+    badges      TEXT,
+    created_at  INTEGER NOT NULL,
+    updated_at  INTEGER NOT NULL
+  );
+
+  -- Categorias criadas pelo painel administrativo (botão "Nova categoria"),
+  -- além das 5 fixas em PRODUCT_CATEGORIES (server.js). O slug é o valor
+  -- salvo em product_overrides.category/custom_products.category e usado
+  -- nos chips de filtro da vitrine; o label é só o texto exibido.
+  CREATE TABLE IF NOT EXISTS custom_categories (
+    slug        TEXT PRIMARY KEY,
+    label       TEXT NOT NULL,
+    created_at  INTEGER NOT NULL
+  );
+
   /* Índices. Sem eles o SQLite varre a tabela inteira a cada consulta —
      imperceptível com centenas de pedidos, caro com dezenas de milhares.
      Só entram colunas que aparecem de fato em WHERE/ORDER BY das queries
@@ -408,6 +440,74 @@ function upsertProductOverride(productId, fields) {
   return getProductOverride(productId);
 }
 
+/* ------------------------- CUSTOM PRODUCTS ------------------------- */
+const stmtListCustomProducts = db.prepare(`SELECT * FROM custom_products ORDER BY id`);
+const stmtGetCustomProduct = db.prepare(`SELECT * FROM custom_products WHERE id = ?`);
+const stmtMaxCustomProductId = db.prepare(`SELECT MAX(id) AS maxId FROM custom_products`);
+const stmtInsertCustomProduct = db.prepare(`
+  INSERT INTO custom_products
+    (id, name, price, weight, width, height, length, category, photo_url, badges, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+const stmtUpdateCustomProduct = db.prepare(`
+  UPDATE custom_products SET
+    name = ?, price = ?, category = ?, photo_url = ?, badges = ?, updated_at = ?
+  WHERE id = ?
+`);
+
+function listCustomProducts() {
+  return stmtListCustomProducts.all();
+}
+function getCustomProduct(id) {
+  return stmtGetCustomProduct.get(id) || null;
+}
+// ids >= CUSTOM_PRODUCT_ID_START (server.js) — nunca reaproveita um id
+// apagado, então o histórico de pedidos antigos continua apontando para o
+// produto certo mesmo que ele não exista mais no catálogo hoje.
+function nextCustomProductId(startAt) {
+  const { maxId } = stmtMaxCustomProductId.get();
+  return Math.max(startAt - 1, maxId || 0) + 1;
+}
+function insertCustomProduct({ startAt, name, price, weight, width, height, length, category, badges }) {
+  const id = nextCustomProductId(startAt);
+  const now = Date.now();
+  stmtInsertCustomProduct.run(
+    id, name, price, weight, width, height, length, category || null, null,
+    badges && badges.length ? JSON.stringify(badges) : null, now, now
+  );
+  return getCustomProduct(id);
+}
+// Mesmo racional parcial de upsertProductOverride: só grava as chaves
+// presentes em `fields`, preservando as demais. Diferente dele, exige que o
+// produto já exista — não há "base" para criar um registro do zero aqui.
+function updateCustomProduct(id, fields) {
+  const current = getCustomProduct(id);
+  if (!current) return null;
+  const name = "name" in fields ? fields.name : current.name;
+  const price = "price" in fields ? fields.price : current.price;
+  const category = "category" in fields ? (fields.category || null) : current.category;
+  const photoUrl = "photoUrl" in fields ? (fields.photoUrl || null) : current.photo_url;
+  const badges = "badges" in fields
+    ? (fields.badges && fields.badges.length ? JSON.stringify(fields.badges) : null)
+    : current.badges;
+  stmtUpdateCustomProduct.run(name, price, category, photoUrl, badges, Date.now(), id);
+  return getCustomProduct(id);
+}
+
+/* ------------------------- CUSTOM CATEGORIES ------------------------- */
+const stmtListCustomCategories = db.prepare(`SELECT * FROM custom_categories ORDER BY created_at`);
+const stmtInsertCustomCategory = db.prepare(
+  `INSERT INTO custom_categories (slug, label, created_at) VALUES (?, ?, ?)`
+);
+
+function listCustomCategories() {
+  return stmtListCustomCategories.all();
+}
+function insertCustomCategory({ slug, label }) {
+  stmtInsertCustomCategory.run(slug, label, Date.now());
+  return { slug, label };
+}
+
 /* ------------------------------ COUPONS ------------------------------ */
 /* ------------------------- NEWSLETTER ------------------------- */
 // OR IGNORE: pedir o cupom de novo com o mesmo e-mail não é erro — só não
@@ -491,6 +591,12 @@ module.exports = {
   // (listProductOverrides) para montar o catálogo de uma vez.
   listProductOverrides,
   upsertProductOverride,
+  listCustomProducts,
+  getCustomProduct,
+  insertCustomProduct,
+  updateCustomProduct,
+  listCustomCategories,
+  insertCustomCategory,
   addNewsletterSubscriber,
   listNewsletterSubscribers,
   createContactMessage,

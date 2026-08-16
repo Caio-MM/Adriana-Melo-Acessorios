@@ -101,33 +101,73 @@ const PRODUCTS = {
   8: { name:"Laço Personalizado",    price:64.90, weight:0.08, width:16, height:3, length:11, category:"presente",    badges:["Novo"] },
 };
 
-/* Categoria/selos aceitos — precisam ficar em sincronia com os chips de
-   filtro em index.html (data-cat) e com os checkboxes do modal de edição
-   em admin.html. Único lugar validado no servidor (nunca confia em
-   categoria/selo vindo do painel sem checar contra esta lista). */
-const PRODUCT_CATEGORIES = ["maternidade", "festa", "batizado", "dia-a-dia", "presente"];
+/* Categorias fixas — precisam ficar em sincronia com os chips de filtro em
+   index.html (data-cat). getAllCategories() (abaixo) soma estas com as
+   criadas pelo painel ("+ Nova categoria"), guardadas em custom_categories;
+   PRODUCT_CATEGORIES continua existindo só com os slugs fixos porque é
+   contra ela que product_overrides valida uma categoria vinda do painel
+   antes de somar as dinâmicas — ver isValidCategory, mais abaixo. */
+const BUILTIN_CATEGORIES = [
+  { slug: "maternidade", label: "Maternidade" },
+  { slug: "festa",       label: "Festa" },
+  { slug: "batizado",    label: "Batizado" },
+  { slug: "dia-a-dia",   label: "Dia a dia" },
+  { slug: "presente",    label: "Presente" },
+];
+const PRODUCT_CATEGORIES = BUILTIN_CATEGORIES.map(c => c.slug);
 const PRODUCT_BADGES = ["Mais vendido", "Novo"];
+
+/* Produtos criados pelo painel ("+ Adicionar produto") recebem id a partir
+   daqui — os ids 1-8 (PRODUCTS acima) nunca mudam, então não há colisão
+   possível mesmo que o catálogo fixo cresça um pouco no futuro. */
+const CUSTOM_PRODUCT_ID_START = 1000;
 
 /* Dimensões mínimas aceitas pelos Correios/transportadoras — nunca cotar
    abaixo disso, mesmo que o produto seja minúsculo. */
 const MIN_PACKAGE = { weight:0.1, width:16, height:2, length:11 };
 
+function getAllCategories(){
+  return [...BUILTIN_CATEGORIES, ...db.listCustomCategories().map(c => ({ slug: c.slug, label: c.label }))];
+}
+function isValidCategorySlug(slug){
+  return getAllCategories().some(c => c.slug === slug);
+}
+
 /* =========================================================================
-   EDIÇÕES DE PRODUTO (painel administrativo) — nome/preço/foto podem ser
-   sobrescritos via /api/admin/products, gravados em product_overrides
-   (server/db.js). PRODUCTS acima continua sendo a fonte de peso/dimensões
-   (não editável pelo painel); effectiveProduct() é o único lugar que
-   decide "qual é o valor de verdade agora" — todo o resto do arquivo
-   (checkout, listagem de pedidos, avisos de WhatsApp/e-mail) usa essa
-   função em vez de ler PRODUCTS[id] direto, para que uma edição no painel
-   passe a valer imediatamente em TUDO, inclusive no preço cobrado.
+   EDIÇÕES DE PRODUTO (painel administrativo)
+   -------------------------------------------------------------------------
+   Dois jeitos de um produto vir do painel:
+   - Editado: nome/preço/foto/categoria/selos sobrescritos via PATCH
+     /api/admin/products/:id, gravados em product_overrides. PRODUCTS acima
+     continua sendo a fonte de peso/dimensões (não editável pelo painel).
+   - Criado do zero ("+ Adicionar produto"): id >= CUSTOM_PRODUCT_ID_START,
+     guardado inteiro em custom_products — não há PRODUCTS[id] para herdar
+     peso/dimensões, então a linha do banco já é a base completa.
+   effectiveProduct() é o único lugar que decide "qual é o valor de verdade
+   agora" nos dois casos — todo o resto do arquivo (checkout, listagem de
+   pedidos, avisos de WhatsApp/e-mail) usa essa função em vez de ler
+   PRODUCTS[id] direto, para que uma edição no painel passe a valer
+   imediatamente em TUDO, inclusive no preço cobrado.
 ========================================================================= */
 function getProductOverridesMap(){
   const map = new Map();
   for(const row of db.listProductOverrides()) map.set(row.product_id, row);
   return map;
 }
+function getAllProductIds(){
+  return [...Object.keys(PRODUCTS).map(Number), ...db.listCustomProducts().map(p => p.id)];
+}
 function effectiveProduct(id, overridesMap){
+  if(id >= CUSTOM_PRODUCT_ID_START){
+    const custom = db.getCustomProduct(id);
+    if(!custom) return null;
+    return {
+      name: custom.name, price: custom.price,
+      weight: custom.weight, width: custom.width, height: custom.height, length: custom.length,
+      category: custom.category, photoUrl: custom.photo_url || null,
+      badges: custom.badges ? JSON.parse(custom.badges) : [],
+    };
+  }
   const base = PRODUCTS[id];
   if(!base) return null;
   const override = overridesMap.get(id);
@@ -1719,7 +1759,7 @@ app.patch("/api/admin/orders/:reference/tracking", auth.requireAdmin, (req, res)
 ========================================================================= */
 app.get("/api/products", (req, res) => {
   const overridesMap = getProductOverridesMap();
-  const products = Object.keys(PRODUCTS).map(Number).map(id => {
+  const products = getAllProductIds().map(id => {
     const p = effectiveProduct(id, overridesMap);
     return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, category: p.category, badges: p.badges };
   });
@@ -1728,26 +1768,29 @@ app.get("/api/products", (req, res) => {
   // página. A vitrine calcula os preços sozinha com o js/pricing.js que já
   // baixou — isto serve para ela CONFERIR se esse arquivo, que pode vir de
   // um cache de até 1h, ainda concorda com o que o servidor vai cobrar.
-  // Ver loadProductOverrides() em js/main.js.
-  res.json({ products, paymentRules: pricing.PAYMENT_RULES });
+  // Ver loadProductOverrides() em js/main.js. `categories` viaja junto pelo
+  // mesmo motivo: é o que permite a vitrine criar um chip de filtro para
+  // uma categoria nova sem precisar editar index.html — ver
+  // ensureCategoryChips() em js/main.js.
+  res.json({ products, categories: getAllCategories(), paymentRules: pricing.PAYMENT_RULES });
 });
 
 /* =========================================================================
    GESTÃO DE PRODUTOS (painel administrativo) — /api/admin/products
    -------------------------------------------------------------------------
-   Só permite editar nome, preço, foto, categoria e selos de destaque
-   ("Mais vendido"/"Novo") dos produtos que já existem em PRODUCTS — não
-   cria nem remove produtos do catálogo (um produto novo de verdade
-   também precisaria de peso/dimensões para o frete, que não são
-   editáveis por aqui). Peso e dimensões continuam vindo só de PRODUCTS.
+   Edita nome, preço, foto, categoria e selos de destaque ("Mais
+   vendido"/"Novo") dos produtos que já existem em PRODUCTS (peso/dimensões
+   continuam vindo só de lá, nunca editáveis pelo painel) e cria produtos
+   novos do zero (POST, abaixo), guardados inteiros — peso/dimensões
+   incluídos — em custom_products, já que não há PRODUCTS[id] para herdar.
 ========================================================================= */
 app.get("/api/admin/products", auth.requireAdmin, (req, res) => {
   const overridesMap = getProductOverridesMap();
-  const products = Object.keys(PRODUCTS).map(Number).map(id => {
+  const products = getAllProductIds().map(id => {
     const p = effectiveProduct(id, overridesMap);
     return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, category: p.category, badges: p.badges };
   });
-  res.json({ products, categories: PRODUCT_CATEGORIES, availableBadges: PRODUCT_BADGES });
+  res.json({ products, categories: getAllCategories(), availableBadges: PRODUCT_BADGES });
 });
 
 function isValidProductPrice(v){
@@ -1780,6 +1823,75 @@ function isValidBadges(v){
   if(v.length > PRODUCT_BADGES.length) return false;
   return v.every(b => PRODUCT_BADGES.includes(b)) && new Set(v).size === v.length;
 }
+// true tanto para um id do catálogo fixo (PRODUCTS) quanto para um criado
+// pelo painel (custom_products) — o único "existe?" que PATCH/upload de
+// foto/exclusão precisam, sem se importar de onde o produto veio.
+function productExists(id){
+  if(!Number.isInteger(id)) return false;
+  return id >= CUSTOM_PRODUCT_ID_START ? Boolean(db.getCustomProduct(id)) : Boolean(PRODUCTS[id]);
+}
+// Peso em kg, dimensões em cm — mesma unidade de PRODUCTS. O teto de 20kg/
+// 100cm não é uma regra de frete real, é só uma rede de segurança contra
+// erro de digitação (ex.: "200" em vez de "20") que sairia caríssimo na
+// cotação antes de alguém notar.
+function isValidDimension(v, max){
+  return typeof v === "number" && Number.isFinite(v) && v > 0 && v <= max;
+}
+
+/* =========================================================================
+   POST /api/admin/products — cria um produto do zero
+   -------------------------------------------------------------------------
+   Diferente do PATCH abaixo (que edita um produto que já existe), esta
+   rota recebe o produto INTEIRO — inclusive peso/dimensões, que para os 8
+   produtos fixos vêm só de PRODUCTS e nunca são editáveis por aqui, mas
+   para um produto novo não têm de onde herdar. A foto entra depois, pelo
+   fluxo de sempre (POST .../:id/photo + PATCH), porque o upload de foto
+   exige um id que só existe depois deste POST responder.
+========================================================================= */
+app.post("/api/admin/products", auth.requireAdmin, (req, res) => {
+  try {
+    const body = req.body || {};
+
+    const name = String(body.name || "").trim();
+    if(name.length < 2 || name.length > 120){
+      return res.status(400).json({ error: "Nome precisa ter entre 2 e 120 caracteres." });
+    }
+    const price = Number(body.price);
+    if(!isValidProductPrice(price)){
+      return res.status(400).json({ error: "Preço inválido. Use um valor entre R$ 0,01 e R$ 99.999,99." });
+    }
+    const weight = Number(body.weight);
+    if(!isValidDimension(weight, 20)){
+      return res.status(400).json({ error: "Peso inválido. Use um valor entre 0,01 e 20 kg." });
+    }
+    const width = Number(body.width);
+    const height = Number(body.height);
+    const length = Number(body.length);
+    if(![width, height, length].every(v => isValidDimension(v, 100))){
+      return res.status(400).json({ error: "Dimensões inválidas. Use valores entre 0,01 e 100 cm." });
+    }
+    const category = body.category ? String(body.category).trim() : "";
+    if(category && !isValidCategorySlug(category)){
+      return res.status(400).json({ error: "Categoria inválida." });
+    }
+    const badges = "badges" in body ? body.badges : [];
+    if(!isValidBadges(badges)){
+      return res.status(400).json({ error: "Selo de destaque inválido." });
+    }
+
+    const created = db.insertCustomProduct({
+      startAt: CUSTOM_PRODUCT_ID_START, name, price: Math.round(price * 100) / 100,
+      weight, width, height, length, category: category || null, badges,
+    });
+    res.status(201).json({
+      id: created.id, name: created.name, price: created.price, photoUrl: null,
+      category: created.category, badges: created.badges ? JSON.parse(created.badges) : [],
+    });
+  } catch (err) {
+    console.error("Erro ao criar produto:", err);
+    res.status(500).json({ error: "Não foi possível criar o produto agora." });
+  }
+});
 
 /* =========================================================================
    PATCH /api/admin/products/:id
@@ -1796,7 +1908,7 @@ function isValidBadges(v){
 app.patch("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
   try {
     const id = Number(req.params.id);
-    if(!Number.isInteger(id) || !PRODUCTS[id]){
+    if(!productExists(id)){
       return res.status(404).json({ error: "Produto não encontrado." });
     }
 
@@ -1830,7 +1942,7 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
     }
     if("category" in body){
       const category = body.category ? String(body.category).trim() : "";
-      if(category && !PRODUCT_CATEGORIES.includes(category)){
+      if(category && !isValidCategorySlug(category)){
         return res.status(400).json({ error: "Categoria inválida." });
       }
       fields.category = category || null;
@@ -1846,7 +1958,8 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
       return res.status(400).json({ error: "Nada para salvar." });
     }
 
-    db.upsertProductOverride(id, fields);
+    if(id >= CUSTOM_PRODUCT_ID_START) db.updateCustomProduct(id, fields);
+    else db.upsertProductOverride(id, fields);
 
     const updated = effectiveProduct(id, getProductOverridesMap());
     res.json({ id, name: updated.name, price: updated.price, photoUrl: updated.photoUrl, category: updated.category, badges: updated.badges });
@@ -1873,7 +1986,7 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
 ========================================================================= */
 app.post("/api/admin/products/:id/photo", auth.requireAdmin, (req, res) => {
   const id = Number(req.params.id);
-  if(!Number.isInteger(id) || !PRODUCTS[id]){
+  if(!productExists(id)){
     return res.status(404).json({ error: "Produto não encontrado." });
   }
   productPhotoUpload.single("photo")(req, res, (err) => {
@@ -1892,6 +2005,47 @@ app.post("/api/admin/products/:id/photo", auth.requireAdmin, (req, res) => {
     }
     res.status(201).json({ photoUrl: `/img/products/${req.file.filename}` });
   });
+});
+
+/* Slug curto e sem acento a partir do texto digitado — o mesmo formato dos
+   5 slugs fixos ("dia-a-dia"), porque é isso que vai para o data-cat dos
+   chips de filtro e para PRODUCT.category no banco. */
+function slugifyCategory(label){
+  return label
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+/* =========================================================================
+   POST /api/admin/categories — cria uma categoria além das 5 fixas
+   -------------------------------------------------------------------------
+   Só grava slug + label (custom_categories); o produto continua guardando
+   category como o slug, do mesmo jeito que já fazia para as 5 fixas — o
+   resto do sistema (filtro da vitrine, validação de PATCH/POST de produto)
+   não precisa saber a categoria é "fixa" ou "criada pelo painel".
+========================================================================= */
+app.post("/api/admin/categories", auth.requireAdmin, (req, res) => {
+  try {
+    const label = String(req.body?.label || "").trim();
+    if(label.length < 2 || label.length > 40){
+      return res.status(400).json({ error: "Nome da categoria precisa ter entre 2 e 40 caracteres." });
+    }
+    const slug = slugifyCategory(label);
+    if(!slug){
+      return res.status(400).json({ error: "Nome da categoria inválido." });
+    }
+    if(isValidCategorySlug(slug)){
+      return res.status(409).json({ error: "Já existe uma categoria parecida com essa." });
+    }
+    const created = db.insertCustomCategory({ slug, label });
+    res.status(201).json(created);
+  } catch (err) {
+    console.error("Erro ao criar categoria:", err);
+    res.status(500).json({ error: "Não foi possível criar a categoria agora." });
+  }
 });
 
 /* DELETE /api/admin/orders/:reference — apaga um pedido (carrinho

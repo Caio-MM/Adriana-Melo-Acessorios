@@ -51,6 +51,12 @@
      correta de fazer e não tem custo nenhum a mais para escrever assim. */
   const productsById = new Map(products.map(p => [p.id, p]));
 
+  /* Tons já usados nos 8 produtos fixos acima — reaproveitados (em vez de
+     inventar cor nova) para um produto criado no painel administrativo, que
+     não tem cor própria: server/server.js não guarda "cor" nenhuma, é só o
+     fundo atrás do laço de SVG quando o produto ainda não tem foto. */
+  const CUSTOM_PRODUCT_PALETTE = ["#F4B4CC", "#DD6E9B", "#FBEAF0", "#F8ECF1", "#EA8FB4", "#C05480"];
+
   /* Regras de parcelamento e desconto do Pix — js/pricing.js, o MESMO
      arquivo que server/server.js carrega para cobrar. Nada de preço é
      calculado aqui na mão justamente para não abrir espaço de a vitrine
@@ -230,6 +236,24 @@
     return a.length === b.length && a.every((v, i) => v === b[i]);
   }
 
+  /* Cria o chip de filtro de uma categoria nova (painel > "+ Nova
+     categoria") antes de qualquer produto dela existir na vitrine — sem
+     isto, categoryLabelFor() não encontraria chip nenhum e o produto
+     ficaria com o slug cru como rótulo ("dia-a-dia" em vez de "Dia a dia"),
+     além de não dar para filtrar só por ela. As 5 fixas já vêm em
+     index.html; só entra chip para o que ainda não existe. */
+  function ensureCategoryChips(categories){
+    const group = document.getElementById("filterGroup");
+    (Array.isArray(categories) ? categories : []).forEach(c => {
+      if(!c?.slug || group.querySelector(`.chip[data-cat="${CSS.escape(c.slug)}"]`)) return;
+      const chip = document.createElement("button");
+      chip.className = "chip";
+      chip.dataset.cat = c.slug;
+      chip.textContent = c.label || c.slug;
+      group.appendChild(chip);
+    });
+  }
+
   /* Busca eventuais edições de nome/preço/foto/categoria/selos feitas no
      painel administrativo (server/server.js > /api/products) e aplica por
      cima do catálogo estático acima, sem bloquear a primeira renderização
@@ -238,16 +262,36 @@
      com o catálogo padrão. Como `products`/`productsById` guardam
      referências mutáveis, atualizar os campos aqui já é suficiente para o
      carrinho e a quick view (que sempre leem do mesmo objeto) mostrarem o
-     valor novo, sem precisar duplicar essa lógica em cada um. */
+     valor novo, sem precisar duplicar essa lógica em cada um.
+
+     Um id que não existe em productsById é um produto criado do zero no
+     painel ("+ Adicionar produto", id >= 1000 em server.js) — não é edição,
+     é entrada nova na vitrine, então é ADICIONADO a `products` em vez de
+     ignorado. */
   async function loadProductOverrides(){
     try{
       const res = await fetch("/api/products");
       if(!res.ok) return;
       const data = await res.json();
+      ensureCategoryChips(data.categories);
       let changed = false;
       (Array.isArray(data.products) ? data.products : []).forEach(o => {
         const p = productsById.get(o.id);
-        if(!p) return;
+        if(!p){
+          if(!o.name || o.price == null) return;
+          const fresh = {
+            id: o.id, name: o.name, price: o.price,
+            cat: o.category || "", catLabel: o.category ? categoryLabelFor(o.category) : "",
+            color: CUSTOM_PRODUCT_PALETTE[o.id % CUSTOM_PRODUCT_PALETTE.length],
+            rating: 5, badges: Array.isArray(o.badges) ? o.badges : [],
+            desc: "Peça exclusiva, feita à mão pela Adriana Melo Acessórios.",
+            image: o.photoUrl || null,
+          };
+          products.push(fresh);
+          productsById.set(o.id, fresh);
+          changed = true;
+          return;
+        }
         if(o.name && o.name !== p.name){ p.name = o.name; changed = true; }
         if(o.price != null && o.price !== p.price){ p.price = o.price; changed = true; }
         if(o.photoUrl && o.photoUrl !== p.image){ p.image = o.photoUrl; changed = true; }

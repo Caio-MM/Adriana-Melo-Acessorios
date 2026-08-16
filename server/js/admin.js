@@ -33,15 +33,32 @@
   // Espelha PAYMENT_METHODS em server/server.js.
   const PAYMENT_METHOD_LABELS = { pix: "Pix", card: "Cartão ou boleto" };
 
-  // Espelha PRODUCT_CATEGORIES em server/server.js e os chips de filtro em
-  // index.html (data-cat) — mesmos slugs em todo o site.
-  const CATEGORY_LABELS = {
+  // Preenchidas de verdade por applyCategories(), a partir de GET
+  // /api/admin/products — a fonte real são as 5 fixas de
+  // BUILTIN_CATEGORIES mais qualquer uma criada em "+ Nova categoria"
+  // (server/server.js, tabela custom_categories). O valor abaixo é só o
+  // que aparece na fração de segundo antes da primeira resposta chegar.
+  let CATEGORY_LABELS = {
     "maternidade": "Maternidade",
     "festa": "Festa",
     "batizado": "Batizado",
     "dia-a-dia": "Dia a dia",
     "presente": "Presente",
   };
+  let currentCategories = Object.entries(CATEGORY_LABELS).map(([slug, label]) => ({ slug, label }));
+  function applyCategories(categories){
+    if(!Array.isArray(categories) || categories.length === 0) return;
+    currentCategories = categories;
+    CATEGORY_LABELS = Object.fromEntries(categories.map(c => [c.slug, c.label]));
+  }
+  // Reconstrói as <option> de um <select> de categoria a partir de
+  // currentCategories — chamado toda vez que um modal com esse campo abre,
+  // para incluir qualquer categoria criada depois da última renderização.
+  function renderCategoryOptions(selectEl, selectedSlug){
+    selectEl.innerHTML = currentCategories
+      .map(c => `<option value="${escapeHTML(c.slug)}">${escapeHTML(c.label)}</option>`).join("");
+    if(selectedSlug) selectEl.value = selectedSlug;
+  }
 
   const STATUS_LABELS = {
     "pendente":    { label:"Pagamento pendente", cls:"order-status-pending" },
@@ -502,7 +519,7 @@
     epName.value = product.name;
     epPrice.value = product.price;
     epPhotoFile.value = "";
-    epCategory.value = product.category || "";
+    renderCategoryOptions(epCategory, product.category || "");
     epBadgeBestseller.checked = (product.badges || []).includes("Mais vendido");
     epBadgeNew.checked = (product.badges || []).includes("Novo");
     setPreviewPhoto(imageFor(product));
@@ -835,6 +852,101 @@
     }finally{
       epSaveBtn.disabled = false;
       epSaveBtn.textContent = "Salvar alterações";
+    }
+  });
+
+  /* ============================ NOVA CATEGORIA ============================
+     Um prompt() em vez de outro modal cheio de campo: é só um texto (o
+     nome), o mesmo racional do confirm() já usado para apagar pedido, logo
+     acima. Compartilhado pelos dois formulários de produto (editar e
+     adicionar) — cada botão só diz qual <select> preencher depois. */
+  async function promptNewCategory(selectToUpdate){
+    const label = prompt("Nome da nova categoria (ex.: Aniversário):");
+    if(!label || !label.trim()) return;
+    try{
+      const res = await fetchWithTimeout("/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: label.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível criar a categoria.");
+      currentCategories = [...currentCategories, data];
+      renderCategoryOptions(selectToUpdate, data.slug);
+    }catch(err){
+      alert(err.message || "Não foi possível criar a categoria agora.");
+    }
+  }
+  document.getElementById("epNewCategoryBtn").addEventListener("click", () => promptNewCategory(epCategory));
+
+  /* ============================ ADICIONAR PRODUTO ============================
+     Sem campo de foto (ver comentário no modal, admin.html): ao criar com
+     sucesso, abre o modal de edição do produto recém-criado na hora — é lá
+     que a foto entra, no mesmo fluxo de recorte de sempre. */
+  const addProductModalEl = document.getElementById("addProductModal");
+  const addProductModal = new bootstrap.Modal(addProductModalEl);
+  const addProductForm = document.getElementById("addProductForm");
+  const apName = document.getElementById("apName");
+  const apPrice = document.getElementById("apPrice");
+  const apWeight = document.getElementById("apWeight");
+  const apWidth = document.getElementById("apWidth");
+  const apHeight = document.getElementById("apHeight");
+  const apLength = document.getElementById("apLength");
+  const apCategory = document.getElementById("apCategory");
+  const apBadgeBestseller = document.getElementById("apBadgeBestseller");
+  const apBadgeNew = document.getElementById("apBadgeNew");
+  const apMsg = document.getElementById("apMsg");
+  const apSaveBtn = document.getElementById("apSaveBtn");
+
+  document.getElementById("apNewCategoryBtn").addEventListener("click", () => promptNewCategory(apCategory));
+
+  document.getElementById("addProductBtn").addEventListener("click", () => {
+    addProductForm.reset();
+    renderCategoryOptions(apCategory, "");
+    apMsg.textContent = "";
+    apMsg.className = "small account-msg";
+    addProductModal.show();
+  });
+
+  addProductForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      name: apName.value.trim(),
+      price: Number(apPrice.value),
+      weight: Number(apWeight.value),
+      width: Number(apWidth.value),
+      height: Number(apHeight.value),
+      length: Number(apLength.value),
+      category: apCategory.value,
+      badges: [apBadgeBestseller, apBadgeNew].filter(cb => cb.checked).map(cb => cb.value),
+    };
+
+    apMsg.textContent = "";
+    apMsg.className = "small account-msg";
+    apSaveBtn.disabled = true;
+    apSaveBtn.textContent = "Criando...";
+
+    try{
+      const res = await fetchWithTimeout("/api/admin/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível criar o produto.");
+
+      addProductModal.hide();
+      // loadDashboard() e não só um push local: garante que o produto novo
+      // já entra em productsCache com o formato exato que o servidor
+      // devolve, antes de abrir o modal de edição para a foto.
+      await loadDashboard();
+      openEditModal(data.id);
+    }catch(err){
+      apMsg.textContent = err.message || "Erro ao criar o produto.";
+      apMsg.classList.add("text-danger");
+    }finally{
+      apSaveBtn.disabled = false;
+      apSaveBtn.textContent = "Criar produto";
     }
   });
 
@@ -1350,6 +1462,7 @@
       const orders = Array.isArray(ordersData.orders) ? ordersData.orders : [];
       showOnly(contentEl);
       const products = Array.isArray(productsData.products) ? productsData.products : [];
+      applyCategories(productsData.categories);
       renderStats(ordersData.stats || { totalRevenue: 0, totalOrders: 0 });
       renderSalesChart(orders);
       renderCategoryChart(orders, products);

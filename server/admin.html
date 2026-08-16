@@ -141,7 +141,12 @@
 
           <!-- ============ PRODUTOS ============ -->
           <section class="admin-tab-panel d-none" data-tab-panel="produtos">
-            <h2 class="admin-section-title">Produtos</h2>
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+              <h2 class="admin-section-title mb-0">Produtos</h2>
+              <button type="button" class="btn-blush" id="addProductBtn" style="padding:.4rem 1rem;font-size:.82rem">
+                <i class="bi bi-plus-lg me-1"></i>Adicionar produto
+              </button>
+            </div>
             <p class="section-sub mb-3" style="font-size:.88rem">Edite nome, preço, foto, categoria e selos de destaque — a vitrine da loja atualiza sozinha em poucos segundos.</p>
             <div class="table-responsive admin-table-wrap">
               <table class="table align-middle admin-products-table mb-0">
@@ -369,13 +374,14 @@
 
           <div class="mb-3">
             <label class="form-label small fw-semibold" for="epCategory">Categoria</label>
-            <select class="form-select" id="epCategory">
-              <option value="maternidade">Maternidade</option>
-              <option value="festa">Festa</option>
-              <option value="batizado">Batizado</option>
-              <option value="dia-a-dia">Dia a dia</option>
-              <option value="presente">Presente</option>
-            </select>
+            <!-- As <option> são geradas por js/admin.js (renderCategoryOptions),
+                 a partir de GET /api/admin/products — inclui as 5 fixas e
+                 qualquer uma criada em "+ Nova categoria", sem precisar
+                 editar este arquivo a cada categoria nova. -->
+            <div class="d-flex gap-2">
+              <select class="form-select" id="epCategory"></select>
+              <button type="button" class="btn-outline-blush flex-shrink-0" id="epNewCategoryBtn" style="padding:.4rem .8rem;font-size:.8rem" title="Criar uma categoria nova">+ Nova</button>
+            </div>
           </div>
 
           <div class="mb-1">
@@ -394,6 +400,83 @@
         </div>
         <div class="modal-footer border-0">
           <button type="submit" class="btn-blush w-100" id="epSaveBtn">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: ADICIONAR PRODUTO ============ -->
+<!-- Sem campo de foto de propósito: o upload (POST /api/admin/products/:id/photo)
+     precisa de um id que só existe depois deste formulário criar o produto.
+     Ao salvar aqui, o modal de edição abre sozinho em seguida — é lá que a
+     foto entra, pelo mesmo fluxo de recorte que os produtos fixos já usam. -->
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:var(--radius-md); border:none">
+      <form id="addProductForm" novalidate>
+        <div class="modal-header border-0">
+          <h5 class="modal-title font-display" id="addProductModalLabel">Adicionar produto</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" for="apName">Nome</label>
+            <input type="text" class="form-control" id="apName" required minlength="2" maxlength="120">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" for="apPrice">Preço (R$)</label>
+            <input type="number" class="form-control" id="apPrice" required min="0.01" max="99999" step="0.01" inputmode="decimal">
+          </div>
+
+          <!-- Peso/dimensões da embalagem individual (1 unidade) — usados no
+               cálculo de frete, junto dos produtos fixos do catálogo. Sem
+               isso o produto não teria como entrar num cálculo de frete. -->
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label small fw-semibold" for="apWeight">Peso (kg)</label>
+              <input type="number" class="form-control" id="apWeight" required min="0.01" max="20" step="0.01" inputmode="decimal" placeholder="Ex.: 0,08">
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold" for="apWidth">Largura (cm)</label>
+              <input type="number" class="form-control" id="apWidth" required min="0.01" max="100" step="0.1" inputmode="decimal" placeholder="Ex.: 16">
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold" for="apHeight">Altura (cm)</label>
+              <input type="number" class="form-control" id="apHeight" required min="0.01" max="100" step="0.1" inputmode="decimal" placeholder="Ex.: 3">
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold" for="apLength">Comprimento (cm)</label>
+              <input type="number" class="form-control" id="apLength" required min="0.01" max="100" step="0.1" inputmode="decimal" placeholder="Ex.: 11">
+            </div>
+          </div>
+          <div class="form-text mb-3" style="margin-top:-.5rem">Medidas da embalagem de 1 unidade — a mesma info que os produtos fixos do catálogo já usam para calcular o frete.</div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" for="apCategory">Categoria</label>
+            <div class="d-flex gap-2">
+              <select class="form-select" id="apCategory"></select>
+              <button type="button" class="btn-outline-blush flex-shrink-0" id="apNewCategoryBtn" style="padding:.4rem .8rem;font-size:.8rem" title="Criar uma categoria nova">+ Nova</button>
+            </div>
+          </div>
+
+          <div class="mb-1">
+            <label class="form-label small fw-semibold d-block">Selos de destaque</label>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="checkbox" id="apBadgeBestseller" value="Mais vendido">
+              <label class="form-check-label" for="apBadgeBestseller">Mais vendido</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="checkbox" id="apBadgeNew" value="Novo">
+              <label class="form-check-label" for="apBadgeNew">Novo</label>
+            </div>
+          </div>
+
+          <div id="apMsg" class="small account-msg" role="alert"></div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="submit" class="btn-blush w-100" id="apSaveBtn">Criar produto</button>
         </div>
       </form>
     </div>
