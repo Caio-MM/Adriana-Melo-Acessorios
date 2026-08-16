@@ -642,20 +642,25 @@
  
 <!-- ============ MODAL: QUICK VIEW ============ -->
 <div class="modal fade" id="quickViewModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
+  <!-- modal-dialog-scrollable: quem rola é o CORPO, então o rodapé (e o
+       "Adicionar ao carrinho" nele) fica fixo na tela em qualquer altura de
+       aparelho — inclusive num iPhone SE, onde a foto vertical + preço não
+       cabem junto com o botão. Sem isso, o botão dependia de a soma das
+       alturas caber por sorte. -->
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content" style="border-radius:var(--radius-md); border:none">
       <div class="modal-header border-0">
         <h5 class="modal-title font-display" id="qvName">Laço</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <div class="qv-thumb is-loading mb-3" id="qvThumb">
-          <img id="qvImage" src="" alt="" width="600" height="600" decoding="async">
+        <div class="qv-thumb is-loading mb-2" id="qvThumb">
+          <img id="qvImage" src="" alt="" width="480" height="600" decoding="async">
           <svg class="bow-icon"><use href="#bow-shape"/></svg>
         </div>
         <p class="section-sub" id="qvDesc">Descrição do produto.</p>
 
-        <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="d-flex justify-content-between align-items-center mt-2">
           <span class="section-sub mb-0">Quantidade</span>
           <div class="d-flex align-items-center gap-2">
             <button class="btn btn-sm btn-outline-blush" id="qvMinus" aria-label="Diminuir quantidade">−</button>
@@ -668,7 +673,7 @@
              js/main.js a partir de js/pricing.js (as MESMAS regras que o
              servidor aplica na cobrança) e recalculados a cada mudança de
              quantidade acima — ver renderQuickViewPayment(). -->
-        <div class="qv-payment mt-3 pt-3 border-top" style="border-color:var(--blush-100)!important">
+        <div class="qv-payment mt-2 pt-2 border-top" style="border-color:var(--blush-100)!important">
           <div class="qv-pix">
             <div class="qv-pix-main">
               <span class="qv-pix-price" id="qvPixPrice">R$ 0,00</span>
@@ -678,6 +683,7 @@
           </div>
           <div class="qv-card mt-2">
             <span class="qv-card-price" id="qvPrice">R$ 0,00</span>
+            <span class="qv-card-label">no cartão</span>
             <span class="qv-card-inst" id="qvInstallment"></span>
           </div>
         </div>

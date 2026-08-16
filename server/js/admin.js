@@ -529,15 +529,20 @@
   /* =====================================================================
      FOTO DO PRODUTO — recorte no navegador e depois upload
      ---------------------------------------------------------------------
-     A vitrine mostra a foto num quadrado 1:1 com object-fit:cover
-     (.product-thumb), ou seja: SEMPRE recorta. Antes esse recorte era
-     decidido pelo navegador (centro da imagem) e a lojista só descobria o
-     resultado depois de salvar. Agora ela escolhe o enquadramento aqui.
+     A foto é sempre recortada para caber no lugar onde aparece. Antes esse
+     recorte era decidido pelo navegador (centro da imagem) e a lojista só
+     descobria o resultado depois de salvar. Agora ela escolhe o
+     enquadramento aqui.
+
+     O recorte é 4:5 (retrato), a mesma proporção da tela de detalhes do
+     produto: gravando assim, a foto preenche aquele quadro exatamente, sem
+     faixa vazia em cima e embaixo. A vitrine mostra num quadrado 1:1 e
+     corta as pontas — é a miniatura; quem clica vê a foto inteira.
 
      1) Ao escolher um arquivo, ele NÃO é enviado ainda: abre o recorte com
         a imagem lida localmente (object URL). Nada sai do navegador.
      2) Em "Usar esta foto", o trecho escolhido é desenhado num <canvas> e
-        exportado como JPEG — o arquivo que sobe já é o quadrado final, do
+        exportado como JPEG — o arquivo que sobe já é o recorte final, do
         tamanho que a loja precisa. Isso resolve duas coisas de uma vez: o
         recorte fica gravado (não depende do CSS do dia) e uma foto de
         celular de 4000px vira ~800px, deixando a vitrine bem mais leve.
@@ -549,23 +554,27 @@
      impede o servidor de validar tipo/tamanho antes de ler o corpo inteiro.
   ===================================================================== */
 
-  // 800px = 2× os ~400px que o card ocupa na vitrine, para não borrar em
-  // tela retina. Acima disso só peso: o card nunca exibe maior que isso.
-  const CROP_OUTPUT_SIZE = 800;
+  /* Retrato 4:5 — as fotos do catálogo são tiradas na vertical, e é essa a
+     proporção que a tela de detalhes usa. Gravando o recorte já em 4:5, a
+     foto preenche aquele quadro exatamente, sem faixa sobrando em cima e
+     embaixo. 800px de largura = 2× os ~400px que o card ocupa na vitrine,
+     para não borrar em tela retina; acima disso só peso. */
+  const CROP_OUTPUT_W = 800;
+  const CROP_OUTPUT_H = 1000;
   const CROP_JPEG_QUALITY = 0.9;
 
   /* Estado do recorte. `zoom` 1 = imagem no menor tamanho que ainda cobre o
-     quadrado inteiro; offsets são o canto superior-esquerdo da imagem
+     recorte inteiro; offsets são o canto superior-esquerdo da imagem
      dentro do palco, em px de tela. */
-  const crop = { natW: 0, natH: 0, baseScale: 1, zoom: 1, x: 0, y: 0, objectUrl: null, stage: 0 };
+  const crop = { natW: 0, natH: 0, baseScale: 1, zoom: 1, x: 0, y: 0, objectUrl: null, stageW: 0, stageH: 0 };
 
   function cropClampAndRender(){
     const dispW = crop.natW * crop.baseScale * crop.zoom;
     const dispH = crop.natH * crop.baseScale * crop.zoom;
     // A imagem nunca pode descolar da borda: sem isso sobraria fundo vazio
-    // dentro do quadrado, que na loja viraria uma faixa cinza.
-    crop.x = Math.min(0, Math.max(crop.stage - dispW, crop.x));
-    crop.y = Math.min(0, Math.max(crop.stage - dispH, crop.y));
+    // dentro do recorte, que na loja viraria uma faixa cinza.
+    crop.x = Math.min(0, Math.max(crop.stageW - dispW, crop.x));
+    crop.y = Math.min(0, Math.max(crop.stageH - dispH, crop.y));
     epCropImg.style.width = `${dispW}px`;
     epCropImg.style.height = `${dispH}px`;
     epCropImg.style.transform = `translate(${crop.x}px, ${crop.y}px)`;
@@ -575,8 +584,8 @@
      vem do slider) — sem isso o zoom "foge" do que a lojista está mirando. */
   function cropSetZoom(nextZoom, anchorX, anchorY){
     const clamped = Math.min(Number(epCropZoom.max), Math.max(Number(epCropZoom.min), nextZoom));
-    const ax = anchorX ?? crop.stage / 2;
-    const ay = anchorY ?? crop.stage / 2;
+    const ax = anchorX ?? crop.stageW / 2;
+    const ay = anchorY ?? crop.stageH / 2;
     const ratio = clamped / crop.zoom;
     crop.x = ax - (ax - crop.x) * ratio;
     crop.y = ay - (ay - crop.y) * ratio;
@@ -590,15 +599,16 @@
     epCropImg.onload = () => {
       crop.natW = epCropImg.naturalWidth;
       crop.natH = epCropImg.naturalHeight;
-      crop.stage = epCropStage.clientWidth;
-      // "cover": a menor escala em que a imagem ainda tapa o quadrado todo.
-      crop.baseScale = Math.max(crop.stage / crop.natW, crop.stage / crop.natH);
+      crop.stageW = epCropStage.clientWidth;
+      crop.stageH = epCropStage.clientHeight;
+      // "cover": a menor escala em que a imagem ainda tapa o recorte todo.
+      crop.baseScale = Math.max(crop.stageW / crop.natW, crop.stageH / crop.natH);
       crop.zoom = 1;
       epCropZoom.value = "1";
       // Começa centralizado — o mesmo enquadramento que o navegador faria
       // sozinho, então quem não quer mexer em nada é só confirmar.
-      crop.x = (crop.stage - crop.natW * crop.baseScale) / 2;
-      crop.y = (crop.stage - crop.natH * crop.baseScale) / 2;
+      crop.x = (crop.stageW - crop.natW * crop.baseScale) / 2;
+      crop.y = (crop.stageH - crop.natH * crop.baseScale) / 2;
       cropClampAndRender();
       epCropStage.focus();
     };
@@ -667,22 +677,22 @@
     if(e.key === "-" || e.key === "_"){ e.preventDefault(); cropSetZoom(crop.zoom / 1.1); }
   });
 
-  /* Desenha só o pedaço visível do palco, em CROP_OUTPUT_SIZE. O fundo
+  /* Desenha só o pedaço visível do palco, em CROP_OUTPUT_W × CROP_OUTPUT_H.
+     O fundo
      branco vai antes porque PNG/GIF com transparência viraria preto no
      JPEG — branco combina com o card da vitrine. */
   function exportCroppedBlob(){
     return new Promise((resolve, reject) => {
       const canvas = document.createElement("canvas");
-      canvas.width = CROP_OUTPUT_SIZE;
-      canvas.height = CROP_OUTPUT_SIZE;
+      canvas.width = CROP_OUTPUT_W;
+      canvas.height = CROP_OUTPUT_H;
       const ctx = canvas.getContext("2d");
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, CROP_OUTPUT_SIZE, CROP_OUTPUT_SIZE);
+      ctx.fillRect(0, 0, CROP_OUTPUT_W, CROP_OUTPUT_H);
       // Do palco (px de tela) de volta para pixels reais da imagem.
       const scale = crop.baseScale * crop.zoom;
-      const srcSize = crop.stage / scale;
-      ctx.drawImage(epCropImg, -crop.x / scale, -crop.y / scale, srcSize, srcSize,
-                    0, 0, CROP_OUTPUT_SIZE, CROP_OUTPUT_SIZE);
+      ctx.drawImage(epCropImg, -crop.x / scale, -crop.y / scale, crop.stageW / scale, crop.stageH / scale,
+                    0, 0, CROP_OUTPUT_W, CROP_OUTPUT_H);
       canvas.toBlob(
         (blob) => blob ? resolve(blob) : reject(new Error("Não foi possível preparar a imagem recortada.")),
         "image/jpeg",

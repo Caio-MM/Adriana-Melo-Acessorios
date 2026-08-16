@@ -471,8 +471,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .btn-add.is-added{ background:#1E7F44; color:#fff; }
 
 /* ============ QUICK VIEW (detalhes do produto) ============ */
+/* O quadro assume a proporção da PRÓPRIA foto (--qv-ratio, definido em
+   js/main.js a partir do naturalWidth/naturalHeight ao carregar), então
+   object-fit:cover preenche sem cortar nada e sem sobrar faixa de fundo em
+   cima e embaixo. 4/5 é só o padrão de partida: é a proporção em que o
+   painel administrativo grava os recortes, e vale enquanto a imagem ainda
+   não carregou (evita o salto de layout) e para quem não tem foto, que vê
+   o laço desenhado.
+   O teto em vh mantém o preço visível junto da foto em telas curtas; quem
+   garante o botão de comprar é o modal-dialog-scrollable, não esta conta. */
 .qv-thumb{
-  position:relative; height:220px; border-radius:var(--radius-md); overflow:hidden;
+  position:relative; aspect-ratio:var(--qv-ratio, 4/5);
+  width:100%; max-height:46vh; margin-inline:auto;
+  border-radius:var(--radius-md); overflow:hidden;
   display:flex; align-items:center; justify-content:center; background:var(--blush-50);
 }
 .qv-thumb img{
@@ -491,18 +502,22 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* Preço promocional do Pix — é o número que deve puxar o olho primeiro. */
 .qv-pix{
   background:var(--blush-50); border:1.5px solid var(--blush-200);
-  border-radius:14px; padding:.7rem .9rem;
+  border-radius:14px; padding:.6rem .8rem;
 }
-.qv-pix-main{ display:flex; align-items:baseline; flex-wrap:wrap; gap:.5rem; }
-.qv-pix-price{ font-family:var(--font-display); font-size:1.6rem; font-weight:700; color:var(--blush-700); line-height:1.1; }
+.qv-pix-main{ display:flex; align-items:baseline; flex-wrap:wrap; gap:.45rem; }
+.qv-pix-price{ font-family:var(--font-display); font-size:1.45rem; font-weight:700; color:var(--blush-700); line-height:1.1; }
 .qv-pix-tag{
-  background:var(--blush-600); color:#fff; font-size:.7rem; font-weight:700;
-  padding:.2rem .6rem; border-radius:999px; white-space:nowrap;
+  background:var(--blush-600); color:#fff; font-size:.68rem; font-weight:700;
+  padding:.18rem .55rem; border-radius:999px; white-space:nowrap;
 }
-.qv-pix-note{ font-size:.8rem; color:var(--ink-soft); margin-top:.15rem; }
-.qv-card{ display:flex; align-items:baseline; flex-wrap:wrap; gap:.5rem; padding:0 .2rem; }
-.qv-card-price{ font-weight:700; font-size:1.05rem; color:var(--ink); }
-.qv-card-inst{ font-size:.82rem; color:var(--ink-soft); }
+.qv-pix-note{ font-size:.76rem; color:var(--ink-soft); margin-top:.1rem; }
+/* Preço do cartão e parcela na MESMA linha (baseline compartilhada): em
+   duas linhas o bloco passava do fim da área rolável e a segunda aparecia
+   cortada ao meio, parecendo defeito. */
+.qv-card{ display:flex; align-items:baseline; flex-wrap:wrap; gap:.35rem; padding:0 .2rem; }
+.qv-card-price{ font-weight:700; font-size:1rem; color:var(--ink); }
+.qv-card-label{ font-size:.8rem; color:var(--ink); }
+.qv-card-inst{ font-size:.8rem; color:var(--ink-soft); }
 
 /* ============ FORMA DE PAGAMENTO (carrinho) ============ */
 .pay-methods{ display:flex; flex-direction:column; gap:.55rem; }
@@ -1629,7 +1644,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* O palco É o recorte: o que passa da borda está fora do que a cliente vê.
    min() para caber no modal do Bootstrap em telas estreitas. */
 .ep-crop-stage{
-  position:relative; width:min(280px, 68vw); aspect-ratio:1/1; margin:0 auto;
+  position:relative; width:min(280px, 68vw); aspect-ratio:4/5; margin:0 auto;
   overflow:hidden; border-radius:var(--radius-md);
   background:var(--blush-50); cursor:grab; touch-action:none;
   outline-offset:3px;

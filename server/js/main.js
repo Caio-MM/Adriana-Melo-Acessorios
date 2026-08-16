@@ -1080,9 +1080,12 @@
     qvPixPriceEl.textContent = formatMoney(pay.pixPrice);
     qvPixNoteEl.textContent =
       `Economize ${formatMoney(pay.pixSavings)} (${pay.pixDiscountPercent}% de desconto à vista)`;
+    // "no cartão" já é o rótulo fixo ao lado do preço no HTML, então aqui
+    // fica só a parcela — a frase antiga repetia e estourava para uma
+    // segunda linha, que a área rolável do modal cortava pela metade.
     qvInstallmentEl.textContent = pay.installment.count > 1
-      ? `ou ${pay.installmentLabel} no cartão`
-      : "à vista no cartão ou boleto";
+      ? `ou ${pay.installmentLabel}`
+      : "à vista ou boleto";
   }
 
   function openQuickView(id){
@@ -1101,6 +1104,9 @@
     // nova carrega, e um erro anterior (is-error) esconderia a nova.
     img.classList.remove("is-loaded", "is-error");
     img.alt = p.name;
+    // Volta ao padrão 4:5 antes de trocar a foto: senão o quadro ficaria
+    // com a proporção da imagem ANTERIOR até a nova carregar.
+    thumb.style.removeProperty("--qv-ratio");
     const photo = imageFor(p);
     if(photo){
       thumb.classList.add("is-loading");
@@ -1114,6 +1120,16 @@
     qvModal.show();
   }
   wireImage(document.getElementById("qvImage"));
+
+  /* O quadro da tela de detalhes copia a proporção da foto que acabou de
+     carregar, então ela preenche sem cortar e sem faixa vazia sobrando —
+     serve tanto para os recortes 4:5 novos quanto para fotos antigas de
+     outra proporção, que ficariam com barras num quadro fixo. */
+  document.getElementById("qvImage").addEventListener("load", (e) => {
+    const { naturalWidth: w, naturalHeight: h } = e.target;
+    if(!w || !h) return;
+    document.getElementById("qvThumb").style.setProperty("--qv-ratio", `${w}/${h}`);
+  });
 
   grid.addEventListener("click", function(e){
     const addBtn = e.target.closest(".btn-add");
