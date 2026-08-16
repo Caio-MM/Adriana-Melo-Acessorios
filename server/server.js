@@ -2189,7 +2189,21 @@ app.post("/api/admin/orders/:reference/generate-label", auth.requireAdmin, async
     res.json({ ok: true, trackingCode, raw: generated });
   } catch (err) {
     console.error(`Erro ao gerar etiqueta para o pedido ${reference}:`, err);
-    res.status(502).json({ error: "Não foi possível gerar a etiqueta agora. Confira as credenciais do Melhor Envio ou gere manualmente no painel deles." });
+    // Diferente de /api/calculate-shipping (rota pública, onde o erro cru do
+    // Melhor Envio só confundiria a cliente): aqui quem chama é sempre a
+    // lojista logada como admin, então a mensagem de verdade (ex.: "saldo
+    // insuficiente", "documento do remetente inválido") é o que ajuda a
+    // corrigir — esconder isso só faria ela adivinhar olhando o log do
+    // servidor. err.data?.errors vem preenchido nos erros de validação da
+    // API deles (um campo por linha, ex.: "from.document").
+    const detail = err?.data?.errors
+      ? Object.values(err.data.errors).flat().join(" ")
+      : err?.message;
+    res.status(502).json({
+      error: detail
+        ? `Não foi possível gerar a etiqueta: ${detail}`
+        : "Não foi possível gerar a etiqueta agora. Confira as credenciais do Melhor Envio ou gere manualmente no painel deles.",
+    });
   }
 });
 
