@@ -25,6 +25,8 @@ Adriana-Melo-Acessorios/
     ├── css/, js/, img/
     ├── package.json         ← as dependências estão AQUI, não na raiz
     ├── server.js            ← arquivo de entrada
+    ├── lib/                 ← código de servidor (db, auth, e-mail, WhatsApp)
+    ├── scripts/, docs/      ← utilitários e documentação
     └── data.db              ← banco (criado sozinho no primeiro boot)
 ```
 
@@ -120,7 +122,7 @@ entrar, você já cai no painel.
 - [ ] Cadastro e login funcionam (se falhar, é o HTTPS do item 4)
 - [ ] `/admin.html` abre o painel com a sua conta
 - [ ] Frete calcula ao informar um CEP no carrinho
-- [ ] `node server/testar-email.js` (ou um cadastro na newsletter) entrega e-mail
+- [ ] `node server/scripts/testar-email.js` (ou um cadastro na newsletter) entrega e-mail
 
 ---
 

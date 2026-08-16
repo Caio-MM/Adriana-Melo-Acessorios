@@ -29,11 +29,11 @@ const multer = require("multer");
 const { randomUUID } = require("crypto");
 const rateLimit = require("express-rate-limit");
 const { MercadoPagoConfig, Preference, Payment } = require("mercadopago");
-const db = require("./db");
-const auth = require("./auth");
-const whatsapp = require("./whatsapp");
-const email = require("./email");
-const { colorLabelFor } = require("./orderFormatting");
+const db = require("./lib/db");
+const auth = require("./lib/auth");
+const whatsapp = require("./lib/whatsapp");
+const email = require("./lib/email");
+const { colorLabelFor } = require("./lib/orderFormatting");
 // Mesmo arquivo que a vitrine e o carrinho carregam no navegador (js/pricing.js,
 // em formato UMD) — é o que garante que o "5% no Pix" e o "3x sem juros"
 // mostrados na tela do produto sejam exatamente os valores cobrados aqui.

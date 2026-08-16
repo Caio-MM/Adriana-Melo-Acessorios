@@ -13,7 +13,11 @@
 const { DatabaseSync } = require("node:sqlite");
 const path = require("path");
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, "data.db");
+// ".." porque este arquivo mora em server/lib/ e o banco fica na raiz da
+// aplicação (server/), ao lado do server.js — é lá que o data.db já existe
+// nas instalações antigas. Em produção o caminho vem do DB_PATH, que aponta
+// para fora da pasta publicada, para o banco sobreviver a cada deploy.
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, "..", "data.db");
 const db = new DatabaseSync(DB_PATH);
 
 db.exec(`
@@ -482,7 +486,9 @@ module.exports = {
   getOrderStats,
   deleteOrder,
   hasUsedCoupon,
-  getProductOverride,
+  // getProductOverride não é exportada de propósito: ninguém fora daqui lê
+  // um override isolado — quem consome sempre quer o mapa inteiro
+  // (listProductOverrides) para montar o catálogo de uma vez.
   listProductOverrides,
   upsertProductOverride,
   addNewsletterSubscriber,

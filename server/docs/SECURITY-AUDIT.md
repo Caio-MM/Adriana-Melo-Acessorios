@@ -114,7 +114,7 @@ Ao implementar contas de cliente, a escolha de guardar o token de sessão em
 `localStorage`/JWT no navegador foi descartada de propósito: qualquer XSS
 (mesmo um futuro, ainda não descoberto) conseguiria ler esse token e
 sequestrar a sessão.
-**Decisão aplicada:** sessão por cookie `httpOnly` (`server/auth.js`) — o
+**Decisão aplicada:** sessão por cookie `httpOnly` (`server/lib/auth.js`) — o
 JavaScript da página nunca tem acesso a ele, só o navegador, que o envia
 sozinho nas requisições. O token em si é aleatório
 (`crypto.randomBytes(32)`) e só o **hash SHA-256** dele fica salvo no banco
@@ -166,7 +166,7 @@ nomes de produtos no histórico de pedidos.
 ### ℹ️ Sobre SQL Injection (atualização)
 A rodada anterior não usava banco de dados. Agora usa (`node:sqlite`, para
 usuários/sessões/pedidos) — todas as consultas usam parâmetros (`?`) via
-`db.prepare(...)`, nunca concatenação de string. Ver `server/db.js`.
+`db.prepare(...)`, nunca concatenação de string. Ver `server/lib/db.js`.
 
 ### Cupom de desconto — mesmo princípio do preço/frete
 O desconto de um cupom (`COUPONS` em `server.js`) é sempre calculado no

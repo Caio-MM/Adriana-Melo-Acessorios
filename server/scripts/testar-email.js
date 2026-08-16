@@ -3,18 +3,21 @@
  *  TESTE DE ENVIO DE E-MAIL — checa se o SMTP do .env está funcionando
  * =============================================================================
  *  Uso:
- *      cd server && node testar-email.js
+ *      cd server && node scripts/testar-email.js
  *
  *  Envia um e-mail de teste para OWNER_EMAIL usando exatamente as mesmas
  *  credenciais e o mesmo caminho de código que o site usa em produção
- *  (server/email.js → sendEmail), então se passar aqui, passa lá.
+ *  (server/lib/email.js → sendEmail), então se passar aqui, passa lá.
  *
  *  Não toca no banco, não sobe servidor e não usa nenhuma credencial de
  *  pagamento — só o bloco SMTP_* do .env.
  * =============================================================================
  */
-require("dotenv").config();
-const { sendEmail } = require("./email");
+const path = require("path");
+// Caminho explícito (e não o padrão, que procura na pasta de onde o comando
+// foi chamado): assim o teste acha o server/.env mesmo rodando de outro lugar.
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+const { sendEmail } = require("../lib/email");
 
 const REQUIRED = ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS"];
 

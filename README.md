@@ -19,16 +19,27 @@ server/                     ← tudo fica aqui (site + back-end Node.js — ver 
 │   ├── pedidos.js          ← histórico de pedidos
 │   ├── pagamento-retorno.js ← páginas de retorno do Mercado Pago
 │   └── admin.js            ← painel administrativo (lista + código de rastreio)
-├── server.js
-├── db.js                   ← usuários, sessões e pedidos (SQLite embutido)
-├── auth.js                 ← hashing de senha, sessão por cookie, checagem de admin
-├── whatsapp.js              ← aviso de WhatsApp p/ lojista (WhatsApp Cloud API)
-├── email.js                 ← aviso de e-mail p/ lojista (Nodemailer/SMTP)
-├── orderFormatting.js       ← cor/moeda/data compartilhados entre os avisos
+├── server.js               ← rotas, checkout, webhook (arquivo de entrada)
+├── lib/                    ← código que só roda no servidor, nunca servido
+│   ├── db.js               ← usuários, sessões e pedidos (SQLite embutido)
+│   ├── auth.js             ← hashing de senha, sessão por cookie, checagem de admin
+│   ├── whatsapp.js         ← aviso de WhatsApp p/ lojista (WhatsApp Cloud API)
+│   ├── email.js            ← aviso de e-mail p/ lojista (Nodemailer/SMTP)
+│   └── orderFormatting.js  ← cor/moeda/data compartilhados entre os avisos
+├── scripts/
+│   └── testar-email.js     ← confere o SMTP sem precisar de um pedido real
+├── docs/
+│   └── SECURITY-AUDIT.md   ← decisões de segurança e o porquê de cada uma
 ├── package.json
 ├── .env.example
 └── .gitignore
 ```
+
+A separação entre a raiz de `server/` e `lib/`, `scripts/`, `docs/` não é só
+arrumação: a raiz é o que o `express.static` publica, então tudo que fica ali
+é potencialmente acessível pela web. Código de servidor mora em `lib/` para
+que essa fronteira seja uma pasta de verdade, e não só a lista de permissão
+`PUBLIC_TOP_LEVEL` do `server.js` (que continua valendo, como segunda trava).
 
 Tudo mora dentro de `server/` — inclusive o site — porque é essa a pasta que
 serviços de deploy (Hostinger incluída) tratam como raiz da aplicação Node.
@@ -42,7 +53,7 @@ serviços de deploy (Hostinger incluída) tratam como raiz da aplicação Node.
   entrega calculadas de verdade (ver seção 2).
 - **Cupom de desconto**: `BEMVINDA10` (10%) já vem cadastrado; os demais são
   criados/apagados pelo painel administrativo (tabela `coupons` em
-  `server/db.js`), sem editar código. O desconto é sempre validado e
+  `server/lib/db.js`), sem editar código. O desconto é sempre validado e
   recalculado no servidor.
 - **Parcelamento e desconto no Pix**: a tela de detalhes de cada produto (o
   clique em qualquer card) mostra o preço no Pix com 5% de desconto e o valor
@@ -62,14 +73,14 @@ serviços de deploy (Hostinger incluída) tratam como raiz da aplicação Node.
 - **Catálogo com fotos**: via [Picsum Photos](https://picsum.photos) por
   enquanto, com *lazy loading* e fallback para o ícone de laço se falhar.
 - **Aviso de WhatsApp para a lojista**: quando o webhook confirma um
-  pagamento aprovado, `server/whatsapp.js` monta a mensagem (itens,
+  pagamento aprovado, `server/lib/whatsapp.js` monta a mensagem (itens,
   quantidade, cor, total, data/hora) e envia via WhatsApp Cloud API oficial
   (Meta) para `OWNER_WHATSAPP_NUMBER` (ver seção 2). Falha no envio nunca
   afeta a confirmação do pedido — só fica registrada no log do servidor.
   ⚠️ A API oficial só entrega texto livre para números que falaram com o
-  WhatsApp Business da loja nas últimas 24h — ver aviso em `whatsapp.js`.
+  WhatsApp Business da loja nas últimas 24h — ver aviso em `lib/whatsapp.js`.
 - **Aviso de e-mail para a lojista**: mesmo gatilho (webhook de pagamento
-  aprovado) dispara um e-mail para `OWNER_EMAIL` via `server/email.js`
+  aprovado) dispara um e-mail para `OWNER_EMAIL` via `server/lib/email.js`
   (Nodemailer/SMTP), com o resumo do pedido e um link direto para o pedido
   no painel administrativo. Também best-effort — nunca afeta a confirmação.
 - **Painel administrativo** (`admin.html`): só abre para quem faz login com
@@ -86,7 +97,7 @@ serviços de deploy (Hostinger incluída) tratam como raiz da aplicação Node.
     um modal para trocar nome, preço, foto, categoria (Maternidade/Festa/
     Batizado/Dia a dia/Presente) e selos de destaque ("Mais vendido"/
     "Novo", pode marcar os dois ao mesmo tempo). Salvar grava em
-    `product_overrides` (server/db.js) e tudo já vale no próximo
+    `product_overrides` (server/lib/db.js) e tudo já vale no próximo
     carregamento da vitrine E no próximo checkout (server.js usa o mesmo
     `effectiveProduct()` para montar a página e para cobrar) — nunca é só
     cosmético. A vitrine (`js/main.js`) busca essas edições sozinha ao
@@ -116,7 +127,7 @@ serviços de deploy (Hostinger incluída) tratam como raiz da aplicação Node.
       para qualquer visitante; um caminho curto mantém esse payload do
       tamanho de sempre.
   - **Cupons**: criar/apagar cupons de desconto percentual (tabela
-    `coupons`, server/db.js) — um cupom criado aqui já vale no checkout do
+    `coupons`, server/lib/db.js) — um cupom criado aqui já vale no checkout do
     cliente na hora, sem editar código nem reiniciar o servidor.
   - **Pedidos**: cliente, telefone, itens (quantidade/cor), endereço de
     entrega, total; pedidos não pagos podem ser apagados; pedidos pagos
@@ -215,7 +226,7 @@ igual para Pix e boleto).
   o `user_id` dele e passa a aparecer em `pedidos.html`; sem login, o
   pedido é processado normalmente, só não fica associado a nenhuma conta.
 - Sessão por cookie `httpOnly` (nunca por `localStorage`/JWT no
-  navegador) — ver `server/auth.js` para o porquê.
+  navegador) — ver `server/lib/auth.js` para o porquê.
 - Não há (ainda) recuperação de senha por e-mail nem verificação de
   e-mail — ficou fora do escopo deste pacote por exigir um provedor de
   e-mail transacional. É um bom próximo passo (seção 7).
@@ -299,7 +310,7 @@ Pix pelo caminho do cartão sem receber o desconto que era devido.
   payload recebido), o que já é sólido, mas a assinatura é uma camada
   extra fácil de somar.
 - E-mail transacional de recuperação de senha (hoje só existe o aviso de
-  pedido pago, `server/email.js`).
+  pedido pago, `server/lib/email.js`).
 - Criar produtos novos pelo painel (hoje só edita os 8 já existentes em
   `PRODUCTS`, server.js). Um SKU novo de verdade também precisa de peso/
   dimensões para o cálculo de frete, que hoje só existem nesse catálogo
