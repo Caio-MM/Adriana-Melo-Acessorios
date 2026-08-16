@@ -534,12 +534,20 @@ const stmtInsertContactMessage = db.prepare(
 const stmtListContactMessages = db.prepare(
   `SELECT * FROM contact_messages ORDER BY created_at DESC`
 );
+const stmtGetContactMessage = db.prepare(`SELECT * FROM contact_messages WHERE id = ?`);
+const stmtDeleteContactMessage = db.prepare(`DELETE FROM contact_messages WHERE id = ?`);
 
 function createContactMessage({ nome, telefone, ocasiao, mensagem }) {
   stmtInsertContactMessage.run(nome, telefone, ocasiao || null, mensagem, Date.now());
 }
 function listContactMessages() {
   return stmtListContactMessages.all();
+}
+function getContactMessage(id) {
+  return stmtGetContactMessage.get(id) || null;
+}
+function deleteContactMessage(id) {
+  stmtDeleteContactMessage.run(id);
 }
 
 /* -------------------------- CUPONS -------------------------- */
@@ -601,6 +609,8 @@ module.exports = {
   listNewsletterSubscribers,
   createContactMessage,
   listContactMessages,
+  getContactMessage,
+  deleteContactMessage,
   getCoupon,
   listCoupons,
   createCoupon,

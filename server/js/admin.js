@@ -83,6 +83,7 @@
   const listEl = document.getElementById("adminList");
   const pendingCartsSectionEl = document.getElementById("pendingCartsSection");
   const pendingCartsListEl = document.getElementById("pendingCartsList");
+  const messagesListEl = document.getElementById("messagesList");
   const couponsTableBodyEl = document.getElementById("couponsTableBody");
   const newCouponFormEl = document.getElementById("newCouponForm");
   const couponFormMsgEl = document.getElementById("couponFormMsg");
@@ -425,6 +426,26 @@
     const btn = e.target.closest(".delete-order-btn");
     if(!btn) return;
     deleteOrderWithConfirm(btn.dataset.ref, () => loadDashboard());
+  });
+
+  /* Mesmo racional do confirm() de pedido, acima — mensagem de contato não
+     é histórico financeiro (o servidor não bloqueia por status nenhum),
+     então o confirm() aqui é a única rede contra apagar por engano. */
+  async function deleteContactMessageWithConfirm(id, onSuccess){
+    if(!confirm("Apagar esta mensagem? Essa ação não pode ser desfeita.")) return;
+    try{
+      const res = await fetchWithTimeout(`/api/admin/contact-messages/${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível apagar a mensagem.");
+      onSuccess?.();
+    }catch(err){
+      alert(err.message || "Não foi possível apagar a mensagem agora.");
+    }
+  }
+  messagesListEl?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".delete-message-btn");
+    if(!btn) return;
+    deleteContactMessageWithConfirm(Number(btn.dataset.id), () => loadDashboard());
   });
 
   /* ============================== PRODUTOS ============================== */
@@ -1297,7 +1318,7 @@
   }
 
   function renderContactMessages(messages){
-    const list = document.getElementById("messagesList");
+    const list = messagesListEl;
     const empty = document.getElementById("messagesEmpty");
     if(!list) return;
 
@@ -1316,6 +1337,7 @@
           <span>${escapeHTML(m.telefone)}</span>
           ${m.ocasiao ? `<span class="admin-badge-pill">${escapeHTML(m.ocasiao)}</span>` : ""}
           ${contactUrl ? `<a href="${contactUrl}" target="_blank" rel="noopener noreferrer" class="btn-outline-blush" style="padding:.3rem .8rem;font-size:.78rem"><i class="bi bi-whatsapp me-1"></i>Responder</a>` : ""}
+          <button type="button" class="delete-message-btn ms-auto" data-id="${m.id}" aria-label="Apagar mensagem" style="border:none;background:none;color:var(--ink-soft);padding:.3rem"><i class="bi bi-trash3"></i></button>
         </div>
       </div>`;
     }).join("");

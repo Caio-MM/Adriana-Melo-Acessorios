@@ -1744,6 +1744,24 @@ app.get("/api/admin/leads", auth.requireAdmin, (req, res) => {
   }
 });
 
+/* DELETE /api/admin/contact-messages/:id — apaga uma mensagem do
+   formulário "Vamos criar seu laço?" já respondida/lida. Sem checagem de
+   status (diferente do DELETE de pedido): não é histórico financeiro,
+   então não há "mensagem paga" que precise ficar protegida. */
+app.delete("/api/admin/contact-messages/:id", auth.requireAdmin, (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if(!Number.isInteger(id) || !db.getContactMessage(id)){
+      return res.status(404).json({ error: "Mensagem não encontrada." });
+    }
+    db.deleteContactMessage(id);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Erro ao apagar mensagem de contato:", err);
+    res.status(500).json({ error: "Não foi possível apagar a mensagem agora." });
+  }
+});
+
 /* PATCH /api/admin/orders/:reference/tracking — salva o código de postagem/
    rastreio dos Correios para um pedido (preenchido à mão pela lojista). */
 app.patch("/api/admin/orders/:reference/tracking", auth.requireAdmin, (req, res) => {
