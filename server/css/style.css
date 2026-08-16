@@ -349,8 +349,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @keyframes floaty{ 0%,100%{ transform:translateY(0) rotate(0deg);} 50%{ transform:translateY(-16px) rotate(6deg);} }
  
 /* ============ MARQUEE STRIP ============ */
+/* Antes a faixa era uma cor sólida encostada direto no creme do hero e do
+   "Nossa coleção" (ambos var(--cream)) — um corte de 100% de saturação sem
+   nenhuma transição, a única quebra angular/dura do site inteiro, que é
+   todo em gradiente suave e canto arredondado. O degradê abaixo funde a
+   borda da faixa no mesmo creme de quem está em volta, então a "entrada" e
+   a "saída" da faixa somem — sobra só o miolo sólido rosa, sem emenda
+   visível. Os 10px do degradê ficam dentro do padding vertical da faixa
+   (.7rem ≈ 11px): a fusão come só a margem vazia, nunca o texto rolando,
+   que fica centralizado no meio. */
 .plc-marquee{
-  background:var(--blush-700); color:var(--blush-50); padding:.7rem 0; overflow:hidden; white-space:nowrap;
+  background:linear-gradient(to bottom,
+    var(--cream) 0, var(--blush-700) 10px, var(--blush-700) calc(100% - 10px), var(--cream) 100%);
+  color:var(--blush-50); padding:.7rem 0; overflow:hidden; white-space:nowrap;
 }
 /* O deslocamento tem que ser de uma cópia exata. Antes eram 8 itens soltos
    com gap entre eles e -50%: metade da faixa cai no meio de um gap, então a
