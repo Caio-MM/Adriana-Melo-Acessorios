@@ -321,7 +321,7 @@ const PUBLIC_TOP_LEVEL = new Set([
   // Buscadores e navegadores pedem estes na raiz, por convenção — sem entrar
   // aqui eles caem no 404 mesmo existindo em disco. O .ico e o apple-touch
   // são pedidos sozinhos pelo navegador, mesmo sem <link> na página.
-  "robots.txt", "sitemap.xml", "favicon.svg", "favicon.ico", "apple-touch-icon.png",
+  "robots.txt", "sitemap.xml", "favicon.ico", "apple-touch-icon.png",
 ]);
 // Usada tanto pelo bloqueio de allowlist abaixo quanto pelo catch-all no fim
 // do arquivo (depois de express.static e de todas as rotas). Navegação de

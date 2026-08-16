@@ -144,28 +144,24 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
   .plc-navbar.is-scrolled{ background:rgba(255,253,252,.97); }
 }
+/* A marca é a arte do cartão (laço + "Adriana Melo Acessórios" em duas
+   linhas), não mais texto. line-height:0 evita a folga que a linha de
+   texto deixaria sob a imagem e desalinharia a navbar. */
 .plc-brand{
-  font-family:var(--font-display);
-  font-weight:600;
-  font-size:1.5rem;
-  color:var(--ink);
-  display:flex; align-items:center; gap:.55rem;
-  white-space:nowrap;
+  display:flex; align-items:center;
+  line-height:0;
 }
-.plc-brand .bow-icon{ color:var(--blush-600); width:30px; height:22px; flex-shrink:0; }
+.plc-brand img{
+  height:54px; width:auto; display:block;
+}
+/* O bloco é deitado (3:1), então a altura é o que define a largura: mesmo
+   nos 54px do desktop ele ocupa ~168px, bem menos que o texto antigo —
+   é o que libera espaço para conta, carrinho e menu nas telas estreitas. */
 @media (max-width: 575.98px){
-  .plc-brand{ font-size:1.05rem; gap:.4rem; }
-  .plc-brand .bow-icon{ width:22px; height:17px; }
+  .plc-brand img{ height:40px; }
 }
-@media (max-width: 380px){
-  .plc-brand{ font-size:.92rem; }
-}
-/* Telas bem estreitas (iPhone SE e afins): com conta + carrinho + menu na
-   mesma linha, o hambúrguer chegava a sair da tela. Ver também o ajuste
-   das pílulas junto a .account-pill. */
 @media (max-width: 359.98px){
-  .plc-brand{ font-size:.82rem; }
-  .plc-brand .bow-icon{ width:19px; height:15px; }
+  .plc-brand img{ height:34px; }
 }
 .plc-nav-link{
   font-size:.92rem; font-weight:500; color:var(--ink);
