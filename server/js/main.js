@@ -1169,6 +1169,13 @@
     }
   });
 
+  /* "Ver mais produtos" no carrinho: mesmo problema do menu mobile acima
+     (href="#colecoes" + data-bs-dismiss faria o Bootstrap tentar fechar a
+     seção #colecoes como se fosse um offcanvas), então fechamos na mão. */
+  document.getElementById("cartContinueLink")?.addEventListener("click", () => {
+    bootstrap.Offcanvas.getInstance(document.getElementById("cartOffcanvas"))?.hide();
+  });
+
   /* ---------- NAVBAR SCROLL ---------- */
   const nav = document.getElementById("mainNav");
   const btnTop = document.getElementById("btnTop");

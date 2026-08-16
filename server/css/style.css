@@ -705,6 +705,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .cart-offcanvas .offcanvas-title{ font-size:1.15rem; font-weight:600; letter-spacing:.01em; }
 .cart-offcanvas .offcanvas-body{ padding:1.25rem; }
+/* Mesmo padrão visual de .cart-item-remove (ícone circular discreto) —
+   funciona igual ao X (fecha o carrinho), só que como "voltar" para
+   combinar com o gesto de navegação do celular. */
+.cart-back-btn{
+  color:var(--ink-soft); background:none; border:none; font-size:1.1rem;
+  width:32px; height:32px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .2s ease, color .2s ease;
+}
+.cart-back-btn:hover{ background:var(--blush-100); color:var(--blush-700); }
 
 /* Item: miniatura à esquerda, e à direita duas linhas — nome + preço
    unitário (alinhado à direita), depois quantidade + lixeira. O
@@ -872,6 +882,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .cart-gateway-note i{ flex-shrink:0; font-size:.85rem; line-height:1.5; color:var(--blush-700); }
 .cart-gateway-note strong{ color:var(--ink); font-weight:600; }
+
+/* Saída discreta para quem abriu o carrinho só para olhar — de propósito
+   sem o rosa do botão de pagar, para não competir com ele. */
+.cart-continue-link{
+  display:block; text-align:center; margin-top:.85rem;
+  font-size:.82rem; font-weight:600; color:var(--ink-soft); text-decoration:none;
+}
+.cart-continue-link:hover{ color:var(--ink); text-decoration:underline; }
 
 /* Aviso de "entre na sua conta" acima do botão de pagamento */
 .cart-login-notice{

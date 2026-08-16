@@ -132,7 +132,10 @@
 <!-- ============ CARRINHO (OFFCANVAS) ============ -->
 <div class="offcanvas offcanvas-end cart-offcanvas" tabindex="-1" id="cartOffcanvas" aria-labelledby="cartOffcanvasLabel">
   <div class="offcanvas-header">
-    <h5 class="offcanvas-title font-display" id="cartOffcanvasLabel"><i class="bi bi-bag-heart me-2"></i>Seu carrinho</h5>
+    <div class="d-flex align-items-center gap-2">
+      <button type="button" class="cart-back-btn" data-bs-dismiss="offcanvas" aria-label="Voltar para a loja"><i class="bi bi-arrow-left"></i></button>
+      <h5 class="offcanvas-title font-display mb-0" id="cartOffcanvasLabel"><i class="bi bi-bag-heart me-2"></i>Seu carrinho</h5>
+    </div>
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
   </div>
   <div class="offcanvas-body d-flex flex-column">
@@ -276,6 +279,7 @@
         <i class="bi bi-shield-lock-fill"></i>
         <span id="cartGatewayText">Você conclui a compra no <strong>Mercado Pago</strong>, com segurança.</span>
       </p>
+      <a href="#colecoes" class="cart-continue-link" id="cartContinueLink">Ver mais produtos</a>
     </div>
 
     </div><!-- /.cart-checkout-panel -->
