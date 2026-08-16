@@ -291,9 +291,8 @@
   <div class="container">
     <div class="row align-items-center gy-5">
       <div class="col-lg-6">
-        <span class="hero-ribbon-tag"><i class="bi bi-stars"></i> Feito à mão, laço a laço</span>
         <h1 class="hero-title">Laços que transformam<br>qualquer penteado em <em>ocasião especial</em></h1>
-        <p class="hero-lead">Da maternidade à festa de aniversário: presilhas e laços artesanais, em cetim e algodão, feitos sob encomenda com a cor que você escolher.</p>
+        <p class="hero-lead">Feitos à mão, sob encomenda, na cor que você escolher.</p>
         <div class="d-flex flex-wrap gap-3">
           <a href="#colecoes" class="btn-blush">Ver coleção <i class="bi bi-arrow-down-short"></i></a>
           <a href="https://wa.me/5561982749808" target="_blank" rel="noopener" class="btn-outline-blush"><i class="bi bi-whatsapp me-1"></i> Falar no WhatsApp</a>
@@ -304,7 +303,9 @@
           <div><span class="num">100%</span><span class="lbl">feito à mão</span></div>
         </div>
       </div>
-      <div class="col-lg-6">
+      <!-- Enfeite só a partir de lg: no celular ele empurrava a vitrine 516px
+           para baixo sem dizer nada sobre o produto. -->
+      <div class="col-lg-6 d-none d-lg-block">
         <div class="hero-art">
           <svg class="bow-icon floaty f1"><use href="#bow-shape"/></svg>
           <svg class="bow-icon floaty f2"><use href="#bow-shape"/></svg>
@@ -320,15 +321,34 @@
  
 <!-- ============ MARQUEE ============ -->
 <div class="plc-marquee">
+  <!-- Quatro cópias, não duas: a animação anda exatamente uma cópia (-25%),
+       então a emenda é invisível, e as três que sobram cobrem qualquer
+       tela até ~3000px sem deixar buraco antes de reiniciar. -->
   <div class="plc-marquee-track">
-    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Envio para todo o Brasil</span>
-    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Cores e fitas personalizáveis</span>
-    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Embalagem para presente incluída</span>
-    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Feito à mão em cetim e algodão</span>
-    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Envio para todo o Brasil</span>
-    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Cores e fitas personalizáveis</span>
-    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Embalagem para presente incluída</span>
-    <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Feito à mão em cetim e algodão</span>
+    <div class="plc-marquee-group">
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Envio para todo o Brasil</span>
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Cores e fitas personalizáveis</span>
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Embalagem para presente incluída</span>
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Feito à mão em cetim e algodão</span>
+    </div>
+    <div class="plc-marquee-group" aria-hidden="true">
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Envio para todo o Brasil</span>
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Cores e fitas personalizáveis</span>
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Embalagem para presente incluída</span>
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Feito à mão em cetim e algodão</span>
+    </div>
+    <div class="plc-marquee-group" aria-hidden="true">
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Envio para todo o Brasil</span>
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Cores e fitas personalizáveis</span>
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Embalagem para presente incluída</span>
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Feito à mão em cetim e algodão</span>
+    </div>
+    <div class="plc-marquee-group" aria-hidden="true">
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Envio para todo o Brasil</span>
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Cores e fitas personalizáveis</span>
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Embalagem para presente incluída</span>
+      <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Feito à mão em cetim e algodão</span>
+    </div>
   </div>
 </div>
  
