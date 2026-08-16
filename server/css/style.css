@@ -1422,7 +1422,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .admin-tab-btn.is-active{ background:var(--blush-100); color:var(--blush-700); }
 .admin-tab-panels{ flex:1 1 0; min-width:0; }
 @media (max-width: 767.98px){
-  .admin-layout{ flex-direction:column; gap:1.25rem; }
+  /* align-items:stretch anula o flex-start herdado do desktop. Em coluna,
+     flex-start faz cada painel assumir a largura do CONTEÚDO — uma tabela
+     larga esticava o painel para além da tela, e como o body tem
+     overflow-x:clip a coluna do botão "Editar" ficava cortada e
+     inalcançável no celular. Esticando o painel à largura da tela, quem
+     rola passa a ser a tabela dentro do cartão (.table-responsive). */
+  .admin-layout{ flex-direction:column; gap:1.25rem; align-items:stretch; }
   .admin-sidebar{
     position:static; width:100%; flex-direction:row; flex-wrap:nowrap;
     overflow-x:auto; padding-bottom:.3rem; gap:.5rem;
