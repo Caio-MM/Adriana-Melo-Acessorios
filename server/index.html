@@ -18,16 +18,28 @@
 <!-- Open Graph / Twitter: é o que o WhatsApp, Instagram e Facebook leem ao
      montar a prévia de um link compartilhado. Sem isto o link aparecia sem
      título e sem descrição — decisivo para uma loja que divulga por rede
-     social. Falta ainda og:image (uma foto dos laços, 1200x630). -->
+     social.
+
+     A imagem tem que ser URL absoluta: quem lê estas tags é o servidor do
+     WhatsApp/Facebook, não o navegador da cliente, e caminho relativo não
+     resolve do lado deles. JPEG e não PNG porque o mesmo desenho pesava
+     494 KB em PNG (o degradê do fundo) contra 88 KB aqui — acima de uns
+     300 KB há cliente que desiste de buscar a prévia. -->
 <meta property="og:type" content="website">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:site_name" content="Adriana Melo Acessórios">
 <meta property="og:url" content="https://adrianameloacessorios.com/">
 <meta property="og:title" content="Adriana Melo Acessórios — Laços artesanais feitos com carinho">
 <meta property="og:description" content="Presilhas e laços artesanais em cetim e algodão, feitos sob encomenda na cor que você escolher. Envio para todo o Brasil.">
+<meta property="og:image" content="https://adrianameloacessorios.com/img/og-adriana-melo-6b333a.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:alt" content="Adriana Melo Acessórios">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Adriana Melo Acessórios — Laços artesanais feitos com carinho">
 <meta name="twitter:description" content="Presilhas e laços artesanais em cetim e algodão, feitos sob encomenda na cor que você escolher.">
+<meta name="twitter:image" content="https://adrianameloacessorios.com/img/og-adriana-melo-6b333a.jpg">
 
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
