@@ -270,9 +270,11 @@
       <!-- Avisa que o pagamento abre no Mercado Pago. Sem isso a cliente
            é jogada num domínio que não reconhece bem na hora de pagar, que
            é exatamente onde a compra costuma ser abandonada. -->
+      <!-- Texto trocado por js/main.js conforme a forma de pagamento: o Pix
+           é pago aqui mesmo (QR na tela), o cartão/boleto abre no Mercado Pago. -->
       <p class="cart-gateway-note">
         <i class="bi bi-shield-lock-fill"></i>
-        <span>Pagamento processado pelo <strong>Mercado Pago</strong> — você vai concluir a compra no ambiente seguro deles.</span>
+        <span id="cartGatewayText">Você conclui a compra no <strong>Mercado Pago</strong>, com segurança.</span>
       </p>
     </div>
 
@@ -506,7 +508,7 @@
           <span class="social-circle" style="background:var(--blush-100); color:var(--blush-700)"><i class="bi bi-envelope"></i></span>
           <div>
             <div class="fw-semibold">E-mail</div>
-            <a href="mailto:adriana_melo_acessorios@gmail.com">adriana_melo_acessorios@gmail.com</a>
+            <a href="mailto:adrianameloacessorios@gmail.com">adrianameloacessorios@gmail.com</a>
           </div>
         </div>
         <div class="d-flex align-items-center gap-3">

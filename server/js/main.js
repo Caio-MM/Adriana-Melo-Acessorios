@@ -589,10 +589,20 @@
   }
   renderAuthGate();
 
+  const gatewayTextEl = document.getElementById("cartGatewayText");
+
   function syncPayMethodSelection(){
     payMethodGroupEl.querySelectorAll(".pay-method").forEach(label => {
       label.classList.toggle("selected", label.querySelector("input").checked);
     });
+    // O Pix não passa pelo checkout do Mercado Pago: o QR aparece aqui no
+    // site (pagamento-pix.html). Avisar "você conclui lá" nesse caso seria
+    // mentira — e justamente o medo que faz a cliente desistir.
+    if(gatewayTextEl){
+      gatewayTextEl.innerHTML = paymentMethod === "pix"
+        ? `Você paga com o QR code aqui mesmo, <strong>sem sair do site</strong>.`
+        : `Você conclui a compra no <strong>Mercado Pago</strong>, com segurança.`;
+    }
   }
   payMethodGroupEl.addEventListener("change", (e) => {
     const input = e.target.closest("input[name='payMethod']");
