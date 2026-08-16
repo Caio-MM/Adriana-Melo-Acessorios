@@ -317,7 +317,7 @@ const PUBLIC_TOP_LEVEL = new Set([
   "index.html", "conta.html", "pedidos.html", "admin.html",
   "pagamento-sucesso.html", "pagamento-erro.html", "pagamento-pendente.html",
   "pagamento-pix.html",
-  "redefinir-senha.html", "404.html", "css", "js", "img",
+  "redefinir-senha.html", "politica.html", "404.html", "css", "js", "img",
   // Buscadores e navegadores pedem estes três na raiz, por convenção —
   // sem entrar aqui eles caem no 404 mesmo existindo em disco.
   "robots.txt", "sitemap.xml", "favicon.svg",

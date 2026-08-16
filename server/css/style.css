@@ -1735,3 +1735,74 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @media (prefers-reduced-motion: reduce){
   .error-boundary-overlay{ animation:none; }
 }
+/* ====================== POLÍTICAS DA LOJA (politica.html) ======================
+   Página de texto longo: a largura é limitada em ~68ch porque linha
+   comprida demais faz o olho perder a próxima — é o oposto do resto do
+   site, onde os blocos ocupam a largura toda. */
+.policy-wrap{ max-width:68ch; margin:0 auto; padding-bottom:2rem; }
+.policy-back{
+  display:inline-flex; align-items:center; gap:.4rem;
+  font-size:.85rem; font-weight:600; color:var(--ink-soft);
+  margin-bottom:1.2rem; text-decoration:none;
+}
+.policy-back:hover{ color:var(--blush-700); }
+.policy-updated{ font-size:.8rem; color:var(--ink-soft); }
+
+/* Índice em pílulas: a maioria chega aqui com uma dúvida só (troca, prazo)
+   e não deveria ter que rolar a página inteira para achar. */
+.policy-index{
+  display:flex; flex-wrap:wrap; gap:.45rem;
+  margin:1.5rem 0 2.2rem; padding-bottom:.2rem;
+}
+.policy-index a{
+  background:var(--blush-50); border:1px solid var(--blush-100);
+  border-radius:999px; padding:.4rem .9rem;
+  font-size:.8rem; font-weight:600; color:var(--blush-700); text-decoration:none;
+  transition:background .2s ease, border-color .2s ease;
+}
+.policy-index a:hover{ background:var(--blush-100); border-color:var(--blush-200); }
+
+.policy-section{ margin-bottom:2.4rem; scroll-margin-top:90px; }
+.policy-section h2{
+  font-family:var(--font-display); font-size:1.35rem; font-weight:600; color:var(--ink);
+  padding-bottom:.5rem; margin-bottom:1rem; border-bottom:1px solid var(--blush-100);
+}
+.policy-section h3{
+  font-size:.95rem; font-weight:700; color:var(--blush-700);
+  margin:1.4rem 0 .5rem;
+}
+.policy-section p,
+.policy-section li{ font-size:.9rem; line-height:1.65; color:var(--ink-soft); }
+.policy-section strong{ color:var(--ink); font-weight:600; }
+.policy-section ul{ padding-left:1.15rem; margin-bottom:1rem; }
+.policy-section li{ margin-bottom:.4rem; }
+
+/* Lista de dados da loja (CNPJ, endereço): grade rótulo/valor em vez de
+   parágrafos, porque é informação que se consulta, não que se lê. */
+.policy-data{ display:grid; grid-template-columns:auto 1fr; gap:.5rem 1.2rem; margin:0; }
+.policy-data dt{ font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); font-weight:600; }
+.policy-data dd{ margin:0; font-size:.9rem; color:var(--ink); }
+@media (max-width: 575.98px){
+  .policy-data{ grid-template-columns:1fr; gap:.15rem; }
+  .policy-data dd{ margin-bottom:.7rem; }
+}
+
+/* Destaque do direito de arrependimento: é o ponto que mais gera conflito
+   e o que a cliente mais procura — não pode ficar perdido no meio do texto. */
+.policy-highlight{
+  background:var(--blush-50); border:1.5px solid var(--blush-200);
+  border-radius:14px; padding:.9rem 1rem; margin-bottom:1rem;
+}
+.policy-highlight p{ font-size:.9rem; line-height:1.6; color:var(--ink); }
+
+.policy-note{
+  font-size:.82rem!important; color:var(--ink-soft);
+  border-left:3px solid var(--blush-200); padding-left:.8rem; margin:1rem 0;
+}
+
+.policy-footer-note{
+  display:flex; gap:.7rem; align-items:flex-start;
+  background:var(--blush-50); border-radius:14px; padding:1rem 1.1rem; margin-top:2.5rem;
+}
+.policy-footer-note i{ color:var(--blush-700); font-size:1.2rem; line-height:1.4; }
+.policy-footer-note p{ font-size:.88rem; line-height:1.6; color:var(--ink-soft); }
