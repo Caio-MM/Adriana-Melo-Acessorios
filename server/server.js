@@ -1350,7 +1350,7 @@ app.post("/api/newsletter", strictLimiter, async (req, res) => {
   res.json({ ok: true, coupon: coupon.code, percentOff: coupon.percent_off, emailed });
 });
 
-app.post("/api/contact", strictLimiter, (req, res) => {
+app.post("/api/contact", strictLimiter, async (req, res) => {
   const nome = (req.body?.nome || "").trim().slice(0, 120);
   const telefone = (req.body?.telefone || "").trim().slice(0, 30);
   const ocasiao = (req.body?.ocasiao || "").trim().slice(0, 40);
@@ -1364,6 +1364,17 @@ app.post("/api/contact", strictLimiter, (req, res) => {
   // Continua valendo tratar nome/mensagem como texto puro — a exibição no
   // painel escapa tudo (js/admin.js) e as queries são parametrizadas.
   db.createContactMessage({ nome, telefone, ocasiao, mensagem });
+
+  // Best-effort, mesmo racional dos avisos de pedido pago (ver
+  // runApprovedOrderSideEffects): a mensagem já está salva e visível no
+  // painel antes daqui, então uma falha de SMTP nunca pode impedir a
+  // cliente de saber que a mensagem foi enviada.
+  try{
+    await email.notifyOwnerOfContactMessage({ nome, telefone, ocasiao, mensagem });
+  }catch(err){
+    console.error("Falha ao enviar aviso de mensagem de contato por e-mail:", err.message || err);
+  }
+
   res.json({ ok: true });
 });
 

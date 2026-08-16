@@ -222,10 +222,52 @@ async function sendWelcomeCouponEmail({ to, couponCode, percentOff, shopUrl }) {
   await sendEmail({ to, subject, text, html });
 }
 
+/**
+ * Aviso para a lojista quando o formulário "Vamos criar seu laço?" da home
+ * é enviado (POST /api/contact em server.js). Mesmo padrão de
+ * notifyOwnerOfPaidOrder: vai para OWNER_EMAIL, propaga erro — quem chama
+ * trata como melhor esforço, porque a mensagem já foi gravada no banco (ver
+ * db.createContactMessage) e aparece no painel mesmo se o e-mail falhar.
+ */
+async function notifyOwnerOfContactMessage({ nome, telefone, ocasiao, mensagem }) {
+  const ownerEmail = process.env.OWNER_EMAIL;
+  if (!ownerEmail) {
+    throw new Error("OWNER_EMAIL não configurado no .env — e-mail não enviado.");
+  }
+  const subject = `🎀 Nova mensagem de contato — ${nome}`;
+
+  const text = [
+    "Nova mensagem pelo formulário \"Vamos criar seu laço?\":",
+    "",
+    `Nome: ${nome}`,
+    `WhatsApp: ${telefone}`,
+    `Ocasião: ${ocasiao || "-"}`,
+    "",
+    "Mensagem:",
+    mensagem,
+  ].join("\n");
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#3a2230;max-width:480px;margin:0 auto">
+      <h2 style="color:#c05480;margin-bottom:4px">🎀 Nova mensagem de contato</h2>
+      <p style="margin:0 0 12px">
+        <strong>Nome:</strong> ${escapeHTML(nome)}<br>
+        <strong>WhatsApp:</strong> ${escapeHTML(telefone)}<br>
+        <strong>Ocasião:</strong> ${escapeHTML(ocasiao || "-")}
+      </p>
+      <p style="margin:0 0 4px"><strong>Mensagem:</strong></p>
+      <p style="margin:0;white-space:pre-wrap">${escapeHTML(mensagem)}</p>
+    </div>
+  `;
+
+  await sendEmail({ to: ownerEmail, subject, text, html });
+}
+
 module.exports = {
   formatOrderEmail,
   sendEmail,
   notifyOwnerOfPaidOrder,
+  notifyOwnerOfContactMessage,
   sendPasswordResetEmail,
   sendWelcomeCouponEmail,
 };
