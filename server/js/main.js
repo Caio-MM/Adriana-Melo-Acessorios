@@ -1107,6 +1107,7 @@
     // Volta ao padrão 4:5 antes de trocar a foto: senão o quadro ficaria
     // com a proporção da imagem ANTERIOR até a nova carregar.
     thumb.style.removeProperty("--qv-ratio");
+    thumb.style.removeProperty("--qv-ar");
     const photo = imageFor(p);
     if(photo){
       thumb.classList.add("is-loading");
@@ -1128,7 +1129,11 @@
   document.getElementById("qvImage").addEventListener("load", (e) => {
     const { naturalWidth: w, naturalHeight: h } = e.target;
     if(!w || !h) return;
-    document.getElementById("qvThumb").style.setProperty("--qv-ratio", `${w}/${h}`);
+    const thumb = document.getElementById("qvThumb");
+    thumb.style.setProperty("--qv-ratio", `${w}/${h}`);
+    // Mesma proporção em decimal: aspect-ratio aceita "800/1000", mas o
+    // calc() que limita a largura precisa de um número.
+    thumb.style.setProperty("--qv-ar", String(w / h));
   });
 
   grid.addEventListener("click", function(e){

@@ -482,7 +482,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    garante o botão de comprar é o modal-dialog-scrollable, não esta conta. */
 .qv-thumb{
   position:relative; aspect-ratio:var(--qv-ratio, 4/5);
-  width:100%; max-height:46vh; margin-inline:auto;
+  /* A largura sai de um min() em vez de max-height porque limitar a altura
+     com a largura em 100% QUEBRA a proporção (o quadro vira paisagem e o
+     cover volta a cortar a foto). Aqui os dois limites convivem: nunca
+     passa da largura do modal nem de 46vh de altura, e a proporção fica
+     exata sempre. --qv-ar é a mesma proporção em número decimal, que o
+     calc() aceita — js/main.js define as duas ao carregar a foto. */
+  width:min(100%, calc(46vh * var(--qv-ar, .8))); margin-inline:auto;
   border-radius:var(--radius-md); overflow:hidden;
   display:flex; align-items:center; justify-content:center; background:var(--blush-50);
 }

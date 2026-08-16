@@ -342,20 +342,34 @@ app.use((req, res, next) => {
   if (firstSegment && PUBLIC_TOP_LEVEL.has(firstSegment)) return next();
   return sendNotFound(req, res);
 });
-// maxAge de 1h para tudo (css/js/img) — deixa o navegador reaproveitar
-// esses arquivos sem baixar de novo ao navegar entre páginas ou voltar ao
-// site na mesma hora, sem arriscar ficar preso a uma versão velha por
-// muito tempo caso algo seja corrigido/publicado de novo (não há um passo
-// de build com nome de arquivo versionado neste projeto). HTML fica de
-// fora de propósito (sempre revalidado): são as "portas de entrada" do
-// site — nunca queremos alguém preso numa versão antiga do index.html
-// depois de um deploy, especialmente das páginas de checkout/admin.
+/* Política de cache — o que garante que um deploy apareça na hora
+   -------------------------------------------------------------------------
+   Este projeto não tem passo de build, então os arquivos NÃO têm nome
+   versionado (style.css é sempre style.css). Sem isso, qualquer prazo de
+   cache significa gente vendo o site antigo por até aquele prazo — foi o
+   que aconteceu com o `maxAge: 1h` anterior: o HTML vinha novo e o CSS
+   vinha velho, e a página aparecia quebrada (botão sem estilo).
+
+   `no-cache` NÃO quer dizer "não guarde": quer dizer "guarde, mas
+   pergunte antes de usar". O navegador manda o ETag e o servidor
+   responde 304 (algumas centenas de bytes) quando nada mudou, então o
+   arquivo continua vindo do disco local — o custo é uma ida rápida à
+   rede, e em troca ninguém nunca vê versão antiga.
+
+   Fonte e imagem ficam de fora porque já têm nome único: as fontes
+   trazem hash (poppins-400-latin-5a6413.woff2) e as fotos de produto
+   trazem timestamp (produto-1-1786813302518.jpg). Nome novo a cada
+   mudança = pode cachear por muito tempo sem risco, e é o que segura a
+   nota de velocidade no PageSpeed. */
+const REVALIDATE_ALWAYS = /\.(html|css|js)$/i;
 app.use(express.static(SITE_ROOT, {
   extensions: ["html"],
   dotfiles: "ignore",
-  maxAge: "1h",
+  maxAge: "365d",
   setHeaders(res, filePath){
-    if(filePath.endsWith(".html")) res.setHeader("Cache-Control", "no-cache");
+    if(REVALIDATE_ALWAYS.test(filePath)){
+      res.setHeader("Cache-Control", "no-cache");
+    }
   },
 }));
 
