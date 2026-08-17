@@ -335,14 +335,14 @@ app.use("/api", verifyOrigin);
 // curl em loop em /index.html, milhares de vezes numa janela de poucas
 // horas, vindo sempre do mesmo IP — e arquivos estáticos não tinham limite
 // nenhum até aqui.
-app.use(rateLimit({ windowMs: 60 * 1000, max: 300 }));
+app.use(rateLimit({ windowMs: 60 * 1000, max: 300, handler: sendTooManyRequests }));
 
 // Limite geral, só para a API (arquivos estáticos já têm o limite amplo
 // acima): 100 requisições / 15 min por IP. A consulta de status do Pix fica
 // de fora: ela sozinha já passa desse total num único pagamento (ver
 // statusPollLimiter, mais abaixo) e tem seu próprio limite, maior.
 app.use("/api", rateLimit({
-  windowMs: 15 * 60 * 1000, max: 100,
+  windowMs: 15 * 60 * 1000, max: 100, handler: sendTooManyRequests,
   skip: (req) => req.path.startsWith("/orders/") && req.path.endsWith("/status"),
 }));
 
@@ -353,18 +353,18 @@ app.use("/api", rateLimit({
 // facilmente soma 8-10 chamadas numa única compra. Era 20 antes e já
 // estourou em uso manual normal (bem menos que um ataque de verdade), por
 // isso a folga maior aqui.
-const strictLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60 });
+const strictLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, handler: sendTooManyRequests });
 
 // Limite ainda mais rígido para login/cadastro — dificulta força bruta de
 // senha e criação em massa de contas.
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, handler: sendTooManyRequests });
 
 // Limite próprio para a consulta de status do Pix: a página fica perguntando
 // sozinha de 4 em 4 segundos por até 20 minutos (ver js/pagamento-pix.js),
 // o que sozinho já passa de 200 chamadas — muito mais do que o limite geral
 // da API permite. Sem um balde separado, uma cliente que demora para pagar
 // esbarraria no limite geral e o status parava de atualizar em silêncio.
-const statusPollLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
+const statusPollLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, handler: sendTooManyRequests });
 
 /* =========================================================================
    ARQUIVOS ESTÁTICOS DO SITE
@@ -384,7 +384,7 @@ const PUBLIC_TOP_LEVEL = new Set([
   "index.html", "conta.html", "pedidos.html", "admin.html",
   "pagamento-sucesso.html", "pagamento-erro.html", "pagamento-pendente.html",
   "pagamento-pix.html",
-  "redefinir-senha.html", "politica.html", "404.html", "css", "js", "img",
+  "redefinir-senha.html", "politica.html", "404.html", "429.html", "css", "js", "img",
   // Buscadores e navegadores pedem estes na raiz, por convenção — sem entrar
   // aqui eles caem no 404 mesmo existindo em disco. O .ico e o apple-touch
   // são pedidos sozinhos pelo navegador, mesmo sem <link> na página.
@@ -403,6 +403,20 @@ function sendNotFound(req, res){
     return res.status(404).sendFile(path.join(SITE_ROOT, "404.html"));
   }
   return res.status(404).send("Não encontrado.");
+}
+
+// Mesma ideia do sendNotFound acima, para quando um limite de requisições é
+// estourado: sem isto, express-rate-limit responde com o texto cru dele
+// ("Too many requests, please try again later."), sem estilo nenhum — a
+// única resposta do site sem a identidade visual da loja.
+function sendTooManyRequests(req, res){
+  if (req.path.startsWith("/api/")) {
+    return res.status(429).json({ error: "Muitas requisições. Aguarde um instante e tente novamente." });
+  }
+  if ((req.method === "GET" || req.method === "HEAD") && req.accepts("html")) {
+    return res.status(429).sendFile(path.join(SITE_ROOT, "429.html"));
+  }
+  return res.status(429).send("Muitas requisições. Aguarde um instante e tente novamente.");
 }
 app.use((req, res, next) => {
   if (req.path === "/" || req.path.startsWith("/api/")) return next();
