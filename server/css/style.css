@@ -1093,9 +1093,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .auth-deco-motif-1{ top:-14px; right:-26px; width:112px; height:78px; transform:rotate(-18deg); }
 .auth-deco-motif-2{ bottom:-20px; left:-30px; width:130px; height:91px; transform:rotate(14deg); }
 
+/* margin-bottom precisa cobrir o quanto o anel (::after, abaixo) vaza
+   para fora da própria caixa do laço, não só dar um respiro visual: a
+   caixa do wrap tem a altura do laço (87px), mas o anel tem 172px e fica
+   centralizado nela — vaza (172-87)/2 = 42,5px para cada lado. Sem
+   margem maior que isso, o anel sobrepõe o texto abaixo dele (medido: com
+   1.35rem de margem, sobrava 21px de sobreposição). 4rem (64px) cobre os
+   42,5px de vazamento com folga. */
 .auth-bow-wrap{
   position:relative; display:inline-flex; align-items:center; justify-content:center;
-  margin-bottom:1.35rem;
+  margin-bottom:4rem;
 }
 /* Brilho pulsante atrás do laço — puramente decorativo. */
 .auth-bow-wrap::before{
@@ -1382,7 +1389,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .auth-shell{ max-width:460px; }
   .auth-bow{ width:66px; height:46px; }
   .auth-logo{ width:160px; }
-  .auth-bow-wrap{ margin-bottom:.75rem; }
+  /* Mesma conta do valor base, com os números do mobile: caixa do laço
+     46px, anel 96px (definido abaixo) → vaza (96-46)/2 = 25px de cada
+     lado. 2.5rem (40px) cobre isso com folga. */
+  .auth-bow-wrap{ margin-bottom:2.5rem; }
   .auth-bow-wrap::before{ width:140px; height:140px; }
   /* O anel (::after) ficou de fora do encolhimento responsivo original —
      continuava 172px ao redor de um laço de 66px, quase 4x maior que o
