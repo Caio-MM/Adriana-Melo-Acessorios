@@ -338,8 +338,13 @@ app.use("/api", verifyOrigin);
 app.use(rateLimit({ windowMs: 60 * 1000, max: 300 }));
 
 // Limite geral, só para a API (arquivos estáticos já têm o limite amplo
-// acima): 100 requisições / 15 min por IP.
-app.use("/api", rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
+// acima): 100 requisições / 15 min por IP. A consulta de status do Pix fica
+// de fora: ela sozinha já passa desse total num único pagamento (ver
+// statusPollLimiter, mais abaixo) e tem seu próprio limite, maior.
+app.use("/api", rateLimit({
+  windowMs: 15 * 60 * 1000, max: 100,
+  skip: (req) => req.path.startsWith("/orders/") && req.path.endsWith("/status"),
+}));
 
 // Limite mais rígido para rotas sensíveis (evita spam/força bruta). Essas
 // rotas dividem o mesmo balde: calcular frete, validar cupom e criar o
@@ -353,6 +358,13 @@ const strictLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60 });
 // Limite ainda mais rígido para login/cadastro — dificulta força bruta de
 // senha e criação em massa de contas.
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
+
+// Limite próprio para a consulta de status do Pix: a página fica perguntando
+// sozinha de 4 em 4 segundos por até 20 minutos (ver js/pagamento-pix.js),
+// o que sozinho já passa de 200 chamadas — muito mais do que o limite geral
+// da API permite. Sem um balde separado, uma cliente que demora para pagar
+// esbarraria no limite geral e o status parava de atualizar em silêncio.
+const statusPollLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
 
 /* =========================================================================
    ARQUIVOS ESTÁTICOS DO SITE
@@ -1080,7 +1092,7 @@ app.post("/api/create-pix-payment", strictLimiter, auth.requireAuth, async (req,
    Mantido minúsculo de propósito: é chamado de poucos em poucos segundos
    enquanto a página do Pix está aberta.
 ========================================================================= */
-app.get("/api/orders/:reference/status", auth.requireAuth, (req, res) => {
+app.get("/api/orders/:reference/status", statusPollLimiter, auth.requireAuth, (req, res) => {
   const order = db.getOrderByExternalReference(req.params.reference);
   if(!order || order.user_id !== req.user.id){
     return res.status(404).json({ error: "Pedido não encontrado." });
