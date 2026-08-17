@@ -15,3 +15,7 @@ node_modules/
 # Sistema
 .DS_Store
 npm-debug.log*
+
+# Mapa interno do código para o Claude Code — não é documentação do projeto,
+# não deve ir para o GitHub
+docs/CODEMAP.md
