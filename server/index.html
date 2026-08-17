@@ -530,22 +530,22 @@
         <span class="section-eyebrow"><i class="bi bi-envelope-heart"></i> fale com a gente</span>
         <h2 class="section-title">Vamos criar seu laço?</h2>
         <p class="section-sub mt-2 mb-4">Conte a ocasião, a cor e o tamanho — respondemos em até 24h úteis.</p>
-        <div class="d-flex align-items-center gap-3 mb-3">
-          <span class="social-circle" style="background:var(--blush-100); color:var(--blush-700)"><i class="bi bi-whatsapp"></i></span>
+        <div class="contact-info-row">
+          <span class="social-circle contact-info-icon"><i class="bi bi-whatsapp"></i></span>
           <div>
             <div class="fw-semibold">WhatsApp</div>
             <a href="https://wa.me/5561982749808" target="_blank" rel="noopener">(61) 98274-9808</a>
           </div>
         </div>
-        <div class="d-flex align-items-center gap-3 mb-3">
-          <span class="social-circle" style="background:var(--blush-100); color:var(--blush-700)"><i class="bi bi-envelope"></i></span>
+        <div class="contact-info-row">
+          <span class="social-circle contact-info-icon"><i class="bi bi-envelope"></i></span>
           <div>
             <div class="fw-semibold">E-mail</div>
             <a href="mailto:adrianameloacessorios@gmail.com">adrianameloacessorios@gmail.com</a>
           </div>
         </div>
-        <div class="d-flex align-items-center gap-3">
-          <span class="social-circle" style="background:var(--blush-100); color:var(--blush-700)"><i class="bi bi-geo-alt"></i></span>
+        <div class="contact-info-row contact-info-row-last">
+          <span class="social-circle contact-info-icon"><i class="bi bi-geo-alt"></i></span>
           <div>
             <div class="fw-semibold">Ateliê</div>
             <span class="section-sub">Brasília, DF — envios para todo o Brasil</span>
@@ -553,16 +553,23 @@
         </div>
       </div>
       <div class="col-lg-7 reveal reveal-delay-1">
+        <div class="contact-form-card">
         <form class="row g-3" id="contactForm" novalidate>
           <div class="col-sm-6">
             <label class="form-label small fw-semibold" for="contactNome">Nome</label>
-            <input type="text" class="form-control" id="contactNome" name="nome" autocomplete="name" maxlength="120" required>
-            <div class="invalid-feedback">Conte seu nome para a gente 🙂</div>
+            <div class="contact-field-icon">
+              <i class="bi bi-person"></i>
+              <input type="text" class="form-control" id="contactNome" name="nome" autocomplete="name" maxlength="120" required>
+              <div class="invalid-feedback">Conte seu nome para a gente 🙂</div>
+            </div>
           </div>
           <div class="col-sm-6">
             <label class="form-label small fw-semibold" for="contactTelefone">WhatsApp</label>
-            <input type="tel" class="form-control" id="contactTelefone" name="telefone" autocomplete="tel" maxlength="30" required>
-            <div class="invalid-feedback">Informe um telefone para contato.</div>
+            <div class="contact-field-icon">
+              <i class="bi bi-whatsapp"></i>
+              <input type="tel" class="form-control" id="contactTelefone" name="telefone" autocomplete="tel" maxlength="30" required>
+              <div class="invalid-feedback">Informe um telefone para contato.</div>
+            </div>
           </div>
           <div class="col-12">
             <label class="form-label small fw-semibold" for="contactOcasiao">Ocasião</label>
@@ -581,11 +588,12 @@
             <textarea class="form-control" id="contactMensagem" name="mensagem" rows="4" maxlength="2000" placeholder="Cor, tamanho, quantidade..." required></textarea>
             <div class="invalid-feedback">Escreva sua mensagem.</div>
           </div>
-          <div class="col-12">
+          <div class="col-12 d-flex align-items-center flex-wrap gap-3">
             <button class="btn-blush" type="submit">Enviar mensagem <i class="bi bi-send ms-1"></i></button>
-            <span class="small ms-3" id="contactMsg" style="color:var(--blush-700)"></span>
+            <span class="small" id="contactMsg" style="color:var(--blush-700)"></span>
           </div>
         </form>
+        </div>
       </div>
     </div>
   </div>
@@ -650,7 +658,7 @@
     </div>
     <hr style="border-color:rgba(255,255,255,.12); margin:0 0 .9rem">
     <div class="footer-bottom">
-      <span>© 2026 Adriana Melo Acessórios. Todos os direitos reservados.</span>
+      <span>© 2026 Adriana Melo Acessórios — CNPJ 54.732.065/0001-50. Todos os direitos reservados.</span>
       <span class="footer-bottom-sep" aria-hidden="true">•</span>
       <span>Feito com <i class="bi bi-heart-fill" style="color:var(--blush-500)"></i> em Brasília</span>
     </div>

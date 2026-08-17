@@ -639,7 +639,67 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   transition:background .25s ease, width .25s ease;
 }
 .carousel-indicators [data-bs-target].active{ background:var(--blush-700); width:22px; border-radius:999px; }
- 
+
+/* ============ CONTATO ============
+   Antes o formulário usava .form-control/.form-select puro do Bootstrap,
+   sem nenhum estilo de marca — era o único bloco do site sem tratamento
+   próprio, e por isso o único lugar com o anel de foco AZUL padrão do
+   navegador destoando de toda a paleta rosa. O card e os inputs abaixo só
+   aplicam o que já existe em .auth-pane .form-control (login), não criam
+   nada novo. */
+.contact-form-card{
+  background:var(--white); border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-soft); padding:2rem;
+}
+#contactForm .form-control,
+#contactForm .form-select{
+  border:1.5px solid var(--blush-150); border-radius:14px;
+  padding:.78rem 1rem; font-size:.92rem; background:var(--cream);
+  transition:border-color .25s ease, background .25s ease;
+}
+#contactForm .form-control:hover,
+#contactForm .form-select:hover{ border-color:var(--blush-300); }
+/* box-shadow:none tira o anel azul padrão do Bootstrap; quem marca o foco
+   é o outline global em blush-600 (mesmo padrão do resto do site). */
+#contactForm .form-control:focus,
+#contactForm .form-select:focus{
+  border-color:var(--blush-500); background:var(--white); box-shadow:none;
+}
+/* Ícone dentro do campo (Nome/WhatsApp) — mesma técnica do olho de
+   mostrar senha em conta.html: ícone posicionado absoluto, input com
+   padding-left liberando o espaço. .invalid-feedback fica DENTRO deste
+   wrapper (irmão direto do input, não do wrapper) de propósito: é o que o
+   CSS nativo do Bootstrap (.form-control:invalid ~ .invalid-feedback)
+   precisa para continuar funcionando depois de embrulhar o input. */
+.contact-field-icon{ position:relative; }
+.contact-field-icon > i{
+  position:absolute; left:.95rem; top:50%; transform:translateY(-50%);
+  color:var(--blush-400); font-size:.95rem; pointer-events:none;
+}
+.contact-field-icon .form-control{ padding-left:2.6rem; }
+/* Cada linha de contato (WhatsApp/E-mail/Ateliê) ganha um respiro maior
+   e o círculo de ícone cresce um pouco e reage ao hover — mesmo padrão
+   de .social-circle:hover já usado no rodapé, só que sobre fundo claro. */
+.contact-info-row{
+  display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;
+}
+.contact-info-row-last{ margin-bottom:0; }
+/* .social-circle.contact-info-icon (2 classes) de propósito: a definição
+   de .social-circle sozinha vem DEPOIS no arquivo (rodapé) e, com a mesma
+   especificidade, venceria por ordem — a combinação garante que este
+   tamanho/cor prevaleça independente de onde .social-circle for definida. */
+.social-circle.contact-info-icon{
+  width:44px; height:44px; flex-shrink:0;
+  background:var(--blush-100); color:var(--blush-700); border-color:transparent;
+  transition:background .2s ease, transform .2s ease;
+}
+.contact-info-row:hover .social-circle.contact-info-icon{
+  background:var(--blush-600); color:#fff; transform:translateY(-2px);
+}
+@media (max-width: 575.98px){
+  .contact-form-card{ padding:1.5rem 1.25rem; }
+}
+
 /* ============ NEWSLETTER / CTA ============ */
 .plc-cta{
   background:linear-gradient(135deg, var(--blush-600), var(--blush-700));
