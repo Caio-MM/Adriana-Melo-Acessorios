@@ -37,6 +37,122 @@ function escapeHTML(str) {
   }[ch]));
 }
 
+/* =========================================================================
+   MOLDE COMPARTILHADO — cabeçalho (logo) + cartão branco + rodapé
+   -------------------------------------------------------------------------
+   Os 4 e-mails do site (pedido pago, redefinir senha, contato, cupom de
+   boas-vindas) usam a mesma moldura visual — só o miolo muda. Um molde só
+   garante que os 4 fiquem sempre iguais entre si e que uma mudança de
+   marca (cor, logo, rodapé) se aplique a todos de uma vez.
+
+   Tudo em <table> com estilo inline: é o que sobrevive ao motor de
+   renderização do Outlook desktop (baseado no Word — não entende
+   <div>/flex/grid nem <style> no <head>). Cores replicam os tokens de
+   css/style.css (--blush-*, --ink, --cream) em hex direto, porque
+   variável CSS não existe fora de um navegador.
+
+   Fontes: Fraunces (título) e Poppins (corpo) não podem ser carregadas por
+   @font-face aqui — a maioria dos clientes de e-mail bloqueia fonte
+   externa — então cada uma cai numa pilha de fontes do sistema com a
+   mesma "família" visual (serifada / geométrica). O script Caveat nem
+   tenta: itálico serifado já passa o "escrito à mão" sem depender de
+   fonte nenhuma.
+
+   Logo: SVG com <use>/<symbol> (como no site) não renderiza em e-mail —
+   por isso é a logo em PNG já hospedada (mesma imagem do cabeçalho do
+   site), sempre por URL absoluta, porque não existe "origem" dentro de
+   um cliente de e-mail. */
+const FONT_TITULO = "Georgia, 'Times New Roman', serif";
+const FONT_CORPO = "'Segoe UI', Helvetica, Arial, sans-serif";
+
+function emailShell({ titulo, preheader, eyebrow, tituloCartao, corpoHtml }) {
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHTML(titulo)}</title>
+</head>
+<body style="margin:0; padding:0; background:#FFFDFC;">
+  <!-- Pré-cabeçalho: texto que aparece ao lado do assunto na caixa de entrada, escondido no corpo do e-mail. -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
+    ${escapeHTML(preheader)}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFDFC;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
+
+          <!-- Cabeçalho: logo sobre o rosa mais claro, mesmo tom do topo da home -->
+          <tr>
+            <td align="center" style="background:#FBDCE8; border-radius:24px 24px 0 0; padding:28px 24px 22px;">
+              <img src="https://adrianameloacessorios.com/img/logo-adriana-melo-6e53bc.png" alt="Adriana Melo Acessórios" width="150" style="display:block; border:0;">
+            </td>
+          </tr>
+
+          <!-- Cartão principal -->
+          <tr>
+            <td style="background:#FFFFFF; border-radius:0 0 24px 24px; padding:36px 32px 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="font-family:${FONT_TITULO}; font-style:italic; color:#C05480; font-size:15px; padding-bottom:6px;">
+                    ${escapeHTML(eyebrow)}
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="font-family:${FONT_TITULO}; color:#54293C; font-size:26px; line-height:1.3; font-weight:bold; padding-bottom:14px;">
+                    ${tituloCartao}
+                  </td>
+                </tr>
+                ${corpoHtml}
+              </table>
+            </td>
+          </tr>
+
+          <!-- Rodapé -->
+          <tr>
+            <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:12px; line-height:1.7; padding:22px 24px 0;">
+              Adriana Melo Acessórios — ateliê artesanal de laços, feitos à mão em Brasília/DF.<br>
+              Dúvidas? Responda este e-mail ou fale pelo
+              <a href="https://wa.me/5561982749808" style="color:#C05480; text-decoration:none;">WhatsApp</a>.
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+// Botão de ação (pílula, blush-600) — reaproveitado pelos 4 e-mails.
+function botaoEmail(href, rotulo){
+  return `
+    <tr>
+      <td align="center" style="padding-bottom:8px;">
+        <table role="presentation" cellpadding="0" cellspacing="0">
+          <tr>
+            <td align="center" style="background:#DD6E9B; border-radius:999px;">
+              <a href="${escapeHTML(href)}" style="display:inline-block; font-family:${FONT_CORPO}; font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none; padding:13px 32px;">
+                ${escapeHTML(rotulo)}
+              </a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `;
+}
+
+// Linha "rótulo: valor" — usada nos e-mails internos (pedido pago, contato).
+function linhaDado(rotulo, valor){
+  return `<strong style="color:#54293C;">${escapeHTML(rotulo)}:</strong> ${escapeHTML(valor)}<br>`;
+}
+
 /**
  * Monta assunto/texto/HTML do e-mail a partir de um pedido já resolvido
  * (itens com nome/quantidade, endereço, total, data do pagamento, link do
@@ -71,28 +187,50 @@ function formatOrderEmail({ externalReference, items, address, total, paidAt, ad
     `Ver no painel administrativo: ${adminUrl}`,
   ].join("\n");
 
-  const html = `
-    <div style="font-family:Arial,Helvetica,sans-serif;color:#3a2230;max-width:480px;margin:0 auto">
-      <h2 style="color:#c05480;margin-bottom:4px">🎀 Novo pedido pago!</h2>
-      <p style="margin:0 0 12px">
-        <strong>Pedido:</strong> ${escapeHTML(externalReference)}<br>
-        <strong>Data/hora:</strong> ${escapeHTML(formatOrderDateTime(paidAt))}
-      </p>
-      <p style="margin:0 0 4px"><strong>Itens:</strong></p>
-      <ul style="margin:0 0 12px">${itemLinesHtml}</ul>
-      <p style="margin:0 0 12px"><strong>Total:</strong> ${escapeHTML(formatCurrency(total))}</p>
-      <p style="margin:0 0 16px">
-        <strong>Cliente:</strong> ${escapeHTML(address?.nome || "-")}<br>
-        <strong>Telefone:</strong> ${escapeHTML(address?.telefone || "-")}<br>
-        <strong>Entrega:</strong> ${escapeHTML(deliveryLine || "-")}
-      </p>
-      <p>
-        <a href="${escapeHTML(adminUrl)}" style="display:inline-block;padding:10px 20px;background:#c05480;color:#fff;text-decoration:none;border-radius:999px;font-weight:600">
-          Ver no painel administrativo
-        </a>
-      </p>
-    </div>
-  `;
+  const itemRowsHtml = items
+    .map(({ id, qty, name }) => `
+      <tr>
+        <td style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; padding:6px 0; border-bottom:1px solid #FBDCE8;">
+          ${escapeHTML(qty)}x ${escapeHTML(name)} — cor: ${escapeHTML(colorLabelFor(id))}
+        </td>
+      </tr>
+    `).join("");
+
+  const html = emailShell({
+    titulo: subject,
+    preheader: `${formatCurrency(total)} — ${address?.nome || "novo pedido"}`,
+    eyebrow: "pedido pago",
+    tituloCartao: "Novo pedido! 🎀",
+    corpoHtml: `
+      <tr>
+        <td align="left" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6; padding-bottom:18px;">
+          ${linhaDado("Pedido", externalReference)}
+          ${linhaDado("Data/hora", formatOrderDateTime(paidAt))}
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom:18px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${itemRowsHtml}
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="left" style="font-family:${FONT_CORPO}; font-size:16px; font-weight:bold; color:#C05480; padding-bottom:20px;">
+          Total: ${escapeHTML(formatCurrency(total))}
+        </td>
+      </tr>
+      <tr>
+        <td align="left" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6; background:#FFF5F9; border-radius:14px; padding:14px 16px; margin-bottom:20px;">
+          ${linhaDado("Cliente", address?.nome || "-")}
+          ${linhaDado("Telefone", address?.telefone || "-")}
+          ${linhaDado("Entrega", deliveryLine || "-")}
+        </td>
+      </tr>
+      <tr><td style="padding-bottom:20px;"></td></tr>
+      ${botaoEmail(adminUrl, "Ver no painel administrativo")}
+    `,
+  });
 
   return { subject, text, html };
 }
@@ -159,25 +297,27 @@ async function sendPasswordResetEmail({ to, name, resetUrl, expiresInMinutes }) 
     "Se não foi você que pediu, pode ignorar esta mensagem — sua senha atual continua valendo.",
   ].join("\n");
 
-  const html = `
-    <div style="font-family:Arial,Helvetica,sans-serif;color:#3a2230;max-width:480px;margin:0 auto">
-      <h2 style="color:#c05480;margin-bottom:4px">🎀 Redefinição de senha</h2>
-      <p style="margin:0 0 12px">Olá, ${escapeHTML(firstName)}!</p>
-      <p style="margin:0 0 16px">
-        Recebemos um pedido para redefinir a senha da sua conta.
-        Clique no botão abaixo para escolher uma nova — o link vale por
-        <strong>${escapeHTML(String(expiresInMinutes))} minutos</strong>.
-      </p>
-      <p style="margin:0 0 20px">
-        <a href="${escapeHTML(resetUrl)}" style="display:inline-block;padding:10px 20px;background:#c05480;color:#fff;text-decoration:none;border-radius:999px;font-weight:600">
-          Criar nova senha
-        </a>
-      </p>
-      <p style="margin:0;font-size:13px;color:#8c6577">
-        Se não foi você que pediu, pode ignorar esta mensagem — sua senha atual continua valendo.
-      </p>
-    </div>
-  `;
+  const html = emailShell({
+    titulo: subject,
+    preheader: `O link para escolher uma nova senha vale por ${expiresInMinutes} minutos.`,
+    eyebrow: "redefinição de senha",
+    tituloCartao: "Vamos criar sua nova senha",
+    corpoHtml: `
+      <tr>
+        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:15px; line-height:1.6; padding-bottom:26px;">
+          Olá, ${escapeHTML(firstName)}! Recebemos um pedido para redefinir a senha
+          da sua conta. Clique no botão abaixo para escolher uma nova — o link
+          vale por <strong style="color:#54293C;">${escapeHTML(String(expiresInMinutes))} minutos</strong>.
+        </td>
+      </tr>
+      ${botaoEmail(resetUrl, "Criar nova senha")}
+      <tr>
+        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6; padding-top:22px;">
+          Se não foi você que pediu, pode ignorar esta mensagem — sua senha atual continua valendo.
+        </td>
+      </tr>
+    `,
+  });
 
   await sendEmail({ to, subject, text, html });
 }
@@ -199,25 +339,47 @@ async function sendWelcomeCouponEmail({ to, couponCode, percentOff, shopUrl }) {
     "É só usar no carrinho, no campo de cupom, antes de finalizar o pedido.",
     "",
     `Ver a coleção: ${shopUrl}`,
+    "",
+    "Adriana Melo Acessórios — ateliê artesanal de laços, Brasília/DF",
+    "adrianameloacessorios@gmail.com",
   ].join("\n");
 
-  const html = `
-    <div style="font-family:Arial,Helvetica,sans-serif;color:#3a2230;max-width:480px;margin:0 auto">
-      <h2 style="color:#c05480;margin-bottom:4px">🎀 Obrigada por se cadastrar!</h2>
-      <p style="margin:0 0 18px">Aqui está o seu cupom de <strong>${escapeHTML(String(percentOff))}% de desconto</strong> na primeira compra:</p>
-      <p style="margin:0 0 18px;text-align:center">
-        <span style="display:inline-block;padding:14px 28px;background:#fde7ef;border:2px dashed #c05480;border-radius:14px;font-size:22px;font-weight:bold;letter-spacing:2px;color:#c05480">
-          ${escapeHTML(couponCode)}
-        </span>
-      </p>
-      <p style="margin:0 0 20px">É só usar no carrinho, no campo de cupom, antes de finalizar o pedido.</p>
-      <p style="margin:0 0 16px">
-        <a href="${escapeHTML(shopUrl)}" style="display:inline-block;padding:10px 20px;background:#c05480;color:#fff;text-decoration:none;border-radius:999px;font-weight:600">
-          Ver a coleção
-        </a>
-      </p>
-    </div>
-  `;
+  const html = emailShell({
+    titulo: subject,
+    preheader: `Seu cupom de ${percentOff}% já está pronto para a primeira compra.`,
+    eyebrow: "obrigada por se cadastrar",
+    tituloCartao: "Seu laço de boas-vindas chegou 🎀",
+    corpoHtml: `
+      <tr>
+        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:15px; line-height:1.6; padding-bottom:26px;">
+          Aqui está o seu cupom de <strong style="color:#54293C;">${escapeHTML(String(percentOff))}% de desconto</strong> na primeira compra — vale para qualquer laço da coleção.
+        </td>
+      </tr>
+
+      <!-- Cupom: mesma moldura tracejada usada no site (cupom aplicado no carrinho) -->
+      <tr>
+        <td align="center" style="padding-bottom:26px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center" style="background:#FFF5F9; border:2px dashed #EA8FB4; border-radius:16px; padding:16px 36px;">
+                <span style="font-family:${FONT_CORPO}; font-size:24px; font-weight:bold; letter-spacing:3px; color:#C05480;">
+                  ${escapeHTML(couponCode)}
+                </span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+
+      <tr>
+        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:14px; line-height:1.6; padding-bottom:26px;">
+          É só colar esse código no campo de cupom, no carrinho, antes de finalizar o pedido.
+        </td>
+      </tr>
+
+      ${botaoEmail(shopUrl, "Ver a coleção")}
+    `,
+  });
 
   await sendEmail({ to, subject, text, html });
 }
@@ -247,18 +409,26 @@ async function notifyOwnerOfContactMessage({ nome, telefone, ocasiao, mensagem }
     mensagem,
   ].join("\n");
 
-  const html = `
-    <div style="font-family:Arial,Helvetica,sans-serif;color:#3a2230;max-width:480px;margin:0 auto">
-      <h2 style="color:#c05480;margin-bottom:4px">🎀 Nova mensagem de contato</h2>
-      <p style="margin:0 0 12px">
-        <strong>Nome:</strong> ${escapeHTML(nome)}<br>
-        <strong>WhatsApp:</strong> ${escapeHTML(telefone)}<br>
-        <strong>Ocasião:</strong> ${escapeHTML(ocasiao || "-")}
-      </p>
-      <p style="margin:0 0 4px"><strong>Mensagem:</strong></p>
-      <p style="margin:0;white-space:pre-wrap">${escapeHTML(mensagem)}</p>
-    </div>
-  `;
+  const html = emailShell({
+    titulo: subject,
+    preheader: `${nome}: ${mensagem.slice(0, 100)}`,
+    eyebrow: "novo contato",
+    tituloCartao: "Nova mensagem pelo site 🎀",
+    corpoHtml: `
+      <tr>
+        <td align="left" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6; padding-bottom:18px;">
+          ${linhaDado("Nome", nome)}
+          ${linhaDado("WhatsApp", telefone)}
+          ${linhaDado("Ocasião", ocasiao || "-")}
+        </td>
+      </tr>
+      <tr>
+        <td align="left" style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; line-height:1.6; background:#FFF5F9; border-radius:14px; padding:16px 18px; white-space:pre-wrap;">
+          ${escapeHTML(mensagem)}
+        </td>
+      </tr>
+    `,
+  });
 
   await sendEmail({ to: ownerEmail, subject, text, html });
 }
