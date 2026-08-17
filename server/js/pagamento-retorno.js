@@ -14,7 +14,12 @@
   const lineEl = document.getElementById("orderRefLine");
   if(ref && lineEl){
     const short = ref.replace(/[^a-zA-Z0-9-]/g, "").slice(0, 8);
-    if(short) lineEl.textContent = `Pedido #${short} — ${lineEl.textContent}`;
+    // innerHTML é seguro aqui: `short` já passou pelo filtro acima (só
+    // letras, números e hífen sobrevivem) e o resto do texto é o conteúdo
+    // estático da própria página. O <strong> existe para o número — a
+    // única informação desta tela que a cliente pode precisar copiar
+    // depois — não sair no mesmo cinza do texto ao redor.
+    if(short) lineEl.innerHTML = `Pedido <strong class="order-ref">#${short}</strong> — ${lineEl.textContent}`;
   }
 
   /* Esvazia o carrinho quando a compra deu certo — mesma chave usada em

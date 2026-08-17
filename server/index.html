@@ -45,6 +45,13 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 
+<!-- Dados estruturados (JSON-LD) para o Google: o servidor troca este
+     marcador pelo bloco real ao servir a página, montado a partir do MESMO
+     effectiveProduct() que a vitrine e o checkout usam — ver
+     dadosEstruturados() em server.js. Escrito à mão aqui, o preço na busca
+     ficaria defasado assim que a lojista editasse um produto no painel. -->
+<!--#DADOS-ESTRUTURADOS#-->
+
 <!-- Bootstrap 5 -->
 <link rel="stylesheet" href="css/vendor/bootstrap.min.css">
 <link rel="stylesheet" href="css/vendor/bootstrap-icons.min.css">

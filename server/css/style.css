@@ -999,6 +999,82 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .pix-spinner{ animation:none; }
 }
 
+/* ============ PÁGINA DE OBRIGADO (pós-compra) ============
+   Usada nos dois caminhos que terminam em compra confirmada:
+   pagamento-sucesso.html (cartão/boleto, volta do Checkout Pro) e o estado
+   #statePago de pagamento-pix.html. O visual é o mesmo de propósito — para
+   a cliente é o mesmo momento, só mudou a forma de pagar. */
+/* O laço da marca — e não um "check" verde genérico — no momento em que a
+   cliente acabou de comprar: é a mesma peça que aparece no cabeçalho, no
+   404 e no rodapé, e é o que faz esta tela parecer desta loja e não de
+   qualquer checkout. O verde não some, vira o selinho no canto: continua
+   sinalizando "deu certo" sem tomar a cena.
+   flex + margin auto (e não inline-flex) para ficar sozinho na sua linha:
+   .section-eyebrow logo abaixo também é inline, e os dois acabavam lado a
+   lado em vez de empilhados. */
+.thanks-mark{
+  position:relative; display:flex; align-items:center; justify-content:center;
+  width:76px; height:76px; margin:0 auto; border-radius:50%;
+  background:var(--blush-50); border:1px solid var(--blush-100);
+}
+/* fill:currentColor porque um <use> não herda a cor sozinho — sem isso o
+   laço sai preto, no padrão do SVG (mesmo motivo da regra .bow-icon). */
+.thanks-bow{ width:40px; height:28px; color:var(--blush-600); fill:currentColor; }
+.thanks-mark-badge{
+  position:absolute; right:-2px; bottom:-2px;
+  display:flex; align-items:center; justify-content:center;
+  width:26px; height:26px; border-radius:50%;
+  background:#1E7F44; color:#fff; font-size:.8rem;
+  border:2px solid var(--white);
+}
+/* Número do pedido: a única informação desta tela que a cliente pode
+   precisar depois (falar com a lojista, conferir em "Meus pedidos"). */
+.order-ref{ color:var(--ink); font-weight:600; white-space:nowrap; }
+.thanks-steps{
+  list-style:none; margin:0 0 1.75rem; padding:1.25rem 0 0;
+  border-top:1px solid var(--blush-100); text-align:left;
+}
+.thanks-step{
+  display:flex; gap:.8rem; align-items:flex-start;
+  font-size:.85rem; line-height:1.5; color:var(--ink-soft);
+}
+.thanks-step + .thanks-step{ margin-top:1rem; }
+.thanks-step strong{ color:var(--ink); font-weight:600; }
+.thanks-step-icon{
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  width:32px; height:32px; border-radius:50%;
+  background:var(--blush-50); color:var(--blush-600); font-size:.9rem;
+}
+/* A etapa já cumprida ganha o verde da confirmação; as seguintes ficam em
+   blush, para ler como "isto já aconteceu / isto vem depois" sem precisar
+   de legenda. */
+.thanks-step.is-done .thanks-step-icon{ background:#E8F5EC; color:#1E7F44; }
+
+/* ============ COMPARTILHAR ============
+   Bloco reutilizável (ver js/compartilhar.js). Os círculos seguem o mesmo
+   desenho de .social-circle do rodapé, mas sobre fundo claro. */
+.share-block{
+  margin-top:1.75rem; padding-top:1.25rem;
+  border-top:1px solid var(--blush-100);
+}
+.share-title{
+  margin:0 0 .8rem; font-size:.8rem; color:var(--ink-soft);
+  text-transform:uppercase; letter-spacing:.06em;
+}
+.share-buttons{ display:flex; justify-content:center; gap:.6rem; flex-wrap:wrap; }
+/* 44px é o alvo mínimo de toque recomendado (WCAG 2.5.5 / guias de iOS e
+   Android) — abaixo disso o dedo erra o botão no celular. */
+.share-btn{
+  display:flex; align-items:center; justify-content:center;
+  width:44px; height:44px; border-radius:50%; border:none;
+  background:var(--blush-100); color:var(--blush-700); font-size:1.05rem;
+  transition:background .2s ease, color .2s ease, transform .2s ease;
+}
+.share-btn:hover{ background:var(--blush-600); color:#fff; transform:translateY(-2px); }
+.share-btn:active{ transform:scale(.92); }
+.share-btn.is-copied{ background:#E8F5EC; color:#1E7F44; }
+.share-btn.is-failed{ background:#FBE9E7; color:#B3261E; }
+
 /* Aviso de que o pagamento acontece no Mercado Pago, abaixo do botão */
 .cart-gateway-note{
   display:flex; gap:.4rem; align-items:flex-start; justify-content:center;

@@ -1,0 +1,81 @@
+# Adriana Melo Acessórios
+
+> Ateliê artesanal brasileiro de laços e presilhas de cabelo para bebês e
+> crianças, sediado em Brasília (DF). Cada peça é cortada, costurada e
+> finalizada à mão, uma de cada vez, sob encomenda — a cliente escolhe a cor
+> da fita, o tamanho da presilha e pode pedir um nome bordado. Envio para
+> todo o Brasil.
+
+Loja online: https://adrianameloacessorios.com
+
+## Sobre
+
+Adriana Melo Acessórios trabalha há mais de 8 anos com laços feitos à mão,
+começando em feiras e colégios de Brasília. As peças são em cetim e algodão,
+com embalagem de presente inclusa. Todos os produtos são produzidos sob
+encomenda, o que permite personalização de cor, tamanho e bordado.
+
+- Razão social / CNPJ: 54.732.065/0001-50
+- Localização do ateliê: Brasília, Distrito Federal, Brasil
+- Atendimento: WhatsApp (61) 98274-9808 e adrianameloacessorios@gmail.com
+- Instagram: https://www.instagram.com/adriana_melo_acessorios
+
+## Categorias de produto
+
+Os laços são organizados por ocasião de uso:
+
+- **Maternidade** — modelos leves para recém-nascidas e bebês
+- **Festa** — modelos mais elaborados, para aniversário e eventos
+- **Batizado** — modelos em tons claros, com detalhes como pérolas
+- **Dia a dia** — modelos discretos para uso cotidiano e escola
+- **Presente** — kits e peças personalizadas para presentear
+
+A lista de produtos com preços atuais é servida em
+https://adrianameloacessorios.com/api/products (JSON público, somente
+leitura). A página inicial também traz os mesmos dados em JSON-LD
+(schema.org) no `<head>`.
+
+## Como comprar
+
+1. Escolher o modelo na coleção e adicionar ao carrinho
+2. Informar o CEP — o frete é calculado na hora (Melhor Envio, envio para
+   todo o Brasil)
+3. Criar conta ou entrar (necessário para finalizar o pedido)
+4. Pagar por Pix (com desconto), cartão de crédito (parcelado sem juros) ou
+   boleto, via Mercado Pago
+
+O pedido só é confirmado após a confirmação do pagamento pelo Mercado Pago.
+O acompanhamento fica em "Meus pedidos", dentro da conta da cliente.
+
+## Trocas, devoluções e privacidade
+
+- **Arrependimento**: até 7 dias corridos após o recebimento, conforme o
+  art. 49 do Código de Defesa do Consumidor — reembolso integral, incluindo
+  o frete, sem necessidade de justificativa.
+- **Troca por outro modelo**: até 15 dias, como cortesia do ateliê; nesse
+  caso o frete fica por conta da cliente.
+- **Produtos personalizados** (com nome bordado) seguem as regras legais de
+  produto sob medida.
+- Política completa, incluindo tratamento de dados pessoais conforme a LGPD
+  (Lei 13.709/2018): https://adrianameloacessorios.com/politica.html
+
+## Páginas
+
+- [Início / coleção completa](https://adrianameloacessorios.com/): catálogo,
+  história do ateliê, como funciona o pedido e formulário de contato
+- [Política de privacidade, trocas e devoluções](https://adrianameloacessorios.com/politica.html)
+- [Catálogo em JSON](https://adrianameloacessorios.com/api/products): nome,
+  preço, categoria e foto de cada produto — é a fonte mais atual de preço
+
+## Observações para assistentes
+
+- Preços mudam: prefira consultar `/api/products` a repetir um valor visto
+  antes em cache.
+- As páginas de conta, carrinho, painel administrativo e retorno de
+  pagamento não são públicas e estão bloqueadas em `/robots.txt` — não vale
+  a pena tentar acessá-las nem citá-las.
+- O ateliê não tem loja física para visita; o atendimento presencial não é
+  oferecido. Pedidos e dúvidas passam pelo site ou pelo WhatsApp.
+- Prazo de produção varia por modelo, já que tudo é feito sob encomenda; o
+  prazo real é informado no WhatsApp ou no e-mail de confirmação, não no
+  site.

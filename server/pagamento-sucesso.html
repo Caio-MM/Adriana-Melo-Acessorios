@@ -19,6 +19,15 @@
 </head>
 <body data-payment-result="sucesso">
 
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="bow-shape" viewBox="0 0 100 70">
+    <path d="M50 35 C50 35 38 6 15 10 C-4 13 -4 47 15 51 C36 56 50 35 50 35 Z"/>
+    <path d="M50 35 C50 35 62 6 85 10 C104 13 104 47 85 51 C64 56 50 35 50 35 Z"/>
+    <rect x="42" y="26" width="16" height="18" rx="5"/>
+    <path d="M45 44 L38 68 L48 60 Z"/>
+    <path d="M55 44 L62 68 L52 60 Z"/>
+  </symbol>
+</svg>
 
 <header class="simple-header">
   <div class="container d-flex align-items-center justify-content-between">
@@ -33,13 +42,56 @@
   <div class="container">
     <div class="mx-auto" style="max-width:440px">
       <div class="account-card text-center">
-        <i class="bi bi-check-circle" style="font-size:2.6rem; color:#1E7F44"></i>
-        <h1 class="section-title mt-3 mb-2" style="font-size:1.5rem">Pagamento aprovado!</h1>
-        <p class="section-sub mb-1" id="orderRefLine">Seu pedido foi confirmado.</p>
-        <p class="section-sub mb-4">Em instantes a lojista recebe o aviso e começa a preparar seu laço. Você pode acompanhar o status a qualquer momento em "Meus pedidos".</p>
+        <span class="thanks-mark" aria-hidden="true">
+          <svg class="thanks-bow"><use href="#bow-shape"/></svg>
+          <span class="thanks-mark-badge"><i class="bi bi-check-lg"></i></span>
+        </span>
+        <p class="section-eyebrow justify-content-center mt-3 mb-1">pedido confirmado</p>
+        <h1 class="section-title mb-2" style="font-size:1.9rem">Obrigada pela sua compra!</h1>
+        <p class="section-sub mb-4">A partir de agora seu laço entra na fila de produção — feito à mão, uma peça de cada vez.</p>
+
+        <!-- O que acontece daqui pra frente: a dúvida nº1 de quem acabou de
+             comprar artesanato sob encomenda é "e agora, quanto tempo?".
+             Responder aqui evita a mensagem no WhatsApp perguntando isso. -->
+        <ol class="thanks-steps">
+          <li class="thanks-step is-done">
+            <span class="thanks-step-icon"><i class="bi bi-check-lg"></i></span>
+            <span><strong>Pagamento confirmado</strong><br>Recebemos tudo certinho.</span>
+          </li>
+          <li class="thanks-step">
+            <span class="thanks-step-icon"><i class="bi bi-scissors"></i></span>
+            <span><strong>Produção artesanal</strong><br>A Adriana corta, costura e finaliza seu laço à mão.</span>
+          </li>
+          <li class="thanks-step">
+            <span class="thanks-step-icon"><i class="bi bi-box-seam"></i></span>
+            <span><strong>Envio com código de rastreio</strong><br>Avisamos por e-mail assim que despachar.</span>
+          </li>
+        </ol>
+
         <div class="d-flex flex-column gap-2">
-          <a href="pedidos.html" class="btn-blush">Ver meus pedidos</a>
+          <a href="pedidos.html" class="btn-blush">Acompanhar meu pedido</a>
           <a href="index.html" class="btn-outline-blush">Continuar comprando</a>
+        </div>
+
+        <div class="share-block" data-share-url="https://adrianameloacessorios.com/">
+          <p class="share-title">Conhece alguém que ia amar?</p>
+          <div class="share-buttons">
+            <button type="button" class="share-btn share-btn-native" hidden aria-label="Compartilhar">
+              <i class="bi bi-share-fill"></i>
+            </button>
+            <a class="share-btn" data-share="whatsapp" href="#" target="_blank" rel="noopener noreferrer" aria-label="Compartilhar no WhatsApp">
+              <i class="bi bi-whatsapp"></i>
+            </a>
+            <a class="share-btn" data-share="facebook" href="#" target="_blank" rel="noopener noreferrer" aria-label="Compartilhar no Facebook">
+              <i class="bi bi-facebook"></i>
+            </a>
+            <a class="share-btn" data-share="pinterest" href="#" target="_blank" rel="noopener noreferrer" aria-label="Compartilhar no Pinterest">
+              <i class="bi bi-pinterest"></i>
+            </a>
+            <button type="button" class="share-btn share-btn-copy" aria-label="Copiar link da loja">
+              <i class="bi bi-link-45deg"></i>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -50,5 +102,6 @@
 <script src="js/vendor/bootstrap.bundle.min.js" defer></script>
 <script src="js/auth.js" defer></script>
 <script src="js/pagamento-retorno.js" defer></script>
+<script src="js/compartilhar.js" defer></script>
 </body>
 </html>

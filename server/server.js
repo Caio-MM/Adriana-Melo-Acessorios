@@ -400,6 +400,10 @@ const PUBLIC_TOP_LEVEL = new Set([
   // aqui eles caem no 404 mesmo existindo em disco. O .ico e o apple-touch
   // são pedidos sozinhos pelo navegador, mesmo sem <link> na página.
   "robots.txt", "sitemap.xml", "favicon.ico", "apple-touch-icon.png",
+  // Descrição da loja em texto para assistentes de IA (ChatGPT, Claude,
+  // Perplexity) — mesmo papel do robots.txt, só que para quem lê o site
+  // para responder perguntas em vez de indexar.
+  "llms.txt",
 ]);
 // Usada tanto pelo bloqueio de allowlist abaixo quanto pelo catch-all no fim
 // do arquivo (depois de express.static e de todas as rotas). Navegação de
@@ -493,16 +497,123 @@ function versaoDoAsset(relativo){
   return versao;
 }
 
+/* =========================================================================
+   DADOS ESTRUTURADOS (JSON-LD) — o que o Google usa para montar o resultado
+   -------------------------------------------------------------------------
+   Sem isto a loja aparece na busca como um link de texto comum. Com isto o
+   Google pode mostrar preço, disponibilidade e os dados da loja direto no
+   resultado, e o site fica elegível a aparecer no Google Shopping/aba
+   Imagens com preço.
+
+   Gerado AQUI, no servidor, e não escrito à mão no index.html, pelo mesmo
+   motivo da versão dos assets logo acima: preço e nome de produto são
+   editáveis pelo painel (effectiveProduct), e marcação com preço diferente
+   do que a página mostra é justamente o que o Google penaliza. Saindo da
+   mesma função que a vitrine e o checkout usam, os três nunca divergem.
+
+   ⚠️ De propósito NÃO emite aggregateRating/review: as avaliações que
+   aparecem no site hoje são texto de exemplo, e publicar nota agregada
+   inventada em dados estruturados é violação das diretrizes do Google
+   (sujeita a ação manual) além de enganar quem compra. Quando houver
+   avaliação real de cliente, aí sim vale acrescentar.
+========================================================================= */
+const SITE_URL = "https://adrianameloacessorios.com";
+
+function dadosEstruturados(){
+  const overridesMap = getProductOverridesMap();
+  const produtos = getAllProductIds().map((id, i) => {
+    const p = effectiveProduct(id, overridesMap);
+    if(!p) return null;
+    const item = {
+      "@type": "Product",
+      name: p.name,
+      category: p.category,
+      brand: { "@type": "Brand", name: "Adriana Melo Acessórios" },
+      offers: {
+        "@type": "Offer",
+        price: p.price.toFixed(2),
+        priceCurrency: "BRL",
+        availability: "https://schema.org/InStock",
+        itemCondition: "https://schema.org/NewCondition",
+        url: `${SITE_URL}/#colecoes`,
+        seller: { "@id": `${SITE_URL}/#loja` },
+      },
+    };
+    // Só entra se existir de verdade: imagem quebrada em dado estruturado
+    // vale menos que dado estruturado sem imagem.
+    if(p.photoUrl){
+      item.image = p.photoUrl.startsWith("http") ? p.photoUrl : `${SITE_URL}/${p.photoUrl.replace(/^\//, "")}`;
+    }
+    return { "@type": "ListItem", position: i + 1, item };
+  }).filter(Boolean);
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Store",
+        "@id": `${SITE_URL}/#loja`,
+        name: "Adriana Melo Acessórios",
+        description: "Ateliê artesanal de laços e presilhas para bebês e crianças. Cada peça é feita à mão, sob encomenda, na cor escolhida pela cliente.",
+        url: SITE_URL,
+        logo: `${SITE_URL}/img/logo-adriana-melo-6e53bc.png`,
+        image: `${SITE_URL}/img/og-adriana-melo-6b333a.jpg`,
+        telephone: "+5561982749808",
+        email: "adrianameloacessorios@gmail.com",
+        taxID: "54.732.065/0001-50",
+        priceRange: "R$ 29 - R$ 90",
+        currenciesAccepted: "BRL",
+        paymentAccepted: "Pix, Cartão de crédito, Boleto",
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: "Brasília",
+          addressRegion: "DF",
+          addressCountry: "BR",
+        },
+        areaServed: { "@type": "Country", name: "Brasil" },
+        sameAs: ["https://www.instagram.com/adriana_melo_acessorios"],
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${SITE_URL}/#site`,
+        url: SITE_URL,
+        name: "Adriana Melo Acessórios",
+        inLanguage: "pt-BR",
+        publisher: { "@id": `${SITE_URL}/#loja` },
+      },
+      {
+        "@type": "ItemList",
+        name: "Coleção de laços artesanais",
+        itemListElement: produtos,
+      },
+    ],
+  };
+}
+
+/* `<` vira < para que um nome de produto com "</script>" (o painel
+   deixa a lojista escrever qualquer texto) não consiga fechar a tag e
+   injetar HTML na página. */
+function blocoDadosEstruturados(){
+  const json = JSON.stringify(dadosEstruturados()).replace(/</g, "\\u003c");
+  return `<script type="application/ld+json">${json}</script>`;
+}
+
 // Pega href/src de css/… e js/… que ainda não tenham query própria.
 const REF_ASSET = /\b(href|src)="((?:css|js)\/[^"?#]+\.(?:css|js))"/g;
+// Marcador no <head> do index.html, trocado pelo JSON-LD na hora de servir.
+const MARCA_JSONLD = "<!--#DADOS-ESTRUTURADOS#-->";
 // O HTML é relido a cada pedido de propósito: são poucos KB que o sistema
 // já mantém em cache, e guardar o resultado exigiria invalidar por página
 // E por asset — complexidade que não se paga no volume desta loja.
 function htmlVersionado(absoluto){
-  return fs.readFileSync(absoluto, "utf8").replace(REF_ASSET, (inteiro, attr, rel) => {
+  const html = fs.readFileSync(absoluto, "utf8").replace(REF_ASSET, (inteiro, attr, rel) => {
     const v = versaoDoAsset(rel);
     return v ? `${attr}="${rel}?v=${v}"` : inteiro;
   });
+  // Só o index.html traz o marcador; nas demais páginas o replace não acha
+  // nada e o custo de gerar o JSON-LD nem é pago.
+  if(!html.includes(MARCA_JSONLD)) return html;
+  return html.replace(MARCA_JSONLD, blocoDadosEstruturados());
 }
 
 app.use((req, res, next) => {
