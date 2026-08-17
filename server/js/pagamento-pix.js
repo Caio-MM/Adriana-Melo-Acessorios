@@ -51,8 +51,9 @@
     qrImg.src = `data:image/png;base64,${dados.qrCodeBase64}`;
   }else{
     // Sem a imagem ainda dá para pagar pelo copia-e-cola — não vale
-    // travar a tela por causa dela.
-    qrImg.remove();
+    // travar a tela por causa dela. Remove a moldura inteira (não só a
+    // imagem) para não sobrar um quadro vazio.
+    document.getElementById("pixQrFrame").remove();
   }
 
   if(dados.expiresAt){

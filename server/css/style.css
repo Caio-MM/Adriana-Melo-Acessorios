@@ -945,13 +945,29 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .pix-amount{
   font-size:1.6rem; font-weight:700; color:var(--blush-700); margin:0 0 1rem;
 }
-.pix-qr{
-  display:block; margin:0 auto; width:220px; height:220px;
-  border:1px solid #EFEAEC; border-radius:14px; padding:.5rem; background:#fff;
+/* Moldura em blush ao redor do QR — antes era só a imagem branca sobre o
+   card branco, com uma borda cinza de 1px quase invisível separando os
+   dois; a moldura dá ao QR um "módulo" próprio e reforça que é o elemento
+   principal da tela (o que a cliente aponta a câmera para). */
+.pix-qr-frame{
+  display:inline-block; margin:0 auto; padding:1rem;
+  background:var(--blush-50); border:1px solid var(--blush-100);
+  border-radius:var(--radius-md);
 }
+.pix-qr{
+  display:block; width:220px; height:220px;
+  border-radius:10px; background:#fff; padding:.5rem;
+}
+/* Divisor com linhas dos dois lados — deixa explícito que "escanear" e
+   "copiar o código" são dois caminhos alternativos para a mesma coisa,
+   em vez de mais um texto solto entre o QR e o campo. */
 .pix-or{
-  margin:1.1rem 0 .5rem; font-size:.78rem; color:var(--ink-soft);
+  display:flex; align-items:center; gap:.75rem;
+  margin:1.4rem 0 .85rem; font-size:.72rem; color:var(--ink-soft);
   text-transform:uppercase; letter-spacing:.06em;
+}
+.pix-or::before, .pix-or::after{
+  content:""; flex:1 1 auto; height:1px; background:var(--blush-150);
 }
 .pix-copy-row{ display:flex; gap:.5rem; align-items:stretch; }
 .pix-copy-row .form-control{
@@ -961,9 +977,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   flex:0 0 104px; padding:.45rem 0; font-size:.82rem;
   display:flex; align-items:center; justify-content:center; gap:.3rem;
 }
+/* Pílula em vez de texto solto: é o estado que a cliente fica olhando
+   por mais tempo (esperando o banco confirmar), então merece um pouco
+   mais de presença — mesmo tratamento de "aviso" já usado em
+   .cart-login-notice, só que centralizado e em formato de pílula. */
 .pix-status{
-  display:flex; align-items:center; justify-content:center; gap:.45rem; flex-wrap:wrap;
-  margin:1.2rem 0 0; font-size:.85rem; color:var(--ink-soft);
+  display:inline-flex; align-items:center; justify-content:center; gap:.5rem; flex-wrap:wrap;
+  margin:1.4rem auto 0; padding:.55rem 1.1rem;
+  background:var(--blush-50); border-radius:999px;
+  font-size:.85rem; color:var(--ink-soft);
 }
 .pix-spinner{
   width:14px; height:14px; flex-shrink:0; border-radius:50%;
