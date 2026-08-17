@@ -341,8 +341,14 @@ app.use(rateLimit({ windowMs: 60 * 1000, max: 300 }));
 // acima): 100 requisições / 15 min por IP.
 app.use("/api", rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 
-// Limite mais rígido para rotas sensíveis (evita spam/força bruta)
-const strictLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
+// Limite mais rígido para rotas sensíveis (evita spam/força bruta). Essas
+// rotas dividem o mesmo balde: calcular frete, validar cupom e criar o
+// pagamento (Pix/cartão/boleto), então uma cliente indecisa — corrige o
+// CEP, testa dois cupons, tenta pagar de novo porque a conexão travou —
+// facilmente soma 8-10 chamadas numa única compra. Era 20 antes e já
+// estourou em uso manual normal (bem menos que um ataque de verdade), por
+// isso a folga maior aqui.
+const strictLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60 });
 
 // Limite ainda mais rígido para login/cadastro — dificulta força bruta de
 // senha e criação em massa de contas.
