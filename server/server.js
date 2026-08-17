@@ -328,21 +328,29 @@ function verifyOrigin(req, res, next){
 }
 app.use("/api", verifyOrigin);
 
-// Limite amplo para TODO o site, incluindo arquivos estáticos — de propósito
-// bem mais folgado que os de baixo: não é para conter uso normal (carregar
-// várias páginas rápido não chega perto disso), é para conter flood — um
-// script batendo a mesma URL sem pausa. Foi assim que apareceu em produção:
-// curl em loop em /index.html, milhares de vezes numa janela de poucas
-// horas, vindo sempre do mesmo IP — e arquivos estáticos não tinham limite
-// nenhum até aqui.
-app.use(rateLimit({ windowMs: 60 * 1000, max: 300, handler: sendTooManyRequests }));
+// Limite amplo para TODO o site — de propósito bem mais folgado que os de
+// baixo: não é para conter uso normal (nenhuma visita real chega perto
+// disso), é só para conter flood de verdade — um script batendo a mesma
+// URL sem pausa. Foi assim que apareceu em produção: curl em loop em
+// /index.html, milhares de vezes numa janela de poucas horas, vindo sempre
+// do mesmo IP. CSS/JS/imagens ficam de fora: são o que a PRÓPRIA página de
+// erro 429 precisa para renderizar com a marca — sem essa exceção, uma
+// cliente bloqueada via também bloqueava o motivo de a tela de erro
+// aparecer sem estilo nenhum (só texto preto). O alvo real do flood daquele
+// incidente foi sempre a página HTML, nunca os arquivos estáticos.
+app.use(rateLimit({
+  windowMs: 60 * 1000, max: 1200, handler: sendTooManyRequests,
+  skip: (req) => ["css", "js", "img"].includes(req.path.split("/").filter(Boolean)[0]),
+}));
 
-// Limite geral, só para a API (arquivos estáticos já têm o limite amplo
-// acima): 100 requisições / 15 min por IP. A consulta de status do Pix fica
-// de fora: ela sozinha já passa desse total num único pagamento (ver
+// Limite geral, só para a API (arquivos estáticos têm o limite amplo acima,
+// ou ficam de fora dele): 500 requisições / 15 min por IP — bem acima do
+// que uma sessão de compra real gera (catálogo, carrinho, frete, etc.), só
+// para conter abuso automatizado. A consulta de status do Pix fica de fora:
+// ela sozinha já passa desse total num único pagamento (ver
 // statusPollLimiter, mais abaixo) e tem seu próprio limite, maior.
 app.use("/api", rateLimit({
-  windowMs: 15 * 60 * 1000, max: 100, handler: sendTooManyRequests,
+  windowMs: 15 * 60 * 1000, max: 500, handler: sendTooManyRequests,
   skip: (req) => req.path.startsWith("/orders/") && req.path.endsWith("/status"),
 }));
 
@@ -353,10 +361,13 @@ app.use("/api", rateLimit({
 // facilmente soma 8-10 chamadas numa única compra. Era 20 antes e já
 // estourou em uso manual normal (bem menos que um ataque de verdade), por
 // isso a folga maior aqui.
-const strictLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60, handler: sendTooManyRequests });
+const strictLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, handler: sendTooManyRequests });
 
 // Limite ainda mais rígido para login/cadastro — dificulta força bruta de
-// senha e criação em massa de contas.
+// senha e criação em massa de contas. Não segue a mesma folga dos outros
+// limites de propósito: é o único que existe para conter um ataque contra
+// UMA conta específica (adivinhar senha), não uso legítimo em excesso —
+// afrouxar este enfraqueceria a proteção real que ele oferece.
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, handler: sendTooManyRequests });
 
 // Limite próprio para a consulta de status do Pix: a página fica perguntando
@@ -364,7 +375,7 @@ const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, handler: send
 // o que sozinho já passa de 200 chamadas — muito mais do que o limite geral
 // da API permite. Sem um balde separado, uma cliente que demora para pagar
 // esbarraria no limite geral e o status parava de atualizar em silêncio.
-const statusPollLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, handler: sendTooManyRequests });
+const statusPollLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 500, handler: sendTooManyRequests });
 
 /* =========================================================================
    ARQUIVOS ESTÁTICOS DO SITE
