@@ -665,18 +665,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 #contactForm .form-select:focus{
   border-color:var(--blush-500); background:var(--white); box-shadow:none;
 }
-/* Ícone dentro do campo (Nome/WhatsApp) — mesma técnica do olho de
-   mostrar senha em conta.html: ícone posicionado absoluto, input com
-   padding-left liberando o espaço. .invalid-feedback fica DENTRO deste
-   wrapper (irmão direto do input, não do wrapper) de propósito: é o que o
-   CSS nativo do Bootstrap (.form-control:invalid ~ .invalid-feedback)
-   precisa para continuar funcionando depois de embrulhar o input. */
-.contact-field-icon{ position:relative; }
+/* Ícone dentro do campo (Nome/WhatsApp). .invalid-feedback fica DENTRO
+   deste wrapper (irmão direto do input, não do wrapper) de propósito: é o
+   que o CSS nativo do Bootstrap (.form-control:invalid ~ .invalid-feedback)
+   precisa para continuar funcionando depois de embrulhar o input.
+   Ícone e input ficam empilhados na mesma célula de grid (linha 1) e a
+   mensagem de erro numa segunda linha — assim o ícone centraliza pela
+   altura do input sozinho, sem ser puxado para baixo quando o erro aparece
+   abaixo dele (top:50% sobre a altura do wrapper inteiro fazia isso). */
+.contact-field-icon{ position:relative; display:grid; }
 .contact-field-icon > i{
-  position:absolute; left:.95rem; top:50%; transform:translateY(-50%);
-  color:var(--blush-400); font-size:.95rem; pointer-events:none;
+  grid-row:1; grid-column:1; align-self:center; justify-self:start; margin-left:.95rem;
+  color:var(--blush-500); font-size:.95rem; pointer-events:none;
 }
-.contact-field-icon .form-control{ padding-left:2.6rem; }
+.contact-field-icon .form-control{ grid-row:1; grid-column:1; padding-left:2.6rem; }
+.contact-field-icon .invalid-feedback{ grid-row:2; grid-column:1; }
 /* Cada linha de contato (WhatsApp/E-mail/Ateliê) ganha um respiro maior
    e o círculo de ícone cresce um pouco e reage ao hover — mesmo padrão
    de .social-circle:hover já usado no rodapé, só que sobre fundo claro. */
