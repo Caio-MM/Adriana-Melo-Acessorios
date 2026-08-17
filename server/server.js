@@ -328,8 +328,17 @@ function verifyOrigin(req, res, next){
 }
 app.use("/api", verifyOrigin);
 
-// Limite geral, só para a API (arquivos estáticos não devem esbarrar nisso):
-// 100 requisições / 15 min por IP.
+// Limite amplo para TODO o site, incluindo arquivos estáticos — de propósito
+// bem mais folgado que os de baixo: não é para conter uso normal (carregar
+// várias páginas rápido não chega perto disso), é para conter flood — um
+// script batendo a mesma URL sem pausa. Foi assim que apareceu em produção:
+// curl em loop em /index.html, milhares de vezes numa janela de poucas
+// horas, vindo sempre do mesmo IP — e arquivos estáticos não tinham limite
+// nenhum até aqui.
+app.use(rateLimit({ windowMs: 60 * 1000, max: 300 }));
+
+// Limite geral, só para a API (arquivos estáticos já têm o limite amplo
+// acima): 100 requisições / 15 min por IP.
 app.use("/api", rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 
 // Limite mais rígido para rotas sensíveis (evita spam/força bruta)
