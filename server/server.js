@@ -459,6 +459,13 @@ app.use((req, res, next) => {
    mudança = pode cachear por muito tempo sem risco, e é o que segura a
    nota de velocidade no PageSpeed. */
 const REVALIDATE_ALWAYS = /\.(html|css|js)$/i;
+// favicon.ico e apple-touch-icon.png entram à parte (não via extensão,
+// que pegaria toda foto .png do site): navegadores — o Safari em
+// particular — buscam /favicon.ico direto na raiz por convenção, sem
+// passar pelo <link> do HTML, então ignoram a query de versão (?v=) que
+// protege CSS/JS/ícone linkado. Sem revalidar, quem visitou antes de uma
+// troca de ícone fica com o antigo por até 365 dias (o maxAge abaixo).
+const ICONES_RAIZ = new Set(["favicon.ico", "apple-touch-icon.png"]);
 
 /* Versão no endereço do CSS/JS — o que impede HTML novo com estilo antigo
    -------------------------------------------------------------------------
@@ -598,8 +605,14 @@ function blocoDadosEstruturados(){
   return `<script type="application/ld+json">${json}</script>`;
 }
 
-// Pega href/src de css/… e js/… que ainda não tenham query própria.
-const REF_ASSET = /\b(href|src)="((?:css|js)\/[^"?#]+\.(?:css|js))"/g;
+// Pega href/src de css/… e js/… que ainda não tenham query própria, e
+// também favicon.ico/apple-touch-icon.png na raiz — esses dois ficam em
+// cache de 365 dias (setHeaders mais abaixo, maxAge padrão do
+// express.static) sem o "no-cache" que .html/.css/.js têm via
+// REVALIDATE_ALWAYS, então são os que mais precisam do endereço mudar
+// quando o arquivo muda — sem isso, quem visitou antes de uma troca de
+// ícone fica com o antigo por até um ano.
+const REF_ASSET = /\b(href|src)="((?:css|js)\/[^"?#]+\.(?:css|js)|favicon\.ico|apple-touch-icon\.png)"/g;
 // Marcador no <head> do index.html, trocado pelo JSON-LD na hora de servir.
 const MARCA_JSONLD = "<!--#DADOS-ESTRUTURADOS#-->";
 // O HTML é relido a cada pedido de propósito: são poucos KB que o sistema
@@ -638,7 +651,7 @@ app.use(express.static(SITE_ROOT, {
   dotfiles: "ignore",
   maxAge: "365d",
   setHeaders(res, filePath){
-    if(REVALIDATE_ALWAYS.test(filePath)){
+    if(REVALIDATE_ALWAYS.test(filePath) || ICONES_RAIZ.has(path.basename(filePath))){
       res.setHeader("Cache-Control", "no-cache");
     }
   },
