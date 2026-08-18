@@ -526,14 +526,38 @@ function versaoDoAsset(relativo){
 ========================================================================= */
 const SITE_URL = "https://adrianameloacessorios.com";
 
+// Política de troca real da loja (ver politica.html, seção "arrependimento"):
+// 7 dias corridos, reembolso integral incluindo o frete, sem justificativa
+// — direito garantido pelo art. 49 do CDC para compra fora de loja física,
+// que por lei corre por conta da loja (aqui, "FreeReturn"). Um objeto só,
+// referenciado por @id em cada oferta, para não repetir o mesmo bloco nas
+// 8 ofertas.
+const POLITICA_TROCA_ID = `${SITE_URL}/politica.html#arrependimento`;
+const politicaTroca = {
+  "@type": "MerchantReturnPolicy",
+  "@id": POLITICA_TROCA_ID,
+  applicableCountry: "BR",
+  returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+  merchantReturnDays: 7,
+  returnMethod: "https://schema.org/ReturnByMail",
+  returnFees: "https://schema.org/FreeReturn",
+};
+
 function dadosEstruturados(){
   const overridesMap = getProductOverridesMap();
+  const rotuloCategoria = new Map(getAllCategories().map(c => [c.slug, c.label]));
   const produtos = getAllProductIds().map((id, i) => {
     const p = effectiveProduct(id, overridesMap);
     if(!p) return null;
+    const categoria = rotuloCategoria.get(p.category) || p.category;
     const item = {
       "@type": "Product",
       name: p.name,
+      // Gerada a partir do que já se sabe do produto (nome + categoria) —
+      // não é copy inventada, só não existe campo de descrição própria por
+      // produto hoje (nem no painel). O Google marca a ausência disto como
+      // "optional" mas soma pontos de qualidade quando existe.
+      description: `${p.name} — laço artesanal feito à mão pela Adriana Melo Acessórios, ideal para ${categoria.toLowerCase()}.`,
       category: p.category,
       brand: { "@type": "Brand", name: "Adriana Melo Acessórios" },
       offers: {
@@ -544,6 +568,7 @@ function dadosEstruturados(){
         itemCondition: "https://schema.org/NewCondition",
         url: `${SITE_URL}/#colecoes`,
         seller: { "@id": `${SITE_URL}/#loja` },
+        hasMerchantReturnPolicy: { "@id": POLITICA_TROCA_ID },
       },
     };
     // Só entra se existir de verdade: imagem quebrada em dado estruturado
@@ -593,6 +618,7 @@ function dadosEstruturados(){
         name: "Coleção de laços artesanais",
         itemListElement: produtos,
       },
+      politicaTroca,
     ],
   };
 }
