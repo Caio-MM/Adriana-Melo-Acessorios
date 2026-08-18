@@ -29,7 +29,16 @@
  * =============================================================================
  */
 const nodemailer = require("nodemailer");
+const path = require("path");
 const { colorLabelFor, formatCurrency, formatOrderDateTime, deliveryLineFor } = require("./orderFormatting");
+
+// Logo embutida como anexo inline (Content-ID) em vez de <img src> apontando
+// pra URL remota: e-mail nenhum carrega imagem remota sozinho — todo cliente
+// (Gmail, Outlook...) esconde a imagem até a pessoa clicar em "exibir
+// imagens", e a logo é a primeira coisa que aparece no e-mail, então não dá
+// pra depender desse clique. CID sempre renderiza de cara, sem esse aviso.
+const LOGO_CID = "logo-adriana-melo";
+const LOGO_PATH = path.join(__dirname, "..", "img", "logo-adriana-melo-6e53bc.png");
 
 function escapeHTML(str) {
   return String(str).replace(/[&<>"']/g, ch => ({
@@ -88,7 +97,7 @@ function emailShell({ titulo, preheader, eyebrow, tituloCartao, corpoHtml }) {
           <!-- Cabeçalho: logo sobre o rosa mais claro, mesmo tom do topo da home -->
           <tr>
             <td align="center" style="background:#FBDCE8; border-radius:24px 24px 0 0; padding:28px 24px 22px;">
-              <img src="https://adrianameloacessorios.com/img/logo-adriana-melo-6e53bc.png" alt="Adriana Melo Acessórios" width="150" style="display:block; border:0;">
+              <img src="cid:${LOGO_CID}" alt="Adriana Melo Acessórios" width="150" style="display:block; border:0;">
             </td>
           </tr>
 
@@ -260,6 +269,12 @@ async function sendEmail({ to, subject, text, html, headers }) {
     text,
     html,
     headers,
+    // Todos os 4 e-mails usam o mesmo molde (emailShell) com a logo no
+    // cabeçalho, referenciada como cid:LOGO_CID no HTML — por isso o anexo
+    // entra aqui, incondicional, em vez de cada função de e-mail repetir.
+    attachments: [
+      { filename: "adriana-melo-acessorios.png", path: LOGO_PATH, cid: LOGO_CID },
+    ],
   });
 }
 
