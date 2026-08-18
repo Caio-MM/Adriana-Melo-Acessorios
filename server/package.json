@@ -8,8 +8,8 @@
     "node": ">=22.5.0"
   },
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
