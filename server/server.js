@@ -316,10 +316,17 @@ app.use(auth.attachUser);                   // preenche req.user (ou null) a par
    um navegador — nunca terá `Origin`, então fica de fora desta checagem
    (a segurança dele vem de outro lugar: sempre confirmar o pagamento
    consultando a API do Mercado Pago pelo ID, nunca só pelo payload recebido).
+   Mesma exceção para /api/newsletter/unsubscribe: o POST de "cancelamento
+   de um clique" (RFC 8058) é feito pelo servidor do Gmail/Yahoo direto,
+   não por um navegador — também nunca terá `Origin`. A segurança dele vem
+   do token aleatório de 48 caracteres na própria URL, não de sessão/cookie
+   (é a mesma lógica de segurança do link de redefinição de senha, que já
+   escapa desta checagem por ser GET).
 ========================================================================= */
 function verifyOrigin(req, res, next){
   if(["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
   if(req.path === "/webhook") return next();
+  if(req.path === "/newsletter/unsubscribe") return next();
   const origin = req.headers.origin;
   if(!origin || origin !== CLIENT_ORIGIN){
     return res.status(403).json({ error: "Requisição recusada (origem não confiável)." });
@@ -1559,11 +1566,14 @@ app.post("/api/newsletter", strictLimiter, async (req, res) => {
   // não o único caminho.
   let emailed = false;
   try {
+    const unsubscribeToken = db.getOrCreateUnsubscribeToken(emailAddress);
+    const unsubscribeUrl = `${CLIENT_ORIGIN}/api/newsletter/unsubscribe?email=${encodeURIComponent(emailAddress)}&token=${unsubscribeToken}`;
     await email.sendWelcomeCouponEmail({
       to: emailAddress,
       couponCode: coupon.code,
       percentOff: coupon.percent_off,
       shopUrl: `${CLIENT_ORIGIN}/index.html#colecoes`,
+      unsubscribeUrl,
     });
     emailed = true;
   } catch (err) {
@@ -1572,6 +1582,38 @@ app.post("/api/newsletter", strictLimiter, async (req, res) => {
 
   res.json({ ok: true, coupon: coupon.code, percentOff: coupon.percent_off, emailed });
 });
+
+// Link de descadastro do e-mail do cupom de boas-vindas (List-Unsubscribe).
+// GET é o clique manual no rodapé do e-mail; POST é o "cancelamento de um
+// clique" que Gmail/Yahoo fazem sozinhos, sem abrir página nenhuma, quando
+// veem o header List-Unsubscribe-Post — por isso as duas rotas fazem
+// exatamente a mesma coisa e nenhuma delas exige confirmação extra.
+function handleNewsletterUnsubscribe(req, res) {
+  const emailAddress = auth.normalizeEmail(req.query.email || req.body?.email || "");
+  const token = req.query.token || req.body?.token || "";
+  const ok = emailAddress && token && db.unsubscribeNewsletter(emailAddress, token);
+  res.set("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Descadastro — Adriana Melo Acessórios</title></head>
+<body style="margin:0; padding:0; background:#FFFDFC; font-family:'Segoe UI', Helvetica, Arial, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFDFC;"><tr><td align="center" style="padding:64px 16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:420px; background:#FFFFFF; border-radius:24px; padding:36px 32px; text-align:center;">
+      <tr><td style="font-size:26px; padding-bottom:10px;">${ok ? "🎀" : "⚠️"}</td></tr>
+      <tr><td style="color:#54293C; font-size:18px; font-weight:bold; padding-bottom:8px;">
+        ${ok ? "Descadastro concluído" : "Não foi possível descadastrar"}
+      </td></tr>
+      <tr><td style="color:#8C6577; font-size:14px; line-height:1.6;">
+        ${ok
+          ? "Você não vai mais receber e-mails promocionais da Adriana Melo Acessórios. Pedidos e redefinições de senha continuam chegando normalmente, se você tiver conta."
+          : "O link parece inválido ou já foi usado. Se precisar de ajuda, fale pelo WhatsApp."}
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`);
+}
+app.get("/api/newsletter/unsubscribe", handleNewsletterUnsubscribe);
+app.post("/api/newsletter/unsubscribe", handleNewsletterUnsubscribe);
 
 app.post("/api/contact", strictLimiter, async (req, res) => {
   const nome = (req.body?.nome || "").trim().slice(0, 120);

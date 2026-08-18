@@ -12,6 +12,7 @@
  */
 const { DatabaseSync } = require("node:sqlite");
 const path = require("path");
+const crypto = require("crypto");
 
 // ".." porque este arquivo mora em server/lib/ e o banco fica na raiz da
 // aplicação (server/), ao lado do server.js — é lá que o data.db já existe
@@ -217,6 +218,13 @@ ensureColumn("coupons", "once_per_customer", "INTEGER NOT NULL DEFAULT 0");
 // e o endereço no carrinho. Fica nulo para quem criou conta antes disso
 // existir — o carrinho simplesmente não pré-preenche nesse caso.
 ensureColumn("users", "cep", "TEXT");
+// Descadastro da newsletter: token aleatório (mesmo padrão de sessions/
+// password_resets) para o link do e-mail funcionar sem exigir login, e
+// unsubscribed_at para parar de contar essa inscritа em qualquer envio
+// futuro (hoje só o cupom de boas-vindas é enviado, mas a coluna já existe
+// para quando houver um segundo envio para a lista).
+ensureColumn("newsletter_subscribers", "unsubscribe_token", "TEXT");
+ensureColumn("newsletter_subscribers", "unsubscribed_at", "INTEGER");
 
 // Garante que o cupom que já existia fixo no código (BEMVINDA10) continua
 // funcionando depois da migração pra banco — só insere se a tabela
@@ -536,6 +544,39 @@ function listNewsletterSubscribers() {
   return stmtListSubscribers.all();
 }
 
+// Gera (ou reaproveita) o token de descadastro de uma inscrita, para colocar
+// no link "List-Unsubscribe" do e-mail. Preso ao e-mail em vez de à data de
+// inscrição — assim continua válido mesmo que o e-mail seja enviado de novo.
+const stmtGetSubscriberToken = db.prepare(
+  `SELECT unsubscribe_token FROM newsletter_subscribers WHERE email = ?`
+);
+const stmtSetSubscriberToken = db.prepare(
+  `UPDATE newsletter_subscribers SET unsubscribe_token = ? WHERE email = ?`
+);
+function getOrCreateUnsubscribeToken(email) {
+  const existing = stmtGetSubscriberToken.get(email)?.unsubscribe_token;
+  if (existing) return existing;
+  const token = crypto.randomBytes(24).toString("hex");
+  stmtSetSubscriberToken.run(token, email);
+  return token;
+}
+
+// Confere o token do link/POST de descadastro e marca unsubscribed_at.
+// Comparação em tempo constante (mesmo padrão de auth.js) — não é um dado
+// sigiloso como senha, mas evita que alguém descubra o token por tentativa.
+const stmtMarkUnsubscribed = db.prepare(
+  `UPDATE newsletter_subscribers SET unsubscribed_at = ? WHERE email = ?`
+);
+function unsubscribeNewsletter(email, token) {
+  const stored = stmtGetSubscriberToken.get(email)?.unsubscribe_token;
+  if (!stored || !token) return false;
+  const a = Buffer.from(stored);
+  const b = Buffer.from(String(token));
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
+  stmtMarkUnsubscribed.run(Date.now(), email);
+  return true;
+}
+
 /* ---------------------- CONTATOS ---------------------- */
 const stmtInsertContactMessage = db.prepare(
   `INSERT INTO contact_messages (nome, telefone, ocasiao, mensagem, created_at)
@@ -618,6 +659,8 @@ module.exports = {
   insertCustomCategory,
   addNewsletterSubscriber,
   listNewsletterSubscribers,
+  getOrCreateUnsubscribeToken,
+  unsubscribeNewsletter,
   createContactMessage,
   listContactMessages,
   getContactMessage,

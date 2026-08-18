@@ -240,7 +240,7 @@ function formatOrderEmail({ externalReference, items, address, total, paidAt, ad
  * estiverem configuradas ou se o envio falhar — quem chama decide o que
  * fazer com isso (server.js sempre envolve em try/catch).
  */
-async function sendEmail({ to, subject, text, html }) {
+async function sendEmail({ to, subject, text, html, headers }) {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
   if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
     throw new Error("SMTP não configurado (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS ausentes no .env).");
@@ -259,6 +259,7 @@ async function sendEmail({ to, subject, text, html }) {
     subject,
     text,
     html,
+    headers,
   });
 }
 
@@ -327,7 +328,7 @@ async function sendPasswordResetEmail({ to, name, resetUrl, expiresInMinutes }) 
  * Propaga erro — quem chama (server.js) trata como melhor esforço, porque a
  * inscrição em si já foi gravada e o código também volta na resposta HTTP.
  */
-async function sendWelcomeCouponEmail({ to, couponCode, percentOff, shopUrl }) {
+async function sendWelcomeCouponEmail({ to, couponCode, percentOff, shopUrl, unsubscribeUrl }) {
   const subject = `🎀 Seu cupom de ${percentOff}% — Adriana Melo Acessórios`;
 
   const text = [
@@ -342,6 +343,7 @@ async function sendWelcomeCouponEmail({ to, couponCode, percentOff, shopUrl }) {
     "",
     "Adriana Melo Acessórios — ateliê artesanal de laços, Brasília/DF",
     "adrianameloacessorios@gmail.com",
+    ...(unsubscribeUrl ? ["", `Não quer mais receber estes e-mails? ${unsubscribeUrl}`] : []),
   ].join("\n");
 
   const html = emailShell({
@@ -378,10 +380,30 @@ async function sendWelcomeCouponEmail({ to, couponCode, percentOff, shopUrl }) {
       </tr>
 
       ${botaoEmail(shopUrl, "Ver a coleção")}
+      ${unsubscribeUrl ? `
+      <tr>
+        <td align="center" style="font-family:${FONT_CORPO}; color:#B79AA9; font-size:11px; line-height:1.6; padding-top:18px;">
+          <a href="${escapeHTML(unsubscribeUrl)}" style="color:#B79AA9; text-decoration:underline;">Não quero mais receber estes e-mails</a>
+        </td>
+      </tr>
+      ` : ""}
     `,
   });
 
-  await sendEmail({ to, subject, text, html });
+  // List-Unsubscribe: sinal de e-mail legítimo/não-spam para os filtros dos
+  // provedores (Gmail, Outlook...) — só faz sentido aqui, o único dos 4
+  // e-mails do site que é promocional (os outros 3 são transacionais:
+  // pedido pago, redefinição de senha, contato — cancelar "inscrição"
+  // deles não faz sentido). O mailto é o reforço que funciona mesmo sem
+  // JS/rede no cliente de e-mail; a URL é o link clicável e também o que
+  // permite o "cancelar inscrição" de um clique do Gmail/Yahoo (RFC 8058),
+  // por isso List-Unsubscribe-Post só é declarado quando há URL.
+  const headers = unsubscribeUrl ? {
+    "List-Unsubscribe": `<mailto:${process.env.SMTP_USER}?subject=descadastrar>, <${unsubscribeUrl}>`,
+    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+  } : undefined;
+
+  await sendEmail({ to, subject, text, html, headers });
 }
 
 /**
