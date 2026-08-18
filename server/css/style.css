@@ -45,6 +45,28 @@
   --radius-lg:28px;
   --radius-md:18px;
   --shadow-soft: 0 20px 45px -20px rgba(192,84,128,0.35);
+
+  /* Camada de tokens genéricos (semânticos), por cima dos tokens de marca
+     acima — usados por componentes menores/isolados (ex.: .coupon-toast)
+     que preferem nomes por PAPEL ("cor primária") a nomes por VALOR
+     ("blush-600"). São só apelidos via var(): a cor/fonte/raio de verdade
+     continua definida uma vez só, lá em cima — mudar --blush-600 muda os
+     dois. Não recriar um valor aqui que já exista acima. */
+  --color-primary: var(--blush-600);
+  --color-primary-dark: var(--blush-700);
+  --color-text-dark: var(--ink);
+  --color-text-light: var(--ink-soft);
+  --color-background: var(--white);
+  --color-danger: #B3261E;
+  --font-family: var(--font-body);
+  --font-size-small: .78rem;
+  --font-size-body: .92rem;
+  --spacing-xs: .4rem;
+  --spacing-sm: .75rem;
+  --spacing-md: 1.25rem;
+  --border-radius: var(--radius-md);
+  --shadow-sm: 0 8px 24px -12px rgba(84,41,60,.3);
+  --transition-speed: .25s;
 }
  
 *{ box-sizing:border-box; }
@@ -588,17 +610,45 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .historia-frame .bow-icon{ color:var(--blush-300); }
 
-/* ============ PROCESS ============ */
+/* ============ PROCESS ============
+   Círculo com ícone (o que a cliente reconhece de longe) + selo do número
+   sobreposto no canto (mesmo recurso do selo de check na página de
+   obrigado — .thanks-mark-badge) em vez do número sozinho dentro do
+   círculo: com ícone, o número precisava de um lugar próprio para não
+   competir por espaço/atenção. */
 .process-wrap{ position:relative; }
-.process-step{ text-align:center; padding:0 1rem; }
-.process-num{
-  width:64px; height:64px; border-radius:50%; background:var(--white); border:1.5px solid var(--blush-200);
-  display:flex; align-items:center; justify-content:center; margin:0 auto 1.1rem;
-  font-family:var(--font-display); font-weight:600; font-size:1.3rem; color:var(--blush-700);
-  box-shadow:0 10px 25px -15px rgba(192,84,128,.4);
+.process-step{ text-align:center; padding:0 1.1rem; }
+.process-icon-wrap{
+  position:relative; width:92px; height:92px; margin:0 auto 1.3rem;
 }
+.process-icon{
+  width:100%; height:100%; border-radius:50%;
+  background:linear-gradient(135deg, var(--blush-500), var(--blush-700));
+  display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:2.1rem;
+  box-shadow:0 14px 30px -14px rgba(192,84,128,.55);
+  transition:transform .3s ease, box-shadow .3s ease;
+}
+/* Hover no passo inteiro (não só no ícone): a área de toque/mira é maior,
+   então não precisa acertar o círculo exato para o efeito reagir. */
+.process-step:hover .process-icon{
+  transform:translateY(-6px) scale(1.04);
+  box-shadow:0 20px 40px -14px rgba(192,84,128,.65);
+}
+.process-num{
+  position:absolute; top:-2px; right:-2px;
+  width:34px; height:34px; border-radius:50%;
+  background:var(--white); border:2px solid var(--blush-200);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:700; font-size:1rem; color:var(--blush-700);
+  box-shadow:0 6px 14px -6px rgba(0,0,0,.2);
+  transition:border-color .3s ease, color .3s ease;
+}
+.process-step:hover .process-num{ border-color:var(--blush-500); color:var(--blush-600); }
+.process-step h3{ transition:color .25s ease; }
+.process-step:hover h3{ color:var(--blush-700); }
 .process-line{
-  position:absolute; top:32px; left:16%; right:16%; height:2px;
+  position:absolute; top:44px; left:16%; right:16%; height:2px;
   width:auto; max-width:none; padding:0; margin-top:0;
   background-image:linear-gradient(to right, var(--blush-300) 60%, transparent 0%);
   background-size:14px 2px; background-repeat:repeat-x; z-index:0;
@@ -708,11 +758,36 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   background:linear-gradient(135deg, var(--blush-600), var(--blush-700));
   border-radius:var(--radius-lg); color:#fff; padding:3rem;
   position:relative; overflow:hidden;
+  box-shadow:0 24px 50px -24px rgba(150,60,95,.55);
 }
 .plc-cta .bow-icon{ position:absolute; opacity:.15; }
-.plc-cta input.form-control{
-  border-radius:999px; border:none; padding:.8rem 1.2rem;
+/* Selo "oferta de boas-vindas" acima do título — mesmo desenho do
+   .pix-badge (pílula translúcida), só que sobre fundo escuro em vez de
+   claro. Dá ao bloco um ponto de entrada visual antes do título, que sem
+   isso era a primeira e única coisa a chamar atenção. */
+.plc-cta-badge{
+  display:inline-flex; align-items:center; gap:.4rem;
+  background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25);
+  color:#fff; padding:.35rem .85rem; border-radius:999px;
+  font-size:.72rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  margin-bottom:.9rem;
 }
+/* Texto de apoio: var(--blush-100) direto sobre este gradiente dava
+   contraste ~2.6–3.7:1 (abaixo do mínimo de 4.5:1 do WCAG AA para texto
+   normal) — rosa claro sobre rosa médio, cores próximas demais em matiz e
+   luminosidade. Branco quase opaco + uma sombra sutil resolve sem trocar
+   a paleta da marca. */
+.plc-cta-sub{ color:rgba(255,255,255,.92); text-shadow:0 1px 2px rgba(0,0,0,.15); }
+.plc-cta-field{ position:relative; flex:1 1 auto; min-width:0; }
+.plc-cta-field > i{
+  position:absolute; left:1.15rem; top:50%; transform:translateY(-50%);
+  color:var(--blush-600); font-size:.95rem; pointer-events:none;
+}
+.plc-cta input.form-control{
+  border-radius:999px; border:none; padding:.8rem 1.2rem .8rem 2.7rem;
+  width:100%; transition:box-shadow .2s ease;
+}
+.plc-cta input.form-control:focus{ box-shadow:0 0 0 3px rgba(255,255,255,.5); }
 /* Código do cupom devolvido pela inscrição — precisa saltar aos olhos, é o
    que a cliente vai copiar para o carrinho. */
 .newsletter-coupon{
@@ -721,8 +796,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border-radius:8px; padding:.1rem .5rem; margin:0 .1rem;
   color:#fff; font-weight:700; letter-spacing:.08em;
 }
-.plc-cta .btn-blush{ background:var(--ink); border-color:var(--ink); }
-.plc-cta .btn-blush:hover{ background:#3d1e2c; }
+.plc-cta .btn-blush{
+  background:var(--ink); border-color:var(--ink);
+  transition:background .25s ease, transform .2s ease, box-shadow .25s ease;
+}
+.plc-cta .btn-blush:hover{
+  background:#3d1e2c; transform:translateY(-2px);
+  box-shadow:0 12px 24px -10px rgba(0,0,0,.45);
+}
+.plc-cta .btn-blush:active{ transform:translateY(0); box-shadow:none; }
  
 /* ============ FOOTER ============ */
 /* Rodapé compacto: menos respiro vertical que a v. anterior (4rem→2.75rem
@@ -1132,8 +1214,136 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .fab:hover{ background:var(--blush-700); color:#fff; }
 .fab-top{ right:24px; bottom:92px; width:44px; height:44px; font-size:1.1rem; background:var(--white); color:var(--blush-700); border:1.5px solid var(--blush-200); opacity:0; pointer-events:none; transform:translateY(10px); }
 .fab-top.show{ opacity:1; pointer-events:auto; transform:translateY(0); }
- 
+
 .toast-body{ font-size:.9rem; }
+
+/* ============ NOTIFICAÇÃO DE CUPOM (js/cupom-toast.js) ============
+   Componente Toast do próprio Bootstrap (já usado em #cartToast, "Adicionado
+   ao carrinho!") — reaproveita mostrar/ocultar prontos em vez de
+   reimplementar do zero. SEM autohide de propósito (mudou de "aviso que
+   some sozinho" para um mini-formulário — fechar sozinho enquanto a
+   cliente ainda está digitando o e-mail seria pior que não ter).
+
+   ⚠️ O deslize de entrada usa @keyframes (`animation`), NUNCA `transition`
+   no mesmo elemento que o `.fade` do Bootstrap: a primeira versão deste
+   componente colocava `transition:opacity,transform` nas duas propriedades
+   juntas, e como o Bootstrap espera exatamente UM evento `transitionend`
+   para saber que a exibição terminou, a segunda transição (transform)
+   virava um evento a mais que às vezes confundia o timer interno dele. Uma
+   `animation` dispara `animationend`, não `transitionend` — não interfere
+   em nada do que o Bootstrap escuta. */
+/* bottom:156px — não var(--spacing-md): o canto inferior direito já tem
+   os botões flutuantes de WhatsApp (.fab, bottom:24px + 56px de altura =
+   topo em 80px) e "voltar ao topo" (.fab-top, bottom:92px + 44px = topo
+   em 136px). Preso a esse cálculo de propósito, para o toast nunca cobrir
+   os dois — se o tamanho de qualquer um dos FABs mudar, este valor precisa
+   acompanhar. */
+.coupon-toast-container{
+  right:var(--spacing-md); bottom:156px; z-index:1085; /* abaixo de .modal (1090+), acima da navbar (1030) */
+  width:clamp(300px, 25vw, 380px); max-width:calc(100vw - 2 * var(--spacing-md));
+}
+.coupon-toast{
+  background:var(--color-background); border:1px solid var(--blush-150);
+  border-radius:var(--border-radius); box-shadow:var(--shadow-sm);
+  width:100%; overflow:visible; font-family:var(--font-family);
+}
+.coupon-toast.show{ animation:couponToastSlideIn var(--transition-speed) ease-out; }
+@keyframes couponToastSlideIn{ from{ transform:translateY(18px); } to{ transform:translateY(0); } }
+@media (prefers-reduced-motion: reduce){
+  .coupon-toast.show{ animation:none; }
+}
+.coupon-toast-body{ position:relative; padding:var(--spacing-md) var(--spacing-sm) var(--spacing-sm); text-align:left; }
+/* 36px: mais perto do alvo de toque mínimo recomendado (44px) do que os
+   24px originais — não vai a 44px cheios porque o botão vive dentro de um
+   toast já pequeno de propósito, e 44px inteiros o dominariam. */
+.coupon-toast-close{
+  position:absolute; top:2px; right:2px;
+  width:36px; height:36px; border-radius:50%; border:none;
+  background:transparent; color:var(--color-text-light); font-size:.8rem;
+  display:flex; align-items:center; justify-content:center;
+  transition:background var(--transition-speed) ease, color var(--transition-speed) ease;
+}
+.coupon-toast-close:hover{ background:var(--blush-100); color:var(--color-primary-dark); }
+.coupon-toast-head{ display:flex; align-items:center; gap:var(--spacing-xs); margin-bottom:var(--spacing-xs); padding-right:1.2rem; }
+.coupon-toast-icon{
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  width:30px; height:30px; border-radius:50%;
+  background:linear-gradient(135deg, var(--blush-500), var(--color-primary-dark));
+  color:#fff; font-size:.9rem;
+}
+.coupon-toast-text{ margin:0; font-size:var(--font-size-body); line-height:1.45; color:var(--color-text-dark); }
+.coupon-toast-text strong{ color:var(--color-primary-dark); }
+/* Campo de e-mail minimalista: mesma técnica de ícone-dentro-do-input já
+   usada no contato/newsletter, num tamanho menor pra caber no toast. */
+.coupon-toast-field{ position:relative; margin-top:var(--spacing-sm); }
+.coupon-toast-field > i{
+  position:absolute; left:.7rem; top:50%; transform:translateY(-50%);
+  color:var(--color-text-light); font-size:.8rem; pointer-events:none;
+}
+.coupon-toast-input{
+  width:100%; border:1.5px solid var(--blush-150); border-radius:var(--border-radius);
+  padding:.5rem .7rem .5rem 2.1rem; font-size:var(--font-size-small); font-family:var(--font-family);
+  background:var(--cream); color:var(--color-text-dark);
+  transition:border-color var(--transition-speed) ease, background var(--transition-speed) ease;
+}
+.coupon-toast-input:hover{ border-color:var(--blush-300); }
+.coupon-toast-input:focus{ outline:none; border-color:var(--color-primary); background:var(--color-background); }
+.coupon-toast-input.is-invalid{ border-color:var(--color-danger); }
+.coupon-toast-error{
+  display:none; margin:.35rem 0 0; font-size:var(--font-size-small); color:var(--color-danger);
+}
+.coupon-toast-error.show{ display:block; }
+/* Estado "revelado": some o campo de e-mail, entra o código + copiar. */
+.coupon-toast-reveal{ display:none; margin-top:var(--spacing-sm); }
+.coupon-toast-reveal.show{ display:block; }
+.coupon-toast-success-text{ margin:0 0 var(--spacing-xs); font-size:var(--font-size-small); color:#1E7F44; font-weight:600; }
+.coupon-toast-code-row{ display:flex; align-items:center; gap:var(--spacing-xs); flex-wrap:wrap; }
+/* color:var(--color-text-dark) (ink), não --color-primary-dark (blush-700):
+   blush-700 sobre este fundo claro dava 4,08:1 de contraste, abaixo dos
+   4,5:1 que o WCAG AA pede pra texto normal — ink sozinho passa de 11:1. */
+.coupon-toast-code{
+  display:inline-block; background:var(--blush-50); border:2px dashed var(--blush-300);
+  border-radius:var(--border-radius); padding:.35rem .7rem; font-weight:700; letter-spacing:.05em;
+  color:var(--color-text-dark); font-size:var(--font-size-small);
+}
+/* background:var(--color-text-dark) (ink), não --color-primary (blush-600):
+   branco sobre blush-600 dava só 3,10:1 — o mesmo botão escuro já usado em
+   "Quero o cupom" (.plc-cta .btn-blush) resolve o contraste E fica
+   consistente com o resto do site, que já usa ink pra esse botão. */
+.coupon-toast-copy{
+  display:inline-flex; align-items:center; gap:.3rem;
+  background:var(--color-text-dark); color:#fff; border:none; border-radius:999px;
+  padding:.4rem .8rem; font-size:var(--font-size-small); font-weight:600;
+  transition:background var(--transition-speed) ease, transform .15s ease;
+}
+.coupon-toast-copy:hover{ background:#3d1e2c; }
+.coupon-toast-copy:active{ transform:scale(.94); }
+.coupon-toast-copy.is-copied{ background:#1E7F44; }
+.coupon-toast-submitting{ opacity:.6; pointer-events:none; }
+
+/* Tablet: um pouco mais estreito, mesmo canto. */
+@media (max-width: 991.98px){
+  .coupon-toast-container{ width:clamp(260px, 32vw, 300px); }
+}
+/* Mobile: centro inferior, quase a largura toda (com respiro nas laterais).
+   bottom:156px pelo mesmo motivo do desktop — os FABs de WhatsApp/voltar-
+   ao-topo não mudam de posição no mobile, então a distância não muda. */
+@media (max-width: 575.98px){
+  .coupon-toast-container{
+    right:0; left:0; bottom:156px; width:auto; max-width:none;
+    display:flex; justify-content:center; padding-left:var(--spacing-sm); padding-right:var(--spacing-sm);
+  }
+  .coupon-toast{ width:100%; max-width:340px; }
+  /* Mais compacto que o desktop: no celular a notificação flutua por cima
+     do conteúdo (não empurra nada), então precisa ocupar bem menos tela. */
+  .coupon-toast-body{ padding:var(--spacing-sm) var(--spacing-xs) var(--spacing-xs); }
+  .coupon-toast-head{ margin-bottom:2px; padding-right:1.6rem; }
+  .coupon-toast-icon{ width:24px; height:24px; font-size:.72rem; }
+  .coupon-toast-text{ font-size:var(--font-size-small); }
+  .coupon-toast-field{ margin-top:var(--spacing-xs); }
+  .coupon-toast-input{ padding:.4rem .6rem .4rem 1.9rem; font-size:.75rem; }
+  .coupon-toast-reveal{ margin-top:var(--spacing-xs); }
+}
 
 /* ============ SIMPLE HEADER (conta.html / pedidos.html) ============ */
 .simple-header{

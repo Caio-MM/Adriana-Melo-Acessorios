@@ -631,6 +631,25 @@ function blocoDadosEstruturados(){
   return `<script type="application/ld+json">${json}</script>`;
 }
 
+/* Cupom mostrado na notificação de boas-vindas (js/cupom-toast.js). Lê a
+   MESMA linha da tabela `coupons` que o checkout valida (WELCOME_COUPON_CODE,
+   mais abaixo) — nunca um código solto escrito na página. Se a lojista
+   apagar o cupom pelo painel, isto devolve null e a notificação
+   simplesmente não aparece, em vez de anunciar um código que o carrinho ia
+   recusar.
+
+   ⚠️ Sai como atributo `data-cupom` (JSON escapado), NUNCA como <script>
+   inline: a CSP do site é `script-src 'self'`, sem `'unsafe-inline'` — um
+   <script> escrito aqui seria bloqueado pelo navegador. O JSON-LD escapa
+   dessa regra por ter type="application/ld+json" (não é script executável
+   aos olhos da CSP); um <script> normal não teria essa sorte. */
+function atributoCupomBoasVindas(){
+  const coupon = db.getCoupon(WELCOME_COUPON_CODE);
+  const dados = coupon ? { code: coupon.code, percentOff: coupon.percent_off } : null;
+  return JSON.stringify(dados)
+    .replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
 // Pega href/src de css/… e js/… que ainda não tenham query própria, e
 // também favicon.ico/apple-touch-icon.png na raiz — esses dois ficam em
 // cache de 365 dias (setHeaders mais abaixo, maxAge padrão do
@@ -639,20 +658,22 @@ function blocoDadosEstruturados(){
 // quando o arquivo muda — sem isso, quem visitou antes de uma troca de
 // ícone fica com o antigo por até um ano.
 const REF_ASSET = /\b(href|src)="((?:css|js)\/[^"?#]+\.(?:css|js)|favicon\.ico|apple-touch-icon\.png)"/g;
-// Marcador no <head> do index.html, trocado pelo JSON-LD na hora de servir.
+// Marcadores no <head>/<body> do index.html, trocados na hora de servir.
 const MARCA_JSONLD = "<!--#DADOS-ESTRUTURADOS#-->";
+const MARCA_CUPOM = "<!--#CUPOM-BOAS-VINDAS#-->";
 // O HTML é relido a cada pedido de propósito: são poucos KB que o sistema
 // já mantém em cache, e guardar o resultado exigiria invalidar por página
 // E por asset — complexidade que não se paga no volume desta loja.
 function htmlVersionado(absoluto){
-  const html = fs.readFileSync(absoluto, "utf8").replace(REF_ASSET, (inteiro, attr, rel) => {
+  let html = fs.readFileSync(absoluto, "utf8").replace(REF_ASSET, (inteiro, attr, rel) => {
     const v = versaoDoAsset(rel);
     return v ? `${attr}="${rel}?v=${v}"` : inteiro;
   });
-  // Só o index.html traz o marcador; nas demais páginas o replace não acha
-  // nada e o custo de gerar o JSON-LD nem é pago.
-  if(!html.includes(MARCA_JSONLD)) return html;
-  return html.replace(MARCA_JSONLD, blocoDadosEstruturados());
+  // Só o index.html traz os marcadores; nas demais páginas o replace não
+  // acha nada e o custo de gerar o bloco nem é pago.
+  if(html.includes(MARCA_JSONLD)) html = html.replace(MARCA_JSONLD, blocoDadosEstruturados());
+  if(html.includes(MARCA_CUPOM)) html = html.replace(MARCA_CUPOM, atributoCupomBoasVindas());
+  return html;
 }
 
 app.use((req, res, next) => {

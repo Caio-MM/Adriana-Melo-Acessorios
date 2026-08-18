@@ -445,17 +445,26 @@
     <div class="process-wrap row g-5">
       <div class="process-line d-none d-md-block"></div>
       <div class="col-md-4 process-step reveal">
-        <div class="process-num">1</div>
+        <div class="process-icon-wrap">
+          <div class="process-icon" aria-hidden="true"><i class="bi bi-search-heart"></i></div>
+          <span class="process-num">1</span>
+        </div>
         <h3 class="h5 font-display">Escolha o laço</h3>
         <p class="section-sub mx-auto">Navegue pela coleção e escolha o modelo que combina com a ocasião.</p>
       </div>
       <div class="col-md-4 process-step reveal reveal-delay-1">
-        <div class="process-num">2</div>
+        <div class="process-icon-wrap">
+          <div class="process-icon" aria-hidden="true"><i class="bi bi-palette"></i></div>
+          <span class="process-num">2</span>
+        </div>
         <h3 class="h5 font-display">Personalize</h3>
         <p class="section-sub mx-auto">Escolha a cor da fita, o tamanho da presilha e, se quiser, borde um nome.</p>
       </div>
       <div class="col-md-4 process-step reveal reveal-delay-2">
-        <div class="process-num">3</div>
+        <div class="process-icon-wrap">
+          <div class="process-icon" aria-hidden="true"><i class="bi bi-box-seam"></i></div>
+          <span class="process-num">3</span>
+        </div>
         <h3 class="h5 font-display">Receba em casa</h3>
         <p class="section-sub mx-auto">Produzimos à mão, embalamos com carinho e enviamos para todo o Brasil.</p>
       </div>
@@ -518,15 +527,19 @@
       <svg class="bow-icon" style="width:120px; bottom:-30px; left:10%;"><use href="#bow-shape"/></svg>
       <div class="row align-items-center position-relative">
         <div class="col-md-6 mb-4 mb-md-0">
+          <span class="plc-cta-badge"><i class="bi bi-gift-fill"></i> oferta de boas-vindas</span>
           <h2 class="font-display mb-2" style="font-size:1.9rem; color:#fff">Ganhe 10% na primeira compra</h2>
-          <p class="mb-0" style="color:var(--blush-100)">Cadastre seu e-mail e receba o cupom, além de novidades da coleção.</p>
+          <p class="mb-0 plc-cta-sub">Cadastre seu e-mail e receba o cupom, além de novidades da coleção.</p>
         </div>
         <div class="col-md-6">
           <form class="d-flex flex-column flex-sm-row gap-2" id="newsletterForm" novalidate>
-            <input type="email" class="form-control" placeholder="seu@email.com" required aria-label="Seu e-mail">
+            <div class="plc-cta-field">
+              <i class="bi bi-envelope" aria-hidden="true"></i>
+              <input type="email" class="form-control" placeholder="Digite seu melhor e-mail" required aria-label="Seu e-mail">
+            </div>
             <button class="btn-blush flex-shrink-0" type="submit">Quero o cupom</button>
           </form>
-          <div class="small mt-2" id="newsletterMsg" style="color:var(--blush-100)"></div>
+          <div class="small mt-2 plc-cta-sub" id="newsletterMsg"></div>
         </div>
       </div>
     </div>
@@ -744,7 +757,56 @@
     </div>
   </div>
 </div>
- 
+
+<!-- ============ NOTIFICAÇÃO DE CUPOM (js/cupom-toast.js) ============
+     data-cupom traz o código/desconto REAIS (mesma linha de `coupons` que
+     o checkout valida) — o servidor troca o marcador na hora de servir,
+     ver atributoCupomBoasVindas() em server.js. O cupom só aparece depois
+     que a cliente digita um e-mail válido: o envio usa a MESMA rota
+     POST /api/newsletter da seção "Ganhe 10% na primeira compra" (ver
+     js/main.js) — é o que já valida o e-mail, salva a inscrição, manda o
+     e-mail de verdade (lib/email.js) e devolve o código. Sem um formulário
+     paralelo com regra própria que poderia divergir da rota que o resto
+     do site já usa. Só para visitante novo (sem sessão ativa e sem já ter
+     preenchido antes — ver localStorage em js/cupom-toast.js). -->
+<div class="toast-container position-fixed p-3 coupon-toast-container" id="couponToastContainer">
+  <div id="couponToast" class="toast coupon-toast" role="alert" aria-live="polite" aria-atomic="true"
+       data-cupom="<!--#CUPOM-BOAS-VINDAS#-->">
+    <div class="coupon-toast-body">
+      <button type="button" class="coupon-toast-close" data-bs-dismiss="toast" aria-label="Fechar notificação">
+        <i class="bi bi-x-lg"></i>
+      </button>
+      <div class="coupon-toast-head">
+        <span class="coupon-toast-icon" aria-hidden="true"><i class="bi bi-gift-fill"></i></span>
+        <p class="coupon-toast-text">
+          Ganhe <strong id="couponToastPercent">10%</strong> na primeira compra
+        </p>
+      </div>
+
+      <form id="couponToastForm" novalidate>
+        <div class="coupon-toast-field">
+          <i class="bi bi-envelope" aria-hidden="true"></i>
+          <label for="couponToastEmail" class="visually-hidden">Seu e-mail</label>
+          <input type="email" class="coupon-toast-input" id="couponToastEmail"
+                 placeholder="seu@email.com" autocomplete="email"
+                 aria-describedby="couponToastError">
+        </div>
+        <p class="coupon-toast-error" id="couponToastError" role="alert">E-mail inválido</p>
+      </form>
+
+      <div class="coupon-toast-reveal" id="couponToastReveal">
+        <p class="coupon-toast-success-text">Cupom liberado! Use no carrinho antes de finalizar.</p>
+        <div class="coupon-toast-code-row">
+          <span class="coupon-toast-code" id="couponToastCode">—</span>
+          <button type="button" class="coupon-toast-copy" id="couponToastCopyBtn">
+            <i class="bi bi-clipboard"></i> Copiar cupom
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="js/error-boundary.js" defer></script>
 <script src="js/vendor/bootstrap.bundle.min.js" defer></script>
 
@@ -764,5 +826,6 @@
      Scripts com `defer` executam na ordem em que aparecem aqui. -->
 <script src="js/pricing.js" defer></script>
 <script src="js/main.js" defer></script>
+<script src="js/cupom-toast.js" defer></script>
 </body>
 </html>
