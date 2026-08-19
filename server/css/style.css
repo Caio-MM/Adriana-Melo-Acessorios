@@ -1921,12 +1921,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .tracking-feedback{ min-height:1.1em; }
 .tracking-feedback.is-success, #epPhotoStatus.is-success{ color:#1E7F44; }
 .tracking-feedback.is-error, #epPhotoStatus.is-error{ color:#B3261E; }
-.delete-order-icon-btn{
+.delete-order-icon-btn, .edit-order-icon-btn{
   width:30px; height:30px; border-radius:50%; border:1px solid var(--blush-100); background:var(--white);
   color:var(--ink-soft); display:flex; align-items:center; justify-content:center; font-size:.85rem;
-  transition:all .2s ease;
+  transition:all .2s ease; flex-shrink:0;
 }
 .delete-order-icon-btn:hover{ background:#FBE1E1; border-color:#FBE1E1; color:#B3261E; }
+.edit-order-icon-btn:hover{ background:var(--blush-100); border-color:var(--blush-150); color:var(--color-primary-dark); }
+/* Par editar/apagar do mesmo tamanho, sempre lado a lado — nunca empilha
+   (era o que acontecia com um botão "Editar" de texto ao lado do ícone de
+   apagar: em tela estreita, sem espaço pros dois na mesma linha, o
+   navegador quebrava um pro lado de baixo do outro). */
+.admin-row-actions{ display:flex; justify-content:flex-end; align-items:center; gap:.4rem; flex-wrap:nowrap; }
 
 .admin-section-title{
   font-family:var(--font-display); font-weight:600; font-size:1.2rem; margin-bottom:1rem;

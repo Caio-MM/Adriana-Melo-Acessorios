@@ -2486,6 +2486,38 @@ app.post("/api/admin/coupons", auth.requireAdmin, (req, res) => {
   }
 });
 
+// Parcial (mesmo padrão de PATCH /api/admin/products/:id): só percentOff/
+// description são aceitos — code não muda (ver comentário em
+// db.updateCoupon sobre por que renomear não é uma opção aqui).
+app.patch("/api/admin/coupons/:code", auth.requireAdmin, (req, res) => {
+  try {
+    const code = String(req.params.code || "").trim().toUpperCase();
+    if(!db.getCoupon(code)){
+      return res.status(404).json({ error: "Cupom não encontrado." });
+    }
+
+    const fields = {};
+    if("percentOff" in req.body){
+      const percentOff = Number(req.body.percentOff);
+      if(!Number.isFinite(percentOff) || percentOff <= 0 || percentOff > 90){
+        return res.status(400).json({ error: "Desconto precisa ser um número entre 1 e 90 (%)." });
+      }
+      fields.percentOff = percentOff;
+    }
+    if("description" in req.body){
+      fields.description = String(req.body.description || "").trim().slice(0, 200);
+    }
+
+    const updated = db.updateCoupon(code, fields);
+    res.json({
+      code: updated.code, percentOff: updated.percent_off, description: updated.description, createdAt: updated.created_at,
+    });
+  } catch (err) {
+    console.error("Erro ao editar cupom:", err);
+    res.status(500).json({ error: "Não foi possível editar o cupom agora." });
+  }
+});
+
 app.delete("/api/admin/coupons/:code", auth.requireAdmin, (req, res) => {
   try {
     const code = String(req.params.code || "").trim().toUpperCase();

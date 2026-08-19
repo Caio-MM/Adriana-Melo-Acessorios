@@ -406,6 +406,42 @@
   </div>
 </div>
 
+<!-- ============ MODAL: EDITAR CUPOM ============ -->
+<!-- Código não é editável de propósito (ver comentário em db.updateCoupon
+     — é a chave primária, outras tabelas guardam o valor por string). Só
+     percentOff/description mudam; PATCH parcial, mesmo padrão do produto. -->
+<div class="modal fade" id="editCouponModal" tabindex="-1" aria-labelledby="editCouponModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:var(--radius-md); border:none">
+      <form id="editCouponForm" novalidate>
+        <div class="modal-header border-0">
+          <h5 class="modal-title font-display" id="editCouponModalLabel">Editar cupom</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="ecOriginalCode">
+          <div class="mb-3">
+            <span class="form-label small fw-semibold d-block">Código</span>
+            <span class="fw-semibold" id="ecCode"></span>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" for="ecPercent">Desconto %</label>
+            <input type="number" class="form-control" id="ecPercent" required min="1" max="90" step="1">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold" for="ecDesc">Descrição (opcional)</label>
+            <input type="text" class="form-control" id="ecDesc" maxlength="200">
+          </div>
+          <div id="ecMsg" class="small account-msg" role="alert"></div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="submit" class="btn-blush w-100" id="ecSaveBtn">Salvar alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- ============ MODAL: ADICIONAR PRODUTO ============ -->
 <!-- Sem campo de foto de propósito: o upload (POST /api/admin/products/:id/photo)
      precisa de um id que só existe depois deste formulário criar o produto.

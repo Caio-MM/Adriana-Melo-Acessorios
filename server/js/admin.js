@@ -1409,24 +1409,75 @@
         <td>${c.percentOff}%</td>
         <td class="small" style="color:var(--ink-soft)">${escapeHTML(c.description || "—")}</td>
         <td class="text-end">
-          <button type="button" class="delete-order-icon-btn delete-coupon-btn" data-code="${escapeHTML(c.code)}" aria-label="Apagar cupom" title="Apagar cupom"><i class="bi bi-trash3"></i></button>
+          <div class="admin-row-actions">
+            <button type="button" class="edit-order-icon-btn edit-coupon-btn" data-code="${escapeHTML(c.code)}" data-percent="${c.percentOff}" data-desc="${escapeHTML(c.description || "")}" aria-label="Editar cupom" title="Editar cupom"><i class="bi bi-pencil"></i></button>
+            <button type="button" class="delete-order-icon-btn delete-coupon-btn" data-code="${escapeHTML(c.code)}" aria-label="Apagar cupom" title="Apagar cupom"><i class="bi bi-trash3"></i></button>
+          </div>
         </td>
       </tr>
     `).join("");
   }
 
   couponsTableBodyEl.addEventListener("click", async (e) => {
-    const btn = e.target.closest(".delete-coupon-btn");
-    if(!btn) return;
-    const code = btn.dataset.code;
-    if(!confirm(`Apagar o cupom ${code}? Ele deixa de funcionar no checkout imediatamente.`)) return;
+    const deleteBtn = e.target.closest(".delete-coupon-btn");
+    if(deleteBtn){
+      const code = deleteBtn.dataset.code;
+      if(!confirm(`Apagar o cupom ${code}? Ele deixa de funcionar no checkout imediatamente.`)) return;
+      try{
+        const res = await fetchWithTimeout(`/api/admin/coupons/${encodeURIComponent(code)}`, { method: "DELETE" });
+        const data = await res.json().catch(() => ({}));
+        if(!res.ok) throw new Error(data.error || "Não foi possível apagar o cupom.");
+        loadDashboard();
+      }catch(err){
+        alert(err.message || "Não foi possível apagar o cupom agora.");
+      }
+      return;
+    }
+    const editBtn = e.target.closest(".edit-coupon-btn");
+    if(editBtn){
+      document.getElementById("ecCode").textContent = editBtn.dataset.code;
+      document.getElementById("ecOriginalCode").value = editBtn.dataset.code;
+      document.getElementById("ecPercent").value = editBtn.dataset.percent;
+      document.getElementById("ecDesc").value = editBtn.dataset.desc;
+      document.getElementById("ecMsg").textContent = "";
+      editCouponModal.show();
+    }
+  });
+
+  // Cupom de boas-vindas (WELCOME_COUPON_CODE em server.js) é lido pelo
+  // código, não por flag no banco — editar o percentOff dele aqui já
+  // atualiza o e-mail de boas-vindas e o toast da home na próxima vez que
+  // forem gerados (os dois leem db.getCoupon na hora, nunca guardam um
+  // valor velho).
+  const editCouponModalEl = document.getElementById("editCouponModal");
+  const editCouponModal = new bootstrap.Modal(editCouponModalEl);
+  const editCouponForm = document.getElementById("editCouponForm");
+  const ecSaveBtn = document.getElementById("ecSaveBtn");
+  editCouponForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const code = document.getElementById("ecOriginalCode").value;
+    const percentOff = Number(document.getElementById("ecPercent").value);
+    const description = document.getElementById("ecDesc").value.trim();
+    const msgEl = document.getElementById("ecMsg");
+
+    msgEl.textContent = "";
+    msgEl.className = "small account-msg";
+    ecSaveBtn.disabled = true;
     try{
-      const res = await fetchWithTimeout(`/api/admin/coupons/${encodeURIComponent(code)}`, { method: "DELETE" });
+      const res = await fetchWithTimeout(`/api/admin/coupons/${encodeURIComponent(code)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ percentOff, description }),
+      });
       const data = await res.json().catch(() => ({}));
-      if(!res.ok) throw new Error(data.error || "Não foi possível apagar o cupom.");
+      if(!res.ok) throw new Error(data.error || "Não foi possível salvar.");
+      editCouponModal.hide();
       loadDashboard();
     }catch(err){
-      alert(err.message || "Não foi possível apagar o cupom agora.");
+      msgEl.textContent = err.message || "Erro ao salvar o cupom.";
+      msgEl.classList.add("text-danger");
+    }finally{
+      ecSaveBtn.disabled = false;
     }
   });
 

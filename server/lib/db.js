@@ -608,6 +608,9 @@ const stmtInsertCoupon = db.prepare(
   `INSERT INTO coupons (code, percent_off, description, created_at) VALUES (?, ?, ?, ?)`
 );
 const stmtDeleteCoupon = db.prepare(`DELETE FROM coupons WHERE code = ?`);
+const stmtUpdateCoupon = db.prepare(
+  `UPDATE coupons SET percent_off = ?, description = ? WHERE code = ?`
+);
 
 function getCoupon(code) {
   return stmtGetCoupon.get(code) || null;
@@ -617,6 +620,20 @@ function listCoupons() {
 }
 function createCoupon({ code, percentOff, description }) {
   stmtInsertCoupon.run(code, percentOff, description ?? null, Date.now());
+  return getCoupon(code);
+}
+// Só percentOff/description são editáveis — code é a chave primária e
+// outras tabelas guardam o valor por string (orders.coupon_code), então
+// "renomear" um cupom existente seria trocar a chave que tudo mais
+// referencia. Quem quiser um código diferente apaga e cria de novo.
+// Parcial (mesmo padrão de upsertProductOverride): campo ausente em
+// `fields` mantém o valor atual em vez de apagar.
+function updateCoupon(code, fields) {
+  const current = getCoupon(code);
+  if (!current) return null;
+  const percentOff = "percentOff" in fields ? fields.percentOff : current.percent_off;
+  const description = "description" in fields ? (fields.description || null) : current.description;
+  stmtUpdateCoupon.run(percentOff, description, code);
   return getCoupon(code);
 }
 function deleteCoupon(code) {
@@ -668,5 +685,6 @@ module.exports = {
   getCoupon,
   listCoupons,
   createCoupon,
+  updateCoupon,
   deleteCoupon,
 };
