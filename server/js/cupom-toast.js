@@ -43,6 +43,24 @@
   const revealEl = document.getElementById("couponToastReveal");
   const codeEl = document.getElementById("couponToastCode");
   const copyBtn = document.getElementById("couponToastCopyBtn");
+  const closeBtn = toastEl.querySelector(".coupon-toast-close");
+
+  /* Fechar tem uma saída customizada (fade+scale+slide, ver .coupon-toast-
+     closing em css/style.css) em vez do fade padrão do Bootstrap — por
+     isso o botão NÃO usa data-bs-dismiss (dispararia o hide() nativo antes
+     da nossa animação rodar). Com prefers-reduced-motion, pula direto pro
+     toast.hide(): sem isso, o listener de "animationend" nunca dispararia
+     (a animação está desligada no CSS) e o botão pareceria travado. */
+  closeBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    const semAnimacao = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if(semAnimacao){
+      toast.hide();
+      return;
+    }
+    toastEl.classList.add("coupon-toast-closing");
+    toastEl.addEventListener("animationend", () => toast.hide(), { once: true });
+  });
 
   function mostrarErro(msg){
     errorEl.textContent = msg;

@@ -66,7 +66,17 @@
   --spacing-md: 1.25rem;
   --border-radius: var(--radius-md);
   --shadow-sm: 0 8px 24px -12px rgba(84,41,60,.3);
+  --shadow-md: var(--shadow-soft);
   --transition-speed: .25s;
+
+  /* Duração/easing nomeados para as animações do .coupon-toast (distintos
+     de --transition-speed, que é o já usado pelas transições simples de
+     hover/foco do site inteiro — não duplicar valor, só propósito diferente). */
+  --animation-short: 200ms;
+  --animation-normal: 300ms;
+  --animation-long: 500ms;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
  
 *{ box-sizing:border-box; }
@@ -1246,11 +1256,34 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   background:var(--color-background); border:1px solid var(--blush-150);
   border-radius:var(--border-radius); box-shadow:var(--shadow-sm);
   width:100%; overflow:visible; font-family:var(--font-family);
+  transition:box-shadow var(--animation-normal) var(--ease-out);
 }
-.coupon-toast.show{ animation:couponToastSlideIn var(--transition-speed) ease-out; }
-@keyframes couponToastSlideIn{ from{ transform:translateY(18px); } to{ transform:translateY(0); } }
+.coupon-toast:hover{ box-shadow:var(--shadow-md); }
+/* Entrada: pop de opacity+scale com leve bounce (--ease-out já tem um
+   pouquinho de overshoot embutido na curva). "Aparecer do centro pras
+   laterais" = transform-origin padrão (center), scale cresce a partir daí. */
+.coupon-toast.show{ animation:couponToastPopIn var(--animation-long) var(--ease-out) both; }
+@keyframes couponToastPopIn{
+  from{ opacity:0; transform:scale(.8); }
+  to{ opacity:1; transform:scale(1); }
+}
+/* Saída ao fechar: classe própria (não o toggle de .show do Bootstrap) —
+   ver js/cupom-toast.js: o clique no X primeiro roda esta animação até o
+   fim, só DEPOIS chama toast.hide(). Isso evita a armadilha documentada
+   acima (uma `transition` extra no mesmo elemento que o `.fade` do
+   Bootstrap pode confundir o timer interno dele) sem abrir mão de uma
+   saída customizada — `animation` nunca entra nesse conflito. */
+.coupon-toast.coupon-toast-closing{
+  animation:couponToastPopOut var(--animation-normal) ease-in both;
+  pointer-events:none;
+}
+@keyframes couponToastPopOut{
+  from{ opacity:1; transform:scale(1) translateY(0); }
+  to{ opacity:0; transform:scale(.92) translateY(-10px); }
+}
 @media (prefers-reduced-motion: reduce){
-  .coupon-toast.show{ animation:none; }
+  .coupon-toast{ transition:none; }
+  .coupon-toast.show, .coupon-toast.coupon-toast-closing{ animation:none; }
 }
 .coupon-toast-body{ position:relative; padding:var(--spacing-md) var(--spacing-sm) var(--spacing-sm); text-align:left; }
 /* 36px: mais perto do alvo de toque mínimo recomendado (44px) do que os
@@ -1261,18 +1294,41 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   width:36px; height:36px; border-radius:50%; border:none;
   background:transparent; color:var(--color-text-light); font-size:.8rem;
   display:flex; align-items:center; justify-content:center;
-  transition:background var(--transition-speed) ease, color var(--transition-speed) ease;
+  transition:background var(--transition-speed) ease, color var(--transition-speed) ease, transform var(--animation-short) var(--ease-out);
 }
-.coupon-toast-close:hover{ background:var(--blush-100); color:var(--color-primary-dark); }
+.coupon-toast-close:hover{ background:var(--blush-100); color:var(--color-primary-dark); transform:scale(1.08); }
+.coupon-toast-close:active{ transform:scale(.92); }
 .coupon-toast-head{ display:flex; align-items:center; gap:var(--spacing-xs); margin-bottom:var(--spacing-xs); padding-right:1.2rem; }
 .coupon-toast-icon{
   display:flex; align-items:center; justify-content:center; flex-shrink:0;
   width:30px; height:30px; border-radius:50%;
   background:linear-gradient(135deg, var(--blush-500), var(--color-primary-dark));
   color:#fff; font-size:.9rem;
+  animation:couponGiftWiggle 2s ease-in-out infinite, couponFadeIn var(--animation-normal) var(--ease-out) both;
+  will-change:transform;
 }
-.coupon-toast-text{ margin:0; font-size:var(--font-size-body); line-height:1.45; color:var(--color-text-dark); }
+/* Fade in do ícone + texto junto com a entrada do toast, com um pequeno
+   atraso entre um e outro (stagger) — a opacity do toast inteiro (acima)
+   já vai de 0→1 também: o efeito combinado é o texto "assentando" por
+   cima do toast que já está aparecendo, não um segundo fade solto. */
+@keyframes couponFadeIn{ from{ opacity:0; } to{ opacity:1; } }
+@keyframes couponGiftWiggle{
+  0%, 100%{ transform:rotate(0deg); }
+  25%{ transform:rotate(5deg); }
+  75%{ transform:rotate(-5deg); }
+}
+.coupon-toast-text{
+  margin:0; font-size:var(--font-size-body); line-height:1.45; color:var(--color-text-dark);
+  animation:couponFadeIn var(--animation-normal) var(--ease-out) both;
+  animation-delay:50ms;
+}
 .coupon-toast-text strong{ color:var(--color-primary-dark); }
+@media (prefers-reduced-motion: reduce){
+  .coupon-toast-icon{ animation:none; will-change:auto; }
+  .coupon-toast-text{ animation:none; }
+  .coupon-toast-close{ transition:background var(--transition-speed) ease, color var(--transition-speed) ease; }
+  .coupon-toast-close:hover, .coupon-toast-close:active{ transform:none; }
+}
 /* Campo de e-mail minimalista: mesma técnica de ícone-dentro-do-input já
    usada no contato/newsletter, num tamanho menor pra caber no toast. */
 .coupon-toast-field{ position:relative; margin-top:var(--spacing-sm); }
@@ -1281,21 +1337,37 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   color:var(--color-text-light); font-size:.8rem; pointer-events:none;
 }
 .coupon-toast-input{
-  width:100%; border:1.5px solid var(--blush-150); border-radius:var(--border-radius);
+  width:100%; border:2px solid var(--blush-150); border-radius:var(--border-radius);
   padding:.5rem .7rem .5rem 2.1rem; font-size:var(--font-size-small); font-family:var(--font-family);
   background:var(--cream); color:var(--color-text-dark);
-  transition:border-color var(--transition-speed) ease, background var(--transition-speed) ease;
+  transition:border-color var(--animation-normal) var(--ease-out), border-width var(--animation-normal) var(--ease-out),
+    background var(--animation-normal) var(--ease-out), box-shadow var(--animation-normal) var(--ease-out);
 }
 .coupon-toast-input:hover{ border-color:var(--blush-300); }
-.coupon-toast-input:focus{ outline:none; border-color:var(--color-primary); background:var(--color-background); }
+.coupon-toast-input:focus{
+  outline:none; border-color:var(--color-primary); border-width:3px; background:var(--color-background);
+  box-shadow:0 0 0 4px rgba(221,110,155,.22); /* glow rosa claro, cor de --color-primary */
+}
 .coupon-toast-input.is-invalid{ border-color:var(--color-danger); }
+@media (prefers-reduced-motion: reduce){
+  .coupon-toast-input{ transition:none; }
+}
 .coupon-toast-error{
   display:none; margin:.35rem 0 0; font-size:var(--font-size-small); color:var(--color-danger);
 }
 .coupon-toast-error.show{ display:block; }
-/* Estado "revelado": some o campo de e-mail, entra o código + copiar. */
+/* Estado "revelado": some o campo de e-mail, entra o código + copiar,
+   deslizando da direita com um bounce leve — é a recompensa visual do
+   e-mail válido, por isso o único elemento com overshoot mais perceptível. */
 .coupon-toast-reveal{ display:none; margin-top:var(--spacing-sm); }
-.coupon-toast-reveal.show{ display:block; }
+.coupon-toast-reveal.show{ display:block; animation:couponRevealIn var(--animation-long) var(--ease-bounce) both; }
+@keyframes couponRevealIn{
+  from{ opacity:0; transform:translateX(16px); }
+  to{ opacity:1; transform:translateX(0); }
+}
+@media (prefers-reduced-motion: reduce){
+  .coupon-toast-reveal.show{ animation:none; }
+}
 .coupon-toast-success-text{ margin:0 0 var(--spacing-xs); font-size:var(--font-size-small); color:#1E7F44; font-weight:600; }
 .coupon-toast-code-row{ display:flex; align-items:center; gap:var(--spacing-xs); flex-wrap:wrap; }
 /* color:var(--color-text-dark) (ink), não --color-primary-dark (blush-700):
@@ -1314,12 +1386,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display:inline-flex; align-items:center; gap:.3rem;
   background:var(--color-text-dark); color:#fff; border:none; border-radius:999px;
   padding:.4rem .8rem; font-size:var(--font-size-small); font-weight:600;
-  transition:background var(--transition-speed) ease, transform .15s ease;
+  box-shadow:0 2px 6px -2px rgba(84,41,60,.35);
+  transition:background var(--animation-short) var(--ease-out), transform var(--animation-short) var(--ease-out),
+    box-shadow var(--animation-short) var(--ease-out);
 }
-.coupon-toast-copy:hover{ background:#3d1e2c; }
-.coupon-toast-copy:active{ transform:scale(.94); }
+.coupon-toast-copy:hover{ background:#3d1e2c; transform:scale(1.05); box-shadow:0 6px 14px -4px rgba(84,41,60,.45); }
+.coupon-toast-copy:active{ transform:scale(.95); }
 .coupon-toast-copy.is-copied{ background:#1E7F44; }
 .coupon-toast-submitting{ opacity:.6; pointer-events:none; }
+@media (prefers-reduced-motion: reduce){
+  .coupon-toast-copy{ transition:background var(--animation-short) ease; }
+  .coupon-toast-copy:hover, .coupon-toast-copy:active{ transform:none; }
+}
 
 /* Tablet: um pouco mais estreito, mesmo canto. */
 @media (max-width: 991.98px){
