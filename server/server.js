@@ -849,10 +849,19 @@ function buildPackage(validatedItems){
    -------------------------------------------------------------------------
    A API exige Bearer token + um header User-Agent identificando sua
    aplicação e um e-mail de contato (exigência deles, não nossa).
-   Baseado na documentação pública em docs.melhorenvio.com.br — teste com
-   o token de SANDBOX antes de trocar para produção.
+   Baseado na documentação pública em docs.melhorenvio.com.br.
+
+   ⚠️ O padrão é PRODUÇÃO porque o Melhor Envio não oferece mais ambiente
+   de sandbox. Enquanto o padrão apontava para sandbox.melhorenvio.com.br,
+   uma instalação nova (sem MELHOR_ENVIO_BASE_URL no .env) recebia 401
+   "Unauthenticated." em toda cotação, sem nenhuma pista de que a causa
+   era o endereço e não o token. Cotar frete (shipment/calculate) é
+   consulta pura: não cria etiqueta nem gasta saldo, então apontar para
+   produção por padrão não tem custo. O que gasta saldo de verdade é a
+   compra de etiqueta, e essa continua atrás de AUTO_PURCHASE_SHIPPING_LABEL
+   (desligada por padrão — ver purchaseShippingLabel mais abaixo).
 ========================================================================= */
-const MELHOR_ENVIO_BASE_URL = process.env.MELHOR_ENVIO_BASE_URL || "https://sandbox.melhorenvio.com.br";
+const MELHOR_ENVIO_BASE_URL = process.env.MELHOR_ENVIO_BASE_URL || "https://melhorenvio.com.br";
 const MELHOR_ENVIO_USER_AGENT = process.env.MELHOR_ENVIO_USER_AGENT || "PetitLaco (defina MELHOR_ENVIO_USER_AGENT no .env com seu e-mail)";
 
 async function meFetch(path, { method = "GET", body } = {}){
@@ -1348,10 +1357,12 @@ app.get("/api/orders/:reference/status", statusPollLimiter, auth.requireAuth, (r
                                       saldo da conta Melhor Envio
      3) POST /me/shipment/generate → gera a etiqueta (retorna o código de
                                       rastreio)
-   Isso precisa ter sido testado e validado com uma conta de sandbox antes
-   de ligar em produção — não foi possível testar de ponta a ponta neste
-   ambiente (sem acesso à internet). Trate como um ponto de partida, não
-   como algo pronto para rodar sem revisão.
+   ⚠️ Este fluxo nunca foi executado de ponta a ponta: os passos 2 e 3
+   gastam saldo real e o Melhor Envio não oferece mais sandbox, então não
+   existe forma de ensaiar sem pagar de verdade. Trate como um ponto de
+   partida, não como algo pronto para rodar sem revisão — e, ao ligar pela
+   primeira vez, acompanhe o primeiro pedido de perto (o passo 1, /me/cart,
+   é reversível pelo painel do Melhor Envio; a partir do checkout, não).
 ========================================================================= */
 async function purchaseShippingLabel(order){
   const seller = {

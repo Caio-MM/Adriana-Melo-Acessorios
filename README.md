@@ -151,7 +151,7 @@ Depois abra `.env` e preencha (o arquivo já explica cada uma):
 | Variável | Onde conseguir | Observação |
 |---|---|---|
 | `MP_ACCESS_TOKEN` | [painel do Mercado Pago](https://www.mercadopago.com.br/developers/panel) → Credenciais | **Secreta.** Use `TEST-...` para testar, `APP_USR-...` só em produção. |
-| `MELHOR_ENVIO_TOKEN` | [painel do Melhor Envio](https://melhorenvio.com.br/painel/gerenciar/tokens) | Use o token de **sandbox** até validar o fluxo. |
+| `MELHOR_ENVIO_TOKEN` | [painel do Melhor Envio](https://melhorenvio.com.br/painel/gerenciar/tokens) | Só existe token de produção — o Melhor Envio descontinuou o sandbox. Cotar frete não gasta saldo. |
 | `ORIGIN_CEP` | CEP do ateliê/remetente | Usado para cotar o frete. |
 | `WHATSAPP_CLOUD_API_TOKEN` | [business.facebook.com](https://business.facebook.com) → Configurações do negócio → Usuários do sistema → gerar token | **Secreta.** Token temporário (24h) em developers.facebook.com funciona para testar. |
 | `WHATSAPP_CLOUD_PHONE_NUMBER_ID` | [developers.facebook.com](https://developers.facebook.com) → seu app → WhatsApp → Introdução | Número que **envia** o aviso (precisa estar verificado no app da Meta). |
