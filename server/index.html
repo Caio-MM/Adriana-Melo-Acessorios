@@ -56,6 +56,17 @@
      ficaria defasado assim que a lojista editasse um produto no painel. -->
 <!--#DADOS-ESTRUTURADOS#-->
 
+<!-- Preload dos 2 arquivos de fonte que o H1 da hero usa de cara ("Laços
+     que transformam..." em Fraunces 600, "ocasião especial" em Fraunces
+     500 itálico) — sem isto o navegador só descobre que precisa desses
+     .woff2 depois de baixar e ler css/fonts.css, atrasando quando o texto
+     do maior elemento da tela (LCP) troca da fonte de fallback pra final.
+     crossorigin é obrigatório aqui mesmo sendo mesma origem: sem ele o
+     preload e o fetch real do @font-face não batem (modos de credential
+     diferentes) e o navegador baixa o arquivo duas vezes. -->
+<link rel="preload" href="css/fonts/fraunces-400-latin-ext-796716.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="css/fonts/fraunces-500-latin-ext-80f4a0.woff2" as="font" type="font/woff2" crossorigin>
+
 <!-- Bootstrap 5 -->
 <link rel="stylesheet" href="css/vendor/bootstrap.min.css">
 <link rel="stylesheet" href="css/vendor/bootstrap-icons.min.css">
