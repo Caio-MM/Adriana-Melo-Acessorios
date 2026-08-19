@@ -284,6 +284,19 @@ app.use(helmet({
       frameSrc: ["https://www.mercadopago.com", "https://www.mercadopago.com.br"],
       objectSrc: ["'none'"],
       formAction: ["'self'"],
+      // `upgrade-insecure-requests` manda o navegador trocar todo http://
+      // por https:// nas sub-requisições da página. Em produção (site em
+      // HTTPS) isso é o certo, e o helmet o inclui sozinho. Em
+      // desenvolvimento, servindo http://localhost, ele quebra a página
+      // inteira: o navegador tenta https://localhost:3333/css/style.css,
+      // que não existe (não há TLS nessa porta), e nenhum CSS/JS carrega.
+      // O Chrome disfarça o problema (ignora a diretiva em localhost, que
+      // ele já considera origem confiável), o Safari NÃO — lá o site
+      // aparece sem estilo nenhum. Por isso a diretiva só entra quando o
+      // CLIENT_ORIGIN é de fato https, em vez de depender de NODE_ENV
+      // (que este projeto mantém como "production" mesmo localmente, para
+      // o cookie de sessão se comportar igual ao do ar).
+      ...(CLIENT_ORIGIN.startsWith("https://") ? {} : { upgradeInsecureRequests: null }),
     },
   },
 }));
@@ -864,24 +877,35 @@ async function meFetch(path, { method = "GET", body } = {}){
 }
 
 /* Transportadoras que a loja oferece. O Melhor Envio cota TODAS as que
-   atendem o CEP (Jadlog, JeT, Total Express, Azul...), o que enche o
-   carrinho de opções parecidas e trava a cliente na hora de escolher.
-   A vitrine fica com dois serviços, os que a loja realmente usa para
-   postar: Loggi Express e o SEDEX dos Correios.
+   atendem o CEP (Jadlog, JeT, Total Express, Azul, LATAM...), o que enche
+   o carrinho de opções parecidas e trava a cliente na hora de escolher.
+   A vitrine fica com três serviços, os que a loja realmente usa para
+   postar: o PAC e o SEDEX dos Correios, e o Loggi Express.
+
+   Os três cobrem faixas diferentes de preço/prazo, que é o que faz a
+   escolha valer a pena para a cliente (medido numa cotação real
+   Brasília → São Paulo: PAC R$ 25,39/5 dias, SEDEX R$ 49,11/2 dias,
+   Loggi Express R$ 21,45/3 dias).
 
    Os outros serviços da própria Loggi ficam de fora de propósito:
    "Loggi Ponto" exige a cliente retirar num ponto (não é entrega em
    casa, e quem escolhe sem ler reclama depois) e "Loggi Coleta" custa
-   quase o triplo do Express pela coleta em domicílio.
+   quase o triplo do Express pela coleta em domicílio. Dos Correios,
+   "Mini Envios" também fica fora: o limite de dimensão dele é menor que
+   a caixa da loja, então ele volta com erro em toda cotação.
 
-   Se um CEP não for atendido por nenhum dos dois, a cotação volta vazia
+   Se um CEP não for atendido por nenhum dos três, a cotação volta vazia
    e o carrinho já mostra "nenhuma transportadora disponível" (o caminho
    de lista vazia em /api/calculate-shipping). */
 function isOfferedCarrier(companyName, serviceName){
   const company = String(companyName || "").toLowerCase();
-  const service = String(serviceName || "").toLowerCase();
+  const service = String(serviceName || "").toLowerCase().trim();
   if(company.includes("loggi") && service.includes("express")) return true;
-  if(company.includes("correios") && service.includes("sedex")) return true;
+  // Comparação exata nos dois dos Correios (e não `includes`) para o
+  // filtro não abrir sozinho se o Melhor Envio passar a cotar uma
+  // variante nova com o mesmo prefixo no nome (ex.: "SEDEX 12", que tem
+  // outro preço e outro prazo).
+  if(company.includes("correios") && (service === "pac" || service === "sedex")) return true;
   return false;
 }
 
@@ -964,6 +988,15 @@ app.post("/api/calculate-shipping", strictLimiter, async (req, res) => {
     if(!(err instanceof Error) && err.status && err.message){
       console.error("Erro de validação/frete:", err.message);
       return res.status(err.status).json({ error: err.message });
+    }
+    // CEP com 8 dígitos mas que não existe (ex.: 13480-107) passa pela
+    // validação de formato acima e só é recusado pelo Melhor Envio, com
+    // 422 e `errors.postal_code`. Sem este caso, a cliente via "não foi
+    // possível calcular agora, tente de novo" e ficava tentando de novo
+    // para sempre — o problema é o CEP digitado, não uma falha passageira.
+    if(err.status === 422 && err.data?.errors?.postal_code){
+      console.error("CEP recusado pelo Melhor Envio:", String(req.body?.cep || "").replace(/\D/g, ""));
+      return res.status(400).json({ error: "CEP inválido." });
     }
     console.error("Erro ao calcular frete:", err);
     res.status(502).json({ error: "Não foi possível calcular o frete agora. Tente novamente em instantes." });
