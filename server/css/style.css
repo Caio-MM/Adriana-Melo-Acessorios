@@ -1403,15 +1403,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @media (max-width: 991.98px){
   .coupon-toast-container{ width:clamp(260px, 32vw, 300px); }
 }
-/* Mobile: centro inferior, quase a largura toda (com respiro nas laterais).
-   bottom:156px pelo mesmo motivo do desktop — os FABs de WhatsApp/voltar-
-   ao-topo não mudam de posição no mobile, então a distância não muda. */
+/* Mobile: ancorado no canto inferior DIREITO (não centralizado) e mais
+   estreito, para deixar um respiro claro na esquerda em vez de ocupar quase
+   a tela toda. bottom:156px pelo mesmo motivo do desktop — os FABs de
+   WhatsApp/voltar-ao-topo não mudam de posição no mobile. */
 @media (max-width: 575.98px){
   .coupon-toast-container{
-    right:0; left:0; bottom:156px; width:auto; max-width:none;
-    display:flex; justify-content:center; padding-left:var(--spacing-sm); padding-right:var(--spacing-sm);
+    right:var(--spacing-sm); left:auto; bottom:156px;
+    /* min(): estreita de verdade nas telas pequenas (58vw ≈ 218px num
+       iPhone de 375px, sobrando ~145px livres à esquerda), mas nunca passa
+       de 236px nas maiores desta faixa. */
+    width:min(58vw, 236px); max-width:none;
   }
-  .coupon-toast{ width:100%; max-width:340px; }
+  .coupon-toast{ width:100%; max-width:none; }
   /* Mais compacto que o desktop: no celular a notificação flutua por cima
      do conteúdo (não empurra nada), então precisa ocupar bem menos tela. */
   .coupon-toast-body{ padding:var(--spacing-sm) var(--spacing-xs) var(--spacing-xs); }
