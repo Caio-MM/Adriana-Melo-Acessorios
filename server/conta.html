@@ -16,10 +16,6 @@
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
-<!-- auth-page: esta tela tem conteúdo de altura fixa (um cartão só), então
-     ocupa a janela inteira com o cartão centralizado. NÃO vale para
-     pedidos.html/admin.html, que compartilham .account-main mas têm listas
-     que crescem — por isso a regra é presa a esta classe. -->
 <body class="auth-page">
 
 <svg width="0" height="0" style="position:absolute">
@@ -52,17 +48,9 @@
       <a href="index.html" class="btn-outline-blush d-block w-100">Voltar para a loja</a>
     </div>
 
-    <!-- data-mode ("login" | "register" | "forgot" | "twofactor") é o único
-         estado desta tela: o CSS posiciona o painel do laço e revela o
-         formulário certo a partir dele, e js/conta.js só troca esse atributo.
-         "forgot" e "twofactor" são etapas dentro de entrar, não destinos
-         próprios — por isso ficam do mesmo lado que o login e a aba "Entrar"
-         continua marcada nas duas. -->
-    <div id="authForms" class="auth-shell" data-mode="login">
+        <div id="authForms" class="auth-shell" data-mode="login">
 
-      <!-- Painel decorativo: desliza para a direita no cadastro e para a
-           esquerda no login (só a partir de lg; no mobile vira o topo fixo). -->
-      <div class="auth-deco">
+            <div class="auth-deco">
         <svg class="auth-deco-motif auth-deco-motif-1" aria-hidden="true"><use href="#bow-shape"/></svg>
         <svg class="auth-deco-motif auth-deco-motif-2" aria-hidden="true"><use href="#bow-shape"/></svg>
 
@@ -94,9 +82,7 @@
         </div>
       </div>
 
-      <!-- No mobile não há espaço para o painel deslizante lateral: a troca
-           passa a ser por abas, com o formulário entrando em fade/slide. -->
-      <div class="auth-tabs d-lg-none" role="tablist">
+            <div class="auth-tabs d-lg-none" role="tablist">
         <button type="button" class="auth-tab" role="tab" aria-selected="true" data-auth-mode="login">Entrar</button>
         <button type="button" class="auth-tab" role="tab" aria-selected="false" data-auth-mode="register">Criar conta</button>
       </div>
@@ -147,10 +133,7 @@
         </div>
       </div>
 
-      <!-- 2ª etapa do login, para quem tem verificação em duas etapas ligada.
-           Só aparece depois que a senha já conferiu — até aqui nenhuma sessão
-           foi criada, é o código deste passo que a libera. -->
-      <div class="auth-pane auth-pane-twofactor">
+            <div class="auth-pane auth-pane-twofactor">
         <div class="auth-form">
           <p class="auth-eyebrow">só mais um passo</p>
           <h1 class="auth-title">Código de verificação</h1>
@@ -158,9 +141,7 @@
           <form id="twoFactorForm" novalidate>
             <div class="mb-3">
               <label class="form-label small fw-semibold" for="twoFactorCode">Código</label>
-              <!-- inputmode numeric + autocomplete one-time-code: o teclado do
-                   celular abre nos números e o iOS oferece o código sozinho. -->
-              <input type="text" class="form-control auth-code-input" id="twoFactorCode" required
+                            <input type="text" class="form-control auth-code-input" id="twoFactorCode" required
                      inputmode="numeric" autocomplete="one-time-code" maxlength="6"
                      placeholder="000000" aria-describedby="twoFactorHint">
               <div class="form-text" id="twoFactorHint">Perdeu o celular? Digite um dos seus códigos de recuperação.</div>
@@ -188,11 +169,7 @@
               <label class="form-label small fw-semibold" for="registerEmail">E-mail</label>
               <input type="email" class="form-control" id="registerEmail" required autocomplete="email">
             </div>
-            <!-- CEP no cadastro para o carrinho já abrir com o frete e o
-                 endereço preenchidos (ver js/main.js). inputmode=numeric
-                 abre o teclado numérico no celular; a máscara fica em
-                 js/conta.js. -->
-            <div class="mb-3">
+                        <div class="mb-3">
               <label class="form-label small fw-semibold" for="registerCep">CEP</label>
               <input type="text" class="form-control" id="registerCep" required autocomplete="postal-code"
                      inputmode="numeric" placeholder="00000-000" maxlength="9">

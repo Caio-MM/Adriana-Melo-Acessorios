@@ -13,27 +13,18 @@
   --ink:#54293C;
   --ink-soft:#8C6577;
 
-  /* Dourado/bege suave e cinza limpo — usados como acento secundário no
-     dashboard (ticket médio, mês atual do gráfico de vendas), nunca
-     dominando a paleta rosa do resto do site. */
   --gold-100:#F7EEDD;
   --gold-500:#C9A66B;
   --gold-700:#A9803F;
   --stone-100:#F1EDEA;
   --stone-600:#7A7370;
 
-  /* Fundo neutro de painel agrupador (resumo/checkout do carrinho) —
-     cinza quase branco, para separar do creme do resto sem introduzir
-     mais um tom de rosa. */
   --panel-bg:#F9F9F9;
 
   --font-display:'Fraunces', serif;
   --font-body:'Poppins', sans-serif;
   --font-script:'Caveat', cursive;
- 
-  /* Barra de navegação: um único lugar para o ritmo vertical, o respiro
-     entre itens e a curva/duração das micro-interações, para que links,
-     botão de Contato, conta e carrinho animem exatamente igual. */
+
   --nav-pad-y:18px;
   --nav-pad-y-scrolled:10px;
   --nav-gap:.15rem;
@@ -46,12 +37,6 @@
   --radius-md:18px;
   --shadow-soft: 0 20px 45px -20px rgba(192,84,128,0.35);
 
-  /* Camada de tokens genéricos (semânticos), por cima dos tokens de marca
-     acima — usados por componentes menores/isolados (ex.: .coupon-toast)
-     que preferem nomes por PAPEL ("cor primária") a nomes por VALOR
-     ("blush-600"). São só apelidos via var(): a cor/fonte/raio de verdade
-     continua definida uma vez só, lá em cima — mudar --blush-600 muda os
-     dois. Não recriar um valor aqui que já exista acima. */
   --color-primary: var(--blush-600);
   --color-primary-dark: var(--blush-700);
   --color-text-dark: var(--ink);
@@ -69,21 +54,15 @@
   --shadow-md: var(--shadow-soft);
   --transition-speed: .25s;
 
-  /* Duração/easing nomeados para as animações do .coupon-toast (distintos
-     de --transition-speed, que é o já usado pelas transições simples de
-     hover/foco do site inteiro — não duplicar valor, só propósito diferente). */
   --animation-short: 200ms;
   --animation-normal: 300ms;
   --animation-long: 500ms;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
- 
+
 *{ box-sizing:border-box; }
-/* overflow-x:clip, e NÃO hidden: `hidden` transforma o elemento em um
-   contêiner de rolagem, e isso mata qualquer position:sticky descendente
-   (o cabeçalho de .simple-header simplesmente rolava junto). `clip` corta
-   o transbordo horizontal do mesmo jeito, sem criar contêiner de rolagem. */
+
 html{ scroll-behavior:smooth; overflow-x:clip; }
 body{
   font-family:var(--font-body);
@@ -92,32 +71,25 @@ body{
   font-weight:400;
   line-height:1.65;
   -webkit-font-smoothing:antialiased;
-  overflow-x:clip;          /* mesmo motivo do html acima */
+  overflow-x:clip;          
   max-width:100vw;
 }
 h1,h2,h3,h4,.font-display{ font-family:var(--font-display); color:var(--ink); }
 .font-script{ font-family:var(--font-script); }
- 
+
 a{ color:var(--blush-700); text-decoration:none; }
 ::selection{ background:var(--blush-300); color:var(--ink); }
- 
-/* focus visibility */
+
 a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible{
   outline:3px solid var(--blush-600);
   outline-offset:3px;
 }
- 
+
 @media (prefers-reduced-motion: reduce){
   *{ animation:none !important; transition:none !important; scroll-behavior:auto !important; }
 }
 
-/* ============ REVEAL ON SCROLL ============
-   Aplicado via IntersectionObserver em js/main.js (observeReveal). Só usa
-   opacity/transform (propriedades "baratas" para o navegador animar — não
-   disparam reflow, só compositing), pra não pesar a thread principal no
-   celular. Respeita prefers-reduced-motion pela regra global acima
-   (transition:none!important desliga a transição, o elemento só aparece
-   direto no estado final). */
+/* ============ REVEAL ON SCROLL ============ */
 .reveal{
   opacity:0; transform:translateY(28px);
   transition:opacity .6s ease, transform .6s ease;
@@ -127,7 +99,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .reveal-delay-1{ transition-delay:.09s; }
 .reveal-delay-2{ transition-delay:.18s; }
 .reveal-delay-3{ transition-delay:.27s; }
- 
+
 .section-eyebrow{
   font-family:var(--font-script);
   font-size:1.5rem;
@@ -146,10 +118,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   color:var(--ink-soft);
   max-width:560px;
 }
- 
+
 /* ============ BOW ICON ============ */
 .bow-icon{ display:inline-block; fill:currentColor; }
- 
+
 /* ============ NAVBAR ============ */
 .plc-navbar{
   position:fixed; top:0; left:0; right:0; z-index:1030;
@@ -161,9 +133,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
              box-shadow var(--nav-dur) var(--nav-ease),
              border-color var(--nav-dur) var(--nav-ease);
 }
-/* Vidro fosco só depois de rolar (is-scrolled vem de js/main.js). O
-   saturate compensa a lavagem de cor que o blur causa, e a hairline
-   inferior separa a barra do conteúdo sem virar uma borda dura. */
+
 .plc-navbar.is-scrolled{
   padding:var(--nav-pad-y-scrolled) 0;
   background:rgba(255,253,252,.72);
@@ -172,13 +142,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border-bottom-color:rgba(192,84,128,.10);
   box-shadow:0 8px 28px -20px rgba(84,41,60,.45);
 }
-/* Sem backdrop-filter (Firefox antigo), translúcido viraria texto ilegível. */
+
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
   .plc-navbar.is-scrolled{ background:rgba(255,253,252,.97); }
 }
-/* A marca é a arte do cartão (laço + "Adriana Melo Acessórios" em duas
-   linhas), não mais texto. line-height:0 evita a folga que a linha de
-   texto deixaria sob a imagem e desalinharia a navbar. */
+
 .plc-brand{
   display:flex; align-items:center;
   line-height:0;
@@ -186,9 +154,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .plc-brand img{
   height:54px; width:auto; display:block;
 }
-/* O bloco é deitado (3:1), então a altura é o que define a largura: mesmo
-   nos 54px do desktop ele ocupa ~168px, bem menos que o texto antigo —
-   é o que libera espaço para conta, carrinho e menu nas telas estreitas. */
+
 @media (max-width: 575.98px){
   .plc-brand img{ height:40px; }
 }
@@ -211,18 +177,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .plc-nav-link:hover, .plc-nav-link:focus-visible{ color:var(--blush-700); }
 .plc-nav-link:hover::after,
 .plc-nav-link:focus-visible::after{ transform:scaleX(1); }
-/* Seção visível no momento — marcado por js/main.js junto com
-   aria-current, para que leitor de tela e visão batam. */
+
 .plc-nav-link.is-active{ color:var(--blush-700); font-weight:600; }
 .plc-nav-link.is-active::after{ transform:scaleX(1); }
 
-/* Só na barra do topo: com conta + carrinho ao lado, o padding de 1rem
-   por link estourava o container. No menu lateral (offcanvas) o padding
-   original continua valendo — lá sobra espaço, e alvo de toque menor no
-   celular seria pior, não melhor.
-   A fonte também é menor aqui: com seis itens (o último deles "Nossa
-   história", que é largo) mais conta e carrinho, .92rem só cabia
-   espremido nas telas de ~1000–1200px. */
 #mainNav .plc-nav-link{
   font-size:.84rem;
   padding:var(--nav-link-pad-y) var(--nav-link-pad-x) !important;
@@ -230,8 +188,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 #mainNav .plc-nav-link::after{ left:var(--nav-link-pad-x); right:var(--nav-link-pad-x); }
 #mainNav .d-none.d-xl-flex{ gap:var(--nav-gap) !important; }
 
-/* "Contato" fecha a lista como botão-fantasma: pesa mais que um link,
-   menos que o rosa sólido dos CTAs do corpo da página. */
 .nav-cta{
   display:inline-flex; align-items:center; white-space:nowrap;
   padding:var(--nav-link-pad-y) .8rem;
@@ -239,8 +195,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border-radius:999px;
   border:1.5px solid var(--blush-200);
   background:var(--blush-50);
-  /* Acompanha o .84rem dos links vizinhos: em .92rem ele ficava
-     visivelmente maior que o resto da barra. */
+
   color:var(--blush-700); font-size:.84rem; font-weight:600;
   text-decoration:none;
   transition:background var(--nav-dur) var(--nav-ease),
@@ -254,8 +209,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .nav-cta:hover{ transform:translateY(-1px); box-shadow:0 10px 20px -12px rgba(192,84,128,.85); }
 
-/* Foco visível consistente em tudo que é clicável na barra — o outline
-   padrão sumia contra o vidro fosco. */
 #mainNav .plc-nav-link:focus-visible,
 .nav-cta:focus-visible,
 .account-pill:focus-visible,
@@ -269,7 +222,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   }
   .nav-cta:hover{ transform:none; }
 }
- 
+
 .btn-blush{
   background:var(--blush-600); border:1px solid var(--blush-600); color:var(--white);
   border-radius:999px; padding:.6rem 1.4rem; font-weight:600; font-size:.9rem;
@@ -284,20 +237,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .btn-outline-blush:hover{ background:var(--blush-100); color:var(--blush-700); }
 .btn-outline-blush:active{ transform:scale(.97); }
- 
+
 .cart-pill{
   position:relative; width:44px; height:44px; border-radius:50%; flex-shrink:0;
   background:var(--blush-100); display:flex; align-items:center; justify-content:center;
   color:var(--blush-700); border:none;
 }
-/* Sem isto o flex espremia o carrinho (virava elipse) e quebrava
-   "Fazer pedido" em duas linhas quando a barra ficava apertada. */
+
 #mainNav .btn-blush{ flex-shrink:0; white-space:nowrap; }
 
-/* Conta (Entrar / Olá, nome / Sair) — irmão visual do .cart-pill: no
-   mobile é um círculo de 44px idêntico ao carrinho (só o ícone), e a
-   partir de lg vira uma pílula com rótulo. O rótulo some via CSS, não
-   via markup duplicado, então js/auth.js só monta um HTML. */
 .account-pill{
   display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
   width:44px; height:44px; padding:0; border-radius:999px; flex-shrink:0;
@@ -308,15 +256,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .account-pill:hover, .account-pill:focus-visible{ background:var(--blush-200); color:var(--blush-700); transform:translateY(-1px); }
 .account-pill .account-icon{ width:20px; height:20px; flex-shrink:0; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 .account-pill-label{ display:none; }
-/* Abaixo de xl a barra não tem folga para logo + links + conta +
-   carrinho, e o carrinho chegava a ser empurrado para fora da tela; como
-   círculo o botão ocupa o mesmo que o carrinho e segue acessível pelo
-   aria-label. */
+
 @media (min-width: 1200px){
   .account-pill{ width:auto; padding:0 1rem 0 .85rem; }
   .account-pill-label{ display:inline; }
 }
-/* Precisa vir depois de .cart-pill e .account-pill para vencer por ordem. */
+
 @media (max-width: 359.98px){
   .account-pill, .cart-pill{ width:38px; height:38px; }
   .account-pill .account-icon{ width:18px; height:18px; }
@@ -327,8 +272,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display:flex; align-items:center; justify-content:center; border:2px solid var(--cream);
 }
 
-/* Disparado por bumpCartIcon() (js/main.js) sempre que um item é
-   adicionado — só transform, sem custo de layout. */
 .cart-pill.is-bumped{ animation:cart-bump .5s ease; }
 @keyframes cart-bump{
   0%{ transform:scale(1) rotate(0); }
@@ -337,9 +280,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   100%{ transform:scale(1) rotate(0); }
 }
 
-/* "Bolinha" que voa do botão de adicionar até o ícone do carrinho
-   (flyToCart em js/main.js) — elemento próprio, posição fixed, some ao
-   fim da transição. */
 .fly-dot{
   position:fixed; top:0; left:0; width:14px; height:14px; border-radius:50%;
   pointer-events:none; z-index:2000; box-shadow:0 6px 14px -4px rgba(84,41,60,.5);
@@ -357,8 +297,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   position:relative;
 }
 @media (max-width: 575.98px){
-  /* 112 e não 96: sem a pílula acima do título, 96px deixavam o H1 a 15px
-     da navbar — perto demais de passar por baixo dela. */
+
   .hero{ padding:112px 0 56px; }
 }
 .hero-title{
@@ -369,7 +308,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .hero-stats{ display:flex; gap:2.2rem; margin-top:2.5rem; }
 .hero-stats .num{ font-family:var(--font-display); font-size:1.6rem; font-weight:600; color:var(--blush-700); display:block; }
 .hero-stats .lbl{ font-size:.78rem; color:var(--ink-soft); }
- 
+
 .hero-art{ position:relative; height:460px; }
 .hero-bow-main{ color:var(--blush-600); width:260px; height:auto; position:absolute; top:50%; left:50%; transform:translate(-50%,-52%); filter:drop-shadow(0 25px 35px rgba(192,84,128,.35)); z-index:1; }
 .hero-bow-shadow{ color:var(--blush-150); width:300px; height:auto; position:absolute; top:54%; left:47%; transform:translate(-50%,-50%) rotate(-8deg); z-index:0; }
@@ -379,31 +318,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .floaty.f3{ bottom:10%; left:2%; width:56px; color:var(--blush-200); animation-delay:.6s; }
 .floaty.f4{ bottom:4%; right:14%; width:38px; color:var(--blush-600); animation-delay:1.8s; }
 @keyframes floaty{ 0%,100%{ transform:translateY(0) rotate(0deg);} 50%{ transform:translateY(-16px) rotate(6deg);} }
- 
+
 /* ============ MARQUEE STRIP ============ */
-/* Antes a faixa era uma cor sólida encostada direto no creme do hero e do
-   "Nossa coleção" (ambos var(--cream)) — um corte de 100% de saturação sem
-   nenhuma transição, a única quebra angular/dura do site inteiro, que é
-   todo em gradiente suave e canto arredondado. O degradê abaixo funde a
-   borda da faixa no mesmo creme de quem está em volta, então a "entrada" e
-   a "saída" da faixa somem — sobra só o miolo sólido rosa, sem emenda
-   visível. Os 10px do degradê ficam dentro do padding vertical da faixa
-   (.7rem ≈ 11px): a fusão come só a margem vazia, nunca o texto rolando,
-   que fica centralizado no meio. */
+
 .plc-marquee{
   background:linear-gradient(to bottom,
     var(--cream) 0, var(--blush-700) 10px, var(--blush-700) calc(100% - 10px), var(--cream) 100%);
   color:var(--blush-50); padding:.7rem 0; overflow:hidden; white-space:nowrap;
 }
-/* O deslocamento tem que ser de uma cópia exata. Antes eram 8 itens soltos
-   com gap entre eles e -50%: metade da faixa cai no meio de um gap, então a
-   emenda pulava. Agora cada cópia é um grupo que carrega o próprio
-   espaçamento à direita, e -25% de 4 grupos é exatamente um deles. */
+
 .plc-marquee-track{ display:flex; width:max-content; animation:scrollx 26s linear infinite; }
 .plc-marquee-group{ display:flex; align-items:center; flex:none; gap:3rem; padding-right:3rem; }
 .plc-marquee span{ font-family:var(--font-script); font-size:1.15rem; display:inline-flex; align-items:center; gap:.6rem; white-space:nowrap; }
-/* O laço tinha largura no atributo mas nunca altura, e SVG sem altura vale
-   150px por padrão — era isso que inflava a faixa para 172px. */
+
 .plc-marquee span svg{ width:16px; height:11px; flex:none; }
 @media (max-width: 575.98px){
   .plc-marquee{ padding:.5rem 0; }
@@ -414,7 +341,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @media (prefers-reduced-motion: reduce){
   .plc-marquee-track{ animation:none; }
 }
- 
+
 /* ============ CATEGORY CHIPS ============ */
 .chip-group{ display:flex; flex-wrap:wrap; gap:.65rem; }
 .chip{
@@ -424,7 +351,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .chip:hover{ border-color:var(--blush-500); }
 .chip.active{ background:var(--blush-600); border-color:var(--blush-600); color:#fff; }
- 
+
 /* ============ PRODUCT CARDS ============ */
 .product-card{
   background:var(--white); border-radius:var(--radius-md); overflow:hidden;
@@ -432,20 +359,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   transition:transform .3s ease, box-shadow .3s ease, border-color .3s ease;
 }
 .product-card:hover{ transform:translateY(-6px); box-shadow:var(--shadow-soft); }
-/* Item com selo (mais vendido/novo) — leve destaque pra chamar o olho
-   sem gritar, mesma lógica de "mercadoria em vitrine física". */
+
 .product-card.is-featured{ border-color:var(--blush-300); box-shadow:0 12px 30px -20px rgba(192,84,128,.5); }
 .product-thumb{
   aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
   position:relative; background:var(--blush-50); overflow:hidden;
 }
 .product-thumb .bow-icon{ width:46%; height:auto; }
-/* A foto COBRE o laço quando existe (mesma ideia de .cart-item-thumb e
-   .qv-thumb) — o laço é o fundo de quem não tem foto cadastrada, não uma
-   marca d'água por cima da foto do produto. O z-index é necessário aqui
-   porque o laço também é absoluto neste thumb (posicionado inline em
-   js/main.js): sem ele, os dois empatam e a ordem do DOM deixaria o laço
-   por cima. */
+
 .product-thumb img{
   position:absolute; inset:0; z-index:1;
   width:100%; height:100%; object-fit:cover; display:block;
@@ -459,9 +380,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   animation:shimmer 1.4s ease-in-out infinite;
 }
 @keyframes shimmer{ 0%{ background-position:150% 0; } 100%{ background-position:-50% 0; } }
-/* Wrapper posicionado; cada selo é uma pill própria dentro dele — um
-   produto pode ter mais de um selo ao mesmo tempo (ex.: "Novo" e "Mais
-   vendido" juntos), empilhados em vez de disputar o mesmo canto. */
+
 .product-badges{
   position:absolute; top:12px; left:12px; z-index:1;
   display:flex; flex-direction:column; align-items:flex-start; gap:6px;
@@ -480,9 +399,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .product-card:hover .product-quickview,
 .product-quickview:focus-visible{ opacity:1; transform:translateY(0); }
-/* Aparelho sem hover (celular/tablet): o ícone precisa estar visível o tempo
-   todo, senão a única pista de que o card abre os detalhes some — que era
-   exatamente o que acontecia antes no celular. */
+
 @media (hover: none){
   .product-quickview{ opacity:1; transform:translateY(0); }
 }
@@ -493,13 +410,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .product-price{ font-weight:700; font-size:1.1rem; color:var(--ink); }
 .product-price small{ font-weight:400; color:var(--ink-soft); font-size:.72rem; }
 
-/* Bloco de preço do card: preço cheio, preço no Pix (destacado) e a parcela.
-   Calculados em js/main.js a partir de js/pricing.js. */
 .product-pricing{ display:flex; flex-direction:column; line-height:1.3; min-width:0; flex:1 1 auto; }
-/* nowrap de propósito: o preço no Pix é curto o bastante pra caber numa
-   linha só nos tamanhos de fonte abaixo (ver breakpoint de 400px) — deixar
-   quebrar como o parcelamento (mais longo, com "sem juros") ficava feio
-   partindo "R$ 33,15" de "no Pix". */
+
 .product-pix{
   font-size:.9rem; font-weight:700; color:var(--blush-700); white-space:nowrap;
 }
@@ -507,9 +419,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .product-installment{ font-size:.72rem; color:var(--ink-soft); }
 @media (max-width: 400px){
   .product-price{ font-size:1rem; }
-  /* Card fica bem estreito nesta largura (2 por linha) — reduz até o
-     ponto medido que ainda cabe o pior caso do catálogo ("R$ 85,40 no
-     Pix") sem quebrar linha nem encostar no botão de adicionar. */
+
   .product-pix{ font-size:.625rem; }
   .product-installment{ font-size:.68rem; }
 }
@@ -522,23 +432,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .btn-add.is-added{ background:#1E7F44; color:#fff; }
 
 /* ============ QUICK VIEW (detalhes do produto) ============ */
-/* O quadro assume a proporção da PRÓPRIA foto (--qv-ratio, definido em
-   js/main.js a partir do naturalWidth/naturalHeight ao carregar), então
-   object-fit:cover preenche sem cortar nada e sem sobrar faixa de fundo em
-   cima e embaixo. 4/5 é só o padrão de partida: é a proporção em que o
-   painel administrativo grava os recortes, e vale enquanto a imagem ainda
-   não carregou (evita o salto de layout) e para quem não tem foto, que vê
-   o laço desenhado.
-   O teto em vh mantém o preço visível junto da foto em telas curtas; quem
-   garante o botão de comprar é o modal-dialog-scrollable, não esta conta. */
+
 .qv-thumb{
   position:relative; aspect-ratio:var(--qv-ratio, 4/5);
-  /* A largura sai de um min() em vez de max-height porque limitar a altura
-     com a largura em 100% QUEBRA a proporção (o quadro vira paisagem e o
-     cover volta a cortar a foto). Aqui os dois limites convivem: nunca
-     passa da largura do modal nem de 46vh de altura, e a proporção fica
-     exata sempre. --qv-ar é a mesma proporção em número decimal, que o
-     calc() aceita — js/main.js define as duas ao carregar a foto. */
+
   width:min(100%, calc(46vh * var(--qv-ar, .8))); margin-inline:auto;
   border-radius:var(--radius-md); overflow:hidden;
   display:flex; align-items:center; justify-content:center; background:var(--blush-50);
@@ -556,7 +453,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   animation:shimmer 1.4s ease-in-out infinite;
 }
 
-/* Preço promocional do Pix — é o número que deve puxar o olho primeiro. */
 .qv-pix{
   background:var(--blush-50); border:1.5px solid var(--blush-200);
   border-radius:14px; padding:.6rem .8rem;
@@ -568,9 +464,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   padding:.18rem .55rem; border-radius:999px; white-space:nowrap;
 }
 .qv-pix-note{ font-size:.76rem; color:var(--ink-soft); margin-top:.1rem; }
-/* Preço do cartão e parcela na MESMA linha (baseline compartilhada): em
-   duas linhas o bloco passava do fim da área rolável e a segunda aparecia
-   cortada ao meio, parecendo defeito. */
+
 .qv-card{ display:flex; align-items:baseline; flex-wrap:wrap; gap:.35rem; padding:0 .2rem; }
 .qv-card-price{ font-weight:700; font-size:1rem; color:var(--ink); }
 .qv-card-label{ font-size:.8rem; color:var(--ink); }
@@ -578,9 +472,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* ============ FORMA DE PAGAMENTO (carrinho) ============ */
 .pay-methods{ display:flex; flex-direction:column; gap:.55rem; }
-/* Mesma borda/raio/tom das .shipping-option logo acima, para os dois
-   grupos de escolha do carrinho lerem como o mesmo componente. O fundo
-   branco destaca os cartões contra o cinza do painel. */
+
 .pay-method{
   display:flex; align-items:center; gap:.65rem; cursor:pointer;
   border:1.5px solid var(--blush-200); border-radius:var(--radius-md);
@@ -595,9 +487,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   transition:background .2s ease, color .2s ease;
 }
 .pay-method.selected .pm-icon{ background:var(--blush-600); color:#fff; }
-/* .selected vem do JS (mesmo padrão de .shipping-option acima) em vez de
-   :has(input:checked) — o estado precisa aparecer também em navegador sem
-   suporte a :has(). */
+
 .pay-method.selected{ border-color:var(--blush-600); background:var(--blush-50); }
 .pay-method:focus-within{ outline:3px solid var(--blush-600); outline-offset:2px; }
 .pay-method input[type="radio"]{ accent-color:var(--blush-600); width:16px; height:16px; flex-shrink:0; }
@@ -620,12 +510,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .historia-frame .bow-icon{ color:var(--blush-300); }
 
-/* ============ PROCESS ============
-   Círculo com ícone (o que a cliente reconhece de longe) + selo do número
-   sobreposto no canto (mesmo recurso do selo de check na página de
-   obrigado — .thanks-mark-badge) em vez do número sozinho dentro do
-   círculo: com ícone, o número precisava de um lugar próprio para não
-   competir por espaço/atenção. */
+/* ============ PROCESS ============ */
 .process-wrap{ position:relative; }
 .process-step{ text-align:center; padding:0 1.1rem; }
 .process-icon-wrap{
@@ -639,8 +524,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   box-shadow:0 14px 30px -14px rgba(192,84,128,.55);
   transition:transform .3s ease, box-shadow .3s ease;
 }
-/* Hover no passo inteiro (não só no ícone): a área de toque/mira é maior,
-   então não precisa acertar o círculo exato para o efeito reagir. */
+
 .process-step:hover .process-icon{
   transform:translateY(-6px) scale(1.04);
   box-shadow:0 20px 40px -14px rgba(192,84,128,.65);
@@ -663,15 +547,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   background-image:linear-gradient(to right, var(--blush-300) 60%, transparent 0%);
   background-size:14px 2px; background-repeat:repeat-x; z-index:0;
 }
- 
+
 /* ============ TESTIMONIALS ============ */
 .testi-card{
   position:relative; overflow:hidden;
   background:var(--white); border-radius:var(--radius-lg); padding:2.6rem 2.2rem 2.4rem;
   border:1px solid var(--blush-100); max-width:680px; margin:0 auto; text-align:center;
 }
-/* Aspas decorativas em marca d'água — puramente ornamental (aria-hidden via
-   ::before não entra na árvore de acessibilidade), fica atrás do texto. */
+
 .testi-card::before{
   content:"\201C";
   position:absolute; top:-.4rem; left:50%; transform:translateX(-50%);
@@ -700,13 +583,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .carousel-indicators [data-bs-target].active{ background:var(--blush-700); width:22px; border-radius:999px; }
 
-/* ============ CONTATO ============
-   Antes o formulário usava .form-control/.form-select puro do Bootstrap,
-   sem nenhum estilo de marca — era o único bloco do site sem tratamento
-   próprio, e por isso o único lugar com o anel de foco AZUL padrão do
-   navegador destoando de toda a paleta rosa. O card e os inputs abaixo só
-   aplicam o que já existe em .auth-pane .form-control (login), não criam
-   nada novo. */
+/* ============ CONTATO ============ */
 .contact-form-card{
   background:var(--white); border-radius:var(--radius-lg);
   box-shadow:var(--shadow-soft); padding:2rem;
@@ -719,20 +596,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 #contactForm .form-control:hover,
 #contactForm .form-select:hover{ border-color:var(--blush-300); }
-/* box-shadow:none tira o anel azul padrão do Bootstrap; quem marca o foco
-   é o outline global em blush-600 (mesmo padrão do resto do site). */
+
 #contactForm .form-control:focus,
 #contactForm .form-select:focus{
   border-color:var(--blush-500); background:var(--white); box-shadow:none;
 }
-/* Ícone dentro do campo (Nome/WhatsApp). .invalid-feedback fica DENTRO
-   deste wrapper (irmão direto do input, não do wrapper) de propósito: é o
-   que o CSS nativo do Bootstrap (.form-control:invalid ~ .invalid-feedback)
-   precisa para continuar funcionando depois de embrulhar o input.
-   Ícone e input ficam empilhados na mesma célula de grid (linha 1) e a
-   mensagem de erro numa segunda linha — assim o ícone centraliza pela
-   altura do input sozinho, sem ser puxado para baixo quando o erro aparece
-   abaixo dele (top:50% sobre a altura do wrapper inteiro fazia isso). */
+
 .contact-field-icon{ position:relative; display:grid; }
 .contact-field-icon > i{
   grid-row:1; grid-column:1; align-self:center; justify-self:start; margin-left:.95rem;
@@ -740,17 +609,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .contact-field-icon .form-control{ grid-row:1; grid-column:1; padding-left:2.6rem; }
 .contact-field-icon .invalid-feedback{ grid-row:2; grid-column:1; }
-/* Cada linha de contato (WhatsApp/E-mail/Ateliê) ganha um respiro maior
-   e o círculo de ícone cresce um pouco e reage ao hover — mesmo padrão
-   de .social-circle:hover já usado no rodapé, só que sobre fundo claro. */
+
 .contact-info-row{
   display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;
 }
 .contact-info-row-last{ margin-bottom:0; }
-/* .social-circle.contact-info-icon (2 classes) de propósito: a definição
-   de .social-circle sozinha vem DEPOIS no arquivo (rodapé) e, com a mesma
-   especificidade, venceria por ordem — a combinação garante que este
-   tamanho/cor prevaleça independente de onde .social-circle for definida. */
+
 .social-circle.contact-info-icon{
   width:44px; height:44px; flex-shrink:0;
   background:var(--blush-100); color:var(--blush-700); border-color:transparent;
@@ -771,10 +635,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   box-shadow:0 24px 50px -24px rgba(150,60,95,.55);
 }
 .plc-cta .bow-icon{ position:absolute; opacity:.15; }
-/* Selo "oferta de boas-vindas" acima do título — mesmo desenho do
-   .pix-badge (pílula translúcida), só que sobre fundo escuro em vez de
-   claro. Dá ao bloco um ponto de entrada visual antes do título, que sem
-   isso era a primeira e única coisa a chamar atenção. */
+
 .plc-cta-badge{
   display:inline-flex; align-items:center; gap:.4rem;
   background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25);
@@ -782,11 +643,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   font-size:.72rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
   margin-bottom:.9rem;
 }
-/* Texto de apoio: var(--blush-100) direto sobre este gradiente dava
-   contraste ~2.6–3.7:1 (abaixo do mínimo de 4.5:1 do WCAG AA para texto
-   normal) — rosa claro sobre rosa médio, cores próximas demais em matiz e
-   luminosidade. Branco quase opaco + uma sombra sutil resolve sem trocar
-   a paleta da marca. */
+
 .plc-cta-sub{ color:rgba(255,255,255,.92); text-shadow:0 1px 2px rgba(0,0,0,.15); }
 .plc-cta-field{ position:relative; flex:1 1 auto; min-width:0; }
 .plc-cta-field > i{
@@ -798,8 +655,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   width:100%; transition:box-shadow .2s ease;
 }
 .plc-cta input.form-control:focus{ box-shadow:0 0 0 3px rgba(255,255,255,.5); }
-/* Código do cupom devolvido pela inscrição — precisa saltar aos olhos, é o
-   que a cliente vai copiar para o carrinho. */
+
 .newsletter-coupon{
   display:inline-block;
   background:rgba(255,255,255,.2); border:1px dashed rgba(255,255,255,.75);
@@ -815,12 +671,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   box-shadow:0 12px 24px -10px rgba(0,0,0,.45);
 }
 .plc-cta .btn-blush:active{ transform:translateY(0); box-shadow:none; }
- 
+
 /* ============ FOOTER ============ */
-/* Rodapé compacto: menos respiro vertical que a v. anterior (4rem→2.75rem
-   no topo) sem amontoar — a folga perdida no padding volta como
-   letter-spacing/line-height nos textos, que é o que lê como "refinado"
-   sem precisar de altura extra. */
+
 .plc-footer{ background:var(--ink); color:var(--blush-100); padding:2.75rem 0 1.1rem; }
 .plc-footer h6{
   color:#fff; font-weight:600; margin-bottom:.9rem;
@@ -838,8 +691,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display:flex; align-items:center; justify-content:center; transition:background .2s ease, border-color .2s ease;
 }
 .social-circle:hover{ background:var(--blush-600); border-color:var(--blush-600); }
-/* Borda fina em vez de preenchimento sólido — os selos ficam sutis contra
-   o fundo escuro, sem competir visualmente com o resto do rodapé. */
+
 .pay-badge{
   background:transparent; border:1px solid rgba(255,255,255,.22); border-radius:999px;
   padding:.32rem .75rem; font-size:.7rem; letter-spacing:.02em; color:var(--blush-100);
@@ -847,9 +699,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .pay-badge:hover{ border-color:var(--blush-400); color:#fff; }
 
-/* Selos das bandeiras aceitas — fundo branco de propósito: são logos
-   coloridas desenhadas para fundo claro (a maioria vem sem fundo próprio
-   no arquivo), e ficariam ilegíveis direto sobre o rodapé escuro. */
 .pay-logos{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.7rem; }
 .pay-logo-badge{
   display:flex; align-items:center; justify-content:center;
@@ -859,14 +708,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .pay-logo-badge:hover{ opacity:1; transform:translateY(-1px); }
 .pay-logo-badge img{ height:100%; width:auto; max-width:50px; object-fit:contain; display:block; }
-/* Único selo sem logo própria (boleto não é uma marca, é um meio de
-   pagamento) — mesma altura/fundo dos demais para a fileira ficar alinhada. */
+
 .pay-logo-badge.is-icon{ gap:.35rem; color:var(--ink); font-size:.72rem; font-weight:700; }
 .pay-logo-badge.is-icon i{ font-size:1rem; color:var(--blush-700); }
 
-/* Barra inferior: direitos autorais + "feito em" numa linha só, com um
-   ponto sutil separando — quebra para duas linhas centralizadas em telas
-   estreitas, onde o separador some para não sobrar solto entre elas. */
 .footer-bottom{
   display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
   gap:.35rem .65rem; font-size:.78rem; letter-spacing:.01em; color:var(--blush-150);
@@ -877,7 +722,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .footer-bottom{ flex-direction:column; gap:.3rem; }
   .footer-bottom-sep{ display:none; }
 }
- 
+
 .shipping-option{
   display:flex; align-items:center; gap:.7rem; border:1.5px solid var(--blush-200);
   border-radius:12px; padding:.6rem .8rem; cursor:pointer; transition:border-color .2s ease, background .2s ease;
@@ -890,19 +735,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .shipping-option .so-price{ margin-left:auto; font-weight:700; color:var(--blush-700); white-space:nowrap; }
 
 /* ============ CART OFFCANVAS ============ */
-/* ⚠️ width, e não só max-width: o Bootstrap fixa .offcanvas-end em 400px,
-   e max-width sozinho não segura isso abaixo desse valor. Em qualquer
-   telefone mais estreito que 400px (iPhone SE/13/14 têm 375–390) o painel
-   transbordava para a esquerda e cortava miniatura e título dos itens. */
+
 .cart-offcanvas{ background:var(--cream); width:min(400px, 100%); max-width:100%; }
 .cart-offcanvas .offcanvas-header{
   align-items:center; padding:1.1rem 1.25rem; border-bottom:1px solid var(--blush-100);
 }
 .cart-offcanvas .offcanvas-title{ font-size:1.15rem; font-weight:600; letter-spacing:.01em; }
 .cart-offcanvas .offcanvas-body{ padding:1.25rem; }
-/* Mesmo padrão visual de .cart-item-remove (ícone circular discreto) —
-   funciona igual ao X (fecha o carrinho), só que como "voltar" para
-   combinar com o gesto de navegação do celular. */
+
 .cart-back-btn{
   color:var(--ink-soft); background:none; border:none; font-size:1.1rem;
   width:32px; height:32px; border-radius:50%; flex-shrink:0;
@@ -911,27 +751,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .cart-back-btn:hover{ background:var(--blush-100); color:var(--blush-700); }
 
-/* Item: miniatura à esquerda, e à direita duas linhas — nome + preço
-   unitário (alinhado à direita), depois quantidade + lixeira. O
-   align-items:center centraliza esse bloco no eixo da miniatura. */
-/* Cada item num cartão branco em vez de separado por fio: com dois ou
-   três laços a lista de fios lia como uma tabela solta, e a miniatura
-   (rosa clara) se perdia no fundo creme do painel. O cartão dá borda ao
-   produto e deixa claro onde um termina e o outro começa. */
 .cart-item{
   display:flex; gap:.9rem; align-items:center;
   background:var(--white); border:1px solid #F1EAED; border-radius:14px;
   padding:.8rem .85rem;
 }
-/* O último item não leva risco: logo abaixo já vem a borda do bloco
-   seguinte (cross-sell ou painel), e as duas juntas viravam linha dupla. */
+
 .cart-item-thumb{
   position:relative; width:64px; height:64px; border-radius:12px; flex-shrink:0; overflow:hidden;
   background:var(--blush-100); display:flex; align-items:center; justify-content:center;
 }
 .cart-item-thumb img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-/* Foto que falhou ao carregar sai da frente e deixa o laço aparecer, em
-   vez de deixar o ícone de imagem quebrada por cima dele. */
+
 .cart-item-thumb img.is-error{ display:none; }
 .cart-item-thumb .bow-icon{ width:55%; height:auto; }
 .cart-item-body{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:.55rem; }
@@ -959,32 +790,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .cart-item-remove:hover{ background:var(--blush-100); color:var(--blush-700); }
 
-/* ---- Painel de checkout (frete → botão de pagar) ----
-   Fundo cinza claro num bloco só, para separar da lista de produtos. O
-   respiro entre sub-seções vem do gap daqui, não de border-top em cada
-   filho — assim nenhum bloco oculto (.d-none) deixa borda órfã. */
 .cart-checkout-panel{
   background:var(--panel-bg); border:1px solid #EFEAEC; border-radius:var(--radius-md);
   padding:1.25rem 1.1rem; margin-top:1.25rem;
   display:flex; flex-direction:column; gap:1.35rem;
 }
 .cart-panel-block{ display:flex; flex-direction:column; }
-/* Rótulo padrão de toda sub-seção do carrinho (frete, endereço, cupom,
-   pagamento e "Complete seu pedido"). display:block porque é usado tanto
-   como <label> quanto como <span> solto — inline deixaria o campo seguinte
-   subir para a mesma linha. */
+
 .cart-block-label{
   display:block;
   font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
   color:var(--ink-soft); margin-bottom:.5rem;
 }
 
-/* Cross-sell ("Complete seu pedido"): separado da lista de produtos por
-   respiro, não por fio — o fio competia com as bordas dos cartões de item
-   logo acima. */
 .cart-recs{ margin-top:1.5rem; }
-/* Input elástico + botão de largura fixa: "Calcular" e "Aplicar" ficam do
-   mesmo tamanho e alinhados na vertical entre as duas sub-seções. */
+
 .cart-field-row{ display:flex; gap:.5rem; align-items:stretch; }
 .cart-field-row .form-control{ flex:1 1 auto; min-width:0; font-size:.88rem; }
 .cart-field-btn{
@@ -994,12 +814,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .cart-hint{ font-size:.76rem; color:var(--ink-soft); line-height:1.45; margin-top:.4rem; }
 .cart-hint:empty{ display:none; margin-top:0; }
 
-/* Endereço de entrega: aparece dentro do bloco do frete, depois que a
-   cliente escolhe a entrega. Ganha o mesmo tratamento dos blocos irmãos
-   (rótulo maiúsculo, campos de .88rem) em vez do texto em negrito e dos
-   inputs -sm que usava antes e faziam o bloco parecer de outro site.
-   O respiro acima vem de margin, não de border-top: o painel já separa
-   as sub-seções pelo gap, e a linha extra pesava demais aqui. */
 .cart-address{ margin-top:1.1rem; }
 .cart-address .form-control,
 .cart-address .form-select{ font-size:.88rem; }
@@ -1010,9 +824,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .cart-total-line > strong{ font-weight:600; white-space:nowrap; }
 .cart-total-line.is-discount > span,
 .cart-total-line.is-discount > strong{ color:var(--blush-700); }
-/* O total é a informação que a cliente mais procura antes de decidir —
-   ganha fundo próprio e mais corpo, em vez de ser só mais uma linha de
-   texto igual às de cima. */
+
 .cart-total-line.is-grand{
   margin-top:.55rem; padding:.75rem .85rem;
   background:var(--blush-100); border-radius:12px;
@@ -1037,10 +849,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .pix-amount{
   font-size:1.6rem; font-weight:700; color:var(--blush-700); margin:0 0 1rem;
 }
-/* Moldura em blush ao redor do QR — antes era só a imagem branca sobre o
-   card branco, com uma borda cinza de 1px quase invisível separando os
-   dois; a moldura dá ao QR um "módulo" próprio e reforça que é o elemento
-   principal da tela (o que a cliente aponta a câmera para). */
+
 .pix-qr-frame{
   display:inline-block; margin:0 auto; padding:1rem;
   background:var(--blush-50); border:1px solid var(--blush-100);
@@ -1050,9 +859,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display:block; width:220px; height:220px;
   border-radius:10px; background:#fff; padding:.5rem;
 }
-/* Divisor com linhas dos dois lados — deixa explícito que "escanear" e
-   "copiar o código" são dois caminhos alternativos para a mesma coisa,
-   em vez de mais um texto solto entre o QR e o campo. */
+
 .pix-or{
   display:flex; align-items:center; gap:.75rem;
   margin:1.4rem 0 .85rem; font-size:.72rem; color:var(--ink-soft);
@@ -1069,10 +876,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   flex:0 0 104px; padding:.45rem 0; font-size:.82rem;
   display:flex; align-items:center; justify-content:center; gap:.3rem;
 }
-/* Pílula em vez de texto solto: é o estado que a cliente fica olhando
-   por mais tempo (esperando o banco confirmar), então merece um pouco
-   mais de presença — mesmo tratamento de "aviso" já usado em
-   .cart-login-notice, só que centralizado e em formato de pílula. */
+
 .pix-status{
   display:inline-flex; align-items:center; justify-content:center; gap:.5rem; flex-wrap:wrap;
   margin:1.4rem auto 0; padding:.55rem 1.1rem;
@@ -1085,32 +889,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   animation:pix-spin .8s linear infinite;
 }
 @keyframes pix-spin{ to{ transform:rotate(360deg); } }
-/* Quem prefere menos movimento não perde informação: o texto ao lado já
-   diz que está aguardando — a animação é só reforço visual. */
+
 @media (prefers-reduced-motion: reduce){
   .pix-spinner{ animation:none; }
 }
 
-/* ============ PÁGINA DE OBRIGADO (pós-compra) ============
-   Usada nos dois caminhos que terminam em compra confirmada:
-   pagamento-sucesso.html (cartão/boleto, volta do Checkout Pro) e o estado
-   #statePago de pagamento-pix.html. O visual é o mesmo de propósito — para
-   a cliente é o mesmo momento, só mudou a forma de pagar. */
-/* O laço da marca — e não um "check" verde genérico — no momento em que a
-   cliente acabou de comprar: é a mesma peça que aparece no cabeçalho, no
-   404 e no rodapé, e é o que faz esta tela parecer desta loja e não de
-   qualquer checkout. O verde não some, vira o selinho no canto: continua
-   sinalizando "deu certo" sem tomar a cena.
-   flex + margin auto (e não inline-flex) para ficar sozinho na sua linha:
-   .section-eyebrow logo abaixo também é inline, e os dois acabavam lado a
-   lado em vez de empilhados. */
+/* ============ PÁGINA DE OBRIGADO (pós-compra) ============ */
+
 .thanks-mark{
   position:relative; display:flex; align-items:center; justify-content:center;
   width:76px; height:76px; margin:0 auto; border-radius:50%;
   background:var(--blush-50); border:1px solid var(--blush-100);
 }
-/* fill:currentColor porque um <use> não herda a cor sozinho — sem isso o
-   laço sai preto, no padrão do SVG (mesmo motivo da regra .bow-icon). */
+
 .thanks-bow{ width:40px; height:28px; color:var(--blush-600); fill:currentColor; }
 .thanks-mark-badge{
   position:absolute; right:-2px; bottom:-2px;
@@ -1119,8 +910,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   background:#1E7F44; color:#fff; font-size:.8rem;
   border:2px solid var(--white);
 }
-/* Número do pedido: a única informação desta tela que a cliente pode
-   precisar depois (falar com a lojista, conferir em "Meus pedidos"). */
+
 .order-ref{ color:var(--ink); font-weight:600; white-space:nowrap; }
 .thanks-steps{
   list-style:none; margin:0 0 1.75rem; padding:1.25rem 0 0;
@@ -1137,14 +927,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   width:32px; height:32px; border-radius:50%;
   background:var(--blush-50); color:var(--blush-600); font-size:.9rem;
 }
-/* A etapa já cumprida ganha o verde da confirmação; as seguintes ficam em
-   blush, para ler como "isto já aconteceu / isto vem depois" sem precisar
-   de legenda. */
+
 .thanks-step.is-done .thanks-step-icon{ background:#E8F5EC; color:#1E7F44; }
 
-/* ============ COMPARTILHAR ============
-   Bloco reutilizável (ver js/compartilhar.js). Os círculos seguem o mesmo
-   desenho de .social-circle do rodapé, mas sobre fundo claro. */
+/* ============ COMPARTILHAR ============ */
 .share-block{
   margin-top:1.75rem; padding-top:1.25rem;
   border-top:1px solid var(--blush-100);
@@ -1154,8 +940,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   text-transform:uppercase; letter-spacing:.06em;
 }
 .share-buttons{ display:flex; justify-content:center; gap:.6rem; flex-wrap:wrap; }
-/* 44px é o alvo mínimo de toque recomendado (WCAG 2.5.5 / guias de iOS e
-   Android) — abaixo disso o dedo erra o botão no celular. */
+
 .share-btn{
   display:flex; align-items:center; justify-content:center;
   width:44px; height:44px; border-radius:50%; border:none;
@@ -1167,7 +952,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .share-btn.is-copied{ background:#E8F5EC; color:#1E7F44; }
 .share-btn.is-failed{ background:#FBE9E7; color:#B3261E; }
 
-/* Aviso de que o pagamento acontece no Mercado Pago, abaixo do botão */
 .cart-gateway-note{
   display:flex; gap:.4rem; align-items:flex-start; justify-content:center;
   margin:.7rem 0 0; padding:0 .2rem;
@@ -1176,15 +960,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .cart-gateway-note i{ flex-shrink:0; font-size:.85rem; line-height:1.5; color:var(--blush-700); }
 .cart-gateway-note strong{ color:var(--ink); font-weight:600; }
 
-/* Saída discreta para quem abriu o carrinho só para olhar — de propósito
-   sem o rosa do botão de pagar, para não competir com ele. */
 .cart-continue-link{
   display:block; text-align:center; margin-top:.85rem;
   font-size:.82rem; font-weight:600; color:var(--ink-soft); text-decoration:none;
 }
 .cart-continue-link:hover{ color:var(--ink); text-decoration:underline; }
 
-/* Aviso de "entre na sua conta" acima do botão de pagamento */
 .cart-login-notice{
   display:flex; gap:.55rem; align-items:flex-start;
   background:var(--blush-100); border-radius:12px;
@@ -1193,7 +974,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .cart-login-notice i{ flex-shrink:0; font-size:1rem; line-height:1.3; }
 
-/* Cross-sell no carrinho ("Complete seu pedido") */
 .cart-rec-item{ display:flex; gap:.7rem; align-items:center; }
 .cart-rec-thumb{
   position:relative; width:44px; height:44px; border-radius:10px; flex-shrink:0; overflow:hidden;
@@ -1227,29 +1007,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 .toast-body{ font-size:.9rem; }
 
-/* ============ NOTIFICAÇÃO DE CUPOM (js/cupom-toast.js) ============
-   Componente Toast do próprio Bootstrap (já usado em #cartToast, "Adicionado
-   ao carrinho!") — reaproveita mostrar/ocultar prontos em vez de
-   reimplementar do zero. SEM autohide de propósito (mudou de "aviso que
-   some sozinho" para um mini-formulário — fechar sozinho enquanto a
-   cliente ainda está digitando o e-mail seria pior que não ter).
+/* ============ NOTIFICAÇÃO DE CUPOM (js/cupom-toast.js) ============ */
 
-   ⚠️ O deslize de entrada usa @keyframes (`animation`), NUNCA `transition`
-   no mesmo elemento que o `.fade` do Bootstrap: a primeira versão deste
-   componente colocava `transition:opacity,transform` nas duas propriedades
-   juntas, e como o Bootstrap espera exatamente UM evento `transitionend`
-   para saber que a exibição terminou, a segunda transição (transform)
-   virava um evento a mais que às vezes confundia o timer interno dele. Uma
-   `animation` dispara `animationend`, não `transitionend` — não interfere
-   em nada do que o Bootstrap escuta. */
-/* bottom:156px — não var(--spacing-md): o canto inferior direito já tem
-   os botões flutuantes de WhatsApp (.fab, bottom:24px + 56px de altura =
-   topo em 80px) e "voltar ao topo" (.fab-top, bottom:92px + 44px = topo
-   em 136px). Preso a esse cálculo de propósito, para o toast nunca cobrir
-   os dois — se o tamanho de qualquer um dos FABs mudar, este valor precisa
-   acompanhar. */
 .coupon-toast-container{
-  right:var(--spacing-md); bottom:156px; z-index:1085; /* abaixo de .modal (1090+), acima da navbar (1030) */
+  right:var(--spacing-md); bottom:156px; z-index:1085; 
   width:clamp(300px, 25vw, 380px); max-width:calc(100vw - 2 * var(--spacing-md));
 }
 .coupon-toast{
@@ -1259,20 +1020,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   transition:box-shadow var(--animation-normal) var(--ease-out);
 }
 .coupon-toast:hover{ box-shadow:var(--shadow-md); }
-/* Entrada: pop de opacity+scale com leve bounce (--ease-out já tem um
-   pouquinho de overshoot embutido na curva). "Aparecer do centro pras
-   laterais" = transform-origin padrão (center), scale cresce a partir daí. */
+
 .coupon-toast.show{ animation:couponToastPopIn var(--animation-long) var(--ease-out) both; }
 @keyframes couponToastPopIn{
   from{ opacity:0; transform:scale(.8); }
   to{ opacity:1; transform:scale(1); }
 }
-/* Saída ao fechar: classe própria (não o toggle de .show do Bootstrap) —
-   ver js/cupom-toast.js: o clique no X primeiro roda esta animação até o
-   fim, só DEPOIS chama toast.hide(). Isso evita a armadilha documentada
-   acima (uma `transition` extra no mesmo elemento que o `.fade` do
-   Bootstrap pode confundir o timer interno dele) sem abrir mão de uma
-   saída customizada — `animation` nunca entra nesse conflito. */
+
 .coupon-toast.coupon-toast-closing{
   animation:couponToastPopOut var(--animation-normal) ease-in both;
   pointer-events:none;
@@ -1286,9 +1040,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .coupon-toast.show, .coupon-toast.coupon-toast-closing{ animation:none; }
 }
 .coupon-toast-body{ position:relative; padding:var(--spacing-md) var(--spacing-sm) var(--spacing-sm); text-align:left; }
-/* 36px: mais perto do alvo de toque mínimo recomendado (44px) do que os
-   24px originais — não vai a 44px cheios porque o botão vive dentro de um
-   toast já pequeno de propósito, e 44px inteiros o dominariam. */
+
 .coupon-toast-close{
   position:absolute; top:2px; right:2px;
   width:36px; height:36px; border-radius:50%; border:none;
@@ -1307,10 +1059,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   animation:couponGiftWiggle 2s ease-in-out infinite, couponFadeIn var(--animation-normal) var(--ease-out) both;
   will-change:transform;
 }
-/* Fade in do ícone + texto junto com a entrada do toast, com um pequeno
-   atraso entre um e outro (stagger) — a opacity do toast inteiro (acima)
-   já vai de 0→1 também: o efeito combinado é o texto "assentando" por
-   cima do toast que já está aparecendo, não um segundo fade solto. */
+
 @keyframes couponFadeIn{ from{ opacity:0; } to{ opacity:1; } }
 @keyframes couponGiftWiggle{
   0%, 100%{ transform:rotate(0deg); }
@@ -1329,8 +1078,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .coupon-toast-close{ transition:background var(--transition-speed) ease, color var(--transition-speed) ease; }
   .coupon-toast-close:hover, .coupon-toast-close:active{ transform:none; }
 }
-/* Campo de e-mail minimalista: mesma técnica de ícone-dentro-do-input já
-   usada no contato/newsletter, num tamanho menor pra caber no toast. */
+
 .coupon-toast-field{ position:relative; margin-top:var(--spacing-sm); }
 .coupon-toast-field > i{
   position:absolute; left:.7rem; top:50%; transform:translateY(-50%);
@@ -1346,7 +1094,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .coupon-toast-input:hover{ border-color:var(--blush-300); }
 .coupon-toast-input:focus{
   outline:none; border-color:var(--color-primary); border-width:3px; background:var(--color-background);
-  box-shadow:0 0 0 4px rgba(221,110,155,.22); /* glow rosa claro, cor de --color-primary */
+  box-shadow:0 0 0 4px rgba(221,110,155,.22); 
 }
 .coupon-toast-input.is-invalid{ border-color:var(--color-danger); }
 @media (prefers-reduced-motion: reduce){
@@ -1356,9 +1104,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display:none; margin:.35rem 0 0; font-size:var(--font-size-small); color:var(--color-danger);
 }
 .coupon-toast-error.show{ display:block; }
-/* Estado "revelado": some o campo de e-mail, entra o código + copiar,
-   deslizando da direita com um bounce leve — é a recompensa visual do
-   e-mail válido, por isso o único elemento com overshoot mais perceptível. */
+
 .coupon-toast-reveal{ display:none; margin-top:var(--spacing-sm); }
 .coupon-toast-reveal.show{ display:block; animation:couponRevealIn var(--animation-long) var(--ease-bounce) both; }
 @keyframes couponRevealIn{
@@ -1370,18 +1116,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .coupon-toast-success-text{ margin:0 0 var(--spacing-xs); font-size:var(--font-size-small); color:#1E7F44; font-weight:600; }
 .coupon-toast-code-row{ display:flex; align-items:center; gap:var(--spacing-xs); flex-wrap:wrap; }
-/* color:var(--color-text-dark) (ink), não --color-primary-dark (blush-700):
-   blush-700 sobre este fundo claro dava 4,08:1 de contraste, abaixo dos
-   4,5:1 que o WCAG AA pede pra texto normal — ink sozinho passa de 11:1. */
+
 .coupon-toast-code{
   display:inline-block; background:var(--blush-50); border:2px dashed var(--blush-300);
   border-radius:var(--border-radius); padding:.35rem .7rem; font-weight:700; letter-spacing:.05em;
   color:var(--color-text-dark); font-size:var(--font-size-small);
 }
-/* background:var(--color-text-dark) (ink), não --color-primary (blush-600):
-   branco sobre blush-600 dava só 3,10:1 — o mesmo botão escuro já usado em
-   "Quero o cupom" (.plc-cta .btn-blush) resolve o contraste E fica
-   consistente com o resto do site, que já usa ink pra esse botão. */
+
 .coupon-toast-copy{
   display:inline-flex; align-items:center; gap:.3rem;
   background:var(--color-text-dark); color:#fff; border:none; border-radius:999px;
@@ -1399,25 +1140,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .coupon-toast-copy:hover, .coupon-toast-copy:active{ transform:none; }
 }
 
-/* Tablet: um pouco mais estreito, mesmo canto. */
 @media (max-width: 991.98px){
   .coupon-toast-container{ width:clamp(260px, 32vw, 300px); }
 }
-/* Mobile: ancorado no canto inferior DIREITO (não centralizado) e mais
-   estreito, para deixar um respiro claro na esquerda em vez de ocupar quase
-   a tela toda. bottom:156px pelo mesmo motivo do desktop — os FABs de
-   WhatsApp/voltar-ao-topo não mudam de posição no mobile. */
+
 @media (max-width: 575.98px){
   .coupon-toast-container{
     right:var(--spacing-sm); left:auto; bottom:156px;
-    /* min(): estreita de verdade nas telas pequenas (58vw ≈ 218px num
-       iPhone de 375px, sobrando ~145px livres à esquerda), mas nunca passa
-       de 236px nas maiores desta faixa. */
+
     width:min(58vw, 236px); max-width:none;
   }
   .coupon-toast{ width:100%; max-width:none; }
-  /* Mais compacto que o desktop: no celular a notificação flutua por cima
-     do conteúdo (não empurra nada), então precisa ocupar bem menos tela. */
+
   .coupon-toast-body{ padding:var(--spacing-sm) var(--spacing-xs) var(--spacing-xs); }
   .coupon-toast-head{ margin-bottom:2px; padding-right:1.6rem; }
   .coupon-toast-icon{ width:24px; height:24px; font-size:.72rem; }
@@ -1429,12 +1163,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* ============ SIMPLE HEADER (conta.html / pedidos.html) ============ */
 .simple-header{
-  /* Acompanha a rolagem, como a navbar da loja (.plc-navbar). sticky em vez
-     de fixed de propósito: continua ocupando espaço no fluxo, então nenhuma
-     das 8 páginas que usam este cabeçalho precisa de padding-top
-     compensatório para não ficar com o conteúdo escondido embaixo dele.
-     z-index acima do conteúdo porque o fundo é semitransparente com blur —
-     ele foi feito para o conteúdo passar por baixo. */
+
   position:sticky; top:0; z-index:1030;
   padding:18px 0;
   background:rgba(255,253,252,0.92);
@@ -1445,8 +1174,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   flex-wrap:wrap;
   row-gap:.5rem;
 }
-/* Quando a linha quebra, o space-between joga a conta para a esquerda
-   da 2ª linha; o auto mantém ela encostada à direita, como no desktop. */
+
 .simple-header #navAccount{ margin-left:auto; }
 .simple-header .plc-brand{ font-size:1.15rem; }
 @media (min-width: 576px){
@@ -1456,29 +1184,14 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* ============ PÁGINAS DE CONTA (login/cadastro/pedidos) ============ */
 .account-main{ padding:2.5rem 0 4rem; min-height:70vh; }
 
-/* Página de entrar/criar conta: ocupa a janela inteira, com o cartão
-   centralizado na sobra. Sem isto o cartão (altura fixa) encostava no topo
-   e deixava todo o vazio embaixo.
-
-   O flex na <body> — em vez de min-height na <main> — é o que dispensa
-   saber a altura do cabeçalho: o header ocupa o que precisa e a main fica
-   com o resto, qualquer que seja ele.
-
-   100dvh (e não 100vh) porque no celular a barra do navegador entra e sai:
-   com 100vh a tela ficaria mais alta que o visível e nasceria uma rolagem
-   fantasma. A linha 100vh antes serve de reserva para navegador sem dvh. */
 .auth-page{ display:flex; flex-direction:column; min-height:100vh; min-height:100dvh; }
 .auth-page .account-main{
   flex:1 1 auto;
   display:flex; align-items:center;
-  min-height:0;             /* deixa encolher em janela baixa, sem cortar */
+  min-height:0;             
   padding-top:2rem; padding-bottom:2rem;
 }
-/* max-width:none tira o teto por breakpoint do Bootstrap (540/720/960/
-   1140/1320px) — sem isso ele virava o verdadeiro limitador em telas
-   largas, deixando uma faixa creme grande nas laterais antes mesmo do
-   auth-shell entrar em jogo. Sobra só o padding padrão do .container
-   (gutter do Bootstrap) como respiro, em vez de um vazio grande. */
+
 .auth-page .account-main > .container{ width:100%; max-width:none; }
 .account-card{
   background:var(--white); border:1px solid var(--blush-100); border-radius:var(--radius-md);
@@ -1492,33 +1205,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .account-tabs .nav-link.active{ background:var(--blush-600); color:#fff; }
 .account-msg:empty{ display:none; }
 
-/* ============ TELA DE LOGIN/CADASTRO (painel deslizante) ============
-   Todo o estado da tela é o atributo data-mode ("login" | "register") em
-   #authForms.auth-shell — js/conta.js só troca esse valor e o CSS abaixo
-   move o painel do laço e revela o formulário correspondente.
-
-   A partir de lg os dois formulários ocupam metades opostas e o painel
-   decorativo (z-index maior) desliza por cima para cobrir o inativo:
-     login    → painel à ESQUERDA,  formulário de entrar à direita;
-     register → painel à DIREITA,   formulário de cadastro à esquerda.
-   Abaixo de lg não há largura para isso: tudo volta ao fluxo normal, o
-   laço vira um topo fixo e a troca passa a ser por abas. */
+/* ============ TELA DE LOGIN/CADASTRO (painel deslizante) ============ */
 .auth-shell{
   position:relative; overflow:hidden;
-  /* Preenche o .container inteiro (que por sua vez já perdeu o teto por
-     breakpoint acima) — só sobra o gutter do Bootstrap como margem, em vez
-     da faixa creme grande de antes. .auth-form dentro de cada painel
-     continua com max-width próprio, então o texto não estica: o espaço
-     extra vira padding/centralização, não linhas compridas demais. */
+
   width:100%; margin:0 auto;
   background:var(--white); border:1px solid var(--blush-100);
   border-radius:var(--radius-lg); box-shadow:var(--shadow-soft);
 }
 
-/* ---- Painel decorativo ---- */
-/* Gradiente de 3 paradas (em vez de 2): a faixa intermediária evita a
-   transição "chapada" e dá volume à coluna, que é estreita e por isso
-   mostra pouco do degradê. */
 .auth-deco{
   position:relative; overflow:hidden; isolation:isolate;
   background:linear-gradient(150deg, var(--blush-500) 0%, var(--blush-600) 45%, var(--blush-700) 100%);
@@ -1526,7 +1221,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   padding:2.25rem 1.75rem;
 }
-/* Luz ambiente no topo e sombra no pé — profundidade sem pesar a paleta. */
+
 .auth-deco::before{
   content:""; position:absolute; z-index:-1;
   top:-25%; left:-30%; width:160%; height:80%;
@@ -1538,7 +1233,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   background:linear-gradient(to top, rgba(84,41,60,.28), rgba(84,41,60,0));
   pointer-events:none;
 }
-/* Laços de fundo em marca d'água — mesmo recurso já usado em .plc-cta. */
+
 .auth-deco-motif{
   position:absolute; z-index:-1; opacity:.13; color:#fff;
   fill:currentColor; pointer-events:none;
@@ -1546,18 +1241,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .auth-deco-motif-1{ top:-14px; right:-26px; width:112px; height:78px; transform:rotate(-18deg); }
 .auth-deco-motif-2{ bottom:-20px; left:-30px; width:130px; height:91px; transform:rotate(14deg); }
 
-/* margin-bottom precisa cobrir o quanto o anel (::after, abaixo) vaza
-   para fora da própria caixa do laço, não só dar um respiro visual: a
-   caixa do wrap tem a altura do laço (87px), mas o anel tem 172px e fica
-   centralizado nela — vaza (172-87)/2 = 42,5px para cada lado. Sem
-   margem maior que isso, o anel sobrepõe o texto abaixo dele (medido: com
-   1.35rem de margem, sobrava 21px de sobreposição). 4rem (64px) cobre os
-   42,5px de vazamento com folga. */
 .auth-bow-wrap{
   position:relative; display:inline-flex; align-items:center; justify-content:center;
   margin-bottom:4rem;
 }
-/* Brilho pulsante atrás do laço — puramente decorativo. */
+
 .auth-bow-wrap::before{
   content:""; position:absolute; left:50%; top:50%;
   width:250px; height:250px; border-radius:50%;
@@ -1565,8 +1253,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   background:radial-gradient(circle, rgba(255,255,255,.34), rgba(255,255,255,0) 68%);
   animation:auth-glow 4.5s ease-in-out infinite;
 }
-/* Anel fino ao redor do laço: dá um "selo" de marca e ancora o elemento,
-   que sozinho flutuaria solto no meio da coluna. */
+
 .auth-bow-wrap::after{
   content:""; position:absolute; left:50%; top:50%;
   width:172px; height:172px; border-radius:50%;
@@ -1579,8 +1266,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   filter:drop-shadow(0 16px 30px rgba(84,41,60,.4));
   animation:auth-bow-float 4.5s ease-in-out infinite;
 }
-/* Respiração/flutuação contínua do laço. Só transform/opacity, e a regra
-   global de prefers-reduced-motion (animation:none) já desliga tudo. */
+
 @keyframes auth-bow-float{
   0%, 100%{ transform:translateY(0) rotate(-1.5deg) scale(1); }
   50%{ transform:translateY(-9px) rotate(1.5deg) scale(1.04); }
@@ -1589,8 +1275,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   0%, 100%{ opacity:.5; transform:translate(-50%,-50%) scale(.9); }
   50%{ opacity:1; transform:translate(-50%,-50%) scale(1.1); }
 }
-/* Grid de uma célula só: os dois textos ficam empilhados no mesmo espaço
-   (então a altura acompanha o maior) e alternam por opacidade. */
+
 .auth-deco-copies{ display:grid; width:100%; }
 .auth-deco-copy{
   grid-area:1 / 1;
@@ -1601,9 +1286,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .auth-shell[data-mode="login"] .auth-deco-copy[data-deco-for="login"],
 .auth-shell[data-mode="register"] .auth-deco-copy[data-deco-for="register"],
 .auth-shell[data-mode="forgot"] .auth-deco-copy[data-deco-for="forgot"],
-/* A 2ª etapa reaproveita a decoração de "entrar": é o mesmo fluxo, só
-   partido em dois passos — trocar o texto do painel do laço no meio dele
-   pareceria que a pessoa mudou de tela. */
+
 .auth-shell[data-mode="twofactor"] .auth-deco-copy[data-deco-for="login"]{
   opacity:1; visibility:visible; transform:translateY(0);
   transition-delay:.15s;
@@ -1632,10 +1315,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .auth-switch:hover{ background:rgba(255,255,255,.16); border-color:#fff; transform:translateY(-2px); }
 .auth-switch:active{ transform:translateY(0) scale(.97); }
-/* O foco global é blush-600, que some contra o gradiente rosa deste painel. */
+
 .auth-switch:focus-visible{ outline:3px solid #fff; outline-offset:3px; }
 
-/* ---- Formulários ---- */
 .auth-form{ width:100%; max-width:380px; margin:0 auto; }
 .auth-eyebrow{
   font-family:var(--font-script); font-size:1.35rem; color:var(--blush-700);
@@ -1653,13 +1335,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   transition:border-color .25s ease, background .25s ease;
 }
 .auth-pane .form-control:hover{ border-color:var(--blush-300); }
-/* box-shadow:none tira o anel azul padrão do Bootstrap; quem marca o foco
-   aqui é o outline global em blush-600 (mesmo padrão do resto do site). */
+
 .auth-pane .form-control:focus{
   border-color:var(--blush-500); background:var(--white); box-shadow:none;
 }
-/* CTA do formulário reflete o gradiente do painel do laço — os dois lados
-   passam a ler como uma peça só. */
+
 .auth-pane .btn-blush{
   padding:.82rem 1.4rem; font-size:.95rem; border:none;
   background:linear-gradient(135deg, var(--blush-500), var(--blush-700));
@@ -1672,7 +1352,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display:flex; align-items:center; justify-content:center; gap:.4rem;
   margin-top:1.15rem; font-size:.76rem; color:var(--ink-soft);
 }
-/* Link textual (não é <a>: não navega, só troca o modo do painel). */
+
 .auth-label-row{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-bottom:.35rem; }
 .auth-link{
   border:none; background:none; padding:0;
@@ -1681,9 +1361,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   transition:color .2s ease;
 }
 .auth-link:hover{ color:var(--blush-600); }
-/* Botão "mostrar/ocultar senha": olho dentro do próprio campo, no canto
-   direito — padding no input abre espaço pra ele não ficar por cima do
-   texto digitado. */
+
 .password-field{ position:relative; }
 .password-field .form-control{ padding-right:2.6rem; }
 .password-toggle-btn{
@@ -1695,23 +1373,19 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .password-toggle-btn:hover{ color:var(--blush-700); background:var(--blush-50); }
 .password-toggle-btn:focus-visible{ outline:2px solid var(--blush-300); outline-offset:1px; }
-/* Laço fora do painel rosa (redefinir-senha.html): usa a cor da marca, e
-   sem o gradiente atrás o brilho branco não teria contraste nenhum. */
+
 .auth-bow-wrap-solo{ margin-bottom:0; }
 .auth-bow-wrap-solo .auth-bow{ width:74px; height:52px; color:var(--blush-500); filter:none; }
 .auth-bow-wrap-solo::before{ background:radial-gradient(circle, var(--blush-50), rgba(255,255,255,0) 70%); width:150px; height:150px; }
 .auth-bow-wrap-solo::after{ display:none; }
-/* Entrada escalonada do conteúdo do formulário: a regra volta a casar a
-   cada troca de data-mode, então a animação reinicia sozinha na transição. */
+
 .auth-shell[data-mode="login"] .auth-pane-login .auth-form > *,
 .auth-shell[data-mode="register"] .auth-pane-register .auth-form > *,
 .auth-shell[data-mode="forgot"] .auth-pane-forgot .auth-form > *,
 .auth-shell[data-mode="twofactor"] .auth-pane-twofactor .auth-form > *{
   animation:auth-rise .55s cubic-bezier(.22,.9,.3,1) both;
 }
-/* Campo do código de verificação: dígitos grandes e espaçados, para conferir
-   contra o app sem esforço. tabular-nums impede a largura de dançar a cada
-   dígito digitado. */
+
 .auth-code-input{
   font-size:1.5rem; letter-spacing:.4em; text-align:center;
   font-variant-numeric:tabular-nums; padding-left:.4em;
@@ -1724,18 +1398,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   to{ opacity:1; transform:translateY(0); }
 }
 
-/* ---- Abas (só abaixo de lg) ---- */
 .auth-tabs{
   position:relative;
   display:flex; gap:.4rem; margin:1.35rem 1.4rem 0;
   background:var(--blush-50); padding:.35rem; border-radius:999px;
 }
-/* Pílula ativa como UM elemento que desliza entre as abas, em vez de duas
-   pílulas que acendem/apagam: o movimento é o que conta para a pessoa
-   entender que trocou de lado. Mesma curva do painel do desktop, para os
-   dois breakpoints falarem a mesma língua.
-   A largura desconta o padding do container (.35rem × 2) e o gap (.4rem);
-   por isso o deslocamento é 100% da própria pílula MAIS o gap. */
+
 .auth-tabs::before{
   content:""; position:absolute; z-index:0;
   top:.35rem; bottom:.35rem; left:.35rem;
@@ -1752,19 +1420,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .auth-tab[aria-selected="true"]{ color:#fff; }
 
-/* ---- Desktop: painel deslizante ---- */
 @media (min-width: 992px){
-  /* Cresce com a janela em vez de ficar preso em 580px, que deixava uma
-     faixa vazia grande embaixo. Os três valores do clamp importam:
-       piso 660px  — os painéis são `position:absolute`, então NÃO empurram
-                     a altura do cartão: conteúdo mais alto que ele é
-                     simplesmente cortado pelo overflow:hidden. 660px é o
-                     que o formulário de cadastro (o mais alto: 3 campos +
-                     dica + rodapé) precisa com o padding. Em janela mais
-                     baixa que isso a página rola — cortar seria pior;
-       ideal       — a janela menos o cabeçalho e um respiro;
-       teto 780px  — num monitor muito alto, um cartão de login esticado
-                     até embaixo pareceria defeito, não design. */
+
   .auth-shell{ min-height:clamp(680px, calc(100dvh - 9.5rem), 780px); }
   .auth-deco{
     position:absolute; top:0; left:0; z-index:2;
@@ -1773,12 +1430,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     transform:translateX(0);
     transition:transform .6s cubic-bezier(.65, 0, .35, 1);
   }
-  /* translateX é relativo à largura do próprio painel (30% do container),
-     então percorrer os 70% restantes equivale a 70/30 da largura dele. */
+
   .auth-shell[data-mode="register"] .auth-deco{ transform:translateX(calc(100% * 70 / 30)); }
 
-  /* Coluna estreita: título/texto menores para não quebrarem em muitas linhas.
-     O laço NÃO encolhe aqui — ele é o herói visual do painel. */
   .auth-deco-title{ font-size:1.2rem; }
   .auth-deco-text{ font-size:.84rem; max-width:none; }
   .auth-deco-script{ font-size:1.15rem; }
@@ -1789,12 +1443,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
     display:flex; align-items:center; justify-content:center;
     padding:2.5rem 2.75rem;
     opacity:0; visibility:hidden;
-    /* Atrasado para o formulário só aparecer quando o painel já saiu da
-       frente — senão ele "pisca" por baixo do laço no meio do caminho. */
+
     transition:opacity .45s ease .18s, visibility .45s .18s;
   }
-  /* "forgot" é uma etapa do login, então fica do mesmo lado dele e o painel
-     do laço nem se move ao entrar/sair dessa etapa. */
+
   .auth-pane-login, .auth-pane-forgot, .auth-pane-twofactor{ right:0; }
   .auth-pane-register{ left:0; }
   .auth-shell[data-mode="login"] .auth-pane-login,
@@ -1802,20 +1454,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .auth-shell[data-mode="forgot"] .auth-pane-forgot,
   .auth-shell[data-mode="twofactor"] .auth-pane-twofactor{ opacity:1; visibility:visible; }
 
-  /* Texto do lado do FORMULÁRIO (não confundir com o bloco de cima, que
-     encolhe o texto do painel decorativo — aquele fica numa coluna
-     estreita de propósito). Este lado ganhou uma coluna bem mais larga
-     desde que o cartão passou a preencher a tela, e os tamanhos herdados
-     do mobile (pensados para uma coluna de ~380px) ficaram pequenos
-     demais soltos nesse espaço. auth-form também alarga junto, senão o
-     texto maior quebraria em mais linhas à toa. */
   .auth-form{ max-width:440px; }
   .auth-eyebrow{ font-size:1.55rem; }
   .auth-title{ font-size:2.5rem; margin-bottom:.5rem; }
   .auth-subtitle{ font-size:1.05rem; margin-bottom:2rem; }
-  /* .form-label carrega a utility .small do Bootstrap (font-size:.875em)
-     no HTML — sobrescrita aqui porque remover a classe quebraria o
-     tamanho no mobile, onde ela está correta. */
+
   .auth-form .form-label{ font-size:1rem; margin-bottom:.5rem; }
   .auth-pane .form-control{ font-size:1.05rem; padding:1rem 1.15rem; }
   .auth-pane .btn-blush{ font-size:1.05rem; padding:1rem 1.5rem; }
@@ -1824,59 +1467,31 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .auth-link{ font-size:.85rem; }
 }
 
-/* ---- Desktop, janela baixa: modo compacto ----
-   Em notebook (altura comum 700-900px), cabeçalho + os 2rem de padding do
-   .account-main + o piso de 780px do cartão somados passavam da altura da
-   janela — a página tinha que rolar para mostrar o rodapé do formulário.
-   Aqui SÓ o espaçamento encolhe (múltiplos de .25rem, a mesma escala do
-   resto do arquivo); a fonte aumentada continua do tamanho que é.
-   max-height:860px é o ponto em que o modo normal já não cabe mais sem
-   rolagem (medido com o cadastro, o mais alto dos três modos). */
 @media (min-width: 992px) and (max-height: 860px){
   .auth-page .account-main{ padding-top:.5rem; padding-bottom:.5rem; }
-  /* 6.25rem = cabeçalho (80px = 5rem) + o padding acima (.5rem×2 = 1rem) +
-     .25rem de folga contra arredondamento. Errar esse número para menos
-     faz o cartão crescer além do que sobra na janela — foi exatamente o
-     bug do ajuste anterior (a folga "ideal" ficava maior que a janela
-     permitia, e a rolagem continuava do mesmo jeito). */
+
   .auth-shell{ min-height:clamp(560px, calc(100dvh - 6.25rem), 780px); }
   .auth-pane{ padding-top:.7rem; padding-bottom:.7rem; }
   .auth-title{ margin-bottom:.25rem; }
   .auth-subtitle{ margin-bottom:.65rem; }
-  /* .mb-3 é utility do Bootstrap (margin-bottom:1rem !important) — só sai
-     com !important também. Aplicado a todo .mb-3 dentro do formulário, que
-     aqui só existe como espaçador entre os campos. */
+
   .auth-pane .mb-3{ margin-bottom:.4rem !important; }
   .auth-foot{ margin-top:.4rem; }
 }
 
-/* ---- Mobile/tablet: laço no topo + abas ---- */
 @media (max-width: 991.98px){
   .auth-shell{ max-width:460px; }
   .auth-bow{ width:66px; height:46px; }
   .auth-logo{ width:160px; }
-  /* Mesma conta do valor base, com os números do mobile: caixa do laço
-     46px, anel 96px (definido abaixo) → vaza (96-46)/2 = 25px de cada
-     lado. 2.5rem (40px) cobre isso com folga. */
+
   .auth-bow-wrap{ margin-bottom:2.5rem; }
   .auth-bow-wrap::before{ width:140px; height:140px; }
-  /* O anel (::after) ficou de fora do encolhimento responsivo original —
-     continuava 172px ao redor de um laço de 66px, quase 4x maior que o
-     ícone, e chegava a cobrir o texto abaixo dele. Mesma proporção do
-     desktop (anel = 69% do brilho) aplicada aqui: 140 × 0,69 ≈ 96px, para
-     o anel abraçar o laço em vez de flutuar solto. */
+
   .auth-bow-wrap::after{ width:96px; height:96px; }
-  /* Sem o painel lateral, esses textos apenas repetiriam o que as abas já
-     dizem — no lugar deles fica só o título curto. */
+
   .auth-deco-copies{ display:none; }
   .auth-pane{ display:none; padding:1.5rem 1.4rem 1.9rem; }
-  /* No desktop o painel do laço desliza na horizontal para revelar o outro
-     formulário. Aqui esse painel não existe, então quem carrega a direção é
-     o próprio formulário: entra pelo lado para onde a pessoa foi. Antes era
-     só um fade com 14px na vertical, que passava despercebido — daí o
-     relato de "não tem transição nenhuma no celular".
-     data-dir vem de js/conta.js; o display:none→block já reinicia a
-     animação sozinho a cada troca. */
+
   .auth-shell[data-mode="login"] .auth-pane-login,
   .auth-shell[data-mode="register"] .auth-pane-register,
   .auth-shell[data-mode="forgot"] .auth-pane-forgot,
@@ -1886,9 +1501,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   }
   .auth-shell[data-dir="forward"] .auth-pane{ animation-name:auth-pane-slide-fwd; }
 
-  /* O laço reage à troca com um pulso curto. Fica no wrapper, e não no
-     .auth-bow, porque o laço já tem a animação de flutuar infinita — duas
-     animações disputando o mesmo transform se anulariam. */
   .auth-deco-pulse .auth-bow-wrap{ animation:auth-bow-pop .5s cubic-bezier(.22, .9, .3, 1); }
 }
 @keyframes auth-pane-slide-fwd{
@@ -1924,10 +1536,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   transition:box-shadow .3s ease, border-color .3s ease;
 }
 .tracking-row .btn-outline-blush{ padding:.4rem 1rem; font-size:.82rem; white-space:nowrap; }
-/* Vazio (sem código de rastreio ainda) não reserva espaço nenhum — só
-   aparece quando JsBarcode desenha algo dentro (ver renderBarcode em
-   js/admin.js). max-width evita que um código de rastreio comprido force
-   scroll horizontal no card em telas estreitas. */
+
 .tracking-barcode-wrap{ display:flex; flex-direction:column; align-items:flex-start; gap:.5rem; width:100%; }
 .tracking-barcode{ display:block; width:100%; max-width:260px; height:0; }
 .tracking-barcode.is-visible{ height:auto; }
@@ -1946,20 +1555,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .delete-order-icon-btn:hover{ background:#FBE1E1; border-color:#FBE1E1; color:#B3261E; }
 .edit-order-icon-btn:hover{ background:var(--blush-100); border-color:var(--blush-150); color:var(--color-primary-dark); }
-/* Par editar/apagar do mesmo tamanho, sempre lado a lado — nunca empilha
-   (era o que acontecia com um botão "Editar" de texto ao lado do ícone de
-   apagar: em tela estreita, sem espaço pros dois na mesma linha, o
-   navegador quebrava um pro lado de baixo do outro). */
+
 .admin-row-actions{ display:flex; justify-content:flex-end; align-items:center; gap:.4rem; flex-wrap:nowrap; }
 
-/* =========================================================================
-   TELA DE CARREGAMENTO (conexão lenta) — ver js/loading.js
-   -------------------------------------------------------------------------
-   Só entra em cena depois de 3s de espera; o JS é quem decide a hora, aqui
-   fica só a aparência. Bloqueia o clique de propósito (o overlay cobre a
-   tela inteira), para ninguém enviar o mesmo formulário duas vezes achando
-   que o primeiro não pegou.
-========================================================================= */
+/* ============ TELA DE CARREGAMENTO (conexão lenta) — ver js/loading.js ============ */
 .app-loading{
   position:fixed; inset:0; z-index:2000;
   display:flex; align-items:center; justify-content:center;
@@ -1973,9 +1572,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   display:flex; flex-direction:column; align-items:center;
   padding:2rem 2.4rem; text-align:center;
 }
-/* O "laço" girando: dois arcos em conic-gradient, mascarados no meio para
-   virar um anel. Sem imagem e sem SVG — é uma div só, e anima em transform
-   (a GPU cuida sozinha, não força recálculo de layout a cada quadro). */
+
 .app-loading-bow{
   width:52px; height:52px; border-radius:50%;
   background:conic-gradient(from 0deg, var(--blush-600), var(--blush-150), var(--blush-50), var(--blush-600));
@@ -1991,53 +1588,25 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .app-loading-hint{
   font-size:.85rem; color:var(--ink-soft); margin:0;
 }
-/* Trava o scroll do fundo enquanto o overlay está no ar. */
+
 body.app-loading-lock{ overflow:hidden; }
 
 @media (prefers-reduced-motion: reduce){
   .app-loading{ transition:none; }
-  /* O anel não some — ele É o sinal de que algo está acontecendo. Só troca
-     o giro contínuo por um pulso suave, que não provoca enjoo em quem pediu
-     menos movimento. */
+
   .app-loading-bow{ animation:app-loading-pulse 1.4s ease-in-out infinite; }
   @keyframes app-loading-pulse{ 50%{ opacity:.45; } }
 }
 
-/* =========================================================================
-   VERIFICAÇÃO EM DUAS ETAPAS (admin.html) — cadastro + códigos de recuperação
-   -------------------------------------------------------------------------
-   As duas telas (#adminTwoFactorSetup, #adminRecoveryCodes) são o único
-   caminho possível antes do painel liberar — não uma tela "de passagem"
-   qualquer —, por isso ganham o mesmo tratamento de onboarding dedicado que
-   conta.html dá ao login (.auth-page): cartão centralizado na tela, em vez
-   de nascer colado no topo, embaixo do título "Painel administrativo".
-
-   body.admin-gate-active (alternado em js/admin.js, dentro de showOnly)
-   é o gatilho: só entra nesses dois estados, nunca quando #adminContent (o
-   painel de verdade, que precisa da rolagem normal com a sidebar) está
-   visível — sem essa guarda, centralizar verticalmente um painel inteiro
-   mais alto que a tela ficaria estranho (metade cortada por cima e por
-   baixo). Em qualquer outro estado (loading/loggedOut/forbidden/error/
-   painel), .admin-state-area continua um bloco comum, sem nenhum efeito. */
+/* ============ VERIFICAÇÃO EM DUAS ETAPAS (admin.html) — cadastro + códigos de recuperação ============ */
 body.admin-gate-active .admin-state-area{
   display:flex; align-items:center; justify-content:center;
-  /* min(): dá respiro generoso sem exagerar em monitor grande — não é
-     100dvh de propósito, porque o header + o título "painel administrativo"
-     acima continuam visíveis (a pessoa não perde a noção de onde está).
-     O cartão do passo 1 (3 passos + QR) passa de 900px de altura — mais
-     alto que a maioria das janelas —, então nele isto vira um respiro
-     generoso em vez de centralização perfeita; a tela mais curta dos
-     códigos de recuperação centraliza de verdade na maioria das janelas. */
+
   min-height:min(85vh, 760px);
 }
 .tfa-card{
   width:100%; max-width:400px;
-  /* auth-rise já existe para o formulário de login; a entrada do cartão de
-     2FA usa a mesma curva/duração — é o mesmo tipo de tela (onboarding de
-     conta), então tem que se mover igual. display:none→block reinicia a
-     animação sozinho a cada troca de estado (mesmo mecanismo do painel
-     deslizante de conta.html), então isto dispara de novo toda vez que
-     startTwoFactorSetup()/renderRecoveryCodes() tornam o cartão visível. */
+
   animation:auth-rise var(--animation-long) var(--ease-out) both;
 }
 .tfa-icon-badge{
@@ -2060,30 +1629,20 @@ body.admin-gate-active .admin-state-area{
   margin-bottom:1.5rem;
 }
 .tfa-steps > li:last-child{ margin-bottom:0; }
-/* Número em círculo rosa, no lugar do marcador padrão de <ol> — o próprio
-   ::marker do navegador não aceita background/formato de círculo, só cor e
-   fonte, então o número entra via counter() num ::before posicionado. */
+
 .tfa-steps > li::before{
   content:counter(tfa-step);
   position:absolute; left:0; top:0;
   width:2rem; height:2rem; border-radius:50%;
   background:var(--blush-100); color:var(--ink);
-  /* --ink em vez de --blush-700 (usado nos outros círculos rosa do site,
-     como o eyebrow do topo): num círculo deste tamanho o número fica
-     pequeno e em negrito, abaixo do corte de "texto grande" da WCAG AA
-     (18.66px em negrito) — blush-700/blush-100 dava só 3.7:1, ink/blush-100
-     dá 10.15:1, com folga. */
+
   font-family:var(--font-display); font-weight:700; font-size:.95rem;
   display:flex; align-items:center; justify-content:center;
 }
 .tfa-steps strong{ color:var(--ink); }
 .tfa-qr-wrap{
   display:flex; justify-content:center;
-  /* Cancela o padding-left:2.6rem do <li> (o número do passo) só aqui: o
-     QR é o elemento visual mais importante da tela e centraliza melhor
-     olhando o CARTÃO inteiro, não o texto do passo — diferente do link
-     "não consigo ler" e do formulário do passo 3, que ficam alinhados sob
-     o número de propósito (são texto/apoio, não o foco principal). */
+
   margin:1rem 0 .7rem -2.6rem;
 }
 .tfa-qr-wrap img{
@@ -2106,10 +1665,7 @@ body.admin-gate-active .admin-state-area{
   display:flex; flex-direction:column; gap:.65rem; align-items:stretch;
   margin-top:.75rem;
 }
-/* O input já herda tamanho/letter-spacing de .auth-code-input (usada
-   também no 2º fator do login, em conta.html) — aqui só some a borda azul
-   padrão do Bootstrap pela borda/foco de marca, que .auth-code-input
-   sozinho não trazia por não estar dentro de .auth-pane. */
+
 .tfa-code-input.form-control{
   height:48px;
   border:1.5px solid var(--blush-150); border-radius:14px;
@@ -2123,10 +1679,7 @@ body.admin-gate-active .admin-state-area{
   border-color:var(--blush-500); background:var(--white); box-shadow:none;
   outline:3px solid var(--blush-600); outline-offset:3px;
 }
-/* Código errado: um tremor curto no campo, junto da mensagem de erro que
-   já aparecia — reforça "isso aqui está errado" sem precisar ler o texto
-   primeiro. Disparado via JS (remove+reflow+adiciona a classe) em
-   js/admin.js, mesmo mecanismo do pulso do laço em conta.html/conta.js. */
+
 @keyframes tfa-shake{
   10%, 90%{ transform:translateX(-1px); }
   20%, 80%{ transform:translateX(2px); }
@@ -2139,7 +1692,6 @@ body.admin-gate-active .admin-state-area{
   display:flex; align-items:center; justify-content:center;
 }
 
-/* ---- Códigos de recuperação ---- */
 .tfa-recovery-list{
   list-style:none; padding:0; margin:0 auto 1.4rem; max-width:420px;
   display:grid; grid-template-columns:repeat(2, 1fr); gap:.5rem;
@@ -2159,9 +1711,6 @@ body.admin-gate-active .admin-state-area{
 }
 .tfa-confirm input{ width:17px; height:17px; accent-color:var(--blush-600); cursor:pointer; }
 
-/* Tablet: card/QR/input um pouco maiores — mesmos breakpoints Bootstrap já
-   usados no resto do arquivo (576/992), não os da referência genérica do
-   pedido, para bater com todo o resto do site. */
 @media (min-width:576px) and (max-width:991.98px){
   .tfa-card{ max-width:380px; }
   .tfa-qr-wrap img{ width:180px; height:180px; }
@@ -2181,16 +1730,9 @@ body.admin-gate-active .admin-state-area{
   font-family:var(--font-display); font-weight:600; font-size:1.2rem; margin-bottom:1rem;
 }
 
-/* Painel em largura maior que o resto de .orders-wrap (640px) — precisa de
-   espaço pra sidebar + conteúdo lado a lado. */
 .admin-wrap{ max-width:1100px; }
 
-/* ============ NAVEGAÇÃO EM ABAS DO PAINEL ============
-   Desktop: sidebar fixa à esquerda, grudada no topo ao rolar (sticky).
-   Mobile: vira uma barra horizontal de pills (mesmo padrão visual do
-   filtro de categoria da vitrine, .chip-group) — ver breakpoint abaixo.
-   Alternar de aba é só troca de classe (ver js/admin.js); nenhum painel
-   recarrega dado ao trocar de aba. */
+/* ============ NAVEGAÇÃO EM ABAS DO PAINEL ============ */
 .admin-layout{ display:flex; align-items:flex-start; gap:2rem; }
 .admin-sidebar{
   display:flex; flex-direction:column; gap:.3rem; flex-shrink:0; width:200px;
@@ -2206,12 +1748,7 @@ body.admin-gate-active .admin-state-area{
 .admin-tab-btn.is-active{ background:var(--blush-100); color:var(--blush-700); }
 .admin-tab-panels{ flex:1 1 0; min-width:0; }
 @media (max-width: 767.98px){
-  /* align-items:stretch anula o flex-start herdado do desktop. Em coluna,
-     flex-start faz cada painel assumir a largura do CONTEÚDO — uma tabela
-     larga esticava o painel para além da tela, e como o body tem
-     overflow-x:clip a coluna do botão "Editar" ficava cortada e
-     inalcançável no celular. Esticando o painel à largura da tela, quem
-     rola passa a ser a tabela dentro do cartão (.table-responsive). */
+
   .admin-layout{ flex-direction:column; gap:1.25rem; align-items:stretch; }
   .admin-sidebar{
     position:static; width:100%; flex-direction:row; flex-wrap:nowrap;
@@ -2236,19 +1773,14 @@ body.admin-gate-active .admin-state-area{
   width:46px; height:46px; border-radius:50%; flex-shrink:0;
   display:flex; align-items:center; justify-content:center; font-size:1.15rem;
 }
-/* Uma cor por tipo de métrica — rosa (vendas), cinza limpo (pedidos),
-   dourado (ticket médio) — mesma lógica de "acento por categoria" já
-   usada nos selos de produto, aqui aplicada às métricas do dashboard. */
+
 .stat-tile--revenue .stat-tile-icon{ background:var(--blush-100); color:var(--blush-700); }
 .stat-tile--orders .stat-tile-icon{ background:var(--stone-100); color:var(--stone-600); }
 .stat-tile--avg .stat-tile-icon{ background:var(--gold-100); color:var(--gold-700); }
 .stat-tile .stat-value{ font-family:var(--font-display); font-size:1.5rem; font-weight:600; color:var(--ink); display:block; line-height:1.25; }
 .stat-tile .stat-label{ font-size:.78rem; color:var(--ink-soft); }
 
-/* ============ GRÁFICO DE VENDAS POR MÊS ============
-   Barras em CSS puro (flexbox, altura via variável --bar-pct) — sem
-   canvas/SVG/biblioteca de gráfico. Tooltip também é CSS puro (opacidade
-   no :hover), então nenhum JS extra roda ao passar o mouse. */
+/* ============ GRÁFICO DE VENDAS POR MÊS ============ */
 .dashboard-chart-card{
   background:var(--white); border:1px solid var(--blush-100); border-radius:var(--radius-md);
   padding:1.4rem 1.5rem 1.1rem; box-shadow:0 10px 25px -20px rgba(84,41,60,.3);
@@ -2261,16 +1793,12 @@ body.admin-gate-active .admin-state-area{
 .dashboard-chart-title{ font-family:var(--font-display); font-weight:600; font-size:1.05rem; margin:0; }
 .dashboard-chart-sub{ font-size:.78rem; color:var(--ink-soft); }
 
-/* Cartões de visão do dashboard. auto-fit + minmax deixa o navegador
-   escolher 1 ou 2 colunas conforme a largura, sem media query. */
 .dashboard-grid{
   display:grid; gap:1.25rem; margin-top:1.25rem;
   grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));
 }
 .dashboard-grid .dashboard-chart-card{ margin-top:0; }
 
-/* Barras horizontais usadas por categoria, mais vendidos, situação e
-   forma de pagamento (renderBarList em js/admin.js). */
 .bar-row + .bar-row{ margin-top:.95rem; }
 .bar-row-head{
   display:flex; align-items:baseline; justify-content:space-between;
@@ -2300,8 +1828,7 @@ body.admin-gate-active .admin-state-area{
   background:linear-gradient(180deg, var(--blush-500), var(--blush-600));
   border-radius:8px 8px 3px 3px; transition:opacity .2s ease, transform .2s ease;
 }
-/* Mês atual: acento dourado (e não mais um tom de rosa) pra saltar aos
-   olhos entre os outros meses sem precisar de legenda. */
+
 .sales-chart-bar-wrap.is-current .sales-chart-bar{
   background:linear-gradient(180deg, var(--gold-500), var(--gold-700));
   box-shadow:0 8px 18px -10px rgba(169,128,63,.65);
@@ -2332,7 +1859,6 @@ body.admin-gate-active .admin-state-area{
   .sales-chart-tooltip{ font-size:.66rem; padding:.32rem .5rem; }
 }
 
-/* Produtos */
 .admin-table-wrap{
   background:var(--white); border:1px solid var(--blush-100); border-radius:var(--radius-md);
   box-shadow:0 10px 25px -20px rgba(84,41,60,.3);
@@ -2352,11 +1878,7 @@ body.admin-gate-active .admin-state-area{
   display:inline-block; background:var(--blush-100); color:var(--blush-700);
   font-size:.7rem; font-weight:700; padding:.2rem .55rem; border-radius:999px; margin:0 .2rem .2rem 0;
 }
-/* ---- Pré-visualização "como a cliente vê" ----
-   Reproduz o card da vitrine em miniatura: mesmo quadrado 1:1 e mesmo
-   object-fit:cover de .product-thumb. É de propósito uma cópia visual, e
-   não a classe .product-card reaproveitada — o card real traz hover,
-   sombra, selos e botão de espiada que aqui só seriam ruído. */
+
 .ep-preview-wrap{ display:flex; flex-direction:column; align-items:center; gap:.6rem; }
 .ep-preview-caption{
   font-family:var(--font-script); font-size:1.1rem; color:var(--blush-700);
@@ -2383,7 +1905,6 @@ body.admin-gate-active .admin-state-area{
 .ep-mini-price{ font-size:.85rem; font-weight:700; color:var(--blush-700); margin-top:.15rem; }
 .ep-recrop-btn{ padding:.35rem .9rem; font-size:.78rem; }
 
-/* ---- Recorte ---- */
 .ep-cropper{
   border:1px solid var(--blush-100); border-radius:var(--radius-md);
   background:var(--cream); padding:1rem; margin-bottom:1rem;
@@ -2392,8 +1913,7 @@ body.admin-gate-active .admin-state-area{
 .ep-crop-head{ display:flex; flex-direction:column; gap:.15rem; margin-bottom:.7rem; }
 .ep-crop-title{ font-size:.9rem; color:var(--ink); }
 .ep-crop-hint{ font-size:.76rem; color:var(--ink-soft); line-height:1.4; }
-/* O palco É o recorte: o que passa da borda está fora do que a cliente vê.
-   min() para caber no modal do Bootstrap em telas estreitas. */
+
 .ep-crop-stage{
   position:relative; width:min(280px, 68vw); aspect-ratio:4/5; margin:0 auto;
   overflow:hidden; border-radius:var(--radius-md);
@@ -2406,8 +1926,7 @@ body.admin-gate-active .admin-state-area{
   position:absolute; top:0; left:0; transform-origin:0 0;
   max-width:none; user-select:none; -webkit-user-drag:none;
 }
-/* Guias de terços: só durante o arraste/zoom. Fixas o tempo todo virariam
-   ruído por cima da foto que a lojista está justamente tentando avaliar. */
+
 .ep-crop-guides{
   position:absolute; inset:0; pointer-events:none;
   opacity:0; transition:opacity var(--nav-dur) var(--nav-ease);
@@ -2423,9 +1942,7 @@ body.admin-gate-active .admin-state-area{
 
 .ep-crop-zoom{ display:flex; align-items:center; gap:.6rem; margin:.9rem auto 0; max-width:min(280px, 68vw); }
 .ep-crop-zoom i{ color:var(--blush-500); font-size:.9rem; }
-/* O .form-range do Bootstrap pinta o thumb com a cor primária dele
-   (azul) direto nos pseudo-elementos, que ganham de accent-color — por
-   isso os dois vendors aparecem escritos à mão aqui. */
+
 .ep-crop-zoom .form-range{ accent-color:var(--blush-600); }
 .ep-crop-zoom .form-range::-webkit-slider-thumb{ background:var(--blush-600); }
 .ep-crop-zoom .form-range::-moz-range-thumb{ background:var(--blush-600); border:none; }
@@ -2437,9 +1954,7 @@ body.admin-gate-active .admin-state-area{
 .epPreview-img{
   width:120px; height:120px; border-radius:var(--radius-md); object-fit:cover; background:var(--blush-50);
 }
-/* Placeholder de "produto sem foto cadastrada" — mesmo laço em SVG que a
-   vitrine mostra nesse caso, para o painel não sugerir uma foto que a
-   loja não tem. */
+
 .epPreview-placeholder, .admin-thumb-placeholder{
   display:inline-flex; align-items:center; justify-content:center;
   border-radius:var(--radius-md); background:var(--blush-50); color:var(--blush-300);
@@ -2480,10 +1995,7 @@ body.admin-gate-active .admin-state-area{
 @media (prefers-reduced-motion: reduce){
   .error-boundary-overlay{ animation:none; }
 }
-/* ====================== POLÍTICAS DA LOJA (politica.html) ======================
-   Página de texto longo: a largura é limitada em ~68ch porque linha
-   comprida demais faz o olho perder a próxima — é o oposto do resto do
-   site, onde os blocos ocupam a largura toda. */
+/* ====================== POLÍTICAS DA LOJA (politica.html) ====================== */
 .policy-wrap{ max-width:68ch; margin:0 auto; padding-bottom:2rem; }
 .policy-back{
   display:inline-flex; align-items:center; gap:.4rem;
@@ -2493,8 +2005,6 @@ body.admin-gate-active .admin-state-area{
 .policy-back:hover{ color:var(--blush-700); }
 .policy-updated{ font-size:.8rem; color:var(--ink-soft); }
 
-/* Índice em pílulas: a maioria chega aqui com uma dúvida só (troca, prazo)
-   e não deveria ter que rolar a página inteira para achar. */
 .policy-index{
   display:flex; flex-wrap:wrap; gap:.45rem;
   margin:1.5rem 0 2.2rem; padding-bottom:.2rem;
@@ -2522,8 +2032,6 @@ body.admin-gate-active .admin-state-area{
 .policy-section ul{ padding-left:1.15rem; margin-bottom:1rem; }
 .policy-section li{ margin-bottom:.4rem; }
 
-/* Lista de dados da loja (CNPJ, endereço): grade rótulo/valor em vez de
-   parágrafos, porque é informação que se consulta, não que se lê. */
 .policy-data{ display:grid; grid-template-columns:auto 1fr; gap:.5rem 1.2rem; margin:0; }
 .policy-data dt{ font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); font-weight:600; }
 .policy-data dd{ margin:0; font-size:.9rem; color:var(--ink); }
@@ -2532,8 +2040,6 @@ body.admin-gate-active .admin-state-area{
   .policy-data dd{ margin-bottom:.7rem; }
 }
 
-/* Destaque do direito de arrependimento: é o ponto que mais gera conflito
-   e o que a cliente mais procura — não pode ficar perdido no meio do texto. */
 .policy-highlight{
   background:var(--blush-50); border:1.5px solid var(--blush-200);
   border-radius:14px; padding:.9rem 1rem; margin-bottom:1rem;

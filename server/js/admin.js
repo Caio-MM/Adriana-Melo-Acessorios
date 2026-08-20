@@ -6,38 +6,25 @@
       "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
     }[ch]));
   }
-  // Mesmo racional do fetchWithTimeout em js/auth.js: sem limite de tempo,
-  // um fetch travado deixaria o painel preso em "Carregando painel..."
-  // pra sempre, sem cair no estado de erro (que tem botão de "Tentar de novo").
+
   function fetchWithTimeout(url, options, timeoutMs){
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs || 8000);
     return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
   }
-  // Mesma fonte única que a vitrine e o carrinho usam (js/pricing.js) —
-  // antes o painel tinha sua própria cópia, sem o espaço não separável
-  // entre "R$" e o valor nem a proteção contra NaN que a versão central
-  // já tinha (ver formatMoney em js/pricing.js).
+
   const formatMoney = window.PLCPricing.formatMoney;
   function formatDate(ts){
     return new Date(ts).toLocaleString("pt-BR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
   }
-  // Mesma regra da vitrine (js/main.js:imageFor): sem foto cadastrada não
-  // existe imagem nenhuma — quem chama mostra o laço em SVG no lugar, para
-  // o painel refletir exatamente o que o cliente vê na loja.
+
   function imageFor(product){
     return product.photoUrl || "";
   }
   const BOW_PLACEHOLDER = `<span class="admin-thumb-placeholder" aria-hidden="true"><svg class="bow-icon"><use href="#bow-shape"/></svg></span>`;
 
-  // Espelha PAYMENT_METHODS em server/server.js.
   const PAYMENT_METHOD_LABELS = { pix: "Pix", card: "Cartão ou boleto" };
 
-  // Preenchidas de verdade por applyCategories(), a partir de GET
-  // /api/admin/products — a fonte real são as 5 fixas de
-  // BUILTIN_CATEGORIES mais qualquer uma criada em "+ Nova categoria"
-  // (server/server.js, tabela custom_categories). O valor abaixo é só o
-  // que aparece na fração de segundo antes da primeira resposta chegar.
   let CATEGORY_LABELS = {
     "maternidade": "Maternidade",
     "festa": "Festa",
@@ -51,9 +38,7 @@
     currentCategories = categories;
     CATEGORY_LABELS = Object.fromEntries(categories.map(c => [c.slug, c.label]));
   }
-  // Reconstrói as <option> de um <select> de categoria a partir de
-  // currentCategories — chamado toda vez que um modal com esse campo abre,
-  // para incluir qualquer categoria criada depois da última renderização.
+
   function renderCategoryOptions(selectEl, selectedSlug){
     selectEl.innerHTML = currentCategories
       .map(c => `<option value="${escapeHTML(c.slug)}">${escapeHTML(c.label)}</option>`).join("");
@@ -96,20 +81,13 @@
      stateTwoFactor, stateRecovery, contentEl].forEach(node => {
       if(node) node.classList.toggle("d-none", node !== target);
     });
-    // Centraliza o cartão verticalmente só durante o onboarding de 2FA
-    // (mesmo tratamento de .auth-page em conta.html) — o painel completo
-    // (contentEl) precisa da rolagem normal com a sidebar, então fica de
-    // fora. Ver a regra body.admin-gate-active em css/style.css.
+
     document.body.classList.toggle(
       "admin-gate-active", target === stateTwoFactor || target === stateRecovery
     );
   }
 
-  /* ==================== VERIFICAÇÃO EM DUAS ETAPAS ====================
-     Enquanto a conta de admin não tiver 2FA ativo, TODA rota de dados do
-     painel responde 403 com needsTwoFactorSetup — então esta tela é o que
-     aparece no lugar do painel, e não um aviso opcional que dá para pular.
-  ==================================================================== */
+  /* ==================== VERIFICAÇÃO EM DUAS ETAPAS ==================== */
   let tfaSecret = null;
 
   async function startTwoFactorSetup(){
@@ -122,7 +100,7 @@
       const data = await res.json();
       tfaSecret = data.secret;
       document.getElementById("tfaQr").src = data.qrDataUri;
-      // Em blocos de 4 para conferir com o olho na hora de digitar à mão.
+
       document.getElementById("tfaSecret").textContent = data.secret.replace(/(.{4})/g, "$1 ").trim();
     }catch{
       showOnly(stateError);
@@ -150,10 +128,7 @@
       msg.textContent = err.message;
       msg.classList.add("text-danger");
       codeEl.select();
-      // Tremor curto no campo — remove+reflow+adiciona de novo é o que
-      // reinicia a animação CSS numa tentativa seguida (mesmo mecanismo do
-      // pulso do laço em conta.js), senão duas tentativas erradas em
-      // sequência tremeriam só na primeira.
+
       codeEl.classList.remove("tfa-shake");
       void codeEl.offsetWidth;
       codeEl.classList.add("tfa-shake");
@@ -167,8 +142,7 @@
     list.innerHTML = "";
     codes.forEach(code => {
       const li = document.createElement("li");
-      // textContent, não innerHTML: os códigos vêm do servidor, mas escrever
-      // isso com innerHTML seria um hábito ruim justo na tela mais sensível.
+
       li.textContent = code;
       list.appendChild(li);
     });
@@ -181,18 +155,12 @@
     showOnly(stateRecovery);
   }
 
-  // O botão só libera depois do check: estes códigos não voltam a aparecer,
-  // e sair da tela sem guardá-los é a forma mais provável de a lojista
-  // acabar trancada fora do próprio painel um dia.
   document.getElementById("tfaSavedCheck")?.addEventListener("change", (e) => {
     document.getElementById("tfaDoneBtn").disabled = !e.target.checked;
   });
   document.getElementById("tfaDoneBtn")?.addEventListener("click", () => loadDashboard());
 
-  /* ================================ ABAS ================================
-     Troca de aba é só CSS (mostra/esconde .admin-tab-panel) — os dados de
-     todas as abas já foram carregados juntos em loadDashboard(), então
-     nenhuma spinner/requisição nova acontece ao navegar entre elas. */
+  /* ================================ ABAS ================================ */
   const adminTabsEl = document.getElementById("adminTabs");
   const tabButtons = [...document.querySelectorAll(".admin-tab-btn")];
   const tabPanels = [...document.querySelectorAll(".admin-tab-panel")];
@@ -211,10 +179,7 @@
 
   /* ============================= VISÃO GERAL ============================= */
   function renderStats(stats){
-    // Ticket médio é derivado dos dois números que o servidor já manda
-    // (revenue/count) — não precisa de outra chamada nem de o servidor
-    // calcular isso separado, é aritmética determinística em cima de
-    // valor já confiável.
+
     const avgTicket = stats.totalOrders ? stats.totalRevenue / stats.totalOrders : 0;
     statsRowEl.innerHTML = `
       <div class="stat-tile stat-tile--revenue">
@@ -241,11 +206,7 @@
     `;
   }
 
-  /* ======================== GRÁFICO DE VENDAS POR MÊS ========================
-     Calculado inteiramente no navegador a partir dos pedidos que o painel
-     já buscou pra listagem de "Vendas e pedidos" (mesma resposta de
-     /api/admin/orders) — não existe uma segunda chamada nem endpoint novo
-     só pra alimentar o gráfico. */
+  /* ======================== GRÁFICO DE VENDAS POR MÊS ======================== */
   const MONTH_LABELS = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
   const salesChartEl = document.getElementById("salesChart");
 
@@ -273,9 +234,7 @@
 
     salesChartEl.innerHTML = buckets.map(b => {
       const isCurrent = b.year === now.getFullYear() && b.month === now.getMonth();
-      // Barra sempre visível (altura mínima) mesmo em R$0 — um mês sem
-      // venda nenhuma continua ocupando o lugar dele na linha do tempo,
-      // em vez de sumir e confundir a leitura das barras vizinhas.
+
       const pct = maxRevenue > 0 ? Math.max((b.revenue / maxRevenue) * 100, 3) : 3;
       const orderWord = b.count === 1 ? "pedido" : "pedidos";
       return `
@@ -288,18 +247,8 @@
     }).join("");
   }
 
-  /* ==================== VISÕES DO DASHBOARD ====================
-     Tudo aqui é calculado no navegador a partir dos pedidos e produtos que
-     loadDashboard() já buscou — nenhuma chamada extra à API.
+  /* ==================== VISÕES DO DASHBOARD ==================== */
 
-     ⚠️ "Valor" nestas visões é o preço de catálogo dos itens
-     (unitPrice × qty), NÃO o total do pedido: o total inclui frete e
-     desconta cupom/Pix, que não pertencem a nenhuma categoria ou produto
-     específico. Por isso a soma daqui não bate com "Vendas totais" — os
-     subtítulos no HTML dizem "sem frete" para deixar isso explícito. */
-
-  /* Uma lista de barras horizontais serve as quatro visões. Cada item é
-     { label, value, display, meta } e a barra é proporcional ao maior. */
   function renderBarList(el, items, emptyMessage){
     if(!el) return;
     if(!items.length){
@@ -308,8 +257,7 @@
     }
     const max = Math.max(...items.map(i => i.value), 0);
     el.innerHTML = items.map(item => {
-      // Mínimo de 2% para um item com valor baixo ainda desenhar uma barra
-      // visível, em vez de virar uma linha invisível ao lado do maior.
+
       const pct = max > 0 ? Math.max((item.value / max) * 100, 2) : 2;
       return `
         <div class="bar-row">
@@ -325,8 +273,6 @@
 
   const paidOrdersOf = (orders) => orders.filter(o => o.status === "pago");
 
-  /* Percorre os itens dos pedidos pagos somando unidades e valor por chave
-     (categoria ou produto), devolvendo já ordenado do maior para o menor. */
   function tallyItems(orders, keyOf){
     const totals = new Map();
     for(const order of paidOrdersOf(orders)){
@@ -360,8 +306,7 @@
   }
 
   function renderTopProductsChart(orders){
-    // Ordena por unidades (e não por valor): "mais vendido" no dia a dia da
-    // loja é o que sai mais, não o que fatura mais.
+
     const rows = tallyItems(orders, item => item.name || `Produto #${item.id}`)
       .sort((a, b) => b.units - a.units)
       .slice(0, 5);
@@ -418,24 +363,10 @@
     );
   }
 
-  /* ======================== CARRINHOS PENDENTES ========================
-     Recuperação de carrinho abandonado: pedidos "pendente" (checkout
-     iniciado no Mercado Pago, pagamento nunca confirmado) entre 1h e 14
-     dias atrás — cedo demais (< 1h) o cliente pode só estar terminando de
-     pagar; tarde demais (> 14 dias) o contato deixa de fazer sentido. */
+  /* ======================== CARRINHOS PENDENTES ======================== */
   const PENDING_CART_MIN_AGE_MS = 60 * 60 * 1000;
   const PENDING_CART_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 
-  // O telefone é digitado pela cliente no checkout como DDD + número (ex.:
-  // "(11) 99999-8888"), sem o código do país — um link wa.me com só esses
-  // 10-11 dígitos não abre a conversa certa.
-  //
-  // Não dá para decidir pelo comprimento sozinho: "011 99999-8888" (hábito
-  // antigo de pôr o 0 da operadora antes do DDD) também dá 12 dígitos e
-  // NÃO tem DDI. Por isso o 0 da frente sai primeiro, e só é considerado
-  // "já tem DDI" o número que começa com 55 E tem 12-13 dígitos. Um número
-  // do DDD 55 (Rio Grande do Sul) sem DDI tem no máximo 11 dígitos, então
-  // não cai nesse caso por engano.
   function whatsappDigitsWithCountryCode(phone){
     let digits = String(phone || "").replace(/\D/g, "");
     if(!digits) return "";
@@ -456,9 +387,6 @@
     return whatsappUrl(order.customer?.telefone, msg);
   }
 
-  // Mensagem padrão de suporte pós-venda (contato geral sobre um pedido já
-  // feito) — diferente da mensagem de recuperação de carrinho acima, que é
-  // sobre uma compra ainda não finalizada.
   const WHATSAPP_POST_SALE_MESSAGE = "Olá, recebemos o seu pedido na Adriana Melo Acessórios e estamos à disposição para qualquer dúvida.";
   function whatsappContactUrl(order){
     return whatsappUrl(order.customer?.telefone, WHATSAPP_POST_SALE_MESSAGE);
@@ -500,10 +428,6 @@
     }).join("");
   }
 
-  /* Apaga um pedido (usado tanto pelos cards de "Carrinhos pendentes"
-     quanto pela lista geral de "Pedidos", abaixo). O servidor já barra a
-     exclusão de pedidos "pago" (histórico financeiro) — o confirm() aqui
-     é só pra evitar apagar um carrinho por engano num clique errado. */
   async function deleteOrderWithConfirm(reference, onSuccess){
     if(!confirm("Apagar este pedido? Essa ação não pode ser desfeita.")) return;
     try{
@@ -522,9 +446,6 @@
     deleteOrderWithConfirm(btn.dataset.ref, () => loadDashboard());
   });
 
-  /* Mesmo racional do confirm() de pedido, acima — mensagem de contato não
-     é histórico financeiro (o servidor não bloqueia por status nenhum),
-     então o confirm() aqui é a única rede contra apagar por engano. */
   async function deleteContactMessageWithConfirm(id, onSuccess){
     if(!confirm("Apagar esta mensagem? Essa ação não pode ser desfeita.")) return;
     try{
@@ -545,9 +466,6 @@
   /* ============================== PRODUTOS ============================== */
   let productsCache = [];
 
-  // Espelha CUSTOM_PRODUCT_ID_START em server/server.js: só produto criado
-  // pelo painel ("+ Adicionar produto") vive numa linha do banco — os 8 do
-  // catálogo fixo são código-fonte, não têm como ser apagados por aqui.
   const CUSTOM_PRODUCT_ID_START = 1000;
 
   function renderProductsTable(products){
@@ -599,13 +517,8 @@
   const epMsg = document.getElementById("epMsg");
   const epSaveBtn = document.getElementById("epSaveBtn");
 
-  // Valores do produto no instante em que o modal foi aberto — comparados
-  // no submit para montar um PATCH só com o que realmente mudou (ver
-  // comentário no handler de submit, abaixo).
   let editOriginal = null;
-  // `photoUrl` que vai entrar no PATCH se a lojista salvar: começa igual
-  // ao valor atual do produto e só muda depois de um upload TERMINAR com
-  // sucesso (nunca aponta para um arquivo ainda enviando ou que falhou).
+
   let pendingPhotoUrl = "";
   let photoUploadInFlight = false;
 
@@ -613,23 +526,16 @@
     return [epBadgeBestseller, epBadgeNew].filter(cb => cb.checked).map(cb => cb.value);
   }
 
-  /* Único lugar que mexe na pré-visualização do modal. Sem foto, esconde a
-     <img> e mostra o laço — em vez de deixar `src=""`, que o navegador
-     resolve como a própria URL da página e transforma numa requisição
-     inútil (e num ícone de imagem quebrada). */
   function setPreviewPhoto(url){
     const hasPhoto = Boolean(url);
     if(hasPhoto) epPreview.src = url;
     else epPreview.removeAttribute("src");
     epPreview.classList.toggle("d-none", !hasPhoto);
     epPreviewPlaceholder.classList.toggle("d-none", hasPhoto);
-    // Só dá para reenquadrar o que já existe.
+
     epRecropBtn.classList.toggle("d-none", !hasPhoto);
   }
 
-  /* Nome e preço do mini card acompanham o que está sendo digitado — a
-     pré-visualização é "como fica na loja", então tem que refletir a edição
-     em andamento, não o valor salvo. */
   function syncPreviewText(){
     epPreviewName.textContent = epName.value.trim() || "Nome do produto";
     const price = Number(epPrice.value);
@@ -650,8 +556,7 @@
     epBadgeNew.checked = (product.badges || []).includes("Novo");
     setPreviewPhoto(imageFor(product));
     syncPreviewText();
-    // Reabrir o modal noutro produto não pode herdar um recorte aberto do
-    // anterior.
+
     closeCropper();
     epMsg.textContent = "";
     epMsg.className = "small account-msg";
@@ -669,53 +574,18 @@
     editModal.show();
   }
 
-  /* =====================================================================
-     FOTO DO PRODUTO — recorte no navegador e depois upload
-     ---------------------------------------------------------------------
-     A foto é sempre recortada para caber no lugar onde aparece. Antes esse
-     recorte era decidido pelo navegador (centro da imagem) e a lojista só
-     descobria o resultado depois de salvar. Agora ela escolhe o
-     enquadramento aqui.
+  /* ============ FOTO DO PRODUTO — recorte no navegador e depois upload ============ */
 
-     O recorte é 4:5 (retrato), a mesma proporção da tela de detalhes do
-     produto: gravando assim, a foto preenche aquele quadro exatamente, sem
-     faixa vazia em cima e embaixo. A vitrine mostra num quadrado 1:1 e
-     corta as pontas — é a miniatura; quem clica vê a foto inteira.
-
-     1) Ao escolher um arquivo, ele NÃO é enviado ainda: abre o recorte com
-        a imagem lida localmente (object URL). Nada sai do navegador.
-     2) Em "Usar esta foto", o trecho escolhido é desenhado num <canvas> e
-        exportado como JPEG — o arquivo que sobe já é o recorte final, do
-        tamanho que a loja precisa. Isso resolve duas coisas de uma vez: o
-        recorte fica gravado (não depende do CSS do dia) e uma foto de
-        celular de 4000px vira ~800px, deixando a vitrine bem mais leve.
-     3) O upload continua igual: multipart para
-        POST /api/admin/products/:id/photo, que grava em disco e devolve um
-        caminho curto guardado em `pendingPhotoUrl` até "Salvar alterações".
-
-     Por que multipart e não base64 num JSON: base64 incha o arquivo ~33% e
-     impede o servidor de validar tipo/tamanho antes de ler o corpo inteiro.
-  ===================================================================== */
-
-  /* Retrato 4:5 — as fotos do catálogo são tiradas na vertical, e é essa a
-     proporção que a tela de detalhes usa. Gravando o recorte já em 4:5, a
-     foto preenche aquele quadro exatamente, sem faixa sobrando em cima e
-     embaixo. 800px de largura = 2× os ~400px que o card ocupa na vitrine,
-     para não borrar em tela retina; acima disso só peso. */
   const CROP_OUTPUT_W = 800;
   const CROP_OUTPUT_H = 1000;
   const CROP_JPEG_QUALITY = 0.9;
 
-  /* Estado do recorte. `zoom` 1 = imagem no menor tamanho que ainda cobre o
-     recorte inteiro; offsets são o canto superior-esquerdo da imagem
-     dentro do palco, em px de tela. */
   const crop = { natW: 0, natH: 0, baseScale: 1, zoom: 1, x: 0, y: 0, objectUrl: null, stageW: 0, stageH: 0 };
 
   function cropClampAndRender(){
     const dispW = crop.natW * crop.baseScale * crop.zoom;
     const dispH = crop.natH * crop.baseScale * crop.zoom;
-    // A imagem nunca pode descolar da borda: sem isso sobraria fundo vazio
-    // dentro do recorte, que na loja viraria uma faixa cinza.
+
     crop.x = Math.min(0, Math.max(crop.stageW - dispW, crop.x));
     crop.y = Math.min(0, Math.max(crop.stageH - dispH, crop.y));
     epCropImg.style.width = `${dispW}px`;
@@ -723,8 +593,6 @@
     epCropImg.style.transform = `translate(${crop.x}px, ${crop.y}px)`;
   }
 
-  /* Aproxima/afasta mantendo fixo o ponto sob o cursor (ou o centro, quando
-     vem do slider) — sem isso o zoom "foge" do que a lojista está mirando. */
   function cropSetZoom(nextZoom, anchorX, anchorY){
     const clamped = Math.min(Number(epCropZoom.max), Math.max(Number(epCropZoom.min), nextZoom));
     const ax = anchorX ?? crop.stageW / 2;
@@ -744,12 +612,11 @@
       crop.natH = epCropImg.naturalHeight;
       crop.stageW = epCropStage.clientWidth;
       crop.stageH = epCropStage.clientHeight;
-      // "cover": a menor escala em que a imagem ainda tapa o recorte todo.
+
       crop.baseScale = Math.max(crop.stageW / crop.natW, crop.stageH / crop.natH);
       crop.zoom = 1;
       epCropZoom.value = "1";
-      // Começa centralizado — o mesmo enquadramento que o navegador faria
-      // sozinho, então quem não quer mexer em nada é só confirmar.
+
       crop.x = (crop.stageW - crop.natW * crop.baseScale) / 2;
       crop.y = (crop.stageH - crop.natH * crop.baseScale) / 2;
       cropClampAndRender();
@@ -763,13 +630,12 @@
     epCropper.classList.add("d-none");
     epCropStage.classList.remove("is-dragging");
     if(crop.objectUrl){
-      // Object URL segura o arquivo inteiro na memória até ser revogado.
+
       URL.revokeObjectURL(crop.objectUrl);
       crop.objectUrl = null;
     }
   }
 
-  // ---- Arrastar (mouse e toque, via Pointer Events) ----
   let dragging = false, dragStartX = 0, dragStartY = 0, dragOriginX = 0, dragOriginY = 0;
   epCropStage.addEventListener("pointerdown", (e) => {
     if(!epCropImg.src) return;
@@ -789,7 +655,6 @@
   epCropStage.addEventListener("pointerup", endDrag);
   epCropStage.addEventListener("pointercancel", endDrag);
 
-  // ---- Zoom pela roda do mouse, ancorado no cursor ----
   epCropStage.addEventListener("wheel", (e) => {
     if(!epCropImg.src) return;
     e.preventDefault();
@@ -803,8 +668,6 @@
   });
   epCropZoom.addEventListener("change", () => epCropper.classList.remove("is-zooming"));
 
-  // ---- Teclado: setas movem, +/- aproximam (o arraste sozinho deixaria
-  //      quem não usa mouse sem nenhuma forma de enquadrar) ----
   epCropStage.addEventListener("keydown", (e) => {
     if(!epCropImg.src) return;
     const step = e.shiftKey ? 20 : 5;
@@ -820,10 +683,6 @@
     if(e.key === "-" || e.key === "_"){ e.preventDefault(); cropSetZoom(crop.zoom / 1.1); }
   });
 
-  /* Desenha só o pedaço visível do palco, em CROP_OUTPUT_W × CROP_OUTPUT_H.
-     O fundo
-     branco vai antes porque PNG/GIF com transparência viraria preto no
-     JPEG — branco combina com o card da vitrine. */
   function exportCroppedBlob(){
     return new Promise((resolve, reject) => {
       const canvas = document.createElement("canvas");
@@ -832,7 +691,7 @@
       const ctx = canvas.getContext("2d");
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, CROP_OUTPUT_W, CROP_OUTPUT_H);
-      // Do palco (px de tela) de volta para pixels reais da imagem.
+
       const scale = crop.baseScale * crop.zoom;
       ctx.drawImage(epCropImg, -crop.x / scale, -crop.y / scale, crop.stageW / scale, crop.stageH / scale,
                     0, 0, CROP_OUTPUT_W, CROP_OUTPUT_H);
@@ -866,8 +725,7 @@
       .catch((err) => {
         epPhotoStatus.textContent = err.message || "Erro ao enviar a imagem.";
         epPhotoStatus.classList.add("is-error");
-        // Volta a pré-visualização para o que já estava salvo — deixar o
-        // recorte na tela sugeriria que ele "pegou".
+
         const product = productsCache.find(p => p.id === id);
         setPreviewPhoto(product ? imageFor(product) : "");
         epPhotoFile.value = "";
@@ -891,9 +749,6 @@
     openCropper(crop.objectUrl);
   });
 
-  // Reenquadrar a foto que já está publicada, sem precisar reenviar o
-  // arquivo. Mesma origem, então o canvas não fica "sujo" (tainted) e a
-  // exportação funciona igual.
   epRecropBtn.addEventListener("click", () => {
     const current = epPreview.getAttribute("src");
     if(!current) return;
@@ -911,7 +766,7 @@
   epCropConfirm.addEventListener("click", async () => {
     try{
       const blob = await exportCroppedBlob();
-      // Mostra o recorte final no mini card antes mesmo do upload terminar.
+
       setPreviewPhoto(URL.createObjectURL(blob));
       closeCropper();
       await uploadPhotoBlob(blob);
@@ -928,9 +783,6 @@
     if(deleteBtn) deleteProductWithConfirm(Number(deleteBtn.dataset.id));
   });
 
-  /* Mesmo racional do confirm() de pedido/mensagem, acima: única rede
-     contra clique errado, já que o servidor recusa (400) qualquer id do
-     catálogo fixo antes de chegar perto de apagar algo. */
   async function deleteProductWithConfirm(id){
     if(!confirm("Excluir este produto? Essa ação não pode ser desfeita.")) return;
     try{
@@ -946,17 +798,13 @@
 
   editForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if(photoUploadInFlight) return; // botão já fica desabilitado, isto é só uma segunda trava
+    if(photoUploadInFlight) return; 
     const id = Number(epId.value);
     const name = epName.value.trim();
     const price = Number(epPrice.value);
     const category = epCategory.value;
     const badges = selectedBadges();
 
-    // Payload compacto: manda só os campos que mudaram desde que o modal
-    // abriu, em vez do produto inteiro a cada "Salvar" — ver PATCH
-    // /api/admin/products/:id em server.js, que trata ausência de uma
-    // chave como "não mexeu nisso" (preserva o valor já salvo).
     const patch = {};
     if(name !== editOriginal.name) patch.name = name;
     if(price !== editOriginal.price) patch.price = price;
@@ -998,11 +846,7 @@
     }
   });
 
-  /* ============================ NOVA CATEGORIA ============================
-     Um prompt() em vez de outro modal cheio de campo: é só um texto (o
-     nome), o mesmo racional do confirm() já usado para apagar pedido, logo
-     acima. Compartilhado pelos dois formulários de produto (editar e
-     adicionar) — cada botão só diz qual <select> preencher depois. */
+  /* ============================ NOVA CATEGORIA ============================ */
   async function promptNewCategory(selectToUpdate){
     const label = prompt("Nome da nova categoria (ex.: Aniversário):");
     if(!label || !label.trim()) return;
@@ -1022,10 +866,7 @@
   }
   document.getElementById("epNewCategoryBtn").addEventListener("click", () => promptNewCategory(epCategory));
 
-  /* ============================ ADICIONAR PRODUTO ============================
-     Sem campo de foto (ver comentário no modal, admin.html): ao criar com
-     sucesso, abre o modal de edição do produto recém-criado na hora — é lá
-     que a foto entra, no mesmo fluxo de recorte de sempre. */
+  /* ============================ ADICIONAR PRODUTO ============================ */
   const addProductModalEl = document.getElementById("addProductModal");
   const addProductModal = new bootstrap.Modal(addProductModalEl);
   const addProductForm = document.getElementById("addProductForm");
@@ -1079,9 +920,7 @@
       if(!res.ok) throw new Error(data.error || "Não foi possível criar o produto.");
 
       addProductModal.hide();
-      // loadDashboard() e não só um push local: garante que o produto novo
-      // já entra em productsCache com o formato exato que o servidor
-      // devolve, antes de abrir o modal de edição para a foto.
+
       await loadDashboard();
       openEditModal(data.id);
     }catch(err){
@@ -1105,10 +944,7 @@
     const status = STATUS_LABELS[order.status] || { label: escapeHTML(order.status), cls:"order-status-pending" };
     const ref = order.reference;
     const isPaid = order.status === "pago";
-    // Só em pedido pago: a mensagem é de suporte pós-venda ("recebemos o seu
-    // pedido"), que seria falsa num carrinho abandonado ou num pagamento
-    // recusado/cancelado. Carrinho pendente já tem o botão de recuperação,
-    // com a mensagem certa, na seção "Carrinhos pendentes".
+
     const contactUrl = isPaid ? whatsappContactUrl(order) : null;
 
     const itemsHtml = order.items.map(item => `
@@ -1187,17 +1023,9 @@
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("pedido");
     if(!ref) return;
-    // O card do pedido mora na aba "Vendas e pedidos" — desde que o painel
-    // virou abas, ela pode estar escondida (d-none) quando o link do
-    // e-mail de pedido pago abre a página. Sem trocar de aba primeiro, o
-    // scrollIntoView abaixo não faz nada visível (elemento existe no DOM,
-    // mas dentro de um painel oculto).
+
     switchTab("pedidos");
-    // getElementById recebe o id LITERAL, não um seletor CSS — passar por
-    // CSS.escape aqui quebrava justamente os casos reais: a referência é um
-    // UUID, e quando ele começa com dígito o escape vira "\38 f2a…", que
-    // nunca casa com o id no DOM. Resultado: o link "ver no painel" do
-    // e-mail de pedido pago abria a página e não destacava nada.
+
     const card = document.getElementById(`pedido-${ref}`);
     if(!card) return;
     card.scrollIntoView({ behavior:"smooth", block:"center" });
@@ -1220,12 +1048,6 @@
     highlightFromQuery();
   }
 
-  // Desenha o código de rastreio como código de barras (Code128) — a
-  // lojista já sai com algo pronto pra colar/mostrar na embalagem, sem
-  // precisar copiar o texto pra outra ferramenta só pra gerar a barra.
-  // JsBarcode (cdnjs, mesma origem já liberada na CSP pro Bootstrap) só
-  // desenha dentro do próprio <svg>, sem nenhuma chamada de rede — código
-  // sensível (rastreio de pedido) nunca sai do navegador da lojista.
   function renderBarcode(ref, code){
     const svg = document.getElementById(`barcode-${ref}`);
     const downloadBtn = document.getElementById(`barcode-download-${ref}`);
@@ -1248,9 +1070,7 @@
       svg.classList.add("is-visible");
       downloadBtn?.classList.remove("d-none");
     }catch(err){
-      // Só pode acontecer com um código de rastreio digitado à mão fora do
-      // padrão dos Correios (ex.: caractere que o Code128 não representa)
-      // — nunca trava o resto do painel por causa disso.
+
       console.error("Não foi possível desenhar o código de barras:", err);
       svg.innerHTML = "";
       svg.classList.remove("is-visible");
@@ -1258,12 +1078,6 @@
     }
   }
 
-  // Baixa o código de barras como PNG. Desenha de novo num <canvas> só
-  // pra isso (fora da tela, nunca inserido no DOM) em vez de converter o
-  // <svg> já visível — bem mais simples e sem as pegadinhas de
-  // serializar SVG pra imagem entre navegadores, e o JsBarcode já sabe
-  // desenhar em canvas do mesmo jeito que em SVG. Tudo local: nenhum
-  // arquivo passa pelo servidor pra virar essa imagem.
   function downloadBarcode(ref){
     const input = document.getElementById(`tracking-${ref}`);
     const code = input?.value.trim();
@@ -1309,9 +1123,6 @@
     }
   }
 
-  // ⚠️ Compra a etiqueta de verdade no Melhor Envio (gasta saldo real da
-  // conta) — por isso confirm() antes, mesmo já sendo um clique
-  // deliberado da lojista num botão explicitamente rotulado.
   async function generateLabel(ref, feedbackEl, btn){
     if(!confirm("Gerar a etiqueta de envio agora? Isso compra o frete de verdade no Melhor Envio (gasta saldo da conta).")) return;
     const originalLabel = btn.innerHTML;
@@ -1344,9 +1155,6 @@
     const deleteBtn = e.target.closest(".delete-order-btn");
     const downloadBtn = e.target.closest(".barcode-download-btn");
 
-    /* Desenha o que está digitado no campo, sem passar pelo servidor: o
-       JsBarcode roda inteiro no navegador. Não exige "Salvar" antes de
-       propósito — a lojista pode conferir a barra antes de gravar. */
     if(barcodeBtn){
       const ref = barcodeBtn.dataset.ref;
       const input = document.getElementById(`tracking-${ref}`);
@@ -1384,9 +1192,7 @@
   });
 
   /* ================================ CUPONS ================================ */
-  /* ==================== CLIENTES E CONTATOS ====================
-     Dados que só o admin vê (telefone, e-mail, histórico). O servidor já
-     barra por auth.requireAdmin — o que é feito aqui é só a exibição. */
+  /* ==================== CLIENTES E CONTATOS ==================== */
   function toggleBlock(el, show){
     el?.classList.toggle("d-none", !show);
   }
@@ -1478,8 +1284,6 @@
     ).join("");
   }
 
-  /* CSV para abrir no Excel/Planilhas. O BOM (﻿) no início é o que faz
-     o Excel reconhecer UTF-8 — sem ele, "Ação" vira "AÃ§Ã£o". */
   function downloadCSV(filename, header, rows){
     const escapeCell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const csv = [header, ...rows].map(r => r.map(escapeCell).join(",")).join("\r\n");
@@ -1538,11 +1342,6 @@
     }
   });
 
-  // Cupom de boas-vindas (WELCOME_COUPON_CODE em server.js) é lido pelo
-  // código, não por flag no banco — editar o percentOff dele aqui já
-  // atualiza o e-mail de boas-vindas e o toast da home na próxima vez que
-  // forem gerados (os dois leem db.getCoupon na hora, nunca guardam um
-  // valor velho).
   const editCouponModalEl = document.getElementById("editCouponModal");
   const editCouponModal = new bootstrap.Modal(editCouponModalEl);
   const editCouponForm = document.getElementById("editCouponForm");
@@ -1603,10 +1402,7 @@
   });
 
   /* ============================ CARREGAMENTO ============================ */
-  /* Os botões de exportar são religados a cada carga do painel porque os
-     dados vêm por closure. `onclick` (e não addEventListener) de propósito:
-     substitui o handler anterior em vez de empilhar um novo a cada
-     recarregamento, que baixaria o mesmo CSV várias vezes. */
+
   function wireExports(customers, subscribers){
     const customersBtn = document.getElementById("exportCustomersBtn");
     if(customersBtn){
@@ -1644,9 +1440,7 @@
       const [ordersRes, productsRes, couponsRes, customersRes, leadsRes] = responses;
       if(responses.some(r => r.status === 401)){ showOnly(stateLoggedOut); return; }
       if(responses.some(r => r.status === 403)){
-        // Um 403 aqui tem duas causas bem diferentes: não é admin (acesso
-        // negado mesmo) ou é admin sem 2FA ativo (falta um passo, não é
-        // negativa). Só o corpo da resposta distingue as duas.
+
         const negado = responses.find(r => r.status === 403);
         const corpo = await negado.clone().json().catch(() => ({}));
         if(corpo.needsTwoFactorSetup) return startTwoFactorSetup();
@@ -1692,12 +1486,6 @@
 
   retryBtn?.addEventListener("click", loadDashboard);
 
-  // js/auth.js já faz a checagem de sessão ao carregar a página; reagimos
-  // ao resultado dela em vez de checar de novo (evita duas chamadas a
-  // /api/auth/me). Só tenta carregar o painel se o usuário for admin — do
-  // contrário mostra o estado apropriado sem nunca chamar /api/admin/* (a
-  // proteção de verdade é sempre no servidor, isso é só para não fazer uma
-  // chamada que sabemos que vai voltar 401/403).
   let authEventReceived = false;
   document.addEventListener("plc:auth", (e) => {
     authEventReceived = true;
@@ -1707,9 +1495,6 @@
     else loadDashboard();
   });
 
-  // Rede de segurança: se por algum motivo o evento "plc:auth" nunca
-  // chegar (ex.: js/auth.js falhou ao carregar), não fica preso em
-  // "Carregando painel..." pra sempre — mostra erro com botão de retry.
   setTimeout(() => {
     if(!authEventReceived) showOnly(stateError);
   }, 10000);

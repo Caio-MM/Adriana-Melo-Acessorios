@@ -1,20 +1,4 @@
-/* =========================================================================
-   ERROR BOUNDARY GLOBAL
-   -------------------------------------------------------------------------
-   Site é HTML/JS puro (sem framework), então não existe um Error Boundary
-   de componente — o equivalente aqui é escutar erros que escapam de todo
-   try/catch e cobrir a tela com uma mensagem amigável em vez de deixar a
-   página quebrada/em branco com um erro só no console.
-
-   Carregado como o PRIMEIRO <script defer> de cada página (antes do
-   bootstrap e dos scripts da própria página), para já estar escutando
-   antes de qualquer outro script rodar.
-
-   Só reage a erro de script (`error` no window, fase de bubble — não usa
-   capture, então erro de carregamento de imagem/CSS/script não aciona isto,
-   só exceção de JS mesmo) e a promise rejeitada sem `.catch` — não a erros
-   tratados internamente pela própria página.
-========================================================================= */
+/* ============ ERROR BOUNDARY GLOBAL ============ */
 (function(){
   "use strict";
 

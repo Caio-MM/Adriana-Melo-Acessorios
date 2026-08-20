@@ -8,8 +8,6 @@
 <meta name="robots" content="noindex, nofollow">
 
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
-<!-- O link traz o token na query: no-referrer impede que ele vaze no
-     cabeçalho Referer para qualquer host externo (fontes, CDN). -->
 <link rel="icon" href="favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="referrer" content="no-referrer">
@@ -52,8 +50,7 @@
         <p class="auth-subtitle mb-0">Escolha uma senha nova para a sua conta.</p>
       </div>
 
-      <!-- Sem token na URL não há o que redefinir: o formulário nem aparece. -->
-      <div id="resetInvalid" class="d-none text-center">
+            <div id="resetInvalid" class="d-none text-center">
         <p class="section-sub">Este link de redefinição está incompleto ou já expirou.</p>
         <a href="conta.html" class="btn-blush d-block w-100">Pedir um novo link</a>
       </div>

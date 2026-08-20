@@ -1,16 +1,7 @@
 (function(){
   "use strict";
 
-  /* =====================================================================
-     CATÁLOGO (somente para EXIBIÇÃO no front-end)
-     -------------------------------------------------------------------
-     ⚠️ SEGURANÇA: o preço aqui é só para a vitrine. Na hora de pagar, o
-     back-end (server/server.js) busca o preço de novo na SUA própria
-     lista de produtos, ignorando qualquer preço vindo do navegador. Isso
-     impede que alguém edite o localStorage no DevTools e pague menos do
-     que deveria (manipulação de preço). Mantenha os IDs sincronizados
-     com PRODUCTS em server/server.js.
-  ===================================================================== */
+  /* ============ CATÁLOGO (somente para EXIBIÇÃO no front-end) ============ */
   const products = [
     { id:1, name:"Laço Bailarina", cat:"dia-a-dia", catLabel:"Dia a dia", price:34.90, color:"#F4B4CC", rating:5, badges:[], desc:"Laço em cetim rosa bebê, leve e confortável para o dia a dia." },
     { id:2, name:"Laço Duquesa", cat:"festa", catLabel:"Festa", price:49.90, color:"#DD6E9B", rating:5, badges:["Mais vendido"], desc:"Cetim duplo com volume extra, perfeito para festas e ensaios." },
@@ -22,52 +13,26 @@
     { id:8, name:"Laço Personalizado", cat:"presente", catLabel:"Presente", price:64.90, color:"#DD6E9B", rating:5, badges:["Novo"], desc:"Bordado com o nome que você escolher, embalagem para presente." },
   ];
 
-  /* =====================================================================
-     SEGURANÇA — SANITIZAÇÃO
-     Toda vez que texto é inserido via innerHTML, ele passa por aqui.
-     Hoje os dados vêm de um array fixo (baixo risco), mas se um dia o
-     catálogo vier de uma API/CMS, essa função evita XSS (ex.: um nome
-     de produto contendo "<img src=x onerror=alert(1)>").
-  ===================================================================== */
+  /* ============ SEGURANÇA — SANITIZAÇÃO ============ */
   function escapeHTML(str){
     return String(str).replace(/[&<>"']/g, ch => ({
       "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
     }[ch]));
   }
 
-  /* fetch pode travar (nunca resolver nem rejeitar) em vez de falhar
-     rápido — sem um limite de tempo, calcular frete ou ir pro pagamento
-     ficariam presos no botão desabilitado/"Calculando..." pra sempre, sem
-     nenhum jeito de tentar de novo. Mesmo racional do fetchWithTimeout em
-     js/auth.js e js/admin.js. */
   function fetchWithTimeout(url, options, timeoutMs){
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs || 12000);
     return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
   }
 
-  /* Lookup de produto por id em O(1) em vez de Array.find (O(n)) a cada
-     cálculo de subtotal/render — o catálogo é pequeno hoje, mas é a forma
-     correta de fazer e não tem custo nenhum a mais para escrever assim. */
   const productsById = new Map(products.map(p => [p.id, p]));
 
-  /* Tons já usados nos 8 produtos fixos acima — reaproveitados (em vez de
-     inventar cor nova) para um produto criado no painel administrativo, que
-     não tem cor própria: server/server.js não guarda "cor" nenhuma, é só o
-     fundo atrás do laço de SVG quando o produto ainda não tem foto. */
   const CUSTOM_PRODUCT_PALETTE = ["#F4B4CC", "#DD6E9B", "#FBEAF0", "#F8ECF1", "#EA8FB4", "#C05480"];
 
-  /* Regras de parcelamento e desconto do Pix — js/pricing.js, o MESMO
-     arquivo que server/server.js carrega para cobrar. Nada de preço é
-     calculado aqui na mão justamente para não abrir espaço de a vitrine
-     anunciar um valor e o checkout cobrar outro. */
   const pricing = window.PLCPricing;
   const formatMoney = pricing.formatMoney;
 
-  /* Sem foto própria cadastrada (`image`, via upload no painel admin), não
-     usa nenhuma foto de placeholder — mostra só o fundo na cor do produto
-     com o laço em SVG por cima (.product-thumb/.bow-icon no style.css).
-     Retorna "" (não uma URL) para o chamador decidir se renderiza a <img>. */
   function imageFor(p){
     return p.image || "";
   }
@@ -81,13 +46,7 @@
   const cartToast = new bootstrap.Toast(document.getElementById("cartToast"));
   const cartPillEl = document.querySelector(".cart-pill");
 
-  /* =====================================================================
-     REVEAL ON SCROLL — fade/slide-up sutil para seções e cards conforme
-     entram na tela. Só usa opacity/transform (a animação de verdade é
-     CSS, em .reveal/.is-visible no style.css) — aqui só alterna a classe,
-     sem tocar em layout, então é barato mesmo rolando rápido no celular.
-     unobserve() depois de revelar: o elemento já apareceu, não precisa
-     mais gastar ciclos observando ele. */
+  /* ============ REVEAL ON SCROLL — fade/slide-up sutil para seções e cards conforme ============ */
   const revealObserver = ("IntersectionObserver" in window)
     ? new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -102,23 +61,16 @@
   function observeReveal(root){
     (root || document).querySelectorAll(".reveal:not(.is-visible)").forEach(el => {
       if(revealObserver) revealObserver.observe(el);
-      else el.classList.add("is-visible"); // sem suporte a IntersectionObserver: mostra direto
+      else el.classList.add("is-visible"); 
     });
   }
-  observeReveal(); // seções estáticas já presentes no HTML
+  observeReveal(); 
 
-  /* =====================================================================
-     ANIMAÇÃO "ADICIONAR AO CARRINHO" — três efeitos combinados, disparados
-     junto com addToCart() nos cliques de "+"/"Adicionar": (1) uma bolinha
-     "voa" do botão até o ícone do carrinho, (2) o ícone do carrinho dá um
-     pulso, (3) o próprio botão vira um check por um instante. Tudo com
-     transform/opacity (sem animar width/height/top/left, que forçam
-     reflow) para não travar em aparelhos mais fracos.
-  ===================================================================== */
+  /* ============ ANIMAÇÃO "ADICIONAR AO CARRINHO" — três efeitos combinados, disparados ============ */
   function bumpCartIcon(){
     if(!cartPillEl) return;
     cartPillEl.classList.remove("is-bumped");
-    void cartPillEl.offsetWidth; // reinicia a keyframe mesmo em cliques em sequência
+    void cartPillEl.offsetWidth; 
     cartPillEl.classList.add("is-bumped");
     cartPillEl.addEventListener("animationend", () => cartPillEl.classList.remove("is-bumped"), { once: true });
   }
@@ -142,14 +94,13 @@
 
     const cleanup = () => dot.remove();
     dot.addEventListener("transitionend", cleanup, { once: true });
-    setTimeout(cleanup, 900); // rede de segurança (ex.: prefers-reduced-motion desliga a transição)
+    setTimeout(cleanup, 900); 
   }
 
   function pulseAddButton(btn){
     const icon = btn?.querySelector("i");
     if(!icon) return;
-    // Já está no meio do "check": sair agora guardaria "bi-check-lg" como
-    // ícone original e o botão ficaria com o check para sempre.
+
     if(btn.classList.contains("is-added")) return;
     const original = icon.className;
     btn.classList.add("is-added");
@@ -171,9 +122,6 @@
     return s;
   }
 
-  /* Troca o skeleton de carregamento pela imagem real, ou esconde a
-     imagem quebrada (mantendo o ícone de laço em SVG por baixo) caso
-     falhe — nunca deixa um "ícone quebrado" feio na tela. */
   function wireImage(imgEl){
     imgEl.addEventListener("load", () => {
       imgEl.classList.add("is-loaded");
@@ -225,9 +173,8 @@
   }
   renderProducts();
 
-  // Rótulo de exibição de uma categoria (ex.: "dia-a-dia" → "Dia a dia"),
-  // lido direto dos chips de filtro — que já são a única fonte visível
-  // desses nomes na página — em vez de duplicar o mapa aqui.
+
+
   function categoryLabelFor(catSlug){
     const chip = document.querySelector(`#filterGroup .chip[data-cat="${CSS.escape(catSlug)}"]`);
     return chip ? chip.textContent.trim() : catSlug;
@@ -236,12 +183,6 @@
     return a.length === b.length && a.every((v, i) => v === b[i]);
   }
 
-  /* Cria o chip de filtro de uma categoria nova (painel > "+ Nova
-     categoria") antes de qualquer produto dela existir na vitrine — sem
-     isto, categoryLabelFor() não encontraria chip nenhum e o produto
-     ficaria com o slug cru como rótulo ("dia-a-dia" em vez de "Dia a dia"),
-     além de não dar para filtrar só por ela. As 5 fixas já vêm em
-     index.html; só entra chip para o que ainda não existe. */
   function ensureCategoryChips(categories){
     const group = document.getElementById("filterGroup");
     (Array.isArray(categories) ? categories : []).forEach(c => {
@@ -254,20 +195,6 @@
     });
   }
 
-  /* Busca eventuais edições de nome/preço/foto/categoria/selos feitas no
-     painel administrativo (server/server.js > /api/products) e aplica por
-     cima do catálogo estático acima, sem bloquear a primeira renderização
-     (que já aconteceu, com os dados estáticos, na linha de cima) — se a
-     busca falhar ou demorar, a vitrine continua funcionando normalmente
-     com o catálogo padrão. Como `products`/`productsById` guardam
-     referências mutáveis, atualizar os campos aqui já é suficiente para o
-     carrinho e a quick view (que sempre leem do mesmo objeto) mostrarem o
-     valor novo, sem precisar duplicar essa lógica em cada um.
-
-     Um id que não existe em productsById é um produto criado do zero no
-     painel ("+ Adicionar produto", id >= 1000 em server.js) — não é edição,
-     é entrada nova na vitrine, então é ADICIONADO a `products` em vez de
-     ignorado. */
   async function loadProductOverrides(){
     try{
       const res = await fetch("/api/products");
@@ -312,12 +239,6 @@
     }
   }
 
-  /* Este navegador pode estar com um js/pricing.js de até 1h atrás em cache
-     (ver maxAge do express.static em server/server.js). Se as regras dele já
-     não forem as que o servidor vai cobrar, a vitrine estaria anunciando um
-     desconto/parcelamento que o checkout não daria — então recarrega a página
-     uma vez para pegar o arquivo novo. O sessionStorage evita laço infinito
-     de recarga caso a divergência tenha outra causa. */
   const PRICING_RELOAD_KEY = "plc_pricing_reloaded";
   function verifyPaymentRules(serverRules){
     if(!serverRules) return;
@@ -334,7 +255,6 @@
 
   loadProductOverrides();
 
-  /* ---------- FILTROS ---------- */
   document.getElementById("filterGroup").addEventListener("click", function(e){
     const btn = e.target.closest(".chip");
     if(!btn) return;
@@ -344,13 +264,7 @@
     renderProducts();
   });
 
-  /* =====================================================================
-     CARRINHO
-     Guardamos só { id, qty } no localStorage — nunca o preço. O preço
-     exibido é sempre recalculado a partir do catálogo local (e, na hora
-     de pagar, a partir do catálogo do servidor). Isso é o que impede
-     alguém de editar `localStorage` no DevTools para pagar menos.
-  ===================================================================== */
+  /* ============ CARRINHO ============ */
   const CART_KEY = "plc_cart_v1";
 
   function loadCart(){
@@ -394,13 +308,6 @@
     if(cartCountMobileEl) cartCountMobileEl.textContent = n;
   }
 
-  /* Atualiza só o número da quantidade de um item já renderizado no
-     carrinho, em vez de reconstruir o HTML inteiro (renderCart()). Evita
-     recriar a <img> do item a cada clique em +/− — o que forçava um
-     "flash" de skeleton/opacidade toda vez, mesmo a imagem já estando em
-     cache. Retorna false se o item ainda não está no DOM (carrinho vazio
-     antes, ou item novo), sinalizando que um renderCart() completo é
-     necessário dessa vez. */
   function patchCartItemQty(id, qty){
     const row = cartItemsList.querySelector(`.cart-item[data-id="${id}"]`);
     if(!row) return false;
@@ -409,26 +316,20 @@
     return true;
   }
 
-  /* Guarda o que a visitante tentou adicionar antes de entrar, para o
-     item cair no carrinho sozinho quando ela voltar do login — senão ela
-     faz login e descobre o carrinho vazio, tendo que procurar o laço de
-     novo. sessionStorage: vale só para esta janela, como a intenção. */
   const PENDING_ITEM_KEY = "plc_item_pendente";
 
   function addToCart(id, qty){
-    // Montar carrinho exige conta, mesma regra do checkout. Os três
-    // caminhos de "adicionar" (vitrine, tela do produto e cross-sell do
-    // carrinho) passam por aqui, então esta é a única checagem necessária.
+
+
     if(!currentUser){
       try{
         sessionStorage.setItem(PENDING_ITEM_KEY, JSON.stringify({ id, qty }));
       }catch(err){
         console.warn("Não foi possível guardar o item pendente:", err);
       }
-      // Enquanto a checagem de sessão não voltou, currentUser é null mesmo
-      // para quem já está logada — mandar para o login aqui expulsaria a
-      // cliente do meio da vitrine à toa. O item fica guardado e o
-      // listener de "plc:auth" resolve: adiciona (logada) ou redireciona.
+
+
+
       if(!sessionChecked){
         redirectAoSaberDaSessao = true;
         return;
@@ -452,7 +353,7 @@
       cart.push({ id, qty: Math.min(10, Math.max(1, qty)) });
       saveCart();
       updateCartBadges();
-      renderCart(); // item novo: precisa criar a linha no DOM
+      renderCart(); 
     }
     cartToast.show();
   }
@@ -461,7 +362,7 @@
     cart = cart.filter(i => i.id !== id);
     saveCart();
     updateCartBadges();
-    renderCart(); // a lista perdeu uma linha: precisa reconstruir a estrutura
+    renderCart(); 
   }
 
   function setQty(id, qty){
@@ -501,40 +402,19 @@
   const couponApplyBtn = document.getElementById("couponApplyBtn");
   const couponMsgEl = document.getElementById("couponMsg");
 
-  /* Estado do frete escolhido. Fica em memória (não em localStorage):
-     se o carrinho mudar de conteúdo, o peso/preço do frete pode mudar,
-     então é mais seguro pedir para recalcular do que arriscar mostrar
-     um valor de frete desatualizado. */
-  let shipping = null; // { service_id, name, price, delivery_time }
+  let shipping = null; 
 
-  /* Sessão do cliente. Preenchida pelo evento "plc:auth" que js/auth.js
-     dispara ao terminar a checagem de sessão — não consultamos
-     /api/auth/me de novo aqui. Fechar o pedido exige conta: enquanto
-     este valor for null, o botão leva para conta.html em vez de chamar
-     /api/create-preference (que também recusa sem sessão). */
   let currentUser = null;
 
-  /* false até "plc:auth" chegar. Distingue "sem conta" de "ainda não sei",
-     que sem isto seriam a mesma coisa (currentUser === null) — ver addToCart. */
   let sessionChecked = false;
   let redirectAoSaberDaSessao = false;
 
-  /* Estado do cupom aplicado. Guardamos só o percentual (não o valor de
-     desconto em R$) — assim o desconto mostrado acompanha automaticamente
-     qualquer mudança de quantidade no carrinho, sem precisar chamar a API
-     de novo a cada +/-. O servidor sempre revalida o cupom e recalcula o
-     desconto de novo no checkout (nunca confia neste cálculo do navegador). */
-  let coupon = null; // { code, percentOff }
+  let coupon = null; 
 
   function currentDiscount(subtotal){
     return coupon ? Math.round(subtotal * coupon.percentOff / 100 * 100) / 100 : 0;
   }
 
-  /* Forma de pagamento escolhida no carrinho ("pix" | "card"). Vai junto no
-     /api/create-preference; o servidor é quem aplica o desconto e restringe
-     os meios de pagamento — aqui é só o que o cliente vê antes de decidir.
-     "pix" é o padrão por ser o preço mais barato: abrir no valor maior e
-     deixar o cliente descobrir o desconto sozinho seria trabalhar contra ele. */
   let paymentMethod = "pix";
 
   function updateTotals(){
@@ -550,17 +430,12 @@
       cartDiscountRow.classList.add("d-none");
     }
 
-    /* O desconto do Pix incide sobre o subtotal JÁ com o cupom aplicado (e
-       nunca sobre o frete) — é a mesma ordem que server/server.js usa para
-       cobrar, então o total daqui bate com o da tela do Mercado Pago. */
     const afterCoupon = pricing.round2(subtotal - discount);
     const pixDiscount = pricing.pixDiscountFor(afterCoupon);
     const shippingPrice = shipping ? shipping.price : 0;
 
-    // Os dois preços lado a lado no seletor de forma de pagamento, sempre
-    // com o frete embutido: comparar "produtos" de um lado e "produtos +
-    // frete" do outro é o tipo de detalhe que faz o cliente achar que foi
-    // cobrado a mais no fim.
+
+
     pmPixPriceEl.textContent = formatMoney(afterCoupon - pixDiscount + shippingPrice);
     pmPixNoteEl.textContent = `${pricing.PAYMENT_RULES.pixDiscountPercent}% de desconto · ${formatMoney(pixDiscount)} a menos`;
     pmCardPriceEl.textContent = formatMoney(afterCoupon + shippingPrice);
@@ -582,32 +457,17 @@
       ? `ou ${pricing.installmentLabelFor(total)} no cartão`
       : "";
 
-    // Deslogada o botão continua clicável (leva para o login) desde que
-    // haja algo no carrinho — só o pedido em si é que exige frete e
-    // endereço completos.
+
+
     checkoutBtn.disabled = cart.length === 0
       || (!!currentUser && (!shipping || !isAddressComplete()));
 
     renderCheckoutHint();
   }
 
-  /* Dica logo abaixo do botão "Ir para pagamento": quando ele está
-     bloqueado, diz EXATAMENTE o que falta para liberar. Sem isto, uma
-     cliente logada com o carrinho pronto mas sem frete calculado ou endereço
-     completo vê só um botão apagado, sem explicação — que é a causa do
-     relato "o botão não leva para o pagamento". Ela clica no botão morto e
-     nada acontece, porque a trava está numa etapa anterior que a tela não
-     apontava.
-
-     Roda no fim de updateTotals (chamado a cada mudança de carrinho, frete,
-     endereço, cupom e forma de pagamento), então a dica some sozinha assim
-     que a pendência é resolvida. Não colide com as mensagens do goToCheckout
-     ("Preparando pagamento...", erros): aquele fluxo não chama updateTotals,
-     então nunca sobrescreve o que ele escreve enquanto o pagamento abre. */
   function renderCheckoutHint(){
-    // Deslogada, a orientação fica no box cart-login-notice (mostrado por
-    // renderAuthGate) — que já cita conta + CEP. Aqui tratamos só os passos
-    // de quem já entrou, para não repetir o aviso de login em dois lugares.
+
+
     let hint = "";
     if(currentUser && cart.length > 0){
       if(!shipping){
@@ -619,8 +479,6 @@
     checkoutMsg.innerHTML = hint;
   }
 
-  /* Troca o rótulo do botão e mostra/esconde o aviso de conta conforme a
-     sessão. Chamada quando "plc:auth" chega (js/auth.js). */
   function renderAuthGate(){
     const loggedOut = !currentUser;
     cartLoginNotice?.classList.toggle("d-none", !loggedOut);
@@ -632,11 +490,9 @@
     currentUser = e.detail.user;
     sessionChecked = true;
     renderAuthGate();
-    // Só depois do evento (assíncrono) é seguro mexer em cepInput/addrInputs:
-    // eles são declarados mais abaixo neste mesmo arquivo.
+
     prefillFromAccount();
-    // Clicou em "Adicionar" antes da sessão chegar e não tem conta: agora
-    // dá para mandar para o login com segurança (o laço ficou guardado).
+
     if(!currentUser && redirectAoSaberDaSessao){
       window.location.href = "conta.html?retorno=carrinho";
       return;
@@ -645,9 +501,6 @@
     updateTotals();
   });
 
-  /* Recupera o laço que a visitante tentou adicionar antes de entrar (ver
-     addToCart). Roda só com sessão válida — deslogada, addToCart mandaria
-     para o login de novo e viraria um laço infinito. */
   function resgatarItemPendente(){
     if(!currentUser) return;
     let pendente = null;
@@ -656,8 +509,7 @@
     }catch(err){
       console.warn("Item pendente ilegível:", err);
     }
-    // Removido antes de adicionar: se algo falhar no meio, o item não
-    // fica preso tentando entrar a cada carregamento da página.
+
     sessionStorage.removeItem(PENDING_ITEM_KEY);
     if(pendente?.id) addToCart(Number(pendente.id), Number(pendente.qty) || 1);
   }
@@ -669,9 +521,7 @@
     payMethodGroupEl.querySelectorAll(".pay-method").forEach(label => {
       label.classList.toggle("selected", label.querySelector("input").checked);
     });
-    // O Pix não passa pelo checkout do Mercado Pago: o QR aparece aqui no
-    // site (pagamento-pix.html). Avisar "você conclui lá" nesse caso seria
-    // mentira — e justamente o medo que faz a cliente desistir.
+
     if(gatewayTextEl){
       gatewayTextEl.innerHTML = paymentMethod === "pix"
         ? `Você paga com o QR code aqui mesmo, <strong>sem sair do site</strong>.`
@@ -703,9 +553,7 @@
   }
 
   function renderCart(){
-    // Com o carrinho vazio o painel de checkout não tem o que resumir —
-    // some junto, senão sobra um bloco de frete/cupom/pagamento zerado
-    // logo abaixo do "seu carrinho está vazio".
+
     const checkoutPanel = document.getElementById("cartCheckoutPanel");
     checkoutPanel?.classList.toggle("d-none", cart.length === 0);
 
@@ -746,27 +594,13 @@
     }
     renderCartRecommendations();
     resetShipping();
-    // Limpa qualquer mensagem de checkout anterior (erro/"preparando") ANTES
-    // de updateTotals: é ele que, no fim, escreve a dica do que falta para
-    // liberar o botão (renderCheckoutHint). Se a limpeza viesse depois,
-    // apagaria a dica num carrinho recém-renderizado — que é justamente
-    // quando ela mais precisa aparecer.
+
     checkoutMsg.classList.remove("show");
     checkoutMsg.innerHTML = "";
     updateTotals();
   }
 
-  /* =====================================================================
-     CROSS-SELL NO CARRINHO ("Complete seu pedido")
-     -------------------------------------------------------------------
-     Sugere produtos que ainda não estão no carrinho, priorizando
-     categorias diferentes das já escolhidas (ex.: cliente levou um laço
-     de "festa" → sugere "presente"/"dia a dia" antes de outro de festa),
-     e dentro de cada grupo prioriza os que já têm selo (mais vendido/
-     novo) — são os que a própria loja já sabe que convertem bem. Mostrado
-     no momento de maior intenção de compra (carrinho aberto), que é onde
-     esse tipo de sugestão mais aumenta o ticket médio.
-  ===================================================================== */
+  /* ============ CROSS-SELL NO CARRINHO ("Complete seu pedido") ============ */
   function pickCartRecommendations(){
     const inCartIds = new Set(cart.map(i => i.id));
     const inCartCats = new Set(cart.map(i => findProduct(i.id)?.cat).filter(Boolean));
@@ -808,16 +642,14 @@
     const btn = e.target.closest(".cart-rec-add");
     if(!btn) return;
     addToCart(Number(btn.dataset.id), 1);
-    bumpCartIcon(); // carrinho já está aberto aqui — sem o "voo" até o ícone, que ficaria escondido atrás do próprio painel
+    bumpCartIcon(); 
   });
 
   cartItemsList.addEventListener("click", function(e){
     const row = e.target.closest(".cart-item");
     if(!row) return;
     const id = Number(row.dataset.id);
-    // A linha existe no DOM mas o item pode não estar mais no array (outra
-    // aba mexeu no carrinho, render a meio caminho). Sem esta guarda, o
-    // clique em +/− estourava um TypeError e travava o handler.
+
     const item = cart.find(i => i.id === id);
     if(e.target.closest(".cart-qty-plus")){
       if(item) setQty(id, item.qty + 1);
@@ -830,16 +662,7 @@
 
   updateCartBadges();
 
-  /* =====================================================================
-     FRETE — MELHOR ENVIO
-     -------------------------------------------------------------------
-     O front-end manda o CEP + os itens para o SEU back-end
-     (POST /api/calculate-shipping). O back-end é quem fala com a API do
-     Melhor Envio (com o token dele, guardado em server/.env) e devolve
-     só a lista de opções (transportadora, prazo, preço). O front nunca
-     vê o token do Melhor Envio, do mesmo jeito que nunca vê o do
-     Mercado Pago.
-  ===================================================================== */
+  /* ============ FRETE — MELHOR ENVIO ============ */
   const cepInput = document.getElementById("cepInput");
   const calcShippingBtn = document.getElementById("calcShippingBtn");
   const shippingMsgEl = document.getElementById("shippingMsg");
@@ -874,13 +697,6 @@
     return a.nome && a.telefone && a.rua && a.numero && a.bairro && a.cidade && a.uf;
   }
 
-  /* Aproveita o que a cliente já informou no cadastro (nome e CEP) para
-     ela não digitar de novo no carrinho. Chamada quando a sessão chega
-     (evento "plc:auth").
-
-     Só preenche campo VAZIO: se ela já estiver digitando um endereço de
-     entrega diferente do cadastro (presente para outra pessoa, por
-     exemplo), nada é sobrescrito. */
   function prefillFromAccount(){
     if(!currentUser) return;
     if(currentUser.name && !addrInputs.nome.value.trim()){
@@ -892,9 +708,6 @@
     }
   }
 
-  /* Autopreenche rua/bairro/cidade/UF a partir do CEP usando o ViaCEP —
-     API pública e gratuita (sem chave), só para poupar digitação. Se
-     falhar, o cliente preenche manualmente sem problema. */
   async function autofillAddress(cep){
     try{
       const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
@@ -912,7 +725,7 @@
   Object.values(addrInputs).forEach(el => el.addEventListener("input", updateTotals));
 
   cepInput.addEventListener("input", () => {
-    // máscara simples 00000-000
+
     let v = cepInput.value.replace(/\D/g, "").slice(0, 8);
     if(v.length > 5) v = v.slice(0,5) + "-" + v.slice(5);
     cepInput.value = v;
@@ -990,15 +803,7 @@
   calcShippingBtn.addEventListener("click", calcShipping);
   cepInput.addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); calcShipping(); } });
 
-  /* =====================================================================
-     CUPOM DE DESCONTO
-     -------------------------------------------------------------------
-     O front-end só mostra o desconto — quem valida o código e calcula o
-     valor de verdade é sempre o back-end (POST /api/validate-coupon),
-     igual ao frete. Guardamos aqui só { code, percentOff } para o desconto
-     acompanhar mudanças de quantidade sem precisar chamar a API de novo
-     (ver updateTotals/currentDiscount).
-  ===================================================================== */
+  /* ============ CUPOM DE DESCONTO ============ */
   async function applyCoupon(){
     const code = couponInput.value.trim();
     if(!code){
@@ -1034,31 +839,11 @@
   couponApplyBtn.addEventListener("click", applyCoupon);
   couponInput.addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); applyCoupon(); } });
 
-  renderCart(); // agora que addrInputs/isAddressComplete já existem
+  renderCart(); 
 
-  /* =====================================================================
-     CHECKOUT — MERCADO PAGO (Checkout Pro)
-     -------------------------------------------------------------------
-     O front-end NUNCA fala diretamente com a API do Mercado Pago nem
-     conhece o Access Token. Ele só chama o SEU back-end
-     (POST /api/create-preference), que:
-       1) recebe { items: [{id, qty}], cep, shipping_service_id } —
-          repare: SEM preço de produto e SEM preço de frete;
-       2) busca o preço de cada item no catálogo do servidor;
-       3) recalcula o frete de novo junto ao Melhor Envio (nunca confia
-          no valor que o navegador mostrou), usando o `shipping_service_id`
-          só para saber QUAL opção foi escolhida;
-       4) cria a "preference" no Mercado Pago (Access Token só no
-          servidor, em server/.env);
-       5) devolve { init_point }, o link de pagamento.
-     O navegador só redireciona para esse link. Veja README.md e
-     server/server.js para o passo a passo completo de configuração.
-  ===================================================================== */
+  /* ============ CHECKOUT — MERCADO PAGO (Checkout Pro) ============ */
   async function goToCheckout(){
-    // Sem conta não há pedido: manda para o login avisando de onde veio,
-    // para voltar ao carrinho já aberto em vez de cair em "Meus pedidos"
-    // (ver destinationFor em js/conta.js e a abertura por ?carrinho=1
-    // logo abaixo).
+
     if(!currentUser){
       window.location.href = "conta.html?retorno=carrinho";
       return;
@@ -1068,9 +853,6 @@
     checkoutMsg.classList.add("show");
     checkoutMsg.innerHTML = `<i class="bi bi-hourglass-split"></i><span>Preparando pagamento...</span>`;
 
-    // Pix é gerado aqui mesmo e mostrado em pagamento-pix.html (a cliente
-    // não sai do site); cartão e boleto seguem pelo Checkout Pro, que é
-    // quem cuida da tokenização do cartão.
     const rota = paymentMethod === "pix" ? "/api/create-pix-payment" : "/api/create-preference";
 
     let res;
@@ -1100,14 +882,9 @@
 
       if(paymentMethod === "pix"){
         if(!data.qrCode) throw new Error("O servidor não devolveu o código Pix. Tente novamente.");
-        // O QR não é segredo (é feito para ser mostrado na tela), mas
-        // vale só para esta compra: sessionStorage some ao fechar a aba,
-        // que é exatamente o tempo de vida que queremos.
+
         sessionStorage.setItem("plc_pix_pendente", JSON.stringify(data));
-        // Carrinho NÃO é esvaziado aqui: o Pix ainda não foi pago, e quem
-        // desiste no meio precisa achar os itens de volta. Quem limpa é a
-        // confirmação (js/pagamento-pix.js), mesmo critério do retorno do
-        // Checkout Pro (js/pagamento-retorno.js).
+
         window.location.href = "pagamento-pix.html";
         return;
       }
@@ -1122,23 +899,12 @@
   }
   checkoutBtn.addEventListener("click", goToCheckout);
 
-  /* Volta do login (conta.html?retorno=carrinho) já com o carrinho aberto,
-     para a cliente continuar de onde parou. Limpa o parâmetro da URL para
-     não reabrir o carrinho a cada F5. */
   if(new URLSearchParams(location.search).get("carrinho") === "1"){
     bootstrap.Offcanvas.getOrCreateInstance(document.getElementById("cartOffcanvas")).show();
     history.replaceState(null, "", location.pathname);
   }
 
-  /* =====================================================================
-     QUICK VIEW — tela de detalhes do produto
-     -------------------------------------------------------------------
-     É aqui que o cliente vê o parcelamento no cartão e o preço promocional
-     do Pix. Os dois são recalculados a cada mudança de quantidade
-     (renderQuickViewPayment), porque é o valor da COMPRA que define a
-     parcela — em 1 unidade de R$ 29,90 a regra derruba para 2x (parcela
-     mínima), em 3 unidades já cabem as 3x.
-  ===================================================================== */
+  /* ============ QUICK VIEW — tela de detalhes do produto ============ */
   let qvProductId = null, qvQty = 1;
   const qvModalEl = document.getElementById("quickViewModal");
   const qvModal = new bootstrap.Modal(qvModalEl);
@@ -1159,9 +925,7 @@
     qvPixPriceEl.textContent = formatMoney(pay.pixPrice);
     qvPixNoteEl.textContent =
       `Economize ${formatMoney(pay.pixSavings)} (${pay.pixDiscountPercent}% de desconto à vista)`;
-    // "no cartão" já é o rótulo fixo ao lado do preço no HTML, então aqui
-    // fica só a parcela — a frase antiga repetia e estourava para uma
-    // segunda linha, que a área rolável do modal cortava pela metade.
+
     qvInstallmentEl.textContent = pay.installment.count > 1
       ? `ou ${pay.installmentLabel}`
       : "à vista ou boleto";
@@ -1178,13 +942,10 @@
     const img = document.getElementById("qvImage");
     thumb.style.background = p.color + "22";
     thumb.querySelector(".bow-icon").style.color = p.color;
-    // Reseta o estado da imagem anterior antes de trocar o src: sem isso, a
-    // foto do produto anterior ficaria visível (classe is-loaded) enquanto a
-    // nova carrega, e um erro anterior (is-error) esconderia a nova.
+
     img.classList.remove("is-loaded", "is-error");
     img.alt = p.name;
-    // Volta ao padrão 4:5 antes de trocar a foto: senão o quadro ficaria
-    // com a proporção da imagem ANTERIOR até a nova carregar.
+
     thumb.style.removeProperty("--qv-ratio");
     thumb.style.removeProperty("--qv-ar");
     const photo = imageFor(p);
@@ -1201,17 +962,12 @@
   }
   wireImage(document.getElementById("qvImage"));
 
-  /* O quadro da tela de detalhes copia a proporção da foto que acabou de
-     carregar, então ela preenche sem cortar e sem faixa vazia sobrando —
-     serve tanto para os recortes 4:5 novos quanto para fotos antigas de
-     outra proporção, que ficariam com barras num quadro fixo. */
   document.getElementById("qvImage").addEventListener("load", (e) => {
     const { naturalWidth: w, naturalHeight: h } = e.target;
     if(!w || !h) return;
     const thumb = document.getElementById("qvThumb");
     thumb.style.setProperty("--qv-ratio", `${w}/${h}`);
-    // Mesma proporção em decimal: aspect-ratio aceita "800/1000", mas o
-    // calc() que limita a largura precisa de um número.
+
     thumb.style.setProperty("--qv-ar", String(w / h));
   });
 
@@ -1225,14 +981,7 @@
       pulseAddButton(addBtn);
       return;
     }
-    /* Clique em QUALQUER lugar do card (menos o "+" acima) abre os detalhes.
-       Antes só o ícone de olho abria — e ele aparecia apenas no hover, ou
-       seja, no celular não havia nenhum jeito de chegar nesta tela.
-       O ícone continua sendo um <button> de verdade (e não o card inteiro
-       virar role="button") porque o card contém o botão "+": um botão
-       dentro do outro seria um aninhamento inválido, e no leitor de tela o
-       "+" sumiria dentro do rótulo do card. Assim, mouse/toque clicam em
-       qualquer lugar e o teclado tem dois alvos claros e separados. */
+
     const card = e.target.closest(".product-card");
     if(card) openQuickView(Number(card.dataset.id));
   });
@@ -1254,14 +1003,6 @@
     qvModal.hide();
   });
 
-  /* ---------- MENU MOBILE (offcanvas) ---------- */
-  // Os links/botões aqui dentro NÃO usam data-bs-dismiss="offcanvas": o
-  // Bootstrap resolve o alvo do dismiss pelo próprio href do elemento
-  // quando não há data-bs-target, então um link com href="#depoimentos" e
-  // data-bs-dismiss juntos faz o Bootstrap tentar fechar a SEÇÃO
-  // "#depoimentos" como se fosse um offcanvas (e cancela a navegação da
-  // âncora no processo) — o menu não fechava e o clique não ia a lugar
-  // nenhum. Fechamos manualmente aqui em vez disso.
   const navOffcanvasEl = document.getElementById("navOffcanvas");
   navOffcanvasEl?.addEventListener("click", (e) => {
     if(e.target.closest("a, button")){
@@ -1269,24 +1010,13 @@
     }
   });
 
-  /* "Ver mais produtos" no carrinho: mesmo problema do menu mobile acima
-     (href="#colecoes" + data-bs-dismiss faria o Bootstrap tentar fechar a
-     seção #colecoes como se fosse um offcanvas), então fechamos na mão. */
   document.getElementById("cartContinueLink")?.addEventListener("click", () => {
     bootstrap.Offcanvas.getInstance(document.getElementById("cartOffcanvas"))?.hide();
   });
 
-  /* ---------- NAVBAR SCROLL ---------- */
   const nav = document.getElementById("mainNav");
   const btnTop = document.getElementById("btnTop");
 
-  /* Seção ativa no menu: vence a última seção cujo topo já passou da
-     linha logo abaixo da barra fixa. Determinístico — ao contrário de um
-     IntersectionObserver com faixa estreita, que erra em seções curtas e
-     fica ambíguo quando duas encostam. São 5 seções medidas dentro do
-     rAF que já existe aqui, então não custa um quadro a mais.
-     aria-current acompanha a classe, para o leitor de tela anunciar o
-     mesmo que a barra mostra. */
   const navLinks = [...document.querySelectorAll("#mainNav .plc-nav-link, #mainNav .nav-cta")]
     .filter(a => a.getAttribute("href")?.startsWith("#"));
   const navTargets = navLinks
@@ -1301,7 +1031,7 @@
     for(const t of navTargets){
       if(t.section.getBoundingClientRect().top <= line) current = t.link;
     }
-    // Perto do fim da página a última seção pode nunca alcançar a linha.
+
     if(window.innerHeight + window.scrollY >= document.body.scrollHeight - 2){
       current = navTargets[navTargets.length - 1].link;
     }
@@ -1328,28 +1058,15 @@
   }, { passive:true });
   updateActiveSection();
 
-  /* ---------- BACK TO TOP ---------- */
   btnTop.addEventListener("click", () => {
     window.scrollTo({ top:0, behavior:"smooth" });
   });
 
-  /* =====================================================================
-     FORMULÁRIOS
-     -------------------------------------------------------------------
-     Validação no navegador é só conveniência para o usuário — NUNCA é
-     proteção de verdade, porque qualquer pessoa pode desativar o
-     JavaScript ou chamar a API direto. Por isso o server.js de exemplo
-     também valida tudo de novo do lado do servidor antes de aceitar.
-  ===================================================================== */
+  /* ============ FORMULÁRIOS ============ */
   function isValidEmail(v){
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   }
 
-  /* Os dois formulários abaixo mostravam "enviado!" sem nunca chamar o
-     servidor — as rotas /api/newsletter e /api/contact já existiam em
-     server/server.js, mas ninguém falava com elas. Ou seja: a cliente se
-     despedia achando que tinha mandado a mensagem, e a lojista nunca
-     recebia nada. Agora só confirmam depois de o servidor responder ok. */
   async function postForm(url, body){
     const res = await fetchWithTimeout(url, {
       method: "POST",
@@ -1376,9 +1093,7 @@
     msg.textContent = "Enviando...";
     try{
       const data = await postForm("/api/newsletter", { email });
-      // O cupom aparece na tela, não só no e-mail: antes a mensagem prometia
-      // um e-mail que nem chegava a ser enviado. Mostrando o código aqui, a
-      // promessa se cumpre na hora e o e-mail é só a cópia de segurança.
+
       if(data.coupon){
         const emailLine = data.emailed
           ? "Também enviamos no seu e-mail."
@@ -1431,12 +1146,7 @@
     }
   });
 
-  /* =====================================================================
-     RODAPÉ — selos de forma de pagamento
-     Escritos a partir de PAYMENT_RULES em vez de fixos no HTML: o rodapé
-     dizia "Até 3x sem juros" em texto puro, então bastava alguém mudar a
-     regra de parcelamento para o site continuar anunciando o número velho.
-  ===================================================================== */
+  /* ============ RODAPÉ — selos de forma de pagamento ============ */
   const payBadgePixEl = document.getElementById("payBadgePix");
   const payBadgeInstallmentsEl = document.getElementById("payBadgeInstallments");
   if(payBadgePixEl){
@@ -1449,6 +1159,5 @@
       ? `Até ${maxInstallments}x (${semJuros}x sem juros)`
       : `Até ${semJuros}x sem juros`;
   }
-
 
 })();

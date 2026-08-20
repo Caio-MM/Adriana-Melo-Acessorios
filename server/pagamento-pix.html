@@ -42,8 +42,7 @@
   <div class="container">
     <div class="mx-auto" style="max-width:440px">
 
-      <!-- 1. AGUARDANDO — QR na tela, cliente paga pelo app do banco -->
-      <div class="account-card text-center" id="statePagar">
+            <div class="account-card text-center" id="statePagar">
         <span class="pix-badge"><i class="bi bi-qr-code"></i> Pix</span>
         <h1 class="section-title mt-3 mb-1" style="font-size:1.5rem">Quase lá!</h1>
         <p class="section-sub mb-3">Abra o app do seu banco e escaneie o código abaixo.</p>
@@ -69,8 +68,7 @@
         <p class="cart-hint" id="pixExpiry"></p>
       </div>
 
-      <!-- 2. CONFIRMADO — o webhook marcou o pedido como pago -->
-      <div class="account-card text-center d-none" id="statePago">
+            <div class="account-card text-center d-none" id="statePago">
         <span class="thanks-mark" aria-hidden="true">
           <svg class="thanks-bow"><use href="#bow-shape"/></svg>
           <span class="thanks-mark-badge"><i class="bi bi-check-lg"></i></span>
@@ -121,8 +119,7 @@
         </div>
       </div>
 
-      <!-- 3. SEM DADOS — recarregou a página depois de sair, ou entrou direto -->
-      <div class="account-card text-center d-none" id="stateSemDados">
+            <div class="account-card text-center d-none" id="stateSemDados">
         <i class="bi bi-hourglass" style="font-size:2.4rem; color:var(--blush-700)"></i>
         <h1 class="section-title mt-3 mb-2" style="font-size:1.5rem">Código não encontrado</h1>
         <p class="section-sub mb-4">Esse código Pix não está mais disponível nesta janela. Se você já pagou, o pedido aparece em "Meus pedidos" assim que o banco confirmar.</p>

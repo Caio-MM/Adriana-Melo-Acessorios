@@ -5,30 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Adriana Melo Acessórios — Laços artesanais feitos com carinho</title>
 <meta name="description" content="Laços de cabelo artesanais para cada ocasião: maternidade, festa, batizado e presente. Feitos à mão, um a um.">
-<!-- O Google ignora esta tag desde 2009 (nunca influencia rank ou
-     snippet) — mantida só porque alguns buscadores menores (Bing/Yandex)
-     ainda a leem como sinal fraco, e o custo de ter é zero. -->
 <meta name="keywords" content="laços artesanais, presilhas de cabelo, laços para bebê, laços de cetim, acessórios infantis, laço personalizado, presente para bebê, Brasília, Adriana Melo">
 
-<!--
-  SEGURANÇA (ver SECURITY-AUDIT.md para o relatório completo):
-  - CSP abaixo restringe de onde scripts/estilos/imagens podem ser carregados (mitiga XSS via injeção de <script> externo).
-  - Uma CSP via <meta> é uma camada extra, não substitui o header HTTP `Content-Security-Policy`
-    que o servidor/hospedagem deve enviar (veja server/server.js, uso de helmet()).
--->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
 <link rel="canonical" href="https://adrianameloacessorios.com/">
 
-<!-- Open Graph / Twitter: é o que o WhatsApp, Instagram e Facebook leem ao
-     montar a prévia de um link compartilhado. Sem isto o link aparecia sem
-     título e sem descrição — decisivo para uma loja que divulga por rede
-     social.
-
-     A imagem tem que ser URL absoluta: quem lê estas tags é o servidor do
-     WhatsApp/Facebook, não o navegador da cliente, e caminho relativo não
-     resolve do lado deles. JPEG e não PNG porque o mesmo desenho pesava
-     494 KB em PNG (o degradê do fundo) contra 88 KB aqui — acima de uns
-     300 KB há cliente que desiste de buscar a prévia. -->
 <meta property="og:type" content="website">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:site_name" content="Adriana Melo Acessórios">
@@ -49,35 +30,19 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 
-<!-- Dados estruturados (JSON-LD) para o Google: o servidor troca este
-     marcador pelo bloco real ao servir a página, montado a partir do MESMO
-     effectiveProduct() que a vitrine e o checkout usam — ver
-     dadosEstruturados() em server.js. Escrito à mão aqui, o preço na busca
-     ficaria defasado assim que a lojista editasse um produto no painel. -->
 <!--#DADOS-ESTRUTURADOS#-->
 
-<!-- Preload dos 2 arquivos de fonte que o H1 da hero usa de cara ("Laços
-     que transformam..." em Fraunces 600, "ocasião especial" em Fraunces
-     500 itálico) — sem isto o navegador só descobre que precisa desses
-     .woff2 depois de baixar e ler css/fonts.css, atrasando quando o texto
-     do maior elemento da tela (LCP) troca da fonte de fallback pra final.
-     crossorigin é obrigatório aqui mesmo sendo mesma origem: sem ele o
-     preload e o fetch real do @font-face não batem (modos de credential
-     diferentes) e o navegador baixa o arquivo duas vezes. -->
 <link rel="preload" href="css/fonts/fraunces-400-latin-ext-796716.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="css/fonts/fraunces-500-latin-ext-80f4a0.woff2" as="font" type="font/woff2" crossorigin>
 
-<!-- Bootstrap 5 -->
 <link rel="stylesheet" href="css/vendor/bootstrap.min.css">
 <link rel="stylesheet" href="css/vendor/bootstrap-icons.min.css">
-<!-- Fontes -->
 <link rel="stylesheet" href="css/fonts.css">
 
-<!-- Estilos Customizados -->
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
- 
+
 <!-- ============ SVG SYMBOLS ============ -->
 <svg width="0" height="0" style="position:absolute">
   <symbol id="bow-shape" viewBox="0 0 100 70">
@@ -88,24 +53,16 @@
     <path d="M55 44 L62 68 L52 60 Z"/>
   </symbol>
 </svg>
- 
+
 <!-- ============ NAVBAR ============ -->
 <nav class="plc-navbar" id="mainNav" aria-label="Navegação principal">
   <div class="container d-flex align-items-center justify-content-between">
 
-    <!-- 1. Logo -->
-    <a href="#inicio" class="plc-brand" aria-label="Adriana Melo Acessórios — página inicial">
+        <a href="#inicio" class="plc-brand" aria-label="Adriana Melo Acessórios — página inicial">
       <img src="img/logo-adriana-melo-6e53bc.png" alt="Adriana Melo Acessórios" width="168" height="54">
     </a>
 
-    <!-- 2. Menu de Links (Apenas Desktop). O item ativo ganha .is-active
-         + aria-current por js/main.js, conforme a seção visível.
-
-         Aparece só a partir de xl (1200px), não de lg: entre 992 e 1199 o
-         .container do Bootstrap trava em 960px, e os seis links mais conta
-         e carrinho precisam de ~1020px — o carrinho ficava cortado fora da
-         tela. Abaixo disso vale o menu lateral, que tem os mesmos itens. -->
-    <div class="d-none d-xl-flex align-items-center">
+        <div class="d-none d-xl-flex align-items-center">
       <a href="#inicio" class="plc-nav-link">Início</a>
       <a href="#colecoes" class="plc-nav-link">Coleções</a>
       <a href="#historia" class="plc-nav-link">Nossa história</a>
@@ -113,27 +70,17 @@
       <a href="#depoimentos" class="plc-nav-link">Depoimentos</a>
       <a href="#contato" class="nav-cta">Contato</a>
     </div>
- 
-    <!-- 3. Carrinho e Botões (Mobile e Desktop) -->
-    <div class="d-flex align-items-center gap-2 gap-lg-3">
 
-      <!-- Conta: login/cadastro ou nome do cliente logado (preenchido por js/auth.js).
-           Visível em todas as telas — no mobile vira um círculo só com o ícone,
-           irmão do carrinho (ver .account-pill em css/style.css). -->
-      <div id="navAccount" class="d-flex align-items-center gap-2"></div>
+        <div class="d-flex align-items-center gap-2 gap-lg-3">
 
-      <!-- Carrinho: Visível em TODAS as telas -->
-      <button class="cart-pill" type="button" data-bs-toggle="offcanvas" data-bs-target="#cartOffcanvas" aria-controls="cartOffcanvas" aria-label="Abrir carrinho">
+            <div id="navAccount" class="d-flex align-items-center gap-2"></div>
+
+            <button class="cart-pill" type="button" data-bs-toggle="offcanvas" data-bs-target="#cartOffcanvas" aria-controls="cartOffcanvas" aria-label="Abrir carrinho">
         <i class="bi bi-bag-heart"></i>
         <span class="cart-badge" id="cartCount">0</span>
       </button>
 
-      <!-- Sem "Fazer pedido" aqui: apontava para #contato, o mesmo destino
-           do botão Contato ao fim dos links — dois botões idênticos lado a
-           lado. O menu lateral (mobile) segue com o CTA. -->
-
-      <!-- Botão Menu Hambúrguer: Apenas Mobile -->
-      <button class="navbar-toggler border-0 d-xl-none p-0 ms-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#navOffcanvas" aria-label="Abrir menu" aria-controls="navOffcanvas" style="color:var(--ink)">
+            <button class="navbar-toggler border-0 d-xl-none p-0 ms-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#navOffcanvas" aria-label="Abrir menu" aria-controls="navOffcanvas" style="color:var(--ink)">
         <i class="bi bi-list fs-2"></i>
       </button>
 
@@ -141,7 +88,6 @@
   </div>
 </nav>
 
-<!-- Offcanvas mobile -->
 <div class="offcanvas offcanvas-end" id="navOffcanvas" style="background:var(--cream)">
   <div class="offcanvas-header">
     <span class="plc-brand"><img src="img/logo-adriana-melo-6e53bc.png" alt="Adriana Melo Acessórios" width="168" height="54"></span>
@@ -154,8 +100,7 @@
     <a href="#sobre" class="plc-nav-link">Como funciona</a>
     <a href="#depoimentos" class="plc-nav-link">Depoimentos</a>
     <a href="#contato" class="plc-nav-link">Contato</a>
-    <!-- Conta: login/cadastro ou nome do cliente logado (preenchido por js/auth.js) -->
-    <div id="navAccountMobile" class="d-flex flex-column gap-2 pt-2 border-top" style="border-color:var(--blush-100)!important"></div>
+        <div id="navAccountMobile" class="d-flex flex-column gap-2 pt-2 border-top" style="border-color:var(--blush-100)!important"></div>
     <a href="#contato" class="btn-blush text-center mt-2">Fazer pedido</a>
     <button type="button" class="btn-outline-blush text-center" data-bs-toggle="offcanvas" data-bs-target="#cartOffcanvas">
       <i class="bi bi-bag-heart me-1"></i> Ver carrinho (<span id="cartCountMobile">0</span>)
@@ -180,21 +125,12 @@
       <p class="section-sub mt-2 mb-0">Seu carrinho está vazio.<br>Que tal escolher um laço?</p>
     </div>
 
-    <!-- Cross-sell: sugestões calculadas a partir do que já está no carrinho
-         (ver renderCartRecommendations em js/main.js). Aumenta o ticket
-         médio mostrando o complemento certo no momento de maior intenção
-         de compra (o cliente já decidiu comprar, só falta decidir o quê
-         mais). -->
-    <div id="cartRecommendations" class="cart-recs d-none">
+        <div id="cartRecommendations" class="cart-recs d-none">
       <span class="cart-block-label">Complete seu pedido</span>
       <div id="cartRecsList" class="d-flex flex-column gap-2"></div>
     </div>
 
-    <!-- Painel de checkout: tudo do frete ao botão de pagar vive num bloco
-         cinza claro, separado visualmente da lista de produtos acima. O
-         respiro entre as sub-seções vem do gap do painel, não de border-top
-         em cada bloco. -->
-    <div class="cart-checkout-panel" id="cartCheckoutPanel">
+        <div class="cart-checkout-panel" id="cartCheckoutPanel">
 
     <div class="cart-panel-block">
       <label class="cart-block-label" for="cepInput">Calcular frete</label>
@@ -205,12 +141,7 @@
       <div class="cart-hint" id="shippingMsg"></div>
       <div id="shippingOptions" class="d-flex flex-column gap-2 mt-2"></div>
 
-      <!-- Mesma linguagem visual dos blocos irmãos do painel (rótulo
-           maiúsculo + campos no mesmo tamanho): antes este bloco usava
-           título em negrito comum e inputs -sm, e destoava de tudo em
-           volta. A grade fecha nas duas últimas linhas — Cidade e UF
-           dividem a mesma linha, senão a UF ficava esticada sozinha. -->
-      <div id="addressFields" class="d-none cart-address">
+            <div id="addressFields" class="d-none cart-address">
         <span class="cart-block-label">Endereço de entrega</span>
         <div class="row g-2">
           <div class="col-12"><input type="text" class="form-control" id="addrNome" placeholder="Nome completo do destinatário" aria-label="Nome completo do destinatário" autocomplete="name"></div>
@@ -265,11 +196,7 @@
 
     <div class="cart-panel-block">
 
-      <!-- Forma de pagamento: a escolha aqui não é só visual — vai para o
-           servidor, que aplica (ou não) o desconto do Pix E restringe os
-           meios de pagamento na tela do Mercado Pago de acordo. Ver
-           PAYMENT_METHODS em server/server.js. -->
-      <label class="cart-block-label" id="payMethodLabel">Forma de pagamento</label>
+            <label class="cart-block-label" id="payMethodLabel">Forma de pagamento</label>
       <div class="pay-methods" id="payMethodGroup" role="radiogroup" aria-labelledby="payMethodLabel">
         <label class="pay-method">
           <input type="radio" name="payMethod" value="pix" checked>
@@ -293,10 +220,7 @@
     </div>
 
     <div class="cart-panel-block">
-      <!-- Aviso de conta obrigatória: só aparece deslogada (js/main.js).
-           É conveniência — quem trava o pedido sem sessão é o servidor
-           (auth.requireAuth em /api/create-preference). -->
-      <div class="cart-login-notice d-none" id="cartLoginNotice">
+            <div class="cart-login-notice d-none" id="cartLoginNotice">
         <i class="bi bi-person-circle"></i>
         <span>Para ir ao pagamento, entre na sua conta e informe o CEP para calcular o frete. Assim você também acompanha a entrega em "Meus pedidos".</span>
       </div>
@@ -304,22 +228,16 @@
         <i class="bi bi-lock-fill"></i> Ir para pagamento
       </button>
       <div class="cart-hint text-center" id="checkoutMsg" style="color:var(--blush-700)"></div>
-      <!-- Avisa que o pagamento abre no Mercado Pago. Sem isso a cliente
-           é jogada num domínio que não reconhece bem na hora de pagar, que
-           é exatamente onde a compra costuma ser abandonada. -->
-      <!-- Texto trocado por js/main.js conforme a forma de pagamento: o Pix
-           é pago aqui mesmo (QR na tela), o cartão/boleto abre no Mercado Pago. -->
-      <p class="cart-gateway-note">
+                  <p class="cart-gateway-note">
         <i class="bi bi-shield-lock-fill"></i>
         <span id="cartGatewayText">Você conclui a compra no <strong>Mercado Pago</strong>, com segurança.</span>
       </p>
       <a href="#colecoes" class="cart-continue-link" id="cartContinueLink">Ver mais produtos</a>
     </div>
 
-    </div><!-- /.cart-checkout-panel -->
-  </div>
+    </div>  </div>
 </div>
- 
+
 <!-- ============ HERO ============ -->
 <header class="hero" id="inicio">
   <div class="container">
@@ -337,9 +255,7 @@
           <div><span class="num">100%</span><span class="lbl">feito à mão</span></div>
         </div>
       </div>
-      <!-- Enfeite só a partir de lg: no celular ele empurrava a vitrine 516px
-           para baixo sem dizer nada sobre o produto. -->
-      <div class="col-lg-6 d-none d-lg-block">
+            <div class="col-lg-6 d-none d-lg-block">
         <div class="hero-art">
           <svg class="bow-icon floaty f1"><use href="#bow-shape"/></svg>
           <svg class="bow-icon floaty f2"><use href="#bow-shape"/></svg>
@@ -352,13 +268,10 @@
     </div>
   </div>
 </header>
- 
+
 <!-- ============ MARQUEE ============ -->
 <div class="plc-marquee">
-  <!-- Quatro cópias, não duas: a animação anda exatamente uma cópia (-25%),
-       então a emenda é invisível, e as três que sobram cobrem qualquer
-       tela até ~3000px sem deixar buraco antes de reiniciar. -->
-  <div class="plc-marquee-track">
+    <div class="plc-marquee-track">
     <div class="plc-marquee-group">
       <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Envio para todo o Brasil</span>
       <span><svg class="bow-icon" style="width:16px;color:var(--blush-200)"><use href="#bow-shape"/></svg> Cores e fitas personalizáveis</span>
@@ -385,7 +298,7 @@
     </div>
   </div>
 </div>
- 
+
 <!-- ============ COLEÇÕES / PRODUTOS ============ -->
 <section id="colecoes" class="py-5 py-lg-6" style="padding-top:5rem; padding-bottom:5rem;">
   <div class="container">
@@ -396,7 +309,7 @@
         <p class="section-sub mt-2">Escolha por ocasião e monte o pedido — cada peça é confeccionada especialmente para você.</p>
       </div>
     </div>
- 
+
     <div class="chip-group mb-5" id="filterGroup">
       <button class="chip active" data-cat="todos">Todos</button>
       <button class="chip" data-cat="maternidade">Maternidade</button>
@@ -405,7 +318,7 @@
       <button class="chip" data-cat="dia-a-dia">Dia a dia</button>
       <button class="chip" data-cat="presente">Presente</button>
     </div>
- 
+
     <div class="row g-4" id="productsGrid"></div>
   </div>
 </section>
@@ -482,7 +395,7 @@
     </div>
   </div>
 </section>
- 
+
 <!-- ============ DEPOIMENTOS ============ -->
 <section id="depoimentos" class="py-5" style="padding-top:5rem; padding-bottom:5rem;">
   <div class="container">
@@ -529,7 +442,7 @@
     </div>
   </div>
 </section>
- 
+
 <!-- ============ CTA / NEWSLETTER ============ -->
 <section class="py-5" style="padding-top:5rem; padding-bottom:5rem;">
   <div class="container">
@@ -556,7 +469,7 @@
     </div>
   </div>
 </section>
- 
+
 <!-- ============ CONTATO ============ -->
 <section id="contato" class="py-5" style="padding-top:5rem; padding-bottom:6rem;">
   <div class="container">
@@ -633,7 +546,7 @@
     </div>
   </div>
 </section>
- 
+
 <!-- ============ FOOTER ============ -->
 <footer class="plc-footer">
   <div class="container">
@@ -672,10 +585,7 @@
       </div>
       <div class="col-lg-4">
         <h6>Formas de pagamento</h6>
-        <!-- Os dois selos com id são preenchidos por js/main.js a partir de
-             js/pricing.js: antes ficavam escritos à mão aqui e viravam
-             mentira assim que a regra de parcelamento/desconto mudasse. -->
-        <div class="d-flex flex-wrap gap-2">
+                <div class="d-flex flex-wrap gap-2">
           <span class="pay-badge" id="payBadgePix">Pix</span>
           <span class="pay-badge" id="payBadgeInstallments">Parcelamento no cartão</span>
         </div>
@@ -699,11 +609,11 @@
     </div>
   </div>
 </footer>
- 
+
 <!-- ============ FLOATING BUTTONS ============ -->
 <button class="fab fab-top" id="btnTop" aria-label="Voltar ao topo"><i class="bi bi-arrow-up"></i></button>
 <a class="fab" href="https://wa.me/5561982749808" target="_blank" rel="noopener" aria-label="WhatsApp"><i class="bi bi-whatsapp"></i></a>
- 
+
 <!-- ============ TOAST ============ -->
 <div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" style="z-index:1080">
   <div id="cartToast" class="toast align-items-center border-0" role="alert" style="background:var(--ink); color:#fff">
@@ -713,15 +623,10 @@
     </div>
   </div>
 </div>
- 
+
 <!-- ============ MODAL: QUICK VIEW ============ -->
 <div class="modal fade" id="quickViewModal" tabindex="-1">
-  <!-- modal-dialog-scrollable: quem rola é o CORPO, então o rodapé (e o
-       "Adicionar ao carrinho" nele) fica fixo na tela em qualquer altura de
-       aparelho — inclusive num iPhone SE, onde a foto vertical + preço não
-       cabem junto com o botão. Sem isso, o botão dependia de a soma das
-       alturas caber por sorte. -->
-  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content" style="border-radius:var(--radius-md); border:none">
       <div class="modal-header border-0">
         <h5 class="modal-title font-display" id="qvName">Laço</h5>
@@ -743,11 +648,7 @@
           </div>
         </div>
 
-        <!-- Parcelamento e desconto do Pix. Os valores são calculados em
-             js/main.js a partir de js/pricing.js (as MESMAS regras que o
-             servidor aplica na cobrança) e recalculados a cada mudança de
-             quantidade acima — ver renderQuickViewPayment(). -->
-        <div class="qv-payment mt-2 pt-2 border-top" style="border-color:var(--blush-100)!important">
+                <div class="qv-payment mt-2 pt-2 border-top" style="border-color:var(--blush-100)!important">
           <div class="qv-pix">
             <div class="qv-pix-main">
               <span class="qv-pix-price" id="qvPixPrice">R$ 0,00</span>
@@ -769,17 +670,7 @@
   </div>
 </div>
 
-<!-- ============ NOTIFICAÇÃO DE CUPOM (js/cupom-toast.js) ============
-     data-cupom traz o código/desconto REAIS (mesma linha de `coupons` que
-     o checkout valida) — o servidor troca o marcador na hora de servir,
-     ver atributoCupomBoasVindas() em server.js. O cupom só aparece depois
-     que a cliente digita um e-mail válido: o envio usa a MESMA rota
-     POST /api/newsletter da seção "Ganhe 10% na primeira compra" (ver
-     js/main.js) — é o que já valida o e-mail, salva a inscrição, manda o
-     e-mail de verdade (lib/email.js) e devolve o código. Sem um formulário
-     paralelo com regra própria que poderia divergir da rota que o resto
-     do site já usa. Só para visitante novo (sem sessão ativa e sem já ter
-     preenchido antes — ver localStorage em js/cupom-toast.js). -->
+<!-- ============ NOTIFICAÇÃO DE CUPOM (js/cupom-toast.js) ============ -->
 <div class="toast-container position-fixed p-3 coupon-toast-container" id="couponToastContainer">
   <div id="couponToast" class="toast coupon-toast" role="alert" aria-live="polite" aria-atomic="true"
        data-cupom="<!--#CUPOM-BOAS-VINDAS#-->">
@@ -822,20 +713,7 @@
 <script src="js/loading.js" defer></script>
 <script src="js/vendor/bootstrap.bundle.min.js" defer></script>
 
-<!--
-  SDK do Mercado Pago (v2) — necessário apenas se você usar Wallet Brick / pagamento embutido.
-  No fluxo padrão implementado aqui (Checkout Pro), o site apenas redireciona para o
-  "init_point" devolvido pelo backend, então esse SDK é opcional. Mantido comentado
-  para não carregar script externo desnecessário (performance) até que seja usado.
-  Consulte README.md, seção "Onde colocar suas credenciais".
--->
-<!-- <script src="https://sdk.mercadopago.com/js/v2" defer></script> -->
-
-<!-- Scripts Customizados -->
 <script src="js/auth.js" defer></script>
-<!-- pricing.js antes de main.js: define window.PLCPricing (regras de
-     parcelamento/Pix) que main.js usa já na primeira renderização da vitrine.
-     Scripts com `defer` executam na ordem em que aparecem aqui. -->
 <script src="js/pricing.js" defer></script>
 <script src="js/main.js" defer></script>
 <script src="js/cupom-toast.js" defer></script>

@@ -1,19 +1,7 @@
 (function(){
   "use strict";
 
-  /* =====================================================================
-     NOTIFICAÇÃO DE CUPOM — e-mail gera o cupom, igual à seção "Ganhe 10%
-     na primeira compra" (js/main.js), só que num toast pequeno em vez de
-     uma seção da página. Usa a MESMA rota (POST /api/newsletter): não
-     existe uma segunda regra de validação de e-mail ou de cupom só para
-     este componente — se existisse, as duas poderiam um dia divergir.
-
-     Só aparece para quem parece ser cliente nova: sem sessão ativa
-     (checado via o evento "plc:auth" que js/auth.js já dispara em toda
-     página — não faz uma segunda chamada a /api/auth/me) e que ainda não
-     preencheu o e-mail aqui antes (localStorage, não sessionStorage:
-     precisa persistir entre visitas, não só dentro da mesma aba).
-  ===================================================================== */
+  /* ============ NOTIFICAÇÃO DE CUPOM — e-mail gera o cupom, igual à seção "Ganhe 10% ============ */
 
   const STORAGE_KEY = "plc_cupom_toast_email_enviado";
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -22,7 +10,7 @@
   if(!toastEl) return;
 
   if(localStorage.getItem(STORAGE_KEY)){
-    return; // Já deixou o e-mail antes nesta ou noutra visita — nada a oferecer de novo.
+    return; 
   }
 
   let dadosCupom = null;
@@ -32,7 +20,7 @@
     console.warn("Dados do cupom de boas-vindas ilegíveis:", err);
   }
   if(!dadosCupom?.code || !dadosCupom?.percentOff){
-    return; // Cupom apagado pelo painel, ou dado corrompido — nada para anunciar.
+    return; 
   }
   document.getElementById("couponToastPercent").textContent = `${dadosCupom.percentOff}%`;
 
@@ -45,12 +33,6 @@
   const copyBtn = document.getElementById("couponToastCopyBtn");
   const closeBtn = toastEl.querySelector(".coupon-toast-close");
 
-  /* Fechar tem uma saída customizada (fade+scale+slide, ver .coupon-toast-
-     closing em css/style.css) em vez do fade padrão do Bootstrap — por
-     isso o botão NÃO usa data-bs-dismiss (dispararia o hide() nativo antes
-     da nossa animação rodar). Com prefers-reduced-motion, pula direto pro
-     toast.hide(): sem isso, o listener de "animationend" nunca dispararia
-     (a animação está desligada no CSS) e o botão pareceria travado. */
   closeBtn.addEventListener("click", (e) => {
     e.preventDefault();
     const semAnimacao = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -75,7 +57,7 @@
   let enviando = false;
   async function validarEEnviar(){
     const email = emailInput.value.trim();
-    if(!email) return; // Campo vazio: não é erro, é só quem ainda não digitou nada.
+    if(!email) return; 
     if(!EMAIL_RE.test(email)){
       mostrarErro("E-mail inválido");
       return;
@@ -96,9 +78,7 @@
       if(data.coupon){
         codeEl.textContent = data.coupon;
       }else{
-        // Cupom apagado do painel entre a página carregar e a cliente
-        // digitar o e-mail (janela bem pequena, mas existe): melhor
-        // reconhecer a inscrição do que mostrar um código vazio.
+
         revealEl.querySelector(".coupon-toast-success-text").textContent =
           "Inscrição confirmada! Fique de olho no seu e-mail para novidades.";
         revealEl.querySelector(".coupon-toast-code-row").remove();
@@ -122,15 +102,9 @@
 
   emailInput.addEventListener("blur", validarEEnviar);
   form.addEventListener("submit", (e) => { e.preventDefault(); validarEEnviar(); });
-  // Digitar de novo depois de um erro tira o aviso na hora, sem esperar
-  // sair do campo — senão a mensagem de erro fica na tela mesmo já
-  // corrigido, como se nada tivesse mudado.
+
   emailInput.addEventListener("input", limparErro);
 
-  /* Cópia pelo caminho antigo (campo temporário + execCommand) como
-     reforço: é o que ainda funciona em navegador embutido de rede social,
-     onde navigator.clipboard costuma ser bloqueado — mesmo padrão de
-     js/compartilhar.js. */
   function copiarPeloCampo(texto){
     const campo = document.createElement("textarea");
     campo.value = texto;
@@ -168,11 +142,8 @@
     }, 2000);
   });
 
-  // Só mostra depois de saber se há sessão ativa — quem já tem conta não
-  // precisa do convite de "primeira compra". js/auth.js dispara este
-  // evento em toda página; não vale a pena chamar /api/auth/me de novo.
   document.addEventListener("plc:auth", (e) => {
-    if(e.detail.user) return; // Cliente já logada — já é conta, o convite não se aplica.
+    if(e.detail.user) return; 
     setTimeout(() => toast.show(), 1200);
   });
 })();

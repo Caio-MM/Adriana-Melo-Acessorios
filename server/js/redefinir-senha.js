@@ -1,16 +1,7 @@
 (function(){
   "use strict";
 
-  /* =====================================================================
-     REDEFINIR SENHA — página aberta pelo link enviado no e-mail
-     (redefinir-senha.html?token=...).
-
-     O token nunca é guardado em localStorage/sessionStorage nem exibido na
-     tela: sai da URL, vive numa variável e é usado uma vez só. Quem valida
-     de fato é o servidor (POST /api/auth/reset-password) — aqui só existe
-     a checagem de "veio algum token?" para não mostrar um formulário que
-     não teria como funcionar.
-  ===================================================================== */
+  /* ============ REDEFINIR SENHA — página aberta pelo link enviado no e-mail ============ */
   const token = new URLSearchParams(window.location.search).get("token");
 
   const form = document.getElementById("resetForm");
@@ -68,8 +59,7 @@
       if(!res.ok){
         throw new Error(data.error || "Não foi possível redefinir a senha. Tente novamente.");
       }
-      // Trocar a senha derruba toda sessão antiga (inclusive esta), então o
-      // caminho daqui é sempre entrar de novo com a senha nova.
+
       form.classList.add("d-none");
       doneBox.classList.remove("d-none");
     }catch(err){

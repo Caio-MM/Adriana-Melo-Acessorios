@@ -1,26 +1,13 @@
 (function(){
   "use strict";
 
-  /* =====================================================================
-     SESSÃO — usado em toda página (index.html, conta.html, pedidos.html).
-     Consulta GET /api/auth/me (o cookie de sessão httpOnly vai junto
-     automaticamente, nunca é lido/guardado aqui em JS) e:
-       1) atualiza a área de conta da navbar (Entrar/Cadastrar vs Nome/Sair);
-       2) dispara o evento "plc:auth" com o usuário (ou null), para outras
-          páginas (conta.html, pedidos.html) reagirem sem precisar consultar
-          a sessão de novo.
-  ===================================================================== */
+  /* ============ SESSÃO — usado em toda página (index.html, conta.html, pedidos.html). ============ */
   function escapeHTML(str){
     return String(str).replace(/[&<>"']/g, ch => ({
       "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
     }[ch]));
   }
 
-  /* fetch trava para sempre (sem resolver nem rejeitar) em algumas
-     situações de rede/extensão do navegador — sem um limite de tempo,
-     checkSession() nunca chamaria renderLoggedOut()/dispatchEvent, e
-     qualquer página esperando o evento "plc:auth" (pedidos.html,
-     admin.html) ficaria "carregando" pra sempre. */
   function fetchWithTimeout(url, options, timeoutMs){
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs || 8000);
@@ -30,9 +17,6 @@
   const navAccount = document.getElementById("navAccount");
   const navAccountMobile = document.getElementById("navAccountMobile");
 
-  /* Ícones em SVG inline (sem depender de fonte de ícones) porque este
-     mesmo HTML é injetado em páginas com e sem o sprite <symbol> do topo.
-     Traço/tamanho vêm do CSS (.account-pill .account-icon). */
   const ICONS = {
     user:  `<circle cx="12" cy="8" r="3.6"/><path d="M4.9 20a7.1 7.1 0 0 1 14.2 0"/>`,
     admin: `<path d="M12 3.2 19 6v5.6c0 4.3-2.9 7.6-7 8.4-4.1-.8-7-4.1-7-8.4V6z"/><path d="m9.2 12.2 1.9 1.9 3.7-3.9"/>`,
@@ -43,19 +27,6 @@
             <span class="account-pill-label">${label}</span>`;
   }
 
-  /* Em index.html o menu lateral (#navAccountMobile) já carrega "Painel
-     admin" e "Sair" no mobile, então na barra do topo eles só aparecem a
-     partir de xl — o mobile fica com Conta + Carrinho, sem apertar.
-     xl, e não lg, para casar com o breakpoint dos links em index.html:
-     abaixo de 1200px quem manda é o menu lateral, e somar estas pílulas à
-     barra do topo ali dentro empurraria o carrinho para fora da tela.
-     Nas demais páginas não existe menu lateral: lá eles ficam sempre
-     visíveis, senão o cliente perderia o botão de sair no celular.
-
-     ⚠️ Os links do menu lateral NÃO levam data-bs-dismiss="offcanvas": o
-     Bootstrap chama preventDefault() em todo <a> que tenha esse atributo,
-     o que matava a navegação (o link fechava o menu e não ia a lugar
-     nenhum). Quem fecha o menu é o listener delegado em js/main.js. */
   const secondaryOnlyDesktop = navAccountMobile ? " d-none d-xl-inline-flex" : "";
 
   function renderLoggedOut(){

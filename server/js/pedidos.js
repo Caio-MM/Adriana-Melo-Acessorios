@@ -6,15 +6,12 @@
       "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
     }[ch]));
   }
-  // Mesma fonte única que a vitrine, o carrinho e o painel admin usam
-  // (js/pricing.js) — ver formatMoney lá para o porquê do espaço não
-  // separável e da proteção contra NaN.
+
   const formatMoney = window.PLCPricing.formatMoney;
   function formatDate(ts){
     return new Date(ts).toLocaleDateString("pt-BR", { day:"2-digit", month:"short", year:"numeric" });
   }
 
-  // Espelha PAYMENT_METHODS em server/server.js.
   const PAYMENT_METHOD_LABELS = { pix: "Pix", card: "Cartão ou boleto" };
 
   const STATUS_LABELS = {
@@ -102,9 +99,6 @@
 
   retryBtn?.addEventListener("click", loadOrders);
 
-  // js/auth.js já faz a checagem de sessão ao carregar a página; reagimos
-  // ao resultado dela em vez de checar de novo (evita duas chamadas a
-  // /api/auth/me).
   document.addEventListener("plc:auth", (e) => {
     if(e.detail.user) loadOrders(); else showOnly(stateLoggedOut);
   });

@@ -46,13 +46,7 @@
         <h1 class="section-title" style="font-size:1.8rem">Painel administrativo</h1>
       </div>
 
-      <!-- Wrapper só para os estados "tela cheia" (loading/loggedOut/
-           forbidden/2FA/recovery/error) — #adminContent (painel completo)
-           também mora aqui dentro, mas só ESTES estados ganham centralização
-           vertical (via body.admin-gate-active, ver css/style.css e
-           js/admin.js), porque o painel de verdade precisa do scroll normal
-           de cima pra baixo com a sidebar fixa. -->
-      <div class="admin-state-area">
+            <div class="admin-state-area">
 
       <div id="adminLoading" class="text-center py-5">
         <div class="spinner-border" role="status" style="color:var(--blush-600)">
@@ -73,12 +67,7 @@
         <a href="index.html" class="btn-outline-blush">Voltar para a loja</a>
       </div>
 
-      <!-- Cadastro da verificação em duas etapas. Aparece no lugar do painel
-           enquanto a conta de admin não tiver 2FA ativo — as rotas de dados
-           respondem 403 com needsTwoFactorSetup até lá. As rotas usadas por
-           esta tela (/api/admin/2fa/*) são as únicas que não exigem 2FA,
-           senão não haveria como fazer a primeira ativação. -->
-      <div id="adminTwoFactorSetup" class="account-card tfa-card d-none">
+            <div id="adminTwoFactorSetup" class="account-card tfa-card d-none">
         <div class="text-center">
           <div class="tfa-icon-badge"><i class="bi bi-shield-lock"></i></div>
           <h2 class="tfa-title">Proteja o painel</h2>
@@ -117,10 +106,7 @@
         </ol>
       </div>
 
-      <!-- Códigos de recuperação: mostrados UMA única vez, logo após a
-           ativação. No banco só ficam os hashes, então não há como exibi-los
-           de novo depois — daí o bloqueio até a lojista confirmar que salvou. -->
-      <div id="adminRecoveryCodes" class="account-card tfa-card d-none">
+            <div id="adminRecoveryCodes" class="account-card tfa-card d-none">
         <div class="text-center">
           <div class="tfa-icon-badge"><i class="bi bi-key"></i></div>
           <h2 class="tfa-title">Guarde estes códigos</h2>
@@ -151,11 +137,7 @@
 
       <div id="adminContent" class="d-none admin-layout">
 
-        <!-- ============ NAVEGAÇÃO POR ABAS ============
-             Vira sidebar fixa em telas largas e uma barra de pills
-             horizontal (mesmo padrão visual do filtro de categoria da
-             vitrine) em telas estreitas — ver .admin-sidebar/.admin-tab-btn
-             em css/style.css e o handler de clique em js/admin.js. -->
+        <!-- ============ NAVEGAÇÃO POR ABAS ============ -->
         <nav class="admin-sidebar" id="adminTabs" aria-label="Seções do painel">
           <button type="button" class="admin-tab-btn is-active" data-tab="dashboard"><i class="bi bi-speedometer2"></i> Dashboard</button>
           <button type="button" class="admin-tab-btn" data-tab="produtos"><i class="bi bi-tags"></i> Produtos</button>
@@ -179,10 +161,7 @@
               <div class="sales-chart" id="salesChart" role="img" aria-label="Gráfico de barras com o total vendido em cada um dos últimos 6 meses"></div>
             </div>
 
-            <!-- Todas estas visões são calculadas no navegador a partir dos
-                 pedidos e produtos que o painel já carregou — nenhuma
-                 chamada extra à API. -->
-            <div class="dashboard-grid">
+                        <div class="dashboard-grid">
               <div class="dashboard-chart-card">
                 <div class="dashboard-chart-header">
                   <h3 class="dashboard-chart-title">Vendas por categoria</h3>
@@ -284,14 +263,7 @@
 
           <!-- ============ VENDAS E PEDIDOS ============ -->
           <section class="admin-tab-panel d-none" data-tab-panel="pedidos">
-            <!-- Carrinhos pendentes (recuperação): pedidos com checkout
-                 iniciado (preferência criada no Mercado Pago) mas
-                 pagamento nunca confirmado — entre 1h e 14 dias atrás.
-                 Contato manual pela lojista via WhatsApp converte mais que
-                 e-mail automático de recuperação, dado o perfil da loja
-                 (atendimento já é feito por WhatsApp). Fica oculto quando
-                 não há nenhum. -->
-            <div class="mb-5 d-none" id="pendingCartsSection">
+                        <div class="mb-5 d-none" id="pendingCartsSection">
               <h2 class="admin-section-title">Carrinhos pendentes</h2>
               <p class="section-sub mb-3" style="font-size:.88rem">Pedidos que começaram o pagamento mas não finalizaram — um contato pode recuperar a venda.</p>
               <div id="pendingCartsList" class="orders-list"></div>
@@ -307,11 +279,7 @@
             <div id="adminList" class="orders-list d-none"></div>
           </section>
 
-          <!-- Dados só do admin: telefone, e-mail e histórico de compras de
-               cada cliente. As rotas por trás (/api/admin/customers e
-               /api/admin/leads) passam por auth.requireAdmin, então nem uma
-               chamada direta à API devolve isso para uma cliente comum. -->
-          <section class="admin-tab-panel d-none" data-tab-panel="clientes">
+                    <section class="admin-tab-panel d-none" data-tab-panel="clientes">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
               <h2 class="admin-section-title mb-0">Clientes</h2>
               <button type="button" class="btn-outline-blush" id="exportCustomersBtn" style="padding:.4rem 1rem;font-size:.82rem">
@@ -371,8 +339,7 @@
         </div>
       </div>
 
-      </div><!-- /.admin-state-area -->
-    </div>
+      </div>    </div>
   </div>
 </main>
 
@@ -388,11 +355,7 @@
         <div class="modal-body">
           <input type="hidden" id="epId">
 
-          <!-- Pré-visualização no formato REAL da vitrine: um mini card de
-               produto, e não um thumb solto. A foto na loja é recortada em
-               1:1 (.product-thumb), então mostrar um retângulo aqui escondia
-               justamente o que o recorte come. -->
-          <div class="ep-preview-wrap mb-3">
+                    <div class="ep-preview-wrap mb-3">
             <span class="ep-preview-caption">Como a cliente vê na loja</span>
             <div class="ep-mini-card">
               <div class="ep-mini-thumb">
@@ -409,11 +372,7 @@
             </button>
           </div>
 
-          <!-- Recorte: aparece ao escolher um arquivo (ou em "Ajustar
-               recorte"). O quadro é 4:5, a mesma proporção da tela de
-               detalhes do produto — o que sobra fora dele é exatamente o
-               que a cliente não vai ver. -->
-          <div class="ep-cropper d-none" id="epCropper">
+                    <div class="ep-cropper d-none" id="epCropper">
             <div class="ep-crop-head">
               <strong class="ep-crop-title">Ajuste o recorte</strong>
               <span class="ep-crop-hint">Arraste a foto e use o zoom até enquadrar do jeito que quiser.</span>
@@ -454,11 +413,7 @@
 
           <div class="mb-3">
             <label class="form-label small fw-semibold" for="epCategory">Categoria</label>
-            <!-- As <option> são geradas por js/admin.js (renderCategoryOptions),
-                 a partir de GET /api/admin/products — inclui as 5 fixas e
-                 qualquer uma criada em "+ Nova categoria", sem precisar
-                 editar este arquivo a cada categoria nova. -->
-            <div class="d-flex gap-2">
+                        <div class="d-flex gap-2">
               <select class="form-select" id="epCategory"></select>
               <button type="button" class="btn-outline-blush flex-shrink-0" id="epNewCategoryBtn" style="padding:.4rem .8rem;font-size:.8rem" title="Criar uma categoria nova">+ Nova</button>
             </div>
@@ -487,9 +442,6 @@
 </div>
 
 <!-- ============ MODAL: EDITAR CUPOM ============ -->
-<!-- Código não é editável de propósito (ver comentário em db.updateCoupon
-     — é a chave primária, outras tabelas guardam o valor por string). Só
-     percentOff/description mudam; PATCH parcial, mesmo padrão do produto. -->
 <div class="modal fade" id="editCouponModal" tabindex="-1" aria-labelledby="editCouponModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="border-radius:var(--radius-md); border:none">
@@ -523,10 +475,6 @@
 </div>
 
 <!-- ============ MODAL: ADICIONAR PRODUTO ============ -->
-<!-- Sem campo de foto de propósito: o upload (POST /api/admin/products/:id/photo)
-     precisa de um id que só existe depois deste formulário criar o produto.
-     Ao salvar aqui, o modal de edição abre sozinho em seguida — é lá que a
-     foto entra, pelo mesmo fluxo de recorte que os produtos fixos já usam. -->
 <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="border-radius:var(--radius-md); border:none">
@@ -546,10 +494,7 @@
             <input type="number" class="form-control" id="apPrice" required min="0.01" max="99999" step="0.01" inputmode="decimal">
           </div>
 
-          <!-- Peso/dimensões da embalagem individual (1 unidade) — usados no
-               cálculo de frete, junto dos produtos fixos do catálogo. Sem
-               isso o produto não teria como entrar num cálculo de frete. -->
-          <div class="row g-2 mb-3">
+                    <div class="row g-2 mb-3">
             <div class="col-6">
               <label class="form-label small fw-semibold" for="apWeight">Peso (kg)</label>
               <input type="number" class="form-control" id="apWeight" required min="0.01" max="20" step="0.01" inputmode="decimal" placeholder="Ex.: 0,08">
