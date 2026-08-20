@@ -587,6 +587,36 @@
     // endereço completos.
     checkoutBtn.disabled = cart.length === 0
       || (!!currentUser && (!shipping || !isAddressComplete()));
+
+    renderCheckoutHint();
+  }
+
+  /* Dica logo abaixo do botão "Ir para pagamento": quando ele está
+     bloqueado, diz EXATAMENTE o que falta para liberar. Sem isto, uma
+     cliente logada com o carrinho pronto mas sem frete calculado ou endereço
+     completo vê só um botão apagado, sem explicação — que é a causa do
+     relato "o botão não leva para o pagamento". Ela clica no botão morto e
+     nada acontece, porque a trava está numa etapa anterior que a tela não
+     apontava.
+
+     Roda no fim de updateTotals (chamado a cada mudança de carrinho, frete,
+     endereço, cupom e forma de pagamento), então a dica some sozinha assim
+     que a pendência é resolvida. Não colide com as mensagens do goToCheckout
+     ("Preparando pagamento...", erros): aquele fluxo não chama updateTotals,
+     então nunca sobrescreve o que ele escreve enquanto o pagamento abre. */
+  function renderCheckoutHint(){
+    // Deslogada, a orientação fica no box cart-login-notice (mostrado por
+    // renderAuthGate) — que já cita conta + CEP. Aqui tratamos só os passos
+    // de quem já entrou, para não repetir o aviso de login em dois lugares.
+    let hint = "";
+    if(currentUser && cart.length > 0){
+      if(!shipping){
+        hint = `<i class="bi bi-truck"></i> Informe seu CEP e calcule o frete para liberar o pagamento.`;
+      } else if(!isAddressComplete()){
+        hint = `<i class="bi bi-geo-alt"></i> Complete o endereço de entrega para liberar o pagamento.`;
+      }
+    }
+    checkoutMsg.innerHTML = hint;
   }
 
   /* Troca o rótulo do botão e mostra/esconde o aviso de conta conforme a
@@ -716,9 +746,14 @@
     }
     renderCartRecommendations();
     resetShipping();
-    updateTotals();
+    // Limpa qualquer mensagem de checkout anterior (erro/"preparando") ANTES
+    // de updateTotals: é ele que, no fim, escreve a dica do que falta para
+    // liberar o botão (renderCheckoutHint). Se a limpeza viesse depois,
+    // apagaria a dica num carrinho recém-renderizado — que é justamente
+    // quando ela mais precisa aparecer.
     checkoutMsg.classList.remove("show");
     checkoutMsg.innerHTML = "";
+    updateTotals();
   }
 
   /* =====================================================================
