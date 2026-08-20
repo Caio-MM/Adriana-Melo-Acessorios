@@ -28,6 +28,9 @@ const compression = require("compression");
 const multer = require("multer");
 const { randomUUID } = require("crypto");
 const rateLimit = require("express-rate-limit");
+// Só para desenhar o QR code do cadastro da verificação em duas etapas —
+// o algoritmo TOTP em si é feito com o crypto do próprio Node (lib/auth.js).
+const qrcode = require("qrcode");
 const { MercadoPagoConfig, Preference, Payment } = require("mercadopago");
 const db = require("./lib/db");
 const auth = require("./lib/auth");
@@ -457,6 +460,30 @@ app.use((req, res, next) => {
   if (req.path === "/" || req.path.startsWith("/api/")) return next();
   const firstSegment = req.path.split("/").filter(Boolean)[0];
   if (firstSegment && PUBLIC_TOP_LEVEL.has(firstSegment)) return next();
+  return sendNotFound(req, res);
+});
+
+/* admin.html só sai daqui para quem já é admin
+   -------------------------------------------------------------------------
+   Antes disto, o arquivo era servido como qualquer outro estático: qualquer
+   pessoa abria /admin.html e via a casca do painel (menus, abas, tabelas
+   vazias). Nenhum DADO vazava — todas as rotas /api/admin/* já respondiam
+   401/403 sem sessão de admin, então a tela ficava vazia —, mas entregar a
+   casca é ruim por dois motivos: confunde (parece invasão bem-sucedida para
+   quem olha de fora, e foi exatamente o que aconteceu no teste que motivou
+   esta mudança) e entrega de graça o mapa do painel (nomes de campo, rotas
+   chamadas pelo js/admin.js, estrutura das tabelas) para quem for procurar
+   uma brecha.
+   Vem ANTES do express.static de propósito: registrado depois, o estático já
+   teria respondido e este guarda nunca rodaria. */
+app.get("/admin.html", (req, res, next) => {
+  if (req.user?.isAdmin) return next();
+  // Mesma resposta para "não está logado" e "está logado mas não é admin":
+  // um 403 diferenciado confirmaria a existência do painel para quem estiver
+  // sondando. Quem não é admin vê exatamente o que veria numa URL inexistente.
+  if (!req.user) {
+    return res.redirect(302, "/conta.html?admin=1");
+  }
   return sendNotFound(req, res);
 });
 /* Política de cache — o que garante que um deploy apareça na hora
@@ -1731,27 +1758,113 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
 
 app.post("/api/auth/login", authLimiter, async (req, res) => {
   try {
-    const email = auth.normalizeEmail(req.body?.email);
+    // `emailAddress`, e não `email`: o módulo de envio importado no topo
+    // deste arquivo também se chama `email`, e uma variável local com esse
+    // nome o sombreia — foi o que quebrou o alerta de tentativas de login
+    // aqui embaixo. Mesmo nome usado no forgot-password, logo adiante.
+    const emailAddress = auth.normalizeEmail(req.body?.email);
     const password = String(req.body?.password || "");
+    const ip = auth.clientIp(req);
     const genericError = () => res.status(401).json({ error: "E-mail ou senha inválidos." });
 
-    if(!auth.isValidEmail(email) || !password){
+    if(!auth.isValidEmail(emailAddress) || !password){
       return genericError();
     }
 
-    const user = db.getUserByEmail(email);
+    // Bloqueio ANTES de comparar a senha: se já estourou o limite, a senha
+    // certa também não entra — senão o bloqueio não valeria de nada contra
+    // quem finalmente acertasse na 6ª tentativa.
+    const lockout = auth.checkLoginLockout(emailAddress, ip);
+    if(lockout.locked){
+      const minutos = Math.ceil(lockout.retryAfterMs / 60000);
+      return res.status(429).json({
+        error: `Muitas tentativas. Tente novamente em ${minutos} minuto${minutos === 1 ? "" : "s"}.`,
+        lockedForMs: lockout.retryAfterMs,
+      });
+    }
+
+    const user = db.getUserByEmail(emailAddress);
     // Sempre chama verifyPassword, mesmo sem usuário (compara contra um hash
     // de referência) — evita que o tempo de resposta revele se o e-mail existe.
     const ok = await auth.verifyPassword(password, user?.password_hash);
     if(!user || !ok){
+      db.recordLoginAttempt({ email: emailAddress, ip, ok: false });
+      // Avisa a lojista quando a conta DELA é o alvo e o limite estourou —
+      // é a única forma de ela saber que alguém está tentando entrar, já
+      // que o atacante nunca chega ao painel para deixar rastro visível.
+      // Só no exato momento em que trava (=== LOGIN_MAX_FAILURES), senão
+      // cada tentativa seguinte mandaria mais um e-mail.
+      const depois = auth.checkLoginLockout(emailAddress, ip);
+      if(depois.locked && depois.failures === auth.LOGIN_MAX_FAILURES && auth.isAdminEmail(emailAddress)){
+        email.sendAdminLoginAlert({ email: emailAddress, ip, failures: depois.failures })
+          .catch(err => console.error("Falha ao avisar sobre tentativas de login:", err.message));
+      }
       return genericError();
     }
 
+    // Senha certa, mas com 2FA ligado a sessão ainda NÃO é emitida: só um
+    // desafio curto, trocado pelo cookie depois que o código conferir.
+    if(user.totp_secret){
+      const challengeToken = auth.issueTwoFactorChallenge(user.id);
+      return res.json({ twoFactorRequired: true, challengeToken });
+    }
+
+    db.recordLoginAttempt({ email: emailAddress, ip, ok: true });
     auth.issueSession(res, user.id);
     res.json({ id: user.id, name: user.name, email: user.email, cep: user.cep || null, isAdmin: auth.isAdminEmail(user.email) });
   } catch (err) {
     console.error("Erro ao fazer login:", err);
     res.status(500).json({ error: "Não foi possível entrar agora. Tente novamente em instantes." });
+  }
+});
+
+/* POST /api/auth/login/2fa — 2ª etapa: troca o desafio pelo cookie de sessão.
+   Aceita o código de 6 dígitos do app OU um código de recuperação. */
+app.post("/api/auth/login/2fa", authLimiter, async (req, res) => {
+  try {
+    const challengeToken = String(req.body?.challengeToken || "");
+    const code = String(req.body?.code || "").trim();
+    const userId = auth.peekTwoFactorChallenge(challengeToken);
+    if(!userId){
+      return res.status(401).json({ error: "Sessão expirada. Faça login novamente.", restart: true });
+    }
+    const user = db.getUserById(userId);
+    if(!user?.totp_secret){
+      auth.consumeTwoFactorChallenge(challengeToken);
+      return res.status(401).json({ error: "Sessão expirada. Faça login novamente.", restart: true });
+    }
+
+    const ip = auth.clientIp(req);
+    // O 2º fator tem o mesmo bloqueio do 1º: sem isso, seriam só 1 milhão de
+    // combinações de 6 dígitos separando o atacante que já tem a senha.
+    const lockout = auth.checkLoginLockout(user.email, ip);
+    if(lockout.locked){
+      const minutos = Math.ceil(lockout.retryAfterMs / 60000);
+      return res.status(429).json({ error: `Muitas tentativas. Tente novamente em ${minutos} minuto${minutos === 1 ? "" : "s"}.` });
+    }
+
+    let ok = auth.verifyTotp(user.totp_secret, code);
+    // Não conferiu como código do app: pode ser um dos de recuperação.
+    if(!ok){
+      const restantes = await auth.consumeRecoveryCode(code, JSON.parse(user.totp_recovery_json || "[]"));
+      if(restantes){
+        ok = true;
+        db.setUserTotp(user.id, { secret: user.totp_secret, recoveryJson: JSON.stringify(restantes) });
+      }
+    }
+
+    if(!ok){
+      db.recordLoginAttempt({ email: user.email, ip, ok: false });
+      return res.status(401).json({ error: "Código inválido. Confira o app e tente de novo." });
+    }
+
+    auth.consumeTwoFactorChallenge(challengeToken);
+    db.recordLoginAttempt({ email: user.email, ip, ok: true });
+    auth.issueSession(res, user.id);
+    res.json({ id: user.id, name: user.name, email: user.email, cep: user.cep || null, isAdmin: auth.isAdminEmail(user.email) });
+  } catch (err) {
+    console.error("Erro na verificação em duas etapas:", err);
+    res.status(500).json({ error: "Não foi possível verificar o código agora." });
   }
 });
 
@@ -1910,7 +2023,86 @@ function noStore(req, res, next){
 }
 app.use("/api/admin", noStore);
 
-app.get("/api/admin/orders", auth.requireAdmin, (req, res) => {
+/* -------------------------------------------------------------------------
+   VERIFICAÇÃO EM DUAS ETAPAS DO PAINEL — /api/admin/2fa/*
+   -------------------------------------------------------------------------
+   Estas três rotas passam só por requireAdmin, SEM o requireAdminTwoFactor
+   que protege todo o resto — é o que permite a primeira ativação. Sem essa
+   exceção o painel ficaria impossível de destravar: o cadastro do 2FA
+   exigiria um 2FA já cadastrado.
+------------------------------------------------------------------------- */
+
+/* POST /api/admin/2fa/setup — gera o segredo e devolve o QR code.
+   Ainda NÃO ativa: só depois de /activate, provando que o app já lê o
+   código. Sem esse passo, um erro na leitura do QR trancaria o painel. */
+app.post("/api/admin/2fa/setup", auth.requireAdmin, async (req, res) => {
+  try {
+    const secret = auth.generateTotpSecret();
+    const uri = auth.totpAuthUri({ secret, email: req.user.email, issuer: "Adriana Melo Acessórios" });
+    // Data URI: a CSP já libera `data:` em img-src, então nenhuma imagem
+    // precisa ser gravada em disco nem servida por uma rota própria.
+    const qrDataUri = await qrcode.toDataURL(uri, { margin: 1, width: 240 });
+    res.json({ secret, qrDataUri });
+  } catch (err) {
+    console.error("Erro ao preparar 2FA:", err);
+    res.status(500).json({ error: "Não foi possível preparar a verificação em duas etapas." });
+  }
+});
+
+/* POST /api/admin/2fa/activate — confere o 1º código e liga de verdade.
+   Devolve os códigos de recuperação em texto puro; é a ÚNICA vez que eles
+   aparecem (no banco só ficam os hashes bcrypt). */
+app.post("/api/admin/2fa/activate", auth.requireAdmin, async (req, res) => {
+  try {
+    const secret = String(req.body?.secret || "").trim().toUpperCase();
+    const code = String(req.body?.code || "").trim();
+    if(!/^[A-Z2-7]{32}$/.test(secret)){
+      return res.status(400).json({ error: "Segredo inválido. Recarregue a página e tente de novo." });
+    }
+    if(!auth.verifyTotp(secret, code)){
+      return res.status(400).json({ error: "Código incorreto. Confira o app e tente de novo." });
+    }
+    const recoveryCodes = auth.generateRecoveryCodes();
+    const hashes = await auth.hashRecoveryCodes(recoveryCodes);
+    db.setUserTotp(req.user.id, { secret, recoveryJson: JSON.stringify(hashes) });
+    // Ativar o 2FA derruba as outras sessões: se alguém já estava dentro com
+    // a senha roubada, o 2FA novo não o expulsaria sozinho.
+    db.deleteAllSessionsForUser(req.user.id);
+    auth.issueSession(res, req.user.id);
+    res.json({ ok: true, recoveryCodes });
+  } catch (err) {
+    console.error("Erro ao ativar 2FA:", err);
+    res.status(500).json({ error: "Não foi possível ativar a verificação em duas etapas." });
+  }
+});
+
+/* GET /api/admin/2fa/status — o painel usa para decidir entre mostrar a tela
+   de cadastro ou o painel normal. */
+app.get("/api/admin/2fa/status", auth.requireAdmin, (req, res) => {
+  const user = db.getUserById(req.user.id);
+  res.json({
+    enabled: Boolean(user?.totp_secret),
+    required: auth.ADMIN_2FA_REQUIRED,
+    recoveryCodesLeft: JSON.parse(user?.totp_recovery_json || "[]").length,
+  });
+});
+
+/* GET /api/admin/login-attempts — auditoria: quem tentou entrar, de onde,
+   quando, e se conseguiu. Últimos 7 dias. */
+app.get("/api/admin/login-attempts", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
+  try {
+    // Limpeza oportunista na leitura (mesmo padrão de sessions/resets): sem
+    // isso a tabela cresceria para sempre num banco de arquivo único.
+    db.pruneLoginAttempts(90 * 24 * 60 * 60 * 1000);
+    const rows = db.listRecentLoginAttempts({ sinceMs: 7 * 24 * 60 * 60 * 1000, limit: 200 });
+    res.json(rows.map(r => ({ email: r.email, ip: r.ip, ok: Boolean(r.ok), at: r.created_at })));
+  } catch (err) {
+    console.error("Erro ao listar tentativas de login:", err);
+    res.status(500).json({ error: "Não foi possível carregar as tentativas de login." });
+  }
+});
+
+app.get("/api/admin/orders", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const rows = db.listAllOrders();
     const overridesMap = getProductOverridesMap();
@@ -1967,7 +2159,7 @@ app.get("/api/admin/orders", auth.requireAdmin, (req, res) => {
 
    Faturamento só conta pedido 'pago' — carrinho abandonado não é receita.
 ========================================================================= */
-app.get("/api/admin/customers", auth.requireAdmin, (req, res) => {
+app.get("/api/admin/customers", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const byIdentity = new Map();
 
@@ -2031,7 +2223,7 @@ app.get("/api/admin/customers", auth.requireAdmin, (req, res) => {
 
 /* GET /api/admin/leads — quem demonstrou interesse mas pode não ter comprado:
    inscritos na newsletter e mensagens do formulário de contato. */
-app.get("/api/admin/leads", auth.requireAdmin, (req, res) => {
+app.get("/api/admin/leads", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     res.json({
       subscribers: db.listNewsletterSubscribers().map(s => ({
@@ -2057,7 +2249,7 @@ app.get("/api/admin/leads", auth.requireAdmin, (req, res) => {
    formulário "Vamos criar seu laço?" já respondida/lida. Sem checagem de
    status (diferente do DELETE de pedido): não é histórico financeiro,
    então não há "mensagem paga" que precise ficar protegida. */
-app.delete("/api/admin/contact-messages/:id", auth.requireAdmin, (req, res) => {
+app.delete("/api/admin/contact-messages/:id", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const id = Number(req.params.id);
     if(!Number.isInteger(id) || !db.getContactMessage(id)){
@@ -2073,7 +2265,7 @@ app.delete("/api/admin/contact-messages/:id", auth.requireAdmin, (req, res) => {
 
 /* PATCH /api/admin/orders/:reference/tracking — salva o código de postagem/
    rastreio dos Correios para um pedido (preenchido à mão pela lojista). */
-app.patch("/api/admin/orders/:reference/tracking", auth.requireAdmin, (req, res) => {
+app.patch("/api/admin/orders/:reference/tracking", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const reference = String(req.params.reference || "");
     const trackingCode = String(req.body?.trackingCode || "").trim().slice(0, 60);
@@ -2122,7 +2314,7 @@ app.get("/api/products", (req, res) => {
    novos do zero (POST, abaixo), guardados inteiros — peso/dimensões
    incluídos — em custom_products, já que não há PRODUCTS[id] para herdar.
 ========================================================================= */
-app.get("/api/admin/products", auth.requireAdmin, (req, res) => {
+app.get("/api/admin/products", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   const overridesMap = getProductOverridesMap();
   const products = getAllProductIds().map(id => {
     const p = effectiveProduct(id, overridesMap);
@@ -2186,7 +2378,7 @@ function isValidDimension(v, max){
    fluxo de sempre (POST .../:id/photo + PATCH), porque o upload de foto
    exige um id que só existe depois deste POST responder.
 ========================================================================= */
-app.post("/api/admin/products", auth.requireAdmin, (req, res) => {
+app.post("/api/admin/products", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const body = req.body || {};
 
@@ -2243,7 +2435,7 @@ app.post("/api/admin/products", auth.requireAdmin, (req, res) => {
    campo antigo em cache no navegador sobrescrever por acidente uma edição
    mais recente feita em outra aba.
 ========================================================================= */
-app.patch("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
+app.patch("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const id = Number(req.params.id);
     if(!productExists(id)){
@@ -2318,7 +2510,7 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
    para ele, e cada lugar que mostra o item (e-mail, painel, etiqueta) já
    trata isso com um "Produto #<id>" de reserva, em vez de quebrar.
 ========================================================================= */
-app.delete("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
+app.delete("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const id = Number(req.params.id);
     if(!Number.isInteger(id) || id < CUSTOM_PRODUCT_ID_START){
@@ -2354,7 +2546,7 @@ app.delete("/api/admin/products/:id", auth.requireAdmin, (req, res) => {
    depois descartado (lojista fecha o modal sem salvar) nunca deixa o
    produto apontando para um arquivo indevido.
 ========================================================================= */
-app.post("/api/admin/products/:id/photo", auth.requireAdmin, (req, res) => {
+app.post("/api/admin/products/:id/photo", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   const id = Number(req.params.id);
   if(!productExists(id)){
     return res.status(404).json({ error: "Produto não encontrado." });
@@ -2397,7 +2589,7 @@ function slugifyCategory(label){
    resto do sistema (filtro da vitrine, validação de PATCH/POST de produto)
    não precisa saber a categoria é "fixa" ou "criada pelo painel".
 ========================================================================= */
-app.post("/api/admin/categories", auth.requireAdmin, (req, res) => {
+app.post("/api/admin/categories", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const label = String(req.body?.label || "").trim();
     if(label.length < 2 || label.length > 40){
@@ -2423,7 +2615,7 @@ app.post("/api/admin/categories", auth.requireAdmin, (req, res) => {
    histórico financeiro do pedido, não um "carrinho" — remover um pago de
    verdade tem que ser uma decisão manual direta no banco, não um clique
    no painel. */
-app.delete("/api/admin/orders/:reference", auth.requireAdmin, (req, res) => {
+app.delete("/api/admin/orders/:reference", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const reference = String(req.params.reference || "");
     const order = db.getOrderByExternalReference(reference);
@@ -2448,7 +2640,7 @@ app.delete("/api/admin/orders/:reference", auth.requireAdmin, (req, res) => {
    checkout de verdade) lê da mesma tabela — um cupom criado aqui já vale
    pro cliente no próximo checkout, sem precisar reiniciar o servidor.
 ========================================================================= */
-app.get("/api/admin/coupons", auth.requireAdmin, (req, res) => {
+app.get("/api/admin/coupons", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const coupons = db.listCoupons().map(c => ({
       code: c.code, percentOff: c.percent_off, description: c.description, createdAt: c.created_at,
@@ -2460,7 +2652,7 @@ app.get("/api/admin/coupons", auth.requireAdmin, (req, res) => {
   }
 });
 
-app.post("/api/admin/coupons", auth.requireAdmin, (req, res) => {
+app.post("/api/admin/coupons", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const code = String(req.body?.code || "").trim().toUpperCase().replace(/\s+/g, "");
     const percentOff = Number(req.body?.percentOff);
@@ -2489,7 +2681,7 @@ app.post("/api/admin/coupons", auth.requireAdmin, (req, res) => {
 // Parcial (mesmo padrão de PATCH /api/admin/products/:id): só percentOff/
 // description são aceitos — code não muda (ver comentário em
 // db.updateCoupon sobre por que renomear não é uma opção aqui).
-app.patch("/api/admin/coupons/:code", auth.requireAdmin, (req, res) => {
+app.patch("/api/admin/coupons/:code", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const code = String(req.params.code || "").trim().toUpperCase();
     if(!db.getCoupon(code)){
@@ -2518,7 +2710,7 @@ app.patch("/api/admin/coupons/:code", auth.requireAdmin, (req, res) => {
   }
 });
 
-app.delete("/api/admin/coupons/:code", auth.requireAdmin, (req, res) => {
+app.delete("/api/admin/coupons/:code", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     const code = String(req.params.code || "").trim().toUpperCase();
     if(!db.getCoupon(code)){
@@ -2538,7 +2730,7 @@ app.delete("/api/admin/coupons/:code", auth.requireAdmin, (req, res) => {
    webhook). ⚠️ Gasta saldo real da conta Melhor Envio: só funciona para
    pedido já pago, e é sempre a lojista quem decide clicar, pedido por
    pedido (nunca automático a partir daqui). */
-app.post("/api/admin/orders/:reference/generate-label", auth.requireAdmin, async (req, res) => {
+app.post("/api/admin/orders/:reference/generate-label", auth.requireAdmin, auth.requireAdminTwoFactor, async (req, res) => {
   const reference = String(req.params.reference || "");
   try {
     const orderRow = db.getOrderByExternalReference(reference);

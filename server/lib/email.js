@@ -470,6 +470,57 @@ async function notifyOwnerOfContactMessage({ nome, telefone, ocasiao, mensagem }
   await sendEmail({ to: ownerEmail, subject, text, html });
 }
 
+/* Aviso de tentativas de login na conta de admin
+   -------------------------------------------------------------------------
+   Disparado quando o bloqueio por força bruta fecha a porta numa conta de
+   administrador. É o único canal em que a lojista fica sabendo: o atacante,
+   por definição, não chega ao painel para deixar rastro visível lá dentro.
+   Vai para o e-mail da própria conta atacada (e não para uma lista fixa)
+   porque é quem precisa agir — trocar a senha, conferir se foi ela mesma. */
+async function sendAdminLoginAlert({ email: contaAlvo, ip, failures }) {
+  const subject = "⚠️ Tentativas de login no painel da loja";
+  const quando = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  const text = [
+    "Detectamos tentativas de login malsucedidas na sua conta de administradora.",
+    "",
+    `Conta: ${contaAlvo}`,
+    `Tentativas seguidas: ${failures}`,
+    `Endereço de origem (IP): ${ip}`,
+    `Quando: ${quando}`,
+    "",
+    "O acesso desse endereço já foi bloqueado por 30 minutos.",
+    "",
+    "Se foi você que errou a senha, pode ignorar este aviso — é só esperar o prazo.",
+    "Se NÃO foi você, troque sua senha assim que conseguir entrar.",
+  ].join("\n");
+
+  const html = emailShell({
+    titulo: subject,
+    preheader: `${failures} tentativas de login na conta ${contaAlvo}`,
+    eyebrow: "alerta de segurança",
+    tituloCartao: "Tentativas de login bloqueadas",
+    corpoHtml: `
+      <tr>
+        <td align="left" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6; padding-bottom:18px;">
+          ${linhaDado("Conta", contaAlvo)}
+          ${linhaDado("Tentativas seguidas", String(failures))}
+          ${linhaDado("Origem (IP)", ip)}
+          ${linhaDado("Quando", quando)}
+        </td>
+      </tr>
+      <tr>
+        <td align="left" style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; line-height:1.6; background:#FFF5F9; border-radius:14px; padding:16px 18px;">
+          O acesso desse endereço já foi <strong>bloqueado por 30 minutos</strong>.<br><br>
+          Se foi você que errou a senha, é só esperar o prazo.<br>
+          Se <strong>não</strong> foi você, troque sua senha assim que conseguir entrar.
+        </td>
+      </tr>
+    `,
+  });
+
+  await sendEmail({ to: contaAlvo, subject, text, html });
+}
+
 module.exports = {
   formatOrderEmail,
   sendEmail,
@@ -477,4 +528,5 @@ module.exports = {
   notifyOwnerOfContactMessage,
   sendPasswordResetEmail,
   sendWelcomeCouponEmail,
+  sendAdminLoginAlert,
 };

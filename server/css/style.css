@@ -1596,7 +1596,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .auth-shell[data-mode="login"] .auth-deco-copy[data-deco-for="login"],
 .auth-shell[data-mode="register"] .auth-deco-copy[data-deco-for="register"],
-.auth-shell[data-mode="forgot"] .auth-deco-copy[data-deco-for="forgot"]{
+.auth-shell[data-mode="forgot"] .auth-deco-copy[data-deco-for="forgot"],
+/* A 2ª etapa reaproveita a decoração de "entrar": é o mesmo fluxo, só
+   partido em dois passos — trocar o texto do painel do laço no meio dele
+   pareceria que a pessoa mudou de tela. */
+.auth-shell[data-mode="twofactor"] .auth-deco-copy[data-deco-for="login"]{
   opacity:1; visibility:visible; transform:translateY(0);
   transition-delay:.15s;
 }
@@ -1697,8 +1701,16 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    cada troca de data-mode, então a animação reinicia sozinha na transição. */
 .auth-shell[data-mode="login"] .auth-pane-login .auth-form > *,
 .auth-shell[data-mode="register"] .auth-pane-register .auth-form > *,
-.auth-shell[data-mode="forgot"] .auth-pane-forgot .auth-form > *{
+.auth-shell[data-mode="forgot"] .auth-pane-forgot .auth-form > *,
+.auth-shell[data-mode="twofactor"] .auth-pane-twofactor .auth-form > *{
   animation:auth-rise .55s cubic-bezier(.22,.9,.3,1) both;
+}
+/* Campo do código de verificação: dígitos grandes e espaçados, para conferir
+   contra o app sem esforço. tabular-nums impede a largura de dançar a cada
+   dígito digitado. */
+.auth-code-input{
+  font-size:1.5rem; letter-spacing:.4em; text-align:center;
+  font-variant-numeric:tabular-nums; padding-left:.4em;
 }
 .auth-form > *:nth-child(2){ animation-delay:.06s; }
 .auth-form > *:nth-child(3){ animation-delay:.12s; }
@@ -1779,11 +1791,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   }
   /* "forgot" é uma etapa do login, então fica do mesmo lado dele e o painel
      do laço nem se move ao entrar/sair dessa etapa. */
-  .auth-pane-login, .auth-pane-forgot{ right:0; }
+  .auth-pane-login, .auth-pane-forgot, .auth-pane-twofactor{ right:0; }
   .auth-pane-register{ left:0; }
   .auth-shell[data-mode="login"] .auth-pane-login,
   .auth-shell[data-mode="register"] .auth-pane-register,
-  .auth-shell[data-mode="forgot"] .auth-pane-forgot{ opacity:1; visibility:visible; }
+  .auth-shell[data-mode="forgot"] .auth-pane-forgot,
+  .auth-shell[data-mode="twofactor"] .auth-pane-twofactor{ opacity:1; visibility:visible; }
 
   /* Texto do lado do FORMULÁRIO (não confundir com o bloco de cima, que
      encolhe o texto do painel decorativo — aquele fica numa coluna
@@ -1862,7 +1875,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
      animação sozinho a cada troca. */
   .auth-shell[data-mode="login"] .auth-pane-login,
   .auth-shell[data-mode="register"] .auth-pane-register,
-  .auth-shell[data-mode="forgot"] .auth-pane-forgot{
+  .auth-shell[data-mode="forgot"] .auth-pane-forgot,
+  .auth-shell[data-mode="twofactor"] .auth-pane-twofactor{
     display:block;
     animation:auth-pane-slide-back .5s cubic-bezier(.22, .9, .3, 1) both;
   }
@@ -1933,6 +1947,112 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
    apagar: em tela estreita, sem espaço pros dois na mesma linha, o
    navegador quebrava um pro lado de baixo do outro). */
 .admin-row-actions{ display:flex; justify-content:flex-end; align-items:center; gap:.4rem; flex-wrap:nowrap; }
+
+/* =========================================================================
+   TELA DE CARREGAMENTO (conexão lenta) — ver js/loading.js
+   -------------------------------------------------------------------------
+   Só entra em cena depois de 3s de espera; o JS é quem decide a hora, aqui
+   fica só a aparência. Bloqueia o clique de propósito (o overlay cobre a
+   tela inteira), para ninguém enviar o mesmo formulário duas vezes achando
+   que o primeiro não pegou.
+========================================================================= */
+.app-loading{
+  position:fixed; inset:0; z-index:2000;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,245,249,.92);
+  backdrop-filter:blur(3px);
+  opacity:0; visibility:hidden;
+  transition:opacity var(--animation-normal) var(--ease-out), visibility var(--animation-normal);
+}
+.app-loading.is-visible{ opacity:1; visibility:visible; }
+.app-loading-card{
+  display:flex; flex-direction:column; align-items:center;
+  padding:2rem 2.4rem; text-align:center;
+}
+/* O "laço" girando: dois arcos em conic-gradient, mascarados no meio para
+   virar um anel. Sem imagem e sem SVG — é uma div só, e anima em transform
+   (a GPU cuida sozinha, não força recálculo de layout a cada quadro). */
+.app-loading-bow{
+  width:52px; height:52px; border-radius:50%;
+  background:conic-gradient(from 0deg, var(--blush-600), var(--blush-150), var(--blush-50), var(--blush-600));
+  -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+          mask:radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  animation:app-loading-spin 900ms linear infinite;
+}
+@keyframes app-loading-spin{ to{ transform:rotate(360deg); } }
+.app-loading-text{
+  font-family:var(--font-display); font-size:1.15rem; color:var(--ink);
+  margin:1.1rem 0 .25rem;
+}
+.app-loading-hint{
+  font-size:.85rem; color:var(--ink-soft); margin:0;
+}
+/* Trava o scroll do fundo enquanto o overlay está no ar. */
+body.app-loading-lock{ overflow:hidden; }
+
+@media (prefers-reduced-motion: reduce){
+  .app-loading{ transition:none; }
+  /* O anel não some — ele É o sinal de que algo está acontecendo. Só troca
+     o giro contínuo por um pulso suave, que não provoca enjoo em quem pediu
+     menos movimento. */
+  .app-loading-bow{ animation:app-loading-pulse 1.4s ease-in-out infinite; }
+  @keyframes app-loading-pulse{ 50%{ opacity:.45; } }
+}
+
+/* ---- Cadastro da verificação em duas etapas (admin.html) ---- */
+.tfa-steps{
+  max-width:520px; margin:0 auto; padding-left:1.2rem;
+  color:var(--ink-soft); font-size:.95rem; line-height:1.7;
+}
+.tfa-steps > li{ margin-bottom:1.4rem; }
+.tfa-steps > li::marker{ color:var(--blush-600); font-weight:600; }
+.tfa-steps strong{ color:var(--ink); }
+.tfa-qr-wrap{
+  display:flex; justify-content:center;
+  margin:.9rem 0 .6rem;
+}
+.tfa-qr-wrap img{
+  border-radius:var(--radius-md); border:1px solid var(--blush-100);
+  padding:10px; background:var(--white); box-shadow:var(--shadow-soft);
+  /* Largura fixa em px seria um problema num celular estreito; o QR ainda
+     precisa ser grande o bastante para a câmera ler. */
+  max-width:100%; height:auto;
+}
+.tfa-manual{ font-size:.85rem; }
+.tfa-manual summary{ cursor:pointer; color:var(--blush-600); }
+.tfa-secret{
+  display:block; background:var(--blush-50); border-radius:var(--radius-sm, 10px);
+  padding:.6rem .8rem; font-size:.9rem; letter-spacing:.08em;
+  color:var(--ink); word-break:break-all;
+}
+.tfa-activate{ display:flex; gap:.6rem; align-items:stretch; margin-top:.7rem; }
+.tfa-activate .auth-code-input{ max-width:190px; }
+.tfa-activate .btn-blush{ white-space:nowrap; }
+
+/* ---- Códigos de recuperação ---- */
+.tfa-recovery-list{
+  list-style:none; padding:0; margin:0 auto 1.4rem; max-width:420px;
+  display:grid; grid-template-columns:repeat(2, 1fr); gap:.5rem;
+}
+.tfa-recovery-list li{
+  background:var(--blush-50); border:1px solid var(--blush-100);
+  border-radius:var(--radius-md); padding:.6rem .4rem; text-align:center;
+  font-family:ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size:.95rem; letter-spacing:.04em; color:var(--ink);
+}
+.tfa-recovery-actions{
+  display:flex; flex-direction:column; align-items:center; gap:.9rem;
+}
+.tfa-confirm{
+  display:flex; align-items:center; gap:.5rem;
+  font-size:.9rem; color:var(--ink-soft); cursor:pointer;
+}
+.tfa-confirm input{ width:17px; height:17px; accent-color:var(--blush-600); cursor:pointer; }
+@media (max-width:480px){
+  .tfa-activate{ flex-direction:column; }
+  .tfa-activate .auth-code-input{ max-width:none; }
+  .tfa-recovery-list{ grid-template-columns:1fr; }
+}
 
 .admin-section-title{
   font-family:var(--font-display); font-weight:600; font-size:1.2rem; margin-bottom:1rem;

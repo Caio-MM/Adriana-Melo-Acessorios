@@ -226,6 +226,44 @@ ensureColumn("users", "cep", "TEXT");
 ensureColumn("newsletter_subscribers", "unsubscribe_token", "TEXT");
 ensureColumn("newsletter_subscribers", "unsubscribed_at", "INTEGER");
 
+// Verificação em duas etapas (TOTP) — só para quem é admin, mas as colunas
+// ficam em `users` porque é onde a identidade mora. Ficam nulas para todo
+// mundo que não ativou. O segredo é gravado em base32 puro de propósito:
+// cifrá-lo aqui não protegeria nada, já que a chave da cifra teria que
+// ficar no mesmo servidor que o banco — quem consegue ler data.db também
+// leria a chave. A defesa real do segredo é o acesso ao arquivo.
+ensureColumn("users", "totp_secret", "TEXT");
+ensureColumn("users", "totp_enabled_at", "INTEGER");
+// Códigos de recuperação, um array JSON de hashes bcrypt (nunca em texto):
+// são a única saída se a lojista perder o celular, então valem tanto quanto
+// a senha e recebem o mesmo tratamento.
+ensureColumn("users", "totp_recovery_json", "TEXT");
+
+// Auditoria de login: toda tentativa entra aqui, com sucesso ou sem. Serve
+// para duas coisas distintas — o bloqueio por força bruta (contar falhas
+// recentes) e o registro de "quem tentou entrar, de onde, quando", que
+// antes não existia em lugar nenhum.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS login_attempts (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    email      TEXT    NOT NULL,
+    ip         TEXT    NOT NULL,
+    ok         INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_login_attempts_lookup
+    ON login_attempts(email, ip, created_at);
+  CREATE INDEX IF NOT EXISTS idx_login_attempts_time
+    ON login_attempts(created_at);
+
+  CREATE TABLE IF NOT EXISTS two_factor_challenges (
+    token_hash TEXT    PRIMARY KEY,
+    user_id    INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+`);
+
 // Garante que o cupom que já existia fixo no código (BEMVINDA10) continua
 // funcionando depois da migração pra banco — só insere se a tabela
 // coupons estiver vazia (banco novo, ou banco de antes dessa tabela
@@ -314,6 +352,90 @@ function deletePasswordResetsForUser(userId) {
 }
 function updateUserPassword(userId, passwordHash) {
   stmtUpdateUserPassword.run(passwordHash, userId);
+}
+
+/* ------------------- AUDITORIA DE LOGIN / FORÇA BRUTA ------------------- */
+const stmtInsertLoginAttempt = db.prepare(
+  `INSERT INTO login_attempts (email, ip, ok, created_at) VALUES (?, ?, ?, ?)`
+);
+// Só as falhas POSTERIORES ao último sucesso contam para o bloqueio: quem
+// acertou a senha zera o contador, senão um acerto no meio de tentativas
+// erradas (typo, typo, senha certa) deixaria o cadeado armado à toa.
+const stmtLastSuccessAt = db.prepare(
+  `SELECT MAX(created_at) AS at FROM login_attempts WHERE email = ? AND ip = ? AND ok = 1`
+);
+const stmtRecentFailures = db.prepare(
+  `SELECT created_at FROM login_attempts
+    WHERE email = ? AND ip = ? AND ok = 0 AND created_at > ?
+    ORDER BY created_at ASC`
+);
+const stmtListLoginAttempts = db.prepare(
+  `SELECT email, ip, ok, created_at FROM login_attempts
+    WHERE created_at > ? ORDER BY created_at DESC LIMIT ?`
+);
+// A auditoria não precisa virar histórico eterno num banco de arquivo único.
+const stmtPruneLoginAttempts = db.prepare(`DELETE FROM login_attempts WHERE created_at < ?`);
+
+function recordLoginAttempt({ email, ip, ok }) {
+  stmtInsertLoginAttempt.run(String(email || ""), String(ip || ""), ok ? 1 : 0, Date.now());
+}
+
+/* Devolve { locked, failures, retryAfterMs }.
+   A janela é deslizante: as falhas antigas saem sozinhas dela conforme o
+   tempo passa, então o bloqueio se desfaz sem precisar de rotina agendada
+   nem de uma coluna "bloqueado até". */
+function getLoginLockout({ email, ip, maxFailures, windowMs }) {
+  const now = Date.now();
+  const since = Math.max(
+    now - windowMs,
+    Number(stmtLastSuccessAt.get(String(email || ""), String(ip || ""))?.at) || 0
+  );
+  const failures = stmtRecentFailures.all(String(email || ""), String(ip || ""), since);
+  if (failures.length < maxFailures) {
+    return { locked: false, failures: failures.length, retryAfterMs: 0 };
+  }
+  // Destranca quando a falha mais antiga do lote sair da janela.
+  const oldest = failures[failures.length - maxFailures].created_at;
+  return {
+    locked: true,
+    failures: failures.length,
+    retryAfterMs: Math.max(0, oldest + windowMs - now),
+  };
+}
+
+function listRecentLoginAttempts({ sinceMs, limit = 200 }) {
+  return stmtListLoginAttempts.all(Date.now() - sinceMs, limit);
+}
+function pruneLoginAttempts(olderThanMs) {
+  stmtPruneLoginAttempts.run(Date.now() - olderThanMs);
+}
+
+/* ------------------- VERIFICAÇÃO EM DUAS ETAPAS (TOTP) ------------------- */
+const stmtSetTotp = db.prepare(
+  `UPDATE users SET totp_secret = ?, totp_enabled_at = ?, totp_recovery_json = ? WHERE id = ?`
+);
+const stmtInsertChallenge = db.prepare(
+  `INSERT INTO two_factor_challenges (token_hash, user_id, expires_at) VALUES (?, ?, ?)`
+);
+const stmtGetChallenge = db.prepare(`SELECT * FROM two_factor_challenges WHERE token_hash = ?`);
+const stmtDeleteChallenge = db.prepare(`DELETE FROM two_factor_challenges WHERE token_hash = ?`);
+const stmtDeleteExpiredChallenges = db.prepare(
+  `DELETE FROM two_factor_challenges WHERE expires_at < ?`
+);
+
+// secret/recoveryJson nulos = 2FA desligado (é assim que a desativação passa).
+function setUserTotp(userId, { secret, recoveryJson }) {
+  stmtSetTotp.run(secret || null, secret ? Date.now() : null, recoveryJson || null, userId);
+}
+function createTwoFactorChallenge({ tokenHash, userId, expiresAt }) {
+  stmtInsertChallenge.run(tokenHash, userId, expiresAt);
+}
+function getTwoFactorChallenge(tokenHash) {
+  stmtDeleteExpiredChallenges.run(Date.now());
+  return stmtGetChallenge.get(tokenHash) || null;
+}
+function deleteTwoFactorChallenge(tokenHash) {
+  stmtDeleteChallenge.run(tokenHash);
 }
 
 /* ---------------------------- ORDERS ---------------------------- */
@@ -653,6 +775,14 @@ module.exports = {
   deletePasswordReset,
   deletePasswordResetsForUser,
   updateUserPassword,
+  recordLoginAttempt,
+  getLoginLockout,
+  listRecentLoginAttempts,
+  pruneLoginAttempts,
+  setUserTotp,
+  createTwoFactorChallenge,
+  getTwoFactorChallenge,
+  deleteTwoFactorChallenge,
   createOrder,
   getOrderByExternalReference,
   updateOrderStatus,

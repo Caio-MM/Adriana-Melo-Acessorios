@@ -65,6 +65,75 @@
         <a href="index.html" class="btn-outline-blush">Voltar para a loja</a>
       </div>
 
+      <!-- Cadastro da verificação em duas etapas. Aparece no lugar do painel
+           enquanto a conta de admin não tiver 2FA ativo — as rotas de dados
+           respondem 403 com needsTwoFactorSetup até lá. As rotas usadas por
+           esta tela (/api/admin/2fa/*) são as únicas que não exigem 2FA,
+           senão não haveria como fazer a primeira ativação. -->
+      <div id="adminTwoFactorSetup" class="account-card d-none">
+        <div class="text-center">
+          <i class="bi bi-shield-lock" style="font-size:2rem; color:var(--blush-600)"></i>
+          <h2 class="section-title mt-3 mb-2" style="font-size:1.5rem">Proteja o painel</h2>
+          <p class="section-sub mb-4">
+            O painel mostra os dados das suas clientes, então ele pede uma segunda
+            confirmação além da senha. Leva um minuto e só precisa ser feito uma vez.
+          </p>
+        </div>
+
+        <ol class="tfa-steps">
+          <li>
+            <strong>Instale um app de autenticação</strong> no celular, se ainda não tiver.
+            Google Authenticator, Authy ou o próprio gerenciador de senhas servem.
+          </li>
+          <li>
+            <strong>Aponte a câmera do app</strong> para este código:
+            <div class="tfa-qr-wrap">
+              <img id="tfaQr" alt="QR code para o app de autenticação" width="240" height="240">
+            </div>
+            <details class="tfa-manual">
+              <summary>Não consigo ler o código</summary>
+              <p class="mb-1 mt-2">Digite esta chave no app, escolhendo a opção de inserir manualmente:</p>
+              <code id="tfaSecret" class="tfa-secret"></code>
+            </details>
+          </li>
+          <li>
+            <strong>Digite o código de 6 dígitos</strong> que o app mostrar:
+            <form id="tfaActivateForm" class="tfa-activate" novalidate>
+              <input type="text" class="form-control auth-code-input" id="tfaCode" required
+                     inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+              <button class="btn-blush" type="submit" id="tfaActivateBtn">Ativar</button>
+            </form>
+            <div class="small mt-2 account-msg" id="tfaMsg" role="alert"></div>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Códigos de recuperação: mostrados UMA única vez, logo após a
+           ativação. No banco só ficam os hashes, então não há como exibi-los
+           de novo depois — daí o bloqueio até a lojista confirmar que salvou. -->
+      <div id="adminRecoveryCodes" class="account-card d-none">
+        <div class="text-center">
+          <i class="bi bi-key" style="font-size:2rem; color:var(--blush-600)"></i>
+          <h2 class="section-title mt-3 mb-2" style="font-size:1.5rem">Guarde estes códigos</h2>
+          <p class="section-sub mb-4">
+            Se você perder o celular, cada um destes códigos entra no lugar do app —
+            uma vez cada. <strong>Esta é a única vez que eles aparecem.</strong>
+            Imprima, anote no papel ou salve no gerenciador de senhas.
+          </p>
+        </div>
+        <ul class="tfa-recovery-list" id="tfaRecoveryList"></ul>
+        <div class="tfa-recovery-actions">
+          <button type="button" class="btn-outline-blush" id="tfaCopyCodesBtn">
+            <i class="bi bi-clipboard"></i> Copiar códigos
+          </button>
+          <label class="tfa-confirm">
+            <input type="checkbox" id="tfaSavedCheck">
+            <span>Guardei os códigos num lugar seguro</span>
+          </label>
+          <button type="button" class="btn-blush" id="tfaDoneBtn" disabled>Ir para o painel</button>
+        </div>
+      </div>
+
       <div id="adminError" class="account-card text-center d-none">
         <i class="bi bi-exclamation-triangle" style="font-size:2rem; color:var(--blush-700)"></i>
         <p class="section-sub mt-3 mb-3">Não foi possível carregar o painel agora.</p>
@@ -520,6 +589,7 @@
 </div>
 
 <script src="js/error-boundary.js" defer></script>
+<script src="js/loading.js" defer></script>
 <script src="js/vendor/bootstrap.bundle.min.js" defer></script>
 <script src="js/vendor/JsBarcode.all.min.js" defer></script>
 <script src="js/auth.js" defer></script>

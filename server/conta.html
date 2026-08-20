@@ -144,6 +144,33 @@
         </div>
       </div>
 
+      <!-- 2ª etapa do login, para quem tem verificação em duas etapas ligada.
+           Só aparece depois que a senha já conferiu — até aqui nenhuma sessão
+           foi criada, é o código deste passo que a libera. -->
+      <div class="auth-pane auth-pane-twofactor">
+        <div class="auth-form">
+          <p class="auth-eyebrow">só mais um passo</p>
+          <h1 class="auth-title">Código de verificação</h1>
+          <p class="auth-subtitle">Abra seu app de autenticação e digite o código de 6 dígitos.</p>
+          <form id="twoFactorForm" novalidate>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold" for="twoFactorCode">Código</label>
+              <!-- inputmode numeric + autocomplete one-time-code: o teclado do
+                   celular abre nos números e o iOS oferece o código sozinho. -->
+              <input type="text" class="form-control auth-code-input" id="twoFactorCode" required
+                     inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                     placeholder="000000" aria-describedby="twoFactorHint">
+              <div class="form-text" id="twoFactorHint">Perdeu o celular? Digite um dos seus códigos de recuperação.</div>
+            </div>
+            <button class="btn-blush w-100" type="submit" id="twoFactorSubmitBtn">Confirmar</button>
+            <div class="small mt-2 account-msg" id="twoFactorMsg" role="alert"></div>
+            <p class="auth-foot">
+              <button type="button" class="auth-link" data-auth-mode="login">Voltar para o login</button>
+            </p>
+          </form>
+        </div>
+      </div>
+
       <div class="auth-pane auth-pane-register">
         <div class="auth-form">
           <p class="auth-eyebrow">prazer em te conhecer</p>
@@ -188,6 +215,7 @@
 </main>
 
 <script src="js/error-boundary.js" defer></script>
+<script src="js/loading.js" defer></script>
 <script src="js/vendor/bootstrap.bundle.min.js" defer></script>
 <script src="js/auth.js" defer></script>
 <script src="js/conta.js" defer></script>

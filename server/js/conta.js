@@ -59,7 +59,7 @@
      formulário deve entrar (o desktop já mostra isso pelo painel do laço
      deslizando). "forgot" tem o mesmo índice de "login" porque é uma etapa
      dentro de entrar, não um terceiro destino. */
-  const MODE_ORDER = { login: 0, forgot: 0, register: 1 };
+  const MODE_ORDER = { login: 0, forgot: 0, twofactor: 0, register: 1 };
 
   function setAuthMode(mode, moveFocus){
     if(!authShell || authShell.dataset.mode === mode) return;
@@ -89,7 +89,7 @@
     // teclado teria de tabular a tela inteira de novo. O atraso espera a
     // transição do CSS: enquanto o painel está visibility:hidden o campo
     // não é focável.
-    const firstFieldId = { login: "loginEmail", register: "registerName", forgot: "forgotEmail" }[mode];
+    const firstFieldId = { login: "loginEmail", register: "registerName", forgot: "forgotEmail", twofactor: "twoFactorCode" }[mode];
     setTimeout(() => document.getElementById(firstFieldId)?.focus(), 650);
   }
 
@@ -99,6 +99,14 @@
 
   const loginForm = document.getElementById("loginForm");
   const loginMsg = document.getElementById("loginMsg");
+
+  /* Guarda o desafio da 2ª etapa entre os dois envios. Fica só nesta
+     variável (nunca em localStorage/sessionStorage): é um token que vale
+     acesso, e o objetivo do 2º fator é justamente não deixar nada
+     reaproveitável parado no navegador. Some se a página for recarregada,
+     e aí o login recomeça — que é o comportamento certo. */
+  let pendingChallengeToken = null;
+
   loginForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = document.getElementById("loginSubmitBtn");
@@ -109,10 +117,61 @@
         email: document.getElementById("loginEmail").value.trim(),
         password: document.getElementById("loginPassword").value,
       });
+      // Senha certa, mas a conta tem verificação em duas etapas: o servidor
+      // ainda NÃO criou sessão, só devolveu um desafio curto para trocar
+      // pelo código.
+      if(user?.twoFactorRequired){
+        pendingChallengeToken = user.challengeToken;
+        setLoading(btn, false);
+        showMessage(twoFactorMsg, "", null);
+        document.getElementById("twoFactorCode").value = "";
+        setAuthMode("twofactor", true);
+        return;
+      }
       window.location.href = destinationFor(user);
     }catch(err){
       showMessage(loginMsg, err.message, "error");
       setLoading(btn, false);
+    }
+  });
+
+  const twoFactorForm = document.getElementById("twoFactorForm");
+  const twoFactorMsg = document.getElementById("twoFactorMsg");
+  const twoFactorCode = document.getElementById("twoFactorCode");
+
+  /* Deixa passar dígitos (código do app) e também letras/hífen (código de
+     recuperação, no formato ABCDE-12345), só padronizando em maiúsculas. O
+     maxlength do HTML é 6, então aqui soltamos o limite quando já não parece
+     um código de 6 dígitos. */
+  twoFactorCode?.addEventListener("input", () => {
+    const v = twoFactorCode.value.toUpperCase();
+    twoFactorCode.maxLength = /^\d*$/.test(v.replace(/-/g, "")) && !v.includes("-") ? 6 : 11;
+    twoFactorCode.value = v;
+  });
+
+  twoFactorForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("twoFactorSubmitBtn");
+    showMessage(twoFactorMsg, "", null);
+    setLoading(btn, true, "Verificando...");
+    try{
+      const user = await postJSON("/api/auth/login/2fa", {
+        challengeToken: pendingChallengeToken,
+        code: twoFactorCode.value.trim(),
+      });
+      window.location.href = destinationFor(user);
+    }catch(err){
+      setLoading(btn, false);
+      // O desafio expirou (5 min) — não adianta pedir o código de novo,
+      // tem que refazer o login desde a senha.
+      if(/expirada/i.test(err.message)){
+        pendingChallengeToken = null;
+        setAuthMode("login", true);
+        showMessage(loginMsg, err.message, "error");
+        return;
+      }
+      showMessage(twoFactorMsg, err.message, "error");
+      twoFactorCode.select();
     }
   });
 

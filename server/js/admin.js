@@ -74,6 +74,8 @@
   const stateLoggedOut = document.getElementById("adminLoggedOut");
   const stateForbidden = document.getElementById("adminForbidden");
   const stateError = document.getElementById("adminError");
+  const stateTwoFactor = document.getElementById("adminTwoFactorSetup");
+  const stateRecovery = document.getElementById("adminRecoveryCodes");
   const contentEl = document.getElementById("adminContent");
   const retryBtn = document.getElementById("adminRetryBtn");
 
@@ -90,10 +92,88 @@
   const couponSaveBtnEl = document.getElementById("couponSaveBtn");
 
   function showOnly(target){
-    [stateLoading, stateLoggedOut, stateForbidden, stateError, contentEl].forEach(node => {
+    [stateLoading, stateLoggedOut, stateForbidden, stateError,
+     stateTwoFactor, stateRecovery, contentEl].forEach(node => {
       if(node) node.classList.toggle("d-none", node !== target);
     });
   }
+
+  /* ==================== VERIFICAÇÃO EM DUAS ETAPAS ====================
+     Enquanto a conta de admin não tiver 2FA ativo, TODA rota de dados do
+     painel responde 403 com needsTwoFactorSetup — então esta tela é o que
+     aparece no lugar do painel, e não um aviso opcional que dá para pular.
+  ==================================================================== */
+  let tfaSecret = null;
+
+  async function startTwoFactorSetup(){
+    showOnly(stateTwoFactor);
+    try{
+      const res = await fetch("/api/admin/2fa/setup", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+      });
+      if(!res.ok) throw new Error("falha ao preparar");
+      const data = await res.json();
+      tfaSecret = data.secret;
+      document.getElementById("tfaQr").src = data.qrDataUri;
+      // Em blocos de 4 para conferir com o olho na hora de digitar à mão.
+      document.getElementById("tfaSecret").textContent = data.secret.replace(/(.{4})/g, "$1 ").trim();
+    }catch{
+      showOnly(stateError);
+    }
+  }
+
+  document.getElementById("tfaActivateForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("tfaActivateBtn");
+    const msg = document.getElementById("tfaMsg");
+    const codeEl = document.getElementById("tfaCode");
+    msg.textContent = "";
+    msg.classList.remove("text-danger");
+    btn.disabled = true;
+    try{
+      const res = await fetch("/api/admin/2fa/activate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret: tfaSecret, code: codeEl.value.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível ativar agora.");
+      renderRecoveryCodes(data.recoveryCodes);
+    }catch(err){
+      msg.textContent = err.message;
+      msg.classList.add("text-danger");
+      codeEl.select();
+    }finally{
+      btn.disabled = false;
+    }
+  });
+
+  function renderRecoveryCodes(codes){
+    const list = document.getElementById("tfaRecoveryList");
+    list.innerHTML = "";
+    codes.forEach(code => {
+      const li = document.createElement("li");
+      // textContent, não innerHTML: os códigos vêm do servidor, mas escrever
+      // isso com innerHTML seria um hábito ruim justo na tela mais sensível.
+      li.textContent = code;
+      list.appendChild(li);
+    });
+    document.getElementById("tfaCopyCodesBtn").onclick = async () => {
+      await navigator.clipboard.writeText(codes.join("\n"));
+      const btn = document.getElementById("tfaCopyCodesBtn");
+      btn.innerHTML = '<i class="bi bi-check2"></i> Copiado!';
+      setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i> Copiar códigos'; }, 2000);
+    };
+    showOnly(stateRecovery);
+  }
+
+  // O botão só libera depois do check: estes códigos não voltam a aparecer,
+  // e sair da tela sem guardá-los é a forma mais provável de a lojista
+  // acabar trancada fora do próprio painel um dia.
+  document.getElementById("tfaSavedCheck")?.addEventListener("change", (e) => {
+    document.getElementById("tfaDoneBtn").disabled = !e.target.checked;
+  });
+  document.getElementById("tfaDoneBtn")?.addEventListener("click", () => loadDashboard());
 
   /* ================================ ABAS ================================
      Troca de aba é só CSS (mostra/esconde .admin-tab-panel) — os dados de
@@ -1549,7 +1629,16 @@
       ]);
       const [ordersRes, productsRes, couponsRes, customersRes, leadsRes] = responses;
       if(responses.some(r => r.status === 401)){ showOnly(stateLoggedOut); return; }
-      if(responses.some(r => r.status === 403)){ showOnly(stateForbidden); return; }
+      if(responses.some(r => r.status === 403)){
+        // Um 403 aqui tem duas causas bem diferentes: não é admin (acesso
+        // negado mesmo) ou é admin sem 2FA ativo (falta um passo, não é
+        // negativa). Só o corpo da resposta distingue as duas.
+        const negado = responses.find(r => r.status === 403);
+        const corpo = await negado.clone().json().catch(() => ({}));
+        if(corpo.needsTwoFactorSetup) return startTwoFactorSetup();
+        showOnly(stateForbidden);
+        return;
+      }
       const failed = responses.find(r => !r.ok);
       if(failed){
         throw new Error("Falha ao carregar o painel (HTTP " + failed.status + ").");
