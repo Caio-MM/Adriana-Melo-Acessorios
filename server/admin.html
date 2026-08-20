@@ -46,6 +46,14 @@
         <h1 class="section-title" style="font-size:1.8rem">Painel administrativo</h1>
       </div>
 
+      <!-- Wrapper só para os estados "tela cheia" (loading/loggedOut/
+           forbidden/2FA/recovery/error) — #adminContent (painel completo)
+           também mora aqui dentro, mas só ESTES estados ganham centralização
+           vertical (via body.admin-gate-active, ver css/style.css e
+           js/admin.js), porque o painel de verdade precisa do scroll normal
+           de cima pra baixo com a sidebar fixa. -->
+      <div class="admin-state-area">
+
       <div id="adminLoading" class="text-center py-5">
         <div class="spinner-border" role="status" style="color:var(--blush-600)">
           <span class="visually-hidden">Carregando painel...</span>
@@ -70,11 +78,11 @@
            respondem 403 com needsTwoFactorSetup até lá. As rotas usadas por
            esta tela (/api/admin/2fa/*) são as únicas que não exigem 2FA,
            senão não haveria como fazer a primeira ativação. -->
-      <div id="adminTwoFactorSetup" class="account-card d-none">
+      <div id="adminTwoFactorSetup" class="account-card tfa-card d-none">
         <div class="text-center">
-          <i class="bi bi-shield-lock" style="font-size:2rem; color:var(--blush-600)"></i>
-          <h2 class="section-title mt-3 mb-2" style="font-size:1.5rem">Proteja o painel</h2>
-          <p class="section-sub mb-4">
+          <div class="tfa-icon-badge"><i class="bi bi-shield-lock"></i></div>
+          <h2 class="tfa-title">Proteja o painel</h2>
+          <p class="tfa-subtitle">
             O painel mostra os dados das suas clientes, então ele pede uma segunda
             confirmação além da senha. Leva um minuto e só precisa ser feito uma vez.
           </p>
@@ -88,7 +96,7 @@
           <li>
             <strong>Aponte a câmera do app</strong> para este código:
             <div class="tfa-qr-wrap">
-              <img id="tfaQr" alt="QR code para o app de autenticação" width="240" height="240">
+              <img id="tfaQr" alt="QR code para o app de autenticação" width="200" height="200">
             </div>
             <details class="tfa-manual">
               <summary>Não consigo ler o código</summary>
@@ -99,8 +107,9 @@
           <li>
             <strong>Digite o código de 6 dígitos</strong> que o app mostrar:
             <form id="tfaActivateForm" class="tfa-activate" novalidate>
-              <input type="text" class="form-control auth-code-input" id="tfaCode" required
-                     inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+              <input type="text" class="form-control auth-code-input tfa-code-input" id="tfaCode" required
+                     inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000"
+                     aria-label="Código de 6 dígitos do app de autenticação">
               <button class="btn-blush" type="submit" id="tfaActivateBtn">Ativar</button>
             </form>
             <div class="small mt-2 account-msg" id="tfaMsg" role="alert"></div>
@@ -111,11 +120,11 @@
       <!-- Códigos de recuperação: mostrados UMA única vez, logo após a
            ativação. No banco só ficam os hashes, então não há como exibi-los
            de novo depois — daí o bloqueio até a lojista confirmar que salvou. -->
-      <div id="adminRecoveryCodes" class="account-card d-none">
+      <div id="adminRecoveryCodes" class="account-card tfa-card d-none">
         <div class="text-center">
-          <i class="bi bi-key" style="font-size:2rem; color:var(--blush-600)"></i>
-          <h2 class="section-title mt-3 mb-2" style="font-size:1.5rem">Guarde estes códigos</h2>
-          <p class="section-sub mb-4">
+          <div class="tfa-icon-badge"><i class="bi bi-key"></i></div>
+          <h2 class="tfa-title">Guarde estes códigos</h2>
+          <p class="tfa-subtitle">
             Se você perder o celular, cada um destes códigos entra no lugar do app —
             uma vez cada. <strong>Esta é a única vez que eles aparecem.</strong>
             Imprima, anote no papel ou salve no gerenciador de senhas.
@@ -361,6 +370,8 @@
 
         </div>
       </div>
+
+      </div><!-- /.admin-state-area -->
     </div>
   </div>
 </main>

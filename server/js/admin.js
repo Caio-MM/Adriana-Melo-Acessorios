@@ -96,6 +96,13 @@
      stateTwoFactor, stateRecovery, contentEl].forEach(node => {
       if(node) node.classList.toggle("d-none", node !== target);
     });
+    // Centraliza o cartão verticalmente só durante o onboarding de 2FA
+    // (mesmo tratamento de .auth-page em conta.html) — o painel completo
+    // (contentEl) precisa da rolagem normal com a sidebar, então fica de
+    // fora. Ver a regra body.admin-gate-active em css/style.css.
+    document.body.classList.toggle(
+      "admin-gate-active", target === stateTwoFactor || target === stateRecovery
+    );
   }
 
   /* ==================== VERIFICAÇÃO EM DUAS ETAPAS ====================
@@ -143,6 +150,13 @@
       msg.textContent = err.message;
       msg.classList.add("text-danger");
       codeEl.select();
+      // Tremor curto no campo — remove+reflow+adiciona de novo é o que
+      // reinicia a animação CSS numa tentativa seguida (mesmo mecanismo do
+      // pulso do laço em conta.js), senão duas tentativas erradas em
+      // sequência tremeriam só na primeira.
+      codeEl.classList.remove("tfa-shake");
+      void codeEl.offsetWidth;
+      codeEl.classList.add("tfa-shake");
     }finally{
       btn.disabled = false;
     }

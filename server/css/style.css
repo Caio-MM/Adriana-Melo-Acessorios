@@ -2003,35 +2003,141 @@ body.app-loading-lock{ overflow:hidden; }
   @keyframes app-loading-pulse{ 50%{ opacity:.45; } }
 }
 
-/* ---- Cadastro da verificação em duas etapas (admin.html) ---- */
-.tfa-steps{
-  max-width:520px; margin:0 auto; padding-left:1.2rem;
-  color:var(--ink-soft); font-size:.95rem; line-height:1.7;
+/* =========================================================================
+   VERIFICAÇÃO EM DUAS ETAPAS (admin.html) — cadastro + códigos de recuperação
+   -------------------------------------------------------------------------
+   As duas telas (#adminTwoFactorSetup, #adminRecoveryCodes) são o único
+   caminho possível antes do painel liberar — não uma tela "de passagem"
+   qualquer —, por isso ganham o mesmo tratamento de onboarding dedicado que
+   conta.html dá ao login (.auth-page): cartão centralizado na tela, em vez
+   de nascer colado no topo, embaixo do título "Painel administrativo".
+
+   body.admin-gate-active (alternado em js/admin.js, dentro de showOnly)
+   é o gatilho: só entra nesses dois estados, nunca quando #adminContent (o
+   painel de verdade, que precisa da rolagem normal com a sidebar) está
+   visível — sem essa guarda, centralizar verticalmente um painel inteiro
+   mais alto que a tela ficaria estranho (metade cortada por cima e por
+   baixo). Em qualquer outro estado (loading/loggedOut/forbidden/error/
+   painel), .admin-state-area continua um bloco comum, sem nenhum efeito. */
+body.admin-gate-active .admin-state-area{
+  display:flex; align-items:center; justify-content:center;
+  /* min(): dá respiro generoso sem exagerar em monitor grande — não é
+     100dvh de propósito, porque o header + o título "painel administrativo"
+     acima continuam visíveis (a pessoa não perde a noção de onde está).
+     O cartão do passo 1 (3 passos + QR) passa de 900px de altura — mais
+     alto que a maioria das janelas —, então nele isto vira um respiro
+     generoso em vez de centralização perfeita; a tela mais curta dos
+     códigos de recuperação centraliza de verdade na maioria das janelas. */
+  min-height:min(85vh, 760px);
 }
-.tfa-steps > li{ margin-bottom:1.4rem; }
-.tfa-steps > li::marker{ color:var(--blush-600); font-weight:600; }
+.tfa-card{
+  width:100%; max-width:400px;
+  /* auth-rise já existe para o formulário de login; a entrada do cartão de
+     2FA usa a mesma curva/duração — é o mesmo tipo de tela (onboarding de
+     conta), então tem que se mover igual. display:none→block reinicia a
+     animação sozinho a cada troca de estado (mesmo mecanismo do painel
+     deslizante de conta.html), então isto dispara de novo toda vez que
+     startTwoFactorSetup()/renderRecoveryCodes() tornam o cartão visível. */
+  animation:auth-rise var(--animation-long) var(--ease-out) both;
+}
+.tfa-icon-badge{
+  width:64px; height:64px; margin:0 auto 1.1rem;
+  border-radius:50%; background:var(--blush-50); color:var(--blush-600);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.6rem;
+}
+.tfa-title{ font-size:1.55rem; font-weight:600; margin-bottom:.55rem; }
+.tfa-subtitle{
+  color:var(--ink-soft); font-size:.92rem; line-height:1.6;
+  max-width:320px; margin:0 auto 1.75rem;
+}
+.tfa-steps{
+  padding-left:0; list-style:none; counter-reset:tfa-step;
+  color:var(--ink-soft); font-size:.92rem; line-height:1.65;
+}
+.tfa-steps > li{
+  position:relative; padding-left:2.6rem; counter-increment:tfa-step;
+  margin-bottom:1.5rem;
+}
+.tfa-steps > li:last-child{ margin-bottom:0; }
+/* Número em círculo rosa, no lugar do marcador padrão de <ol> — o próprio
+   ::marker do navegador não aceita background/formato de círculo, só cor e
+   fonte, então o número entra via counter() num ::before posicionado. */
+.tfa-steps > li::before{
+  content:counter(tfa-step);
+  position:absolute; left:0; top:0;
+  width:2rem; height:2rem; border-radius:50%;
+  background:var(--blush-100); color:var(--ink);
+  /* --ink em vez de --blush-700 (usado nos outros círculos rosa do site,
+     como o eyebrow do topo): num círculo deste tamanho o número fica
+     pequeno e em negrito, abaixo do corte de "texto grande" da WCAG AA
+     (18.66px em negrito) — blush-700/blush-100 dava só 3.7:1, ink/blush-100
+     dá 10.15:1, com folga. */
+  font-family:var(--font-display); font-weight:700; font-size:.95rem;
+  display:flex; align-items:center; justify-content:center;
+}
 .tfa-steps strong{ color:var(--ink); }
 .tfa-qr-wrap{
   display:flex; justify-content:center;
-  margin:.9rem 0 .6rem;
+  /* Cancela o padding-left:2.6rem do <li> (o número do passo) só aqui: o
+     QR é o elemento visual mais importante da tela e centraliza melhor
+     olhando o CARTÃO inteiro, não o texto do passo — diferente do link
+     "não consigo ler" e do formulário do passo 3, que ficam alinhados sob
+     o número de propósito (são texto/apoio, não o foco principal). */
+  margin:1rem 0 .7rem -2.6rem;
 }
 .tfa-qr-wrap img{
+  display:block; width:160px; height:160px;
   border-radius:var(--radius-md); border:1px solid var(--blush-100);
   padding:10px; background:var(--white); box-shadow:var(--shadow-soft);
-  /* Largura fixa em px seria um problema num celular estreito; o QR ainda
-     precisa ser grande o bastante para a câmera ler. */
-  max-width:100%; height:auto;
 }
 .tfa-manual{ font-size:.85rem; }
-.tfa-manual summary{ cursor:pointer; color:var(--blush-600); }
+.tfa-manual summary{
+  cursor:pointer; color:var(--blush-600); font-weight:600;
+  transition:color var(--transition-speed) ease;
+}
+.tfa-manual summary:hover{ color:var(--blush-700); }
 .tfa-secret{
-  display:block; background:var(--blush-50); border-radius:var(--radius-sm, 10px);
+  display:block; background:var(--blush-50); border-radius:10px;
   padding:.6rem .8rem; font-size:.9rem; letter-spacing:.08em;
   color:var(--ink); word-break:break-all;
 }
-.tfa-activate{ display:flex; gap:.6rem; align-items:stretch; margin-top:.7rem; }
-.tfa-activate .auth-code-input{ max-width:190px; }
-.tfa-activate .btn-blush{ white-space:nowrap; }
+.tfa-activate{
+  display:flex; flex-direction:column; gap:.65rem; align-items:stretch;
+  margin-top:.75rem;
+}
+/* O input já herda tamanho/letter-spacing de .auth-code-input (usada
+   também no 2º fator do login, em conta.html) — aqui só some a borda azul
+   padrão do Bootstrap pela borda/foco de marca, que .auth-code-input
+   sozinho não trazia por não estar dentro de .auth-pane. */
+.tfa-code-input.form-control{
+  height:48px;
+  border:1.5px solid var(--blush-150); border-radius:14px;
+  background:var(--cream);
+  transition:border-color var(--animation-normal) var(--ease-out),
+             background var(--animation-normal) var(--ease-out),
+             box-shadow var(--animation-normal) var(--ease-out);
+}
+.tfa-code-input.form-control:hover{ border-color:var(--blush-300); }
+.tfa-code-input.form-control:focus{
+  border-color:var(--blush-500); background:var(--white); box-shadow:none;
+  outline:3px solid var(--blush-600); outline-offset:3px;
+}
+/* Código errado: um tremor curto no campo, junto da mensagem de erro que
+   já aparecia — reforça "isso aqui está errado" sem precisar ler o texto
+   primeiro. Disparado via JS (remove+reflow+adiciona a classe) em
+   js/admin.js, mesmo mecanismo do pulso do laço em conta.html/conta.js. */
+@keyframes tfa-shake{
+  10%, 90%{ transform:translateX(-1px); }
+  20%, 80%{ transform:translateX(2px); }
+  30%, 50%, 70%{ transform:translateX(-4px); }
+  40%, 60%{ transform:translateX(4px); }
+}
+.tfa-code-input.tfa-shake{ animation:tfa-shake var(--animation-normal) ease; }
+.tfa-activate .btn-blush{
+  width:100%; max-width:300px; height:48px; margin:0 auto;
+  display:flex; align-items:center; justify-content:center;
+}
 
 /* ---- Códigos de recuperação ---- */
 .tfa-recovery-list{
@@ -2052,9 +2158,22 @@ body.app-loading-lock{ overflow:hidden; }
   font-size:.9rem; color:var(--ink-soft); cursor:pointer;
 }
 .tfa-confirm input{ width:17px; height:17px; accent-color:var(--blush-600); cursor:pointer; }
+
+/* Tablet: card/QR/input um pouco maiores — mesmos breakpoints Bootstrap já
+   usados no resto do arquivo (576/992), não os da referência genérica do
+   pedido, para bater com todo o resto do site. */
+@media (min-width:576px) and (max-width:991.98px){
+  .tfa-card{ max-width:380px; }
+  .tfa-qr-wrap img{ width:180px; height:180px; }
+  .tfa-code-input.form-control{ height:52px; }
+  .tfa-activate .btn-blush{ height:50px; }
+}
+@media (min-width:992px){
+  .tfa-qr-wrap img{ width:200px; height:200px; }
+  .tfa-code-input.form-control{ height:56px; }
+  .tfa-activate .btn-blush{ height:52px; }
+}
 @media (max-width:480px){
-  .tfa-activate{ flex-direction:column; }
-  .tfa-activate .auth-code-input{ max-width:none; }
   .tfa-recovery-list{ grid-template-columns:1fr; }
 }
 
