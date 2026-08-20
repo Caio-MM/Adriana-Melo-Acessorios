@@ -253,6 +253,27 @@ const PAYMENT_METHODS = {
 };
 
 /* -------------------------- MIDDLEWARES DE SEGURANÇA -------------------------- */
+// Normaliza barras repetidas no caminho ANTES de qualquer rota. Sem isto,
+// "//admin.html" escapa do app.get("/admin.html") (que casa o caminho exato,
+// e "//admin.html" não é "/admin.html") mas o express.static logo abaixo
+// colapsa as barras e serve o arquivo assim mesmo — ou seja, a barra dupla
+// furava o guarda do painel. Vale para qualquer rota de caminho exato, não
+// só o admin, então a correção certa é aqui, na entrada: um 301 para a
+// versão canônica (uma barra), que já é o comportamento web esperado e ainda
+// preserva a query string. Barra dupla depois do host nunca é intencional
+// num site sem esse padrão de URL.
+app.use((req, res, next) => {
+  // Opera sobre originalUrl (cru), não req.path (já decodificado): mexer só
+  // nas barras e deixar o resto do endereço intacto evita reintroduzir
+  // problemas de codificação ao remontar a URL.
+  const semQuery = req.originalUrl.split("?")[0];
+  if (semQuery.includes("//")) {
+    const query = req.originalUrl.slice(semQuery.length);
+    return res.redirect(301, semQuery.replace(/\/{2,}/g, "/") + query);
+  }
+  next();
+});
+
 // CSP explícita (mesmas origens já liberadas na <meta> de index.html — mantenha
 // as duas em sincronia). Sem isto, o helmet() aplicaria a CSP padrão dele
 // (bem mais restritiva) e bloquearia o Bootstrap/ícones/fontes via CDN e as
