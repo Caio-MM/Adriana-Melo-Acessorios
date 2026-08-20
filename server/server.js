@@ -19,6 +19,11 @@
 
 require("dotenv").config();
 
+process.removeAllListeners("warning");
+process.on("warning", (warning) => {
+  if (warning.name !== "ExperimentalWarning") console.warn(warning);
+});
+
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
