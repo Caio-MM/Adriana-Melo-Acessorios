@@ -52,9 +52,12 @@
       <a href="index.html" class="btn-outline-blush d-block w-100">Voltar para a loja</a>
     </div>
 
-    <!-- data-mode ("login" | "register") é o único estado desta tela: o CSS
-         posiciona o painel do laço e revela o formulário certo a partir dele,
-         e js/conta.js só troca esse atributo. -->
+    <!-- data-mode ("login" | "register" | "forgot" | "twofactor") é o único
+         estado desta tela: o CSS posiciona o painel do laço e revela o
+         formulário certo a partir dele, e js/conta.js só troca esse atributo.
+         "forgot" e "twofactor" são etapas dentro de entrar, não destinos
+         próprios — por isso ficam do mesmo lado que o login e a aba "Entrar"
+         continua marcada nas duas. -->
     <div id="authForms" class="auth-shell" data-mode="login">
 
       <!-- Painel decorativo: desliza para a direita no cadastro e para a
