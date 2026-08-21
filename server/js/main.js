@@ -721,6 +721,16 @@
     return missingAddressFields().length === 0;
   }
 
+  let addressValidationAttempted = false;
+
+  function markInvalidAddressFields(){
+    if(!addressValidationAttempted) return;
+    const a = getAddress();
+    Object.keys(ADDRESS_FIELD_LABELS).forEach(key => {
+      addrInputs[key].classList.toggle("is-invalid", !a[key]);
+    });
+  }
+
   function prefillFromAccount(){
     if(!currentUser) return;
     if(currentUser.name && !addrInputs.nome.value.trim()){
@@ -746,7 +756,10 @@
     }
   }
 
-  Object.values(addrInputs).forEach(el => el.addEventListener("input", updateTotals));
+  Object.values(addrInputs).forEach(el => el.addEventListener("input", () => {
+    updateTotals();
+    markInvalidAddressFields();
+  }));
 
   cepInput.addEventListener("input", () => {
 
@@ -875,6 +888,10 @@
     if(cart.length === 0) return;
     const pendente = checkoutBlockInfo();
     if(pendente){
+      if(shipping){
+        addressValidationAttempted = true;
+        markInvalidAddressFields();
+      }
       showCheckoutHintToast(pendente.text);
       return;
     }
