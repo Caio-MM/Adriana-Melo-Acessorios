@@ -459,7 +459,7 @@
           <form class="d-flex flex-column flex-sm-row gap-2" id="newsletterForm" novalidate>
             <div class="plc-cta-field">
               <i class="bi bi-envelope" aria-hidden="true"></i>
-              <input type="email" class="form-control" placeholder="Digite seu melhor e-mail" required aria-label="Seu e-mail">
+              <input type="email" class="form-control" placeholder="Digite seu Email" required aria-label="Seu e-mail">
             </div>
             <button class="btn-blush flex-shrink-0" type="submit">Quero o cupom</button>
           </form>
@@ -619,6 +619,12 @@
   <div id="cartToast" class="toast align-items-center border-0" role="alert" style="background:var(--ink); color:#fff">
     <div class="d-flex">
       <div class="toast-body"><i class="bi bi-check-circle me-2"></i>Adicionado ao carrinho!</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+  <div id="checkoutHintToast" class="toast checkout-hint-toast align-items-center border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body"><i class="bi bi-exclamation-circle-fill me-2"></i><span id="checkoutHintToastBody"></span></div>
       <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
     </div>
   </div>

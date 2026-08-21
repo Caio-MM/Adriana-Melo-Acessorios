@@ -837,7 +837,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   width:100%; display:flex; align-items:center; justify-content:center; gap:.45rem;
   padding:.8rem 1.4rem; font-size:.95rem;
 }
-.cart-checkout-btn:disabled{ opacity:.55; }
+.cart-checkout-btn:disabled,
+.cart-checkout-btn.is-pending{ opacity:.55; }
+
+.checkout-hint-toast{
+  background:var(--blush-700); color:#fff;
+  border-radius:14px; box-shadow:0 12px 30px rgba(84,41,60,.28);
+}
+.checkout-hint-toast .toast-body{ font-weight:500; font-size:.92rem; }
+.checkout-hint-toast .bi-exclamation-circle-fill{ color:var(--gold-100); }
 
 /* ====================== PÁGINA DO PIX (pagamento-pix.html) ====================== */
 .pix-badge{

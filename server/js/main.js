@@ -44,6 +44,13 @@
   const cartCountEl = document.getElementById("cartCount");
   const cartCountMobileEl = document.getElementById("cartCountMobile");
   const cartToast = new bootstrap.Toast(document.getElementById("cartToast"));
+  const checkoutHintToastEl = document.getElementById("checkoutHintToast");
+  const checkoutHintToastBody = document.getElementById("checkoutHintToastBody");
+  const checkoutHintToast = new bootstrap.Toast(checkoutHintToastEl, { delay: 4000 });
+  function showCheckoutHintToast(text){
+    checkoutHintToastBody.textContent = text;
+    checkoutHintToast.show();
+  }
   const cartPillEl = document.querySelector(".cart-pill");
 
   /* ============ REVEAL ON SCROLL — fade/slide-up sutil para seções e cards conforme ============ */
@@ -459,24 +466,27 @@
 
 
 
-    checkoutBtn.disabled = cart.length === 0
-      || (!!currentUser && (!shipping || !isAddressComplete()));
+    const pendente = checkoutBlockInfo();
+    checkoutBtn.disabled = cart.length === 0;
+    checkoutBtn.classList.toggle("is-pending", !!pendente);
 
-    renderCheckoutHint();
+    renderCheckoutHint(pendente);
   }
 
-  function renderCheckoutHint(){
-
-
-    let hint = "";
-    if(currentUser && cart.length > 0){
-      if(!shipping){
-        hint = `<i class="bi bi-truck"></i> Informe seu CEP e calcule o frete para liberar o pagamento.`;
-      } else if(!isAddressComplete()){
-        hint = `<i class="bi bi-geo-alt"></i> Complete o endereço de entrega para liberar o pagamento.`;
-      }
+  function checkoutBlockInfo(){
+    if(!currentUser || cart.length === 0) return null;
+    if(!shipping){
+      return { icon: "bi-truck", text: "Informe seu CEP e calcule o frete para liberar o pagamento." };
     }
-    checkoutMsg.innerHTML = hint;
+    const faltando = missingAddressFields();
+    if(faltando.length > 0){
+      return { icon: "bi-geo-alt", text: `Falta preencher ${faltando.join(", ")} para liberar o pagamento.` };
+    }
+    return null;
+  }
+
+  function renderCheckoutHint(pendente){
+    checkoutMsg.innerHTML = pendente ? `<i class="bi ${pendente.icon}"></i> ${pendente.text}` : "";
   }
 
   function renderAuthGate(){
@@ -692,9 +702,23 @@
     };
   }
 
-  function isAddressComplete(){
+  const ADDRESS_FIELD_LABELS = {
+    nome: "Nome",
+    telefone: "Telefone",
+    rua: "Rua",
+    numero: "Número",
+    bairro: "Bairro",
+    cidade: "Cidade",
+    uf: "UF",
+  };
+
+  function missingAddressFields(){
     const a = getAddress();
-    return a.nome && a.telefone && a.rua && a.numero && a.bairro && a.cidade && a.uf;
+    return Object.keys(ADDRESS_FIELD_LABELS).filter(key => !a[key]).map(key => ADDRESS_FIELD_LABELS[key]);
+  }
+
+  function isAddressComplete(){
+    return missingAddressFields().length === 0;
   }
 
   function prefillFromAccount(){
@@ -848,7 +872,12 @@
       window.location.href = "conta.html?retorno=carrinho";
       return;
     }
-    if(cart.length === 0 || !shipping || !isAddressComplete()) return;
+    if(cart.length === 0) return;
+    const pendente = checkoutBlockInfo();
+    if(pendente){
+      showCheckoutHintToast(pendente.text);
+      return;
+    }
     checkoutBtn.disabled = true;
     checkoutMsg.classList.add("show");
     checkoutMsg.innerHTML = `<i class="bi bi-hourglass-split"></i><span>Preparando pagamento...</span>`;
