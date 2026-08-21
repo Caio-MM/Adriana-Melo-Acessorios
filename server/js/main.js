@@ -480,7 +480,7 @@
     }
     const faltando = missingAddressFields();
     if(faltando.length > 0){
-      return { icon: "bi-geo-alt", text: `Falta preencher ${faltando.join(", ")} para liberar o pagamento.` };
+      return { icon: "bi-geo-alt", text: `Falta completar ${faltando.join(", ")} para liberar o pagamento.` };
     }
     return null;
   }
@@ -702,33 +702,73 @@
     };
   }
 
-  const ADDRESS_FIELD_LABELS = {
-    nome: "Nome",
-    telefone: "Telefone",
-    rua: "Rua",
-    numero: "Número",
-    bairro: "Bairro",
-    cidade: "Cidade",
-    uf: "UF",
+  function isValidPhoneBR(value){
+    const digits = value.replace(/\D/g, "");
+    return digits.length === 10 || digits.length === 11;
+  }
+
+  function maskPhoneBR(value){
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    let out = "";
+    if(digits.length > 0) out += "(" + digits.slice(0, 2);
+    if(digits.length >= 2) out += ") ";
+    if(digits.length > 2){
+      const rest = digits.slice(2);
+      const split = digits.length <= 10 ? 4 : 5;
+      out += rest.length <= split ? rest : `${rest.slice(0, split)}-${rest.slice(split)}`;
+    }
+    return out;
+  }
+
+  const ADDRESS_FIELD_RULES = {
+    nome: { label: "Nome", validate: v => !v ? "Digite seu nome completo" : (v.length < 3 ? "Nome muito curto — digite o nome completo" : null) },
+    telefone: { label: "Telefone", validate: v => !v ? "Digite seu telefone" : (!isValidPhoneBR(v) ? "Faltam números no telefone. Confira o DDD." : null) },
+    rua: { label: "Rua", validate: v => v ? null : "Digite o nome da rua" },
+    numero: { label: "Número", validate: v => v ? null : "Digite o número do endereço" },
+    bairro: { label: "Bairro", validate: v => v ? null : "Digite o bairro" },
+    cidade: { label: "Cidade", validate: v => v ? null : "Digite a cidade" },
+    uf: { label: "Estado", validate: v => v ? null : "Selecione o estado" },
   };
 
-  function missingAddressFields(){
+  function validateAddressFields(){
     const a = getAddress();
-    return Object.keys(ADDRESS_FIELD_LABELS).filter(key => !a[key]).map(key => ADDRESS_FIELD_LABELS[key]);
+    return Object.keys(ADDRESS_FIELD_RULES)
+      .map(key => ({ key, message: ADDRESS_FIELD_RULES[key].validate(a[key]) }))
+      .filter(r => r.message);
+  }
+
+  function missingAddressFields(){
+    return validateAddressFields().map(r => ADDRESS_FIELD_RULES[r.key].label);
   }
 
   function isAddressComplete(){
-    return missingAddressFields().length === 0;
+    return validateAddressFields().length === 0;
   }
 
   let addressValidationAttempted = false;
 
-  function markInvalidAddressFields(){
+  function renderAddressErrors(){
     if(!addressValidationAttempted) return;
-    const a = getAddress();
-    Object.keys(ADDRESS_FIELD_LABELS).forEach(key => {
-      addrInputs[key].classList.toggle("is-invalid", !a[key]);
+    const errorByKey = Object.fromEntries(validateAddressFields().map(e => [e.key, e.message]));
+    Object.keys(ADDRESS_FIELD_RULES).forEach(key => {
+      const el = addrInputs[key];
+      const msg = errorByKey[key] || "";
+      el.classList.toggle("is-invalid", !!msg);
+      el.setAttribute("aria-invalid", msg ? "true" : "false");
+      const errorEl = document.getElementById(`addr${key[0].toUpperCase()}${key.slice(1)}-error`);
+      if(errorEl) errorEl.textContent = msg;
     });
+  }
+
+  function focusFirstInvalidAddressField(){
+    const errors = validateAddressFields();
+    if(errors.length === 0) return;
+    const el = addrInputs[errors[0].key];
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.focus({ preventScroll: true });
+    el.classList.remove("is-shaking");
+    void el.offsetWidth;
+    el.classList.add("is-shaking");
   }
 
   function prefillFromAccount(){
@@ -756,9 +796,13 @@
     }
   }
 
+  addrInputs.telefone.addEventListener("input", () => {
+    addrInputs.telefone.value = maskPhoneBR(addrInputs.telefone.value);
+  });
+
   Object.values(addrInputs).forEach(el => el.addEventListener("input", () => {
     updateTotals();
-    markInvalidAddressFields();
+    renderAddressErrors();
   }));
 
   cepInput.addEventListener("input", () => {
@@ -890,7 +934,8 @@
     if(pendente){
       if(shipping){
         addressValidationAttempted = true;
-        markInvalidAddressFields();
+        renderAddressErrors();
+        focusFirstInvalidAddressField();
       }
       showCheckoutHintToast(pendente.text);
       return;
