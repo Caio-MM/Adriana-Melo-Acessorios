@@ -1577,12 +1577,49 @@ async function runApprovedOrderSideEffects(orderRow, info){
   }
 }
 
+/* Verificação da assinatura do webhook do Mercado Pago (header x-signature).
+   OPT-IN: só é exigida se MP_WEBHOOK_SECRET estiver no .env — sem o segredo,
+   mantém o comportamento atual (compatível com deploys que ainda não o
+   configuraram). Mesmo sem esta camada, um webhook forjado não consegue
+   marcar pedido como pago (o status vem do payment.get autenticado, abaixo);
+   isto é defesa em profundidade + evita chamadas payment.get disparadas por
+   terceiros. Formato conforme a doc do Mercado Pago:
+     x-signature: "ts=<timestamp>,v1=<hmac_sha256_hex>"
+     manifesto:   "id:<data.id>;request-id:<x-request-id>;ts:<ts>;"  */
+function verifyMpWebhookSignature(req, dataId) {
+  const secret = process.env.MP_WEBHOOK_SECRET;
+  if (!secret) return true; // não configurado → não exige (opt-in)
+  const crypto = require("crypto");
+  const parts = Object.fromEntries(
+    String(req.get("x-signature") || "")
+      .split(",")
+      .map(kv => kv.split("=").map(s => s?.trim()))
+  );
+  const ts = parts.ts;
+  const v1 = parts.v1;
+  if (!ts || !v1) return false;
+  const requestId = req.get("x-request-id") || "";
+  // data.id alfanumérico entra em minúsculo no manifesto (regra do MP).
+  const idForManifest = /[a-zA-Z]/.test(String(dataId)) ? String(dataId).toLowerCase() : String(dataId);
+  const manifest = `id:${idForManifest};request-id:${requestId};ts:${ts};`;
+  const expected = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(v1, "hex"));
+  } catch {
+    return false;
+  }
+}
+
 app.post("/api/webhook", async (req, res) => {
   try {
     const paymentId = req.query?.["data.id"] || req.body?.data?.id;
     const topic = req.query?.type || req.body?.type;
 
     if (topic === "payment" && paymentId) {
+      if (!verifyMpWebhookSignature(req, paymentId)) {
+        console.warn(`Webhook: assinatura x-signature inválida para ${paymentId} — ignorado.`);
+        return res.sendStatus(401);
+      }
       const payment = new Payment(mpClient);
       const info = await payment.get({ id: paymentId });
       console.log(`Webhook recebido — pagamento ${paymentId}: ${info.status}`);
