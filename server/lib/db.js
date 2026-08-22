@@ -511,11 +511,27 @@ const stmtCouponUsedByUser = db.prepare(
 const stmtCouponUsedByPhone = db.prepare(
   `SELECT 1 FROM orders WHERE coupon_code = ? AND status = 'pago' AND customer_phone = ? LIMIT 1`
 );
+// Pedidos PENDENTES recentes com o mesmo cupom também contam, para fechar uma
+// brecha de tempo (TOCTOU): sem isto, o cliente podia gerar vários QRs/links
+// de pagamento com um cupom de uso único ANTES de pagar qualquer um (nenhum
+// estava "pago" ainda), e depois pagar todos. A janela de tempo faz um pedido
+// pendente abandonado deixar de bloquear o cupom após COUPON_PENDING_WINDOW_MS,
+// evitando travar um cliente legítimo que só desistiu no meio do caminho.
+const COUPON_PENDING_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 horas
+const stmtCouponPendingByUser = db.prepare(
+  `SELECT 1 FROM orders WHERE coupon_code = ? AND status = 'pendente' AND user_id = ? AND created_at > ? LIMIT 1`
+);
+const stmtCouponPendingByPhone = db.prepare(
+  `SELECT 1 FROM orders WHERE coupon_code = ? AND status = 'pendente' AND customer_phone = ? AND created_at > ? LIMIT 1`
+);
 
 function hasUsedCoupon({ code, userId, phone }) {
   if (!code) return false;
   if (userId && stmtCouponUsedByUser.get(code, userId)) return true;
   if (phone && stmtCouponUsedByPhone.get(code, phone)) return true;
+  const cutoff = Date.now() - COUPON_PENDING_WINDOW_MS;
+  if (userId && stmtCouponPendingByUser.get(code, userId, cutoff)) return true;
+  if (phone && stmtCouponPendingByPhone.get(code, phone, cutoff)) return true;
   return false;
 }
 function getOrderByExternalReference(ref) {
