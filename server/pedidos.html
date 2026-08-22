@@ -61,9 +61,48 @@
       </div>
 
       <div id="ordersList" class="orders-list d-none"></div>
+
+      <!-- Zona de exclusão de conta (LGPD) — só aparece logado -->
+      <div id="accountDanger" class="account-danger d-none mt-5 pt-4">
+        <h2 class="section-title" style="font-size:1.1rem">Privacidade e dados</h2>
+        <p class="section-sub mb-3" style="font-size:.88rem">
+          Você pode excluir sua conta a qualquer momento. Seus dados pessoais (login, endereço e
+          telefone) são apagados. O histórico de compras é mantido de forma anonimizada, apenas
+          pelo tempo que a lei exige guardar registros fiscais. Esta ação é permanente.
+        </p>
+        <button type="button" class="btn-outline-danger" id="deleteAccountBtn">
+          <i class="bi bi-trash3 me-1"></i>Excluir minha conta
+        </button>
+      </div>
     </div>
   </div>
 </main>
+
+<!-- Modal: confirmar exclusão de conta -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:var(--radius-md); border:none">
+      <div class="modal-header border-0">
+        <h5 class="modal-title font-display">Excluir sua conta</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <form id="deleteAccountForm" novalidate>
+        <div class="modal-body">
+          <p class="section-sub" style="font-size:.9rem">
+            Isto é permanente. Para confirmar, digite sua senha.
+          </p>
+          <label class="form-label" for="deleteAccountPassword" style="font-size:.8rem;font-weight:700">Senha</label>
+          <input type="password" class="form-control" id="deleteAccountPassword" autocomplete="current-password" required>
+          <div class="field-error mt-2" id="deleteAccountError" role="alert"></div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn-outline-blush" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn-danger-solid" id="deleteAccountConfirm">Excluir permanentemente</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 <script src="js/error-boundary.js" defer></script>
 <script src="js/loading.js" defer></script>

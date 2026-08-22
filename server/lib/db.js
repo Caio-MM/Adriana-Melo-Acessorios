@@ -366,6 +366,43 @@ function updateUserPassword(userId, passwordHash) {
   stmtUpdateUserPassword.run(passwordHash, userId);
 }
 
+/* --------------------- EXCLUSÃO DE CONTA (LGPD art. 18) --------------------- */
+// Apaga a conta e os dados pessoais do titular, MAS mantém o histórico
+// financeiro dos pedidos (valores, datas, itens) — que a legislação fiscal
+// exige reter — de forma ANONIMIZADA: o endereço e o telefone (PII) são
+// removidos de cada pedido e o vínculo com o usuário é desfeito. Assim,
+// atende ao direito de exclusão sem violar a obrigação de guarda contábil.
+const stmtAnonymizeUserOrders = db.prepare(
+  `UPDATE orders SET address_json = '{"anonimizado":true}', customer_phone = NULL WHERE user_id = ?`
+);
+const stmtDeleteNewsletterByEmail = db.prepare(`DELETE FROM newsletter_subscribers WHERE email = ?`);
+const stmtDeleteLoginAttemptsByEmail = db.prepare(`DELETE FROM login_attempts WHERE email = ?`);
+const stmtDeleteUserById = db.prepare(`DELETE FROM users WHERE id = ?`);
+
+function deleteUserAccount(userId) {
+  const user = getUserById(userId);
+  if (!user) return false;
+  db.exec("BEGIN");
+  try {
+    // 1) Anonimiza os pedidos ANTES de apagar o usuário (enquanto user_id
+    //    ainda aponta para ele). Remove PII, preserva o financeiro.
+    stmtAnonymizeUserOrders.run(userId);
+    // 2) Remove tudo que é identidade/credencial/rastreio do titular.
+    deleteAllSessionsForUser(userId);
+    deletePasswordResetsForUser(userId);
+    stmtDeleteNewsletterByEmail.run(user.email);
+    stmtDeleteLoginAttemptsByEmail.run(user.email);
+    // 3) Apaga o usuário. orders.user_id vira NULL (ON DELETE SET NULL) e
+    //    two_factor_challenges some (ON DELETE CASCADE).
+    stmtDeleteUserById.run(userId);
+    db.exec("COMMIT");
+    return true;
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+}
+
 /* ------------------- AUDITORIA DE LOGIN / FORÇA BRUTA ------------------- */
 const stmtInsertLoginAttempt = db.prepare(
   `INSERT INTO login_attempts (email, ip, ok, created_at) VALUES (?, ?, ?, ?)`
@@ -804,6 +841,7 @@ module.exports = {
   deletePasswordReset,
   deletePasswordResetsForUser,
   updateUserPassword,
+  deleteUserAccount,
   recordLoginAttempt,
   getLoginLockout,
   listRecentLoginAttempts,

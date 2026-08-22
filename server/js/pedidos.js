@@ -99,7 +99,57 @@
 
   retryBtn?.addEventListener("click", loadOrders);
 
+  /* ============ EXCLUSÃO DE CONTA (LGPD) ============ */
+  const accountDanger = document.getElementById("accountDanger");
+  const deleteBtn = document.getElementById("deleteAccountBtn");
+  const deleteModalEl = document.getElementById("deleteAccountModal");
+  const deleteForm = document.getElementById("deleteAccountForm");
+  const deletePasswordEl = document.getElementById("deleteAccountPassword");
+  const deleteErrorEl = document.getElementById("deleteAccountError");
+  const deleteConfirmBtn = document.getElementById("deleteAccountConfirm");
+  const deleteModal = deleteModalEl ? new bootstrap.Modal(deleteModalEl) : null;
+
+  deleteBtn?.addEventListener("click", () => {
+    if(deleteErrorEl) deleteErrorEl.textContent = "";
+    if(deletePasswordEl) deletePasswordEl.value = "";
+    deleteModal?.show();
+  });
+
+  deleteForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const password = deletePasswordEl.value;
+    if(!password){ deleteErrorEl.textContent = "Digite sua senha."; return; }
+    deleteConfirmBtn.disabled = true;
+    deleteErrorEl.textContent = "";
+    try{
+      const res = await fetch("/api/auth/account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if(res.status === 401){ deleteErrorEl.textContent = "Senha incorreta."; return; }
+      if(!res.ok){
+        const data = await res.json().catch(() => ({}));
+        deleteErrorEl.textContent = data.error || "Não foi possível excluir a conta agora.";
+        return;
+      }
+      // Conta excluída — redireciona para a home com aviso.
+      window.location.href = "index.html?conta=excluida";
+    }catch(err){
+      console.error("Erro ao excluir conta:", err);
+      deleteErrorEl.textContent = "Sem conexão com o servidor. Tente novamente.";
+    }finally{
+      deleteConfirmBtn.disabled = false;
+    }
+  });
+
   document.addEventListener("plc:auth", (e) => {
-    if(e.detail.user) loadOrders(); else showOnly(stateLoggedOut);
+    if(e.detail.user){
+      loadOrders();
+      accountDanger?.classList.remove("d-none");
+    }else{
+      showOnly(stateLoggedOut);
+      accountDanger?.classList.add("d-none");
+    }
   });
 })();

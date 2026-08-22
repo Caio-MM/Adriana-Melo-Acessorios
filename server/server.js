@@ -1937,6 +1937,31 @@ app.post("/api/auth/logout", (req, res) => {
   res.json({ ok: true });
 });
 
+/* DELETE /api/auth/account — exclusão de conta pelo próprio titular (LGPD
+   art. 18, direito à eliminação). Exige a senha atual: sem isso, uma sessão
+   sequestrada ou um CSRF poderia apagar a conta. Apaga login/PII e anonimiza
+   os pedidos, preservando o histórico financeiro (ver db.deleteUserAccount).
+   É irreversível — o front confirma com o usuário antes de chamar. */
+app.delete("/api/auth/account", auth.requireAuth, async (req, res) => {
+  try {
+    const password = req.body?.password;
+    if (!password || typeof password !== "string") {
+      return res.status(400).json({ error: "Confirme sua senha para excluir a conta." });
+    }
+    const user = db.getUserById(req.user.id);
+    const ok = user && await auth.verifyPassword(password, user.password_hash);
+    if (!ok) {
+      return res.status(401).json({ error: "Senha incorreta." });
+    }
+    db.deleteUserAccount(req.user.id);
+    auth.clearSession(req, res);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Erro ao excluir conta:", err);
+    res.status(500).json({ error: "Não foi possível excluir a conta agora. Tente novamente." });
+  }
+});
+
 /* -------------------------------------------------------------------------
    REDEFINIÇÃO DE SENHA — "esqueci a senha"
    -------------------------------------------------------------------------

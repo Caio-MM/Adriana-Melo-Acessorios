@@ -59,6 +59,12 @@
     checkoutHintToastBody.textContent = text;
     checkoutHintToast.show();
   }
+  // Confirmação após exclusão de conta (redireciona de pedidos.html para cá
+  // com ?conta=excluida). Reaproveita o toast e limpa o parâmetro da URL.
+  if(new URLSearchParams(location.search).get("conta") === "excluida"){
+    showCheckoutHintToast("Sua conta foi excluída e seus dados pessoais, removidos.");
+    history.replaceState(null, "", location.pathname);
+  }
   const cartPillEl = document.querySelector(".cart-pill");
 
   /* ============ REVEAL ON SCROLL — fade/slide-up sutil para seções e cards conforme ============ */
