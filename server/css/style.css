@@ -263,6 +263,44 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .consent-check .form-check-input:focus{ border-color:var(--blush-500); box-shadow:0 0 0 3px var(--blush-100); }
 .consent-check a{ color:var(--blush-700); text-decoration:underline; }
 
+/* ====================== BANNER DE COOKIES (js/cookie-consent.js) ====================== */
+.cookie-consent{
+  position:fixed; left:1.25rem; bottom:1.25rem; z-index:1090;
+  width:min(400px, calc(100vw - 2.5rem));
+  background:var(--cream); border:1px solid var(--blush-100);
+  border-radius:var(--radius-md); box-shadow:var(--shadow-soft);
+  padding:1.25rem 1.35rem;
+  opacity:0; transform:translateY(16px);
+  transition:opacity .35s var(--ease-out), transform .35s var(--ease-out);
+}
+.cookie-consent.is-visible{ opacity:1; transform:none; }
+.cookie-consent.is-leaving{ opacity:0; transform:translateY(16px); }
+
+.cookie-consent-head{ display:flex; align-items:center; gap:.6rem; margin-bottom:.6rem; }
+.cookie-consent-icon{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:38px; height:38px; flex-shrink:0; border-radius:50%;
+  background:var(--blush-100); color:var(--blush-700); font-size:1.15rem;
+}
+.cookie-consent-title{
+  font-family:var(--font-display); font-size:1.15rem; font-weight:600;
+  color:var(--ink); margin:0; letter-spacing:-.01em;
+}
+.cookie-consent-text{
+  font-size:.85rem; line-height:1.5; color:var(--ink-soft); margin:0 0 1rem;
+}
+.cookie-consent-text a{ color:var(--blush-700); text-decoration:underline; }
+.cookie-consent-actions{ display:flex; gap:.6rem; }
+.cookie-consent-btn{ flex:1 1 0; padding:.6rem 1rem; font-size:.88rem; }
+
+@media (max-width:576px){
+  .cookie-consent{ left:1rem; right:1rem; bottom:1rem; width:auto; padding:1.1rem 1.15rem; }
+}
+@media (prefers-reduced-motion: reduce){
+  .cookie-consent{ transition:none; transform:none; }
+  .cookie-consent.is-leaving{ transform:none; }
+}
+
 .cart-pill{
   position:relative; width:44px; height:44px; border-radius:50%; flex-shrink:0;
   background:var(--blush-100); display:flex; align-items:center; justify-content:center;
