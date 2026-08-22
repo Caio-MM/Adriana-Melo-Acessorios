@@ -38,13 +38,15 @@
     banner.setAttribute("aria-live", "polite");
     banner.setAttribute("aria-label", "Aviso de privacidade e cookies");
     banner.innerHTML =
-      '<div class="cookie-consent-head">' +
-        '<span class="cookie-consent-icon" aria-hidden="true"><i class="bi bi-cookie"></i></span>' +
-        '<h2 class="cookie-consent-title">Sua privacidade importa</h2>' +
+      '<div class="cookie-consent-main">' +
+        '<div class="cookie-consent-head">' +
+          '<span class="cookie-consent-icon" aria-hidden="true"><i class="bi bi-cookie"></i></span>' +
+          '<h2 class="cookie-consent-title">Sua privacidade importa</h2>' +
+        '</div>' +
+        '<p class="cookie-consent-text">Usamos apenas cookies essenciais — para o seu carrinho e o seu login funcionarem. ' +
+          'Nada de rastreamento de terceiros. Veja mais na nossa ' +
+          '<a href="politica.html">Política de Privacidade</a>.</p>' +
       '</div>' +
-      '<p class="cookie-consent-text">Usamos apenas cookies essenciais — para o seu carrinho e o seu login funcionarem. ' +
-        'Nada de rastreamento de terceiros. Veja mais na nossa ' +
-        '<a href="politica.html">Política de Privacidade</a>.</p>' +
       '<div class="cookie-consent-actions">' +
         '<button type="button" class="btn-outline-blush cookie-consent-btn" data-consent="rejected">Rejeitar</button>' +
         '<button type="button" class="btn-blush cookie-consent-btn" data-consent="accepted">Aceitar</button>' +
