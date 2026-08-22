@@ -150,7 +150,13 @@
 
           <!-- ============ DASHBOARD ============ -->
           <section class="admin-tab-panel" data-tab-panel="dashboard">
-            <h2 class="admin-section-title">Visão geral</h2>
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+              <h2 class="admin-section-title mb-0">Visão geral</h2>
+              <button type="button" class="btn-outline-blush" id="exportAllBtn" style="padding:.4rem 1rem;font-size:.82rem">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i>Baixar planilha (Excel)
+              </button>
+            </div>
+            <p class="section-sub mb-3" style="font-size:.88rem">Baixa toda a base — clientes, compras, pagamentos, endereços e mensagens — num arquivo Excel (abre no Excel e no Google Sheets).</p>
             <div class="stats-row" id="statsRow"></div>
 
             <div class="dashboard-chart-card">

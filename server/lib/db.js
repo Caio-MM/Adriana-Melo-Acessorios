@@ -302,6 +302,18 @@ function getUserById(id) {
   return stmtGetUserById.get(id) || null;
 }
 
+// Usuários para a exportação em planilha (painel admin). Traz SÓ colunas
+// não sensíveis — nunca password_hash, totp_secret nem totp_recovery_json —
+// e expõe apenas se o 2FA está ligado (booleano), não o segredo em si.
+const stmtListUsersForExport = db.prepare(
+  `SELECT id, name, email, cep, created_at,
+          CASE WHEN totp_enabled_at IS NOT NULL THEN 1 ELSE 0 END AS has_2fa
+     FROM users ORDER BY id`
+);
+function listUsersForExport() {
+  return stmtListUsersForExport.all();
+}
+
 /* --------------------------- SESSIONS --------------------------- */
 const stmtInsertSession = db.prepare(
   `INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)`
@@ -766,6 +778,7 @@ module.exports = {
   createUser,
   getUserByEmail,
   getUserById,
+  listUsersForExport,
   createSession,
   getSessionByTokenHash,
   deleteSession,

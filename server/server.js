@@ -38,6 +38,7 @@ const rateLimit = require("express-rate-limit");
 const qrcode = require("qrcode");
 const { MercadoPagoConfig, Preference, Payment } = require("mercadopago");
 const db = require("./lib/db");
+const spreadsheetExport = require("./lib/export-spreadsheet");
 const auth = require("./lib/auth");
 const whatsapp = require("./lib/whatsapp");
 const email = require("./lib/email");
@@ -2268,6 +2269,32 @@ app.get("/api/admin/leads", auth.requireAdmin, auth.requireAdminTwoFactor, (req,
   } catch (err) {
     console.error("Erro ao listar contatos (admin):", err);
     res.status(500).json({ error: "Não foi possível carregar os contatos agora." });
+  }
+});
+
+/* GET /api/admin/export.xlsx — baixa toda a base da loja numa planilha Excel
+   (uma aba por entidade: Usuários, Compras, Pagamentos, Endereços, Mensagens),
+   para abrir no Excel ou importar no Google Sheets. É só leitura e passa pelo
+   mesmo guarda das outras rotas admin (sessão + 2FA). A planilha nunca inclui
+   hash de senha, segredo de 2FA nem dados de cartão (o site não recebe cartão;
+   o Mercado Pago trata isso no lado deles). */
+app.get("/api/admin/export.xlsx", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
+  try {
+    const overridesMap = getProductOverridesMap();
+    const buffer = spreadsheetExport.buildStoreWorkbook({
+      resolveProductName: (id) => effectiveProduct(id, overridesMap)?.name || `Produto #${id}`,
+    });
+    // Data no nome do arquivo (fuso de Brasília) para diferenciar downloads.
+    const stamp = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(new Date()); // formato AAAA-MM-DD
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="adriana-melo-${stamp}.xlsx"`);
+    res.setHeader("Cache-Control", "no-store");
+    res.send(buffer);
+  } catch (err) {
+    console.error("Erro ao gerar planilha de exportação (admin):", err);
+    res.status(500).json({ error: "Não foi possível gerar a planilha agora." });
   }
 });
 

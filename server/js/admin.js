@@ -1486,6 +1486,41 @@
 
   retryBtn?.addEventListener("click", loadDashboard);
 
+  /* Baixar toda a base numa planilha Excel (.xlsx). O arquivo é gerado no
+     servidor (rota /api/admin/export.xlsx, protegida por sessão + 2FA); aqui
+     usamos fetch para conseguir tratar erro (sessão expirada, etc.) em vez de
+     navegar direto para um JSON de erro. */
+  const exportAllBtn = document.getElementById("exportAllBtn");
+  exportAllBtn?.addEventListener("click", async () => {
+    const original = exportAllBtn.innerHTML;
+    exportAllBtn.disabled = true;
+    exportAllBtn.innerHTML = `<i class="bi bi-hourglass-split me-1"></i>Gerando...`;
+    try{
+      const res = await fetchWithTimeout("/api/admin/export.xlsx", {}, 30000);
+      if(!res.ok){
+        let msg = "Não foi possível gerar a planilha agora.";
+        try{ msg = (await res.json()).error || msg; }catch{}
+        throw new Error(msg);
+      }
+      const blob = await res.blob();
+      const dispo = res.headers.get("Content-Disposition") || "";
+      const match = dispo.match(/filename="([^"]+)"/);
+      const filename = match ? match[1] : "adriana-melo.xlsx";
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    }catch(err){
+      console.error("Erro ao baixar planilha:", err);
+      alert(err.message || "Não foi possível gerar a planilha agora.");
+    }finally{
+      exportAllBtn.disabled = false;
+      exportAllBtn.innerHTML = original;
+    }
+  });
+
   let authEventReceived = false;
   document.addEventListener("plc:auth", (e) => {
     authEventReceived = true;
