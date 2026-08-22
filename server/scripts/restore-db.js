@@ -32,7 +32,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 const { DatabaseSync } = require("node:sqlite");
 
-require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+require("dotenv").config({ path: path.join(__dirname, "..", ".env"), quiet: true });
 
 function loadKey() {
   const raw = process.env.BACKUP_ENCRYPTION_KEY;

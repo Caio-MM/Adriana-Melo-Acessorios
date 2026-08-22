@@ -38,7 +38,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 const { DatabaseSync } = require("node:sqlite");
 
-require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+require("dotenv").config({ path: path.join(__dirname, "..", ".env"), quiet: true });
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, "..", "data.db");
 const BACKUP_DIR = process.env.BACKUP_DIR || path.join(__dirname, "..", "backups");

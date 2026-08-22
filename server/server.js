@@ -17,7 +17,7 @@
  * =============================================================================
  */
 
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 process.removeAllListeners("warning");
 process.on("warning", (warning) => {

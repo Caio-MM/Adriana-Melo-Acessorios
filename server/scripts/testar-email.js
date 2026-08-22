@@ -16,7 +16,7 @@
 const path = require("path");
 // Caminho explícito (e não o padrão, que procura na pasta de onde o comando
 // foi chamado): assim o teste acha o server/.env mesmo rodando de outro lugar.
-require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+require("dotenv").config({ path: path.join(__dirname, "..", ".env"), quiet: true });
 const { sendEmail } = require("../lib/email");
 
 const REQUIRED = ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS"];
