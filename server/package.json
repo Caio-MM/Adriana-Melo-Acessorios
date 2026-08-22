@@ -9,7 +9,8 @@
   },
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server.js",
-    "dev": "node --disable-warning=ExperimentalWarning --watch server.js"
+    "dev": "node --disable-warning=ExperimentalWarning --watch server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

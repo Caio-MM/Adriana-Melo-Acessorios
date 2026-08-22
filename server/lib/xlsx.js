@@ -236,4 +236,5 @@ function sanitizeSheetName(name, index) {
   return cleaned.slice(0, 31) || `Planilha${index + 1}`;
 }
 
-module.exports = { buildXlsx };
+// neutralizeFormula e crc32 são exportados para os testes unitários.
+module.exports = { buildXlsx, neutralizeFormula, crc32 };

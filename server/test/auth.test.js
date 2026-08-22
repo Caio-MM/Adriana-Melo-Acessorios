@@ -1,0 +1,61 @@
+/**
+ * Testes das funções de autenticação (lib/auth.js) — hashing, validações,
+ * 2FA (TOTP) e códigos de recuperação. Roda com: node --test
+ */
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const auth = require("../lib/auth.js");
+
+test("hashPassword/verifyPassword — round-trip e rejeição", async () => {
+  const hash = await auth.hashPassword("SenhaForte123!");
+  assert.match(hash, /^\$2[aby]\$/, "deve ser um hash bcrypt");
+  assert.equal(await auth.verifyPassword("SenhaForte123!", hash), true);
+  assert.equal(await auth.verifyPassword("errada", hash), false);
+});
+
+test("verifyPassword não quebra com hash ausente (comparação dummy)", async () => {
+  assert.equal(await auth.verifyPassword("qualquer", undefined), false);
+});
+
+test("isValidPassword — mínimo 8 e limite de 72 bytes do bcrypt", () => {
+  assert.equal(auth.isValidPassword("1234567"), false);
+  assert.equal(auth.isValidPassword("12345678"), true);
+  assert.equal(auth.isValidPassword("a".repeat(72)), true);
+  assert.equal(auth.isValidPassword("a".repeat(73)), false);
+  assert.equal(auth.isValidPassword("á".repeat(40)), false, "40 'á' = 80 bytes > 72");
+});
+
+test("isValidEmail", () => {
+  assert.equal(auth.isValidEmail("cliente@example.com"), true);
+  assert.equal(auth.isValidEmail("sem-arroba"), false);
+  assert.equal(auth.isValidEmail("a@b"), false);
+});
+
+test("normalizeCep / isValidCep", () => {
+  assert.equal(auth.normalizeCep("70040-020"), "70040020");
+  assert.equal(auth.isValidCep("70040020"), true);
+  assert.equal(auth.isValidCep("7004002"), false);
+});
+
+test("TOTP — segredo em base32 e rejeição de códigos inválidos", () => {
+  const secret = auth.generateTotpSecret();
+  assert.match(secret, /^[A-Z2-7]+$/, "base32");
+  assert.equal(auth.verifyTotp(secret, ""), false);
+  assert.equal(auth.verifyTotp(secret, "12"), false);       // curto
+  assert.equal(auth.verifyTotp(secret, "000000"), false);   // improvável de bater
+  assert.equal(auth.verifyTotp("", "123456"), false);       // sem segredo
+});
+
+test("códigos de recuperação — geração, hash e consumo único", async () => {
+  const codes = auth.generateRecoveryCodes();
+  assert.ok(codes.length >= 1);
+  assert.match(codes[0], /^[0-9A-F]{5}-[0-9A-F]{5}$/);
+  const hashes = await auth.hashRecoveryCodes(codes);
+  // Código válido é aceito e some da lista devolvida.
+  const remaining = await auth.consumeRecoveryCode(codes[0], hashes);
+  assert.equal(remaining.length, hashes.length - 1);
+  // Código errado não consome nada.
+  assert.equal(await auth.consumeRecoveryCode("00000-00000", hashes), null);
+  // Case-insensitive: aceita em minúsculo.
+  assert.ok(await auth.consumeRecoveryCode(codes[1].toLowerCase(), hashes));
+});
