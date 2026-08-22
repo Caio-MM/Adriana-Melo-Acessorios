@@ -61,6 +61,18 @@ function colLetter(index) {
   return s;
 }
 
+// Neutraliza injeção de fórmula (CSV/Formula Injection, CWE-1236). Parte dos
+// dados exportados vem de formulário público (mensagens de contato: nome,
+// telefone, mensagem), então um texto começando com = + - @ ou tab/CR pode
+// ser interpretado como fórmula ao abrir no Excel/Google Sheets. A mitigação
+// padrão (OWASP) é prefixar um apóstrofo, que força o valor a ser tratado
+// como texto. Como as células já saem tipadas como texto (inlineStr), isso é
+// defesa em profundidade — cobre também importação para o Sheets e cópia de
+// células para outra aba.
+function neutralizeFormula(str) {
+  return /^[=+\-@\t\r]/.test(str) ? `'${str}` : str;
+}
+
 function cellXml(ref, value) {
   if (value === null || value === undefined || value === "") {
     return `<c r="${ref}"/>`;
@@ -68,7 +80,8 @@ function cellXml(ref, value) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return `<c r="${ref}"><v>${value}</v></c>`;
   }
-  return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(value)}</t></is></c>`;
+  const safe = neutralizeFormula(String(value));
+  return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(safe)}</t></is></c>`;
 }
 
 function sheetXml(sheet) {
