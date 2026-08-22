@@ -1194,6 +1194,11 @@
       msg.textContent = "Digite um e-mail válido.";
       return;
     }
+    const consent = document.getElementById("newsletterConsent");
+    if(consent && !consent.checked){
+      msg.textContent = "Marque o consentimento para continuar.";
+      return;
+    }
     btn.disabled = true;
     msg.textContent = "Enviando...";
     try{

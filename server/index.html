@@ -485,12 +485,20 @@
           <p class="mb-0 plc-cta-sub">Cadastre seu e-mail e receba o cupom, além de novidades da coleção.</p>
         </div>
         <div class="col-md-6">
-          <form class="d-flex flex-column flex-sm-row gap-2" id="newsletterForm" novalidate>
-            <div class="plc-cta-field">
-              <i class="bi bi-envelope" aria-hidden="true"></i>
-              <input type="email" class="form-control" placeholder="Digite seu Email" required aria-label="Seu e-mail">
+          <form id="newsletterForm" novalidate>
+            <div class="d-flex flex-column flex-sm-row gap-2">
+              <div class="plc-cta-field">
+                <i class="bi bi-envelope" aria-hidden="true"></i>
+                <input type="email" class="form-control" placeholder="Digite seu Email" required aria-label="Seu e-mail">
+              </div>
+              <button class="btn-blush flex-shrink-0" type="submit">Quero o cupom</button>
             </div>
-            <button class="btn-blush flex-shrink-0" type="submit">Quero o cupom</button>
+            <div class="form-check consent-check mt-2">
+              <input class="form-check-input" type="checkbox" id="newsletterConsent">
+              <label class="form-check-label small" for="newsletterConsent">
+                Concordo em receber novidades por e-mail e com a <a href="politica.html" target="_blank" rel="noopener">Política de Privacidade</a>.
+              </label>
+            </div>
           </form>
           <div class="small mt-2 plc-cta-sub" id="newsletterMsg"></div>
         </div>
@@ -564,6 +572,15 @@
             <label class="form-label small fw-semibold" for="contactMensagem">Mensagem</label>
             <textarea class="form-control" id="contactMensagem" name="mensagem" rows="4" maxlength="2000" placeholder="Cor, tamanho, quantidade..." required></textarea>
             <div class="invalid-feedback">Escreva sua mensagem.</div>
+          </div>
+          <div class="col-12">
+            <div class="form-check consent-check">
+              <input class="form-check-input" type="checkbox" id="contactConsent" required>
+              <label class="form-check-label small" for="contactConsent">
+                Li e concordo com a <a href="politica.html" target="_blank" rel="noopener">Política de Privacidade</a> e autorizo o uso dos meus dados para responder este contato.
+              </label>
+              <div class="invalid-feedback">É preciso aceitar para enviar.</div>
+            </div>
           </div>
           <div class="col-12 d-flex align-items-center flex-wrap gap-3">
             <button class="btn-blush" type="submit">Enviar mensagem <i class="bi bi-send ms-1"></i></button>

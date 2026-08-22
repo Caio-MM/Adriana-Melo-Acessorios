@@ -162,6 +162,11 @@
       showMessage(registerMsg, "Informe um CEP válido, com 8 dígitos.", "error");
       return;
     }
+    const consent = document.getElementById("registerConsent");
+    if(consent && !consent.checked){
+      showMessage(registerMsg, "Aceite a Política de Privacidade para criar a conta.", "error");
+      return;
+    }
 
     setLoading(btn, true, "Criando conta...");
     try{
