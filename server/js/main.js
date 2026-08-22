@@ -20,6 +20,14 @@
     }[ch]));
   }
 
+  // Cor de produto usada dentro de atributos `style` inline. Como é contexto
+  // CSS (não HTML), escapar não basta — validamos como hex estrito e caímos
+  // num fallback seguro se vier qualquer outra coisa, evitando quebra de
+  // atributo/injeção via um valor de cor malformado.
+  function safeColor(color){
+    return /^#[0-9a-fA-F]{3,8}$/.test(String(color || "")) ? color : "#F4B4CC";
+  }
+
   function fetchWithTimeout(url, options, timeoutMs){
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs || 12000);
@@ -148,7 +156,7 @@
       return `
       <div class="col-6 col-md-4 col-lg-3 reveal reveal-delay-${i % 4}">
         <div class="product-card${p.badges?.length ? " is-featured" : ""}" data-id="${p.id}">
-          <div class="product-thumb${photo ? " is-loading" : ""}" style="background:${p.color}22">
+          <div class="product-thumb${photo ? " is-loading" : ""}" style="background:${safeColor(p.color)}22">
             ${p.badges?.length ? `<div class="product-badges">${p.badges.map(b => `<span class="product-badge">${escapeHTML(b)}</span>`).join("")}</div>` : ""}
             <button type="button" class="product-quickview" aria-label="Ver detalhes de ${escapeHTML(p.name)}"><i class="bi bi-eye"></i></button>
             ${photo ? `<img
@@ -156,7 +164,7 @@
               alt="${escapeHTML(p.name)} — ${escapeHTML(p.catLabel)}"
               width="600" height="600"
               loading="lazy" decoding="async">` : ""}
-            <svg class="bow-icon" style="color:${p.color}; position:absolute"><use href="#bow-shape"/></svg>
+            <svg class="bow-icon" style="color:${safeColor(p.color)}; position:absolute"><use href="#bow-shape"/></svg>
           </div>
           <div class="product-body">
             <div class="product-cat">${escapeHTML(p.catLabel)}</div>
@@ -579,9 +587,9 @@
         const photo = imageFor(p);
         return `
           <div class="cart-item" data-id="${p.id}">
-            <div class="cart-item-thumb${photo ? " is-loading" : ""}" style="background:${p.color}22">
+            <div class="cart-item-thumb${photo ? " is-loading" : ""}" style="background:${safeColor(p.color)}22">
               ${photo ? `<img src="${escapeHTML(photo)}" alt="${escapeHTML(p.name)}" width="64" height="64" loading="lazy" decoding="async">` : ""}
-              <svg class="bow-icon" style="color:${p.color}"><use href="#bow-shape"/></svg>
+              <svg class="bow-icon" style="color:${safeColor(p.color)}"><use href="#bow-shape"/></svg>
             </div>
             <div class="cart-item-body">
               <div class="cart-item-head">
@@ -633,9 +641,9 @@
       const photo = imageFor(p);
       return `
       <div class="cart-rec-item" data-id="${p.id}">
-        <div class="cart-rec-thumb" style="background:${p.color}22">
+        <div class="cart-rec-thumb" style="background:${safeColor(p.color)}22">
           ${photo ? `<img src="${escapeHTML(photo)}" alt="${escapeHTML(p.name)}" width="44" height="44" loading="lazy" decoding="async">` : ""}
-          <svg class="bow-icon" style="color:${p.color}"><use href="#bow-shape"/></svg>
+          <svg class="bow-icon" style="color:${safeColor(p.color)}"><use href="#bow-shape"/></svg>
         </div>
         <div class="flex-grow-1">
           <div class="cart-rec-name">${escapeHTML(p.name)}</div>
