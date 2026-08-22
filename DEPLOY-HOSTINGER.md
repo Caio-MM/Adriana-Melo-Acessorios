@@ -141,6 +141,56 @@ suporte da Hostinger que esses dois caminhos sobrevivem — ou baixe uma cópia
 pelo gerenciador de arquivos. O plano tem backup diário, o que ajuda, mas
 não substitui conferir antes de mexer.
 
+### 6.1 Backup próprio, criptografado
+
+O backup da Hostinger é do servidor inteiro e você não controla a chave. Para
+ter uma cópia sua, criptografada, existe `server/scripts/backup-db.js`.
+
+**Uma vez só**, gere a chave e guarde-a fora do servidor (num gerenciador de
+senhas — sem ela o backup não é restaurável):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Cadastre o valor em `BACKUP_ENCRYPTION_KEY` nas variáveis de ambiente da
+aplicação (mesmo lugar das outras, item 3).
+
+**Rodar um backup:**
+
+```bash
+cd server && node scripts/backup-db.js
+```
+
+Ele tira um snapshot consistente (funciona com o site no ar), criptografa em
+AES-256-GCM e guarda em `server/backups/data-AAAA-MM-DD-HH-MM-SS.db.enc`,
+apagando sozinho o que passar de 30 dias.
+
+**Agendar (cron do hPanel, diário às 3h):**
+
+```
+0 3 * * * cd /caminho/para/server && node scripts/backup-db.js
+```
+
+O script sai com erro se algo falhar, então preencher o `MAILTO` do cron já
+serve de alerta de falha.
+
+**Testar a restauração** (faça isso de vez em quando — backup nunca testado
+não é backup). Restaura para um arquivo separado, sem tocar no banco real:
+
+```bash
+cd server && node scripts/restore-db.js backups/data-2026-08-21-03-00-00.db.enc
+```
+
+Ele descriptografa, roda `PRAGMA integrity_check` e mostra quantas linhas
+vieram em `users`/`orders`/`contact_messages`. Se a chave estiver errada ou o
+arquivo tiver sido adulterado, ele aborta sem escrever nada.
+
+⚠️ Os `.db.enc` são cópias dos dados das clientes: guarde uma cópia fora do
+servidor também (baixe pelo gerenciador de arquivos ou sincronize para um
+armazenamento em nuvem). Um backup que mora só na máquina que pode falhar não
+protege contra a falha dessa máquina.
+
 ---
 
 ## 7. Opcional, para o site ficar mais rápido

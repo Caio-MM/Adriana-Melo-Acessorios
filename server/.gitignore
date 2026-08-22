@@ -12,6 +12,11 @@ node_modules/
 *.db-wal
 *.db-shm
 
+# Backups do banco (mesmo criptografados, são cópias de dados de clientes —
+# ficam em disco/nuvem, nunca no git)
+backups/
+*.db.enc
+
 # Sistema
 .DS_Store
 npm-debug.log*
