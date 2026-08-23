@@ -399,24 +399,63 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* ============ MARQUEE STRIP ============ */
 
 .plc-marquee{
-  background:linear-gradient(to bottom,
-    var(--cream) 0, var(--blush-700) 10px, var(--blush-700) calc(100% - 10px), var(--cream) 100%);
-  color:var(--blush-50); padding:.7rem 0; overflow:hidden; white-space:nowrap;
+  position:relative; overflow:hidden; white-space:nowrap;
+  color:#fff; padding:1.05rem 0;
+  /* Fallback sólido para navegadores sem color-mix() — se a imagem de
+     fundo abaixo for inválida, o parser descarta só essa propriedade e
+     este background-color chapado continua valendo. */
+  background-color:var(--blush-700);
+  background-image:linear-gradient(120deg,
+    color-mix(in srgb, var(--blush-700) 95%, var(--ink) 5%) 0%,
+    color-mix(in srgb, var(--blush-700) 85%, var(--ink) 15%) 100%);
+  /* Sombra rosa-tintada já usada no resto do site (elevação) + um fio de
+     brilho no topo, como o reflexo de uma fita de cetim. */
+  box-shadow:var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.18);
+  /* A faixa (fundo + conteúdo) esmaece nas duas pontas em vez de cortar
+     em seco — a mesma máscara nas duas prefixadas para cobrir Safari. */
+  -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
+  mask-image:linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
+}
+/* Brilho sutil que atravessa a faixa periodicamente — bem discreto (12%
+   de opacidade), pausa junto do scroll em prefers-reduced-motion. Anima
+   `transform` (não `background-position`) de propósito: é a propriedade
+   que o navegador consegue compositar direto na GPU, sem repintar a cada
+   quadro — a mesma razão pela qual o scroll do texto usa translateX. */
+.plc-marquee::after{
+  content:""; position:absolute; top:0; bottom:0; left:-30%; width:30%;
+  pointer-events:none; will-change:transform;
+  background:linear-gradient(75deg, transparent 0%, rgba(255,255,255,.12) 50%, transparent 100%);
+  animation:plcMarqueeShine 7s ease-in-out infinite;
 }
 
-.plc-marquee-track{ display:flex; width:max-content; animation:scrollx 26s linear infinite; }
-.plc-marquee-group{ display:flex; align-items:center; flex:none; gap:3rem; padding-right:3rem; }
-.plc-marquee span{ font-family:var(--font-script); font-size:1.15rem; display:inline-flex; align-items:center; gap:.6rem; white-space:nowrap; }
+.plc-marquee-track{ display:flex; width:max-content; animation:scrollx 34s linear infinite; }
+.plc-marquee:hover .plc-marquee-track{ animation-play-state:paused; }
+.plc-marquee-group{ display:flex; align-items:center; flex:none; gap:1.1rem; padding-right:1.1rem; }
+.plc-marquee span{
+  font-family:var(--font-script); font-size:1.25rem; letter-spacing:.015em;
+  display:inline-flex; align-items:center; gap:.55rem; white-space:nowrap;
+}
+.plc-marquee span i{ font-size:1.05rem; color:#fff; opacity:.92; }
 
-.plc-marquee span svg{ width:16px; height:11px; flex:none; }
+.plc-marquee-sep{ display:inline-flex; align-items:center; opacity:.5; }
+.plc-marquee-sep svg{ width:14px; height:10px; color:#fff; }
+
+@media (max-width: 991.98px){
+  .plc-marquee{ padding:.85rem 0; }
+  .plc-marquee span{ font-size:1.1rem; }
+  .plc-marquee span i{ font-size:.95rem; }
+}
 @media (max-width: 575.98px){
-  .plc-marquee{ padding:.5rem 0; }
+  .plc-marquee{ padding:.7rem 0; }
   .plc-marquee span{ font-size:1rem; }
-  .plc-marquee-group{ gap:2rem; padding-right:2rem; }
+  .plc-marquee span i{ font-size:.85rem; }
+  .plc-marquee-group{ gap:.85rem; padding-right:.85rem; }
 }
 @keyframes scrollx{ from{ transform:translateX(0);} to{ transform:translateX(-25%);} }
+@keyframes plcMarqueeShine{ 0%{ transform:translateX(0); } 55%, 100%{ transform:translateX(500%); } }
 @media (prefers-reduced-motion: reduce){
   .plc-marquee-track{ animation:none; }
+  .plc-marquee::after{ animation:none; content:none; }
 }
 
 /* ============ CATEGORY CHIPS ============ */
