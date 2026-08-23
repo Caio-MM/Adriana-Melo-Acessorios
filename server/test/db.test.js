@@ -22,14 +22,14 @@ after(() => {
 });
 
 test("createUser / getUserByEmail", () => {
-  const u = db.createUser({ name: "Ana", email: "ana@example.com", passwordHash: "x", cep: "70040020" });
+  const u = db.createUser({ name: "Ana", email: "ana@example.com", passwordHash: "x", cpf: "11144477735" });
   assert.ok(u.id > 0);
   assert.equal(db.getUserByEmail("ana@example.com").id, u.id);
   assert.equal(db.getUserByEmail("naoexiste@example.com"), null);
 });
 
 test("hasUsedCoupon — pago bloqueia; cupom diferente não", () => {
-  const u = db.createUser({ name: "B", email: "b@example.com", passwordHash: "x", cep: "70040020" });
+  const u = db.createUser({ name: "B", email: "b@example.com", passwordHash: "x", cpf: "11144477735" });
   const base = {
     userId: u.id, items: [{ id: 1, qty: 1, price: 34.9 }],
     address: { nome: "B", telefone: "(61) 90000-0000", rua: "R", numero: "1", bairro: "B", cidade: "Bsb", uf: "DF", cep: "70040020" },
@@ -42,7 +42,7 @@ test("hasUsedCoupon — pago bloqueia; cupom diferente não", () => {
 });
 
 test("hasUsedCoupon — pedido PENDENTE recente bloqueia (fecha o TOCTOU)", () => {
-  const u = db.createUser({ name: "C", email: "c@example.com", passwordHash: "x", cep: "70040020" });
+  const u = db.createUser({ name: "C", email: "c@example.com", passwordHash: "x", cpf: "11144477735" });
   db.createOrder({
     externalReference: "PEND1", userId: u.id, status: "pendente", couponCode: "BEMVINDA10",
     items: [{ id: 1, qty: 1, price: 34.9 }],
@@ -54,7 +54,7 @@ test("hasUsedCoupon — pedido PENDENTE recente bloqueia (fecha o TOCTOU)", () =
 });
 
 test("deleteUserAccount — apaga o titular e anonimiza os pedidos (LGPD)", () => {
-  const u = db.createUser({ name: "Del", email: "del@example.com", passwordHash: bcrypt.hashSync("x", 4), cep: "70040020" });
+  const u = db.createUser({ name: "Del", email: "del@example.com", passwordHash: bcrypt.hashSync("x", 4), cpf: "11144477735" });
   db.addNewsletterSubscriber("del@example.com");
   db.createOrder({
     externalReference: "DEL1", userId: u.id, status: "pago",

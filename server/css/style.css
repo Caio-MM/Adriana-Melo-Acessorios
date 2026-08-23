@@ -343,6 +343,27 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   .account-pill, .cart-pill{ width:38px; height:38px; }
   .account-pill .account-icon{ width:18px; height:18px; }
 }
+
+/* Nome de quem está logada visível também em telas menores que 1200px —
+   nesse ponto o menu principal já virou hambúrguer, mas essa pílula não
+   fica dentro dele, então sem isso a conta conectada não tinha nenhum
+   indício visual (só o ícone genérico). Só a pílula de saudação (não a de
+   admin/sair, que seguem só-ícone fora do desktop, já disponíveis dentro
+   do menu hambúrguer). */
+.account-pill-primary{ width:auto; max-width:118px; padding:0 .65rem 0 .55rem; }
+.account-pill-primary .account-pill-label{
+  display:inline; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  max-width:74px; font-size:.82rem;
+}
+@media (max-width: 383.98px){
+  .account-pill-primary{ max-width:94px; padding:0 .5rem 0 .45rem; }
+  .account-pill-primary .account-pill-label{ max-width:56px; font-size:.74rem; }
+}
+@media (min-width: 1200px){
+  .account-pill-primary{ max-width:none; padding:0 1rem 0 .85rem; }
+  .account-pill-primary .account-pill-label{ max-width:none; font-size:inherit; }
+}
+
 .cart-badge{
   position:absolute; top:-4px; right:-4px; background:var(--blush-700); color:#fff;
   font-size:.65rem; font-weight:700; min-width:19px; height:19px; border-radius:50%;

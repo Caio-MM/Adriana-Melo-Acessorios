@@ -64,7 +64,7 @@ function cookieFrom(res) {
 
 // Testes ----------------------------------------------------------------
 test("cadastro define sessão e /api/auth/me responde ao dono", async () => {
-  const res = await post("/api/auth/register", { name: "Cliente A", email: "a@test.com", password: "SenhaA12345!", cep: "70040020" });
+  const res = await post("/api/auth/register", { name: "Cliente A", email: "a@test.com", password: "SenhaA12345!", cpf: "11144477735" });
   assert.equal(res.status, 201);
   const cookie = cookieFrom(res);
   assert.ok(cookie, "deve vir cookie de sessão");
@@ -94,13 +94,13 @@ test("CSRF: POST sem Origin correto é bloqueado", async () => {
 
 test("controle de acesso admin: cliente comum não entra, admin entra", async () => {
   // Cliente comum
-  const rc = await post("/api/auth/register", { name: "Comum", email: "comum@test.com", password: "SenhaC12345!", cep: "70040020" });
+  const rc = await post("/api/auth/register", { name: "Comum", email: "comum@test.com", password: "SenhaC12345!", cpf: "11144477735" });
   const comumCookie = cookieFrom(rc);
   const asComum = await fetch(ORIGIN + "/api/admin/orders", { headers: { Cookie: comumCookie } });
   assert.equal(asComum.status, 403, "cliente comum -> 403");
 
   // Admin (e-mail com hash em ADMIN_EMAIL_HASHES; 2FA desligado no teste)
-  const ra = await post("/api/auth/register", { name: "Admin", email: ADMIN_EMAIL, password: "SenhaADM12345!", cep: "70040020" });
+  const ra = await post("/api/auth/register", { name: "Admin", email: ADMIN_EMAIL, password: "SenhaADM12345!", cpf: "11144477735" });
   const adminCookie = cookieFrom(ra);
   assert.equal((await ra.json()).isAdmin, true);
   const asAdmin = await fetch(ORIGIN + "/api/admin/orders", { headers: { Cookie: adminCookie } });
@@ -108,7 +108,7 @@ test("controle de acesso admin: cliente comum não entra, admin entra", async ()
 });
 
 test("exclusão de conta: senha errada barra; senha certa apaga e invalida login", async () => {
-  const reg = await post("/api/auth/register", { name: "Del", email: "del@test.com", password: "SenhaDEL12345!", cep: "70040020" });
+  const reg = await post("/api/auth/register", { name: "Del", email: "del@test.com", password: "SenhaDEL12345!", cpf: "11144477735" });
   const cookie = cookieFrom(reg);
 
   // Senha errada -> 401, conta permanece.

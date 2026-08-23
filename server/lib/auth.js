@@ -63,6 +63,26 @@ function normalizeCep(v) {
 function isValidCep(v) {
   return /^\d{8}$/.test(v);
 }
+// CPF guardado só com dígitos, mesmo padrão do CEP acima.
+function normalizeCpf(v) {
+  return String(v || "").replace(/\D/g, "");
+}
+function isValidCpf(v) {
+  if (!/^\d{11}$/.test(v)) return false;
+  // Sequências como "00000000000" batem os dígitos verificadores pela
+  // fórmula abaixo mas nunca são um CPF real — todo validador oficial as recusa.
+  if (/^(\d)\1{10}$/.test(v)) return false;
+  const digits = v.split("").map(Number);
+  const checkDigit = (base) => {
+    let sum = 0;
+    for (let i = 0; i < base.length; i++) sum += base[i] * (base.length + 1 - i);
+    const rest = (sum * 10) % 11;
+    return rest === 10 ? 0 : rest;
+  };
+  if (checkDigit(digits.slice(0, 9)) !== digits[9]) return false;
+  if (checkDigit(digits.slice(0, 10)) !== digits[10]) return false;
+  return true;
+}
 
 /* ------------------------------ COOKIES ------------------------------ */
 function parseCookies(req) {
@@ -435,6 +455,8 @@ module.exports = {
   isValidName,
   normalizeCep,
   isValidCep,
+  normalizeCpf,
+  isValidCpf,
   issueSession,
   clearSession,
   issuePasswordReset,

@@ -37,6 +37,15 @@ test("normalizeCep / isValidCep", () => {
   assert.equal(auth.isValidCep("7004002"), false);
 });
 
+test("normalizeCpf / isValidCpf", () => {
+  assert.equal(auth.normalizeCpf("111.444.777-35"), "11144477735");
+  assert.equal(auth.isValidCpf("11144477735"), true, "CPF válido conhecido");
+  assert.equal(auth.isValidCpf("11144477736"), false, "dígito verificador errado");
+  assert.equal(auth.isValidCpf("1114447773"), false, "menos de 11 dígitos");
+  assert.equal(auth.isValidCpf("00000000000"), false, "sequência repetida");
+  assert.equal(auth.isValidCpf("11111111111"), false, "sequência repetida");
+});
+
 test("TOTP — segredo em base32 e rejeição de códigos inválidos", () => {
   const secret = auth.generateTotpSecret();
   assert.match(secret, /^[A-Z2-7]+$/, "base32");

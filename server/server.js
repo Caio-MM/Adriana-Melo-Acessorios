@@ -1790,7 +1790,7 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
     const name = String(req.body?.name || "").trim();
     const email = auth.normalizeEmail(req.body?.email);
     const password = String(req.body?.password || "");
-    const cep = auth.normalizeCep(req.body?.cep);
+    const cpf = auth.normalizeCpf(req.body?.cpf);
 
     if(!auth.isValidName(name)){
       return res.status(400).json({ error: "Informe seu nome completo." });
@@ -1801,19 +1801,19 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
     if(!auth.isValidPassword(password)){
       return res.status(400).json({ error: "A senha precisa ter entre 8 e 72 caracteres." });
     }
-    if(!auth.isValidCep(cep)){
-      return res.status(400).json({ error: "CEP inválido — informe os 8 dígitos." });
+    if(!auth.isValidCpf(cpf)){
+      return res.status(400).json({ error: "CPF inválido — confira os números digitados." });
     }
     if(db.getUserByEmail(email)){
       return res.status(409).json({ error: "Já existe uma conta com este e-mail." });
     }
 
     const passwordHash = await auth.hashPassword(password);
-    const user = db.createUser({ name, email, passwordHash, cep });
+    const user = db.createUser({ name, email, passwordHash, cpf });
     auth.issueSession(res, user.id);
     // isAdmin vai junto para o front saber para onde redirecionar sem
     // precisar de uma segunda chamada a /api/auth/me logo em seguida.
-    res.status(201).json({ id: user.id, name: user.name, email: user.email, cep: user.cep, isAdmin: auth.isAdminEmail(user.email) });
+    res.status(201).json({ id: user.id, name: user.name, email: user.email, cpf: user.cpf, isAdmin: auth.isAdminEmail(user.email) });
   } catch (err) {
     console.error("Erro ao criar conta:", err);
     res.status(500).json({ error: "Não foi possível criar a conta agora. Tente novamente em instantes." });

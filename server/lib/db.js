@@ -218,6 +218,10 @@ ensureColumn("coupons", "once_per_customer", "INTEGER NOT NULL DEFAULT 0");
 // e o endereço no carrinho. Fica nulo para quem criou conta antes disso
 // existir — o carrinho simplesmente não pré-preenche nesse caso.
 ensureColumn("users", "cep", "TEXT");
+// CPF (só dígitos) — substituiu o CEP como campo de cadastro a partir daqui;
+// contas criadas antes continuam com cep preenchido e cpf nulo, e vice-versa
+// daqui pra frente. Sem UNIQUE de propósito: e-mail já é a chave de conta.
+ensureColumn("users", "cpf", "TEXT");
 // Descadastro da newsletter: token aleatório (mesmo padrão de sessions/
 // password_resets) para o link do e-mail funcionar sem exigir login, e
 // unsubscribed_at para parar de contar essa inscritа em qualquer envio
@@ -286,13 +290,13 @@ seedDefaultCoupon();
 
 /* ---------------------------- USERS ---------------------------- */
 const stmtInsertUser = db.prepare(
-  `INSERT INTO users (name, email, password_hash, cep, created_at) VALUES (?, ?, ?, ?, ?)`
+  `INSERT INTO users (name, email, password_hash, cpf, created_at) VALUES (?, ?, ?, ?, ?)`
 );
 const stmtGetUserByEmail = db.prepare(`SELECT * FROM users WHERE email = ?`);
 const stmtGetUserById = db.prepare(`SELECT * FROM users WHERE id = ?`);
 
-function createUser({ name, email, passwordHash, cep }) {
-  const info = stmtInsertUser.run(name, email, passwordHash, cep || null, Date.now());
+function createUser({ name, email, passwordHash, cpf }) {
+  const info = stmtInsertUser.run(name, email, passwordHash, cpf || null, Date.now());
   return getUserById(Number(info.lastInsertRowid));
 }
 function getUserByEmail(email) {
@@ -306,7 +310,7 @@ function getUserById(id) {
 // não sensíveis — nunca password_hash, totp_secret nem totp_recovery_json —
 // e expõe apenas se o 2FA está ligado (booleano), não o segredo em si.
 const stmtListUsersForExport = db.prepare(
-  `SELECT id, name, email, cep, created_at,
+  `SELECT id, name, email, cpf, created_at,
           CASE WHEN totp_enabled_at IS NOT NULL THEN 1 ELSE 0 END AS has_2fa
      FROM users ORDER BY id`
 );
