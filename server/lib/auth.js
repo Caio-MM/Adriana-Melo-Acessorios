@@ -84,6 +84,15 @@ function isValidCpf(v) {
   return true;
 }
 
+// Campos obrigatórios de um endereço de entrega — usado tanto na validação
+// do checkout (server.js: buildCheckoutDraft) quanto na do endereço salvo
+// (PUT /api/auth/address), para as duas nunca divergirem sobre o que é
+// "endereço completo". `complemento` fica de fora de propósito: é opcional.
+const ADDRESS_REQUIRED_FIELDS = ["nome", "telefone", "rua", "numero", "bairro", "cidade", "uf"];
+function isValidAddress(address) {
+  return !!address && ADDRESS_REQUIRED_FIELDS.every(f => String(address[f] || "").trim());
+}
+
 /* ------------------------------ COOKIES ------------------------------ */
 function parseCookies(req) {
   const header = req.headers.cookie;
@@ -457,6 +466,7 @@ module.exports = {
   isValidCep,
   normalizeCpf,
   isValidCpf,
+  isValidAddress,
   issueSession,
   clearSession,
   issuePasswordReset,

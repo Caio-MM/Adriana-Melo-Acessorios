@@ -46,6 +46,21 @@ test("normalizeCpf / isValidCpf", () => {
   assert.equal(auth.isValidCpf("11111111111"), false, "sequência repetida");
 });
 
+test("isValidAddress", () => {
+  const enderecoCompleto = {
+    nome: "Maria Silva", telefone: "61982749808", rua: "Rua das Flores",
+    numero: "123", bairro: "Centro", cidade: "Brasília", uf: "DF",
+  };
+  assert.equal(auth.isValidAddress(enderecoCompleto), true);
+  assert.equal(auth.isValidAddress({ ...enderecoCompleto, numero: "" }), false, "campo obrigatório em branco");
+  assert.equal(auth.isValidAddress({ ...enderecoCompleto, numero: undefined }), false, "campo obrigatório ausente");
+  assert.equal(auth.isValidAddress(null), false);
+  assert.equal(auth.isValidAddress(undefined), false);
+  // complemento é opcional — a ausência dele não invalida o endereço.
+  const { complemento, ...semComplemento } = { ...enderecoCompleto, complemento: "" };
+  assert.equal(auth.isValidAddress(semComplemento), true);
+});
+
 test("TOTP — segredo em base32 e rejeição de códigos inválidos", () => {
   const secret = auth.generateTotpSecret();
   assert.match(secret, /^[A-Z2-7]+$/, "base32");

@@ -1148,9 +1148,19 @@ async function buildCheckoutDraft(req){
   if(!PAYMENT_METHODS[paymentMethod]){
     throw { status: 400, message: "Forma de pagamento inválida." };
   }
-  const requiredAddress = ["nome","telefone","rua","numero","bairro","cidade","uf"];
-  if(!address || requiredAddress.some(f => !String(address[f] || "").trim())){
+  if(!auth.isValidAddress(address)){
     throw { status: 400, message: "Endereço de entrega incompleto." };
+  }
+
+  // Best-effort: salva o endereço como padrão da conta para pré-preencher a
+  // próxima compra, a menos que a cliente tenha desmarcado a opção no
+  // carrinho. Nunca pode derrubar o checkout — um erro aqui só fica no log.
+  if(req.body?.saveAddress !== false){
+    try{
+      db.saveAddress(req.user.id, { ...address, cep });
+    }catch(err){
+      console.error("Falha ao salvar endereço padrão da conta:", err.message);
+    }
   }
 
   const validatedItems = buildValidatedItems(req.body?.items);
@@ -2048,6 +2058,32 @@ app.post("/api/auth/reset-password", authLimiter, async (req, res) => {
 app.get("/api/auth/me", (req, res) => {
   if(!req.user) return res.status(401).json({ error: "Não autenticado." });
   res.json(req.user);
+});
+
+/* =========================================================================
+   GET/PUT /api/auth/address — endereço de entrega padrão da conta
+   -------------------------------------------------------------------------
+   Sempre escopado a req.user.id (sessão), nunca a um id vindo do corpo/URL —
+   mesmo padrão de DELETE /api/auth/account. Usado pelo carrinho para
+   pré-preencher o formulário de endereço (GET, na primeira visita ao
+   checkout) e para permitir editar o padrão fora do fluxo de compra (PUT).
+   O PUT normal do checkout acontece direto em buildCheckoutDraft.
+========================================================================= */
+app.get("/api/auth/address", strictLimiter, auth.requireAuth, (req, res) => {
+  res.json({ address: db.getSavedAddress(req.user.id) });
+});
+
+app.put("/api/auth/address", strictLimiter, auth.requireAuth, (req, res) => {
+  const address = req.body?.address;
+  if(!auth.isValidAddress(address)){
+    return res.status(400).json({ error: "Endereço incompleto." });
+  }
+  const cep = auth.normalizeCep(address.cep);
+  if(!auth.isValidCep(cep)){
+    return res.status(400).json({ error: "CEP inválido — informe os 8 dígitos." });
+  }
+  db.saveAddress(req.user.id, { ...address, cep });
+  res.json({ ok: true });
 });
 
 /* =========================================================================

@@ -692,6 +692,7 @@
   const shippingMsgEl = document.getElementById("shippingMsg");
   const shippingOptionsEl = document.getElementById("shippingOptions");
   const addressFieldsEl = document.getElementById("addressFields");
+  const saveAddressCheck = document.getElementById("saveAddressCheck");
   const addrInputs = {
     nome: document.getElementById("addrNome"),
     telefone: document.getElementById("addrTelefone"),
@@ -785,14 +786,39 @@
     el.classList.add("is-shaking");
   }
 
-  function prefillFromAccount(){
+  function fillCep(digits){
+    if(!digits || cepInput.value.trim()) return;
+    const d = String(digits).replace(/\D/g, "").slice(0, 8);
+    cepInput.value = d.length > 5 ? `${d.slice(0,5)}-${d.slice(5)}` : d;
+  }
+
+  async function prefillFromAccount(){
     if(!currentUser) return;
     if(currentUser.name && !addrInputs.nome.value.trim()){
       addrInputs.nome.value = currentUser.name;
     }
-    if(currentUser.cep && !cepInput.value.trim()){
-      const d = String(currentUser.cep).replace(/\D/g, "").slice(0, 8);
-      cepInput.value = d.length > 5 ? `${d.slice(0,5)}-${d.slice(5)}` : d;
+    fillCep(currentUser.cep);
+
+    // Endereço completo salvo de uma compra anterior (server.js:
+    // GET /api/auth/address) — preenche o que a conta ainda não tiver
+    // preenchido acima. Best-effort: se falhar, os campos só ficam vazios,
+    // igual ao comportamento de sempre para quem não tem endereço salvo.
+    try{
+      const res = await fetch("/api/auth/address");
+      if(!res.ok) return;
+      const { address } = await res.json();
+      if(!address) return;
+      if(!addrInputs.nome.value) addrInputs.nome.value = address.nome || "";
+      if(!addrInputs.telefone.value) addrInputs.telefone.value = maskPhoneBR(address.telefone || "");
+      if(!addrInputs.rua.value) addrInputs.rua.value = address.rua || "";
+      if(!addrInputs.numero.value) addrInputs.numero.value = address.numero || "";
+      if(!addrInputs.complemento.value) addrInputs.complemento.value = address.complemento || "";
+      if(!addrInputs.bairro.value) addrInputs.bairro.value = address.bairro || "";
+      if(!addrInputs.cidade.value) addrInputs.cidade.value = address.cidade || "";
+      if(!addrInputs.uf.value) addrInputs.uf.value = address.uf || "";
+      fillCep(address.cep);
+    }catch(err){
+      console.warn("Não foi possível pré-preencher o endereço salvo:", err);
     }
   }
 
@@ -970,6 +996,7 @@
           cep: cepInput.value.replace("-", ""),
           shipping_service_id: shipping.service_id,
           address: getAddress(),
+          saveAddress: saveAddressCheck ? saveAddressCheck.checked : true,
           coupon: coupon ? coupon.code : undefined,
           paymentMethod,
         })

@@ -222,6 +222,13 @@ ensureColumn("users", "cep", "TEXT");
 // contas criadas antes continuam com cep preenchido e cpf nulo, e vice-versa
 // daqui pra frente. Sem UNIQUE de propósito: e-mail já é a chave de conta.
 ensureColumn("users", "cpf", "TEXT");
+// Endereço de entrega salvo (mesmo formato do address_json de orders, com
+// cep incluído) para pré-preencher o checkout nas próximas compras. Um só
+// endereço por cliente — não é histórico nem lista, é sobrescrito a cada
+// compra em que a cliente deixa marcada a opção "salvar para próximas
+// compras" (server.js: buildCheckoutDraft). Some junto quando a conta é
+// excluída, por já viver na própria linha de users (deleteUserAccount).
+ensureColumn("users", "saved_address_json", "TEXT");
 // Descadastro da newsletter: token aleatório (mesmo padrão de sessions/
 // password_resets) para o link do e-mail funcionar sem exigir login, e
 // unsubscribed_at para parar de contar essa inscritа em qualquer envio
@@ -304,6 +311,20 @@ function getUserByEmail(email) {
 }
 function getUserById(id) {
   return stmtGetUserById.get(id) || null;
+}
+
+const stmtSaveAddress = db.prepare(`UPDATE users SET saved_address_json = ? WHERE id = ?`);
+function getSavedAddress(userId) {
+  const user = getUserById(userId);
+  if (!user || !user.saved_address_json) return null;
+  try {
+    return JSON.parse(user.saved_address_json);
+  } catch {
+    return null;
+  }
+}
+function saveAddress(userId, address) {
+  stmtSaveAddress.run(JSON.stringify(address), userId);
 }
 
 // Usuários para a exportação em planilha (painel admin). Traz SÓ colunas
@@ -835,6 +856,8 @@ module.exports = {
   createUser,
   getUserByEmail,
   getUserById,
+  getSavedAddress,
+  saveAddress,
   listUsersForExport,
   createSession,
   getSessionByTokenHash,

@@ -81,3 +81,22 @@ test("deleteUserAccount — apaga o titular e anonimiza os pedidos (LGPD)", () =
   // Excluir de novo (usuário já não existe) retorna false, sem quebrar.
   assert.equal(db.deleteUserAccount(u.id), false);
 });
+
+test("getSavedAddress / saveAddress — endereço padrão por conta, isolado entre clientes", () => {
+  const a = db.createUser({ name: "End A", email: "enda@example.com", passwordHash: "x", cpf: "11144477735" });
+  const b = db.createUser({ name: "End B", email: "endb@example.com", passwordHash: "x", cpf: "11144477735" });
+
+  assert.equal(db.getSavedAddress(a.id), null, "sem endereço salvo, começa nulo");
+
+  const endereco = { nome: "End A", telefone: "61911112222", rua: "Rua A", numero: "1", bairro: "B", cidade: "Bsb", uf: "DF", cep: "70040020" };
+  db.saveAddress(a.id, endereco);
+  assert.deepEqual(db.getSavedAddress(a.id), endereco);
+
+  // Salvar de novo (segunda compra, endereço mudou) sobrescreve o anterior.
+  const novoEndereco = { ...endereco, rua: "Rua Nova", numero: "2" };
+  db.saveAddress(a.id, novoEndereco);
+  assert.deepEqual(db.getSavedAddress(a.id), novoEndereco);
+
+  // Endereço de uma cliente nunca aparece para outra.
+  assert.equal(db.getSavedAddress(b.id), null);
+});

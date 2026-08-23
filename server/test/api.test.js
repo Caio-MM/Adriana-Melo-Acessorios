@@ -57,6 +57,13 @@ function post(url, body, cookie) {
     body: JSON.stringify(body),
   });
 }
+function put(url, body, cookie) {
+  return fetch(ORIGIN + url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Origin: ORIGIN, ...(cookie ? { Cookie: cookie } : {}) },
+    body: JSON.stringify(body),
+  });
+}
 function cookieFrom(res) {
   const raw = res.headers.get("set-cookie");
   return raw ? raw.split(";")[0] : null;
@@ -129,4 +136,41 @@ test("exclusão de conta: senha errada barra; senha certa apaga e invalida login
 
   // Conta some: login falha.
   assert.equal((await post("/api/auth/login", { email: "del@test.com", password: "SenhaDEL12345!" })).status, 401);
+});
+
+test("GET/PUT /api/auth/address — sem sessão, endereço em branco, salva/atualiza, isolado entre clientes", async () => {
+  assert.equal((await fetch(ORIGIN + "/api/auth/address")).status, 401);
+
+  const regA = await post("/api/auth/register", { name: "End A", email: "enda@test.com", password: "SenhaA12345!", cpf: "11144477735" });
+  const cookieA = cookieFrom(regA);
+
+  // Primeira compra: nada salvo ainda.
+  const initial = await fetch(ORIGIN + "/api/auth/address", { headers: { Cookie: cookieA } });
+  assert.equal(initial.status, 200);
+  assert.equal((await initial.json()).address, null);
+
+  const endereco = { nome: "End A", telefone: "(61) 91111-2222", rua: "Rua das Flores", numero: "10", bairro: "Centro", cidade: "Brasília", uf: "DF", cep: "70040-020" };
+
+  // Endereço incompleto -> 400, nada é salvo.
+  const incompleto = await put("/api/auth/address", { address: { ...endereco, numero: "" } }, cookieA);
+  assert.equal(incompleto.status, 400);
+
+  // Endereço completo -> 200, e volta pré-preenchido igual ao que foi salvo.
+  const saved = await put("/api/auth/address", { address: endereco }, cookieA);
+  assert.equal(saved.status, 200);
+  const fetched = await (await fetch(ORIGIN + "/api/auth/address", { headers: { Cookie: cookieA } })).json();
+  assert.equal(fetched.address.rua, "Rua das Flores");
+  assert.equal(fetched.address.cep, "70040020", "cep salvo só com dígitos");
+
+  // Segunda compra, endereço mudou -> PUT sobrescreve o anterior.
+  const atualizado = await put("/api/auth/address", { address: { ...endereco, rua: "Rua Nova", numero: "20" } }, cookieA);
+  assert.equal(atualizado.status, 200);
+  const refetched = await (await fetch(ORIGIN + "/api/auth/address", { headers: { Cookie: cookieA } })).json();
+  assert.equal(refetched.address.rua, "Rua Nova");
+
+  // Endereço de A nunca aparece para B, mesmo autenticado.
+  const regB = await post("/api/auth/register", { name: "End B", email: "endb@test.com", password: "SenhaB12345!", cpf: "11144477735" });
+  const cookieB = cookieFrom(regB);
+  const asB = await (await fetch(ORIGIN + "/api/auth/address", { headers: { Cookie: cookieB } })).json();
+  assert.equal(asB.address, null, "endereço de outra conta não vaza");
 });
