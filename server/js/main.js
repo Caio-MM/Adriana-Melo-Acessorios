@@ -140,7 +140,7 @@
   function stars(n){
     let s = "";
     for(let i=1;i<=5;i++){ s += `<i class="bi ${i<=n ? 'bi-star-fill':'bi-star'}"></i>`; }
-    return s;
+    return `<span aria-hidden="true">${s}</span><span class="visually-hidden">Avaliação: ${n} de 5</span>`;
   }
 
   function wireImage(imgEl){
@@ -161,7 +161,7 @@
       const photo = imageFor(p);
       return `
       <div class="col-6 col-md-4 col-lg-3 reveal reveal-delay-${i % 4}">
-        <div class="product-card${p.badges?.length ? " is-featured" : ""}" data-id="${p.id}">
+        <div class="product-card${p.badges?.length ? " is-featured" : ""}" data-id="${p.id}" role="button" tabindex="0" aria-label="Ver detalhes de ${escapeHTML(p.name)}">
           <div class="product-thumb${photo ? " is-loading" : ""}" style="background:${safeColor(p.color)}22">
             ${p.badges?.length ? `<div class="product-badges">${p.badges.map(b => `<span class="product-badge">${escapeHTML(b)}</span>`).join("")}</div>` : ""}
             <button type="button" class="product-quickview" aria-label="Ver detalhes de ${escapeHTML(p.name)}"><i class="bi bi-eye"></i></button>
@@ -1116,6 +1116,16 @@
 
     const card = e.target.closest(".product-card");
     if(card) openQuickView(Number(card.dataset.id));
+  });
+
+  // Ativação por teclado do card (Enter/Espaço) — só quando o foco está no
+  // próprio card, não em um botão filho (.btn-add/.product-quickview), que
+  // já trata Enter/Espaço nativamente por ser um <button> de verdade.
+  grid.addEventListener("keydown", function(e){
+    if(e.key !== "Enter" && e.key !== " ") return;
+    if(!e.target.classList.contains("product-card")) return;
+    e.preventDefault();
+    openQuickView(Number(e.target.dataset.id));
   });
 
   document.getElementById("qvMinus").addEventListener("click", () => {

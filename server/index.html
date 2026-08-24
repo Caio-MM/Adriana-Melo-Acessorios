@@ -88,10 +88,10 @@
   </div>
 </nav>
 
-<div class="offcanvas offcanvas-end" id="navOffcanvas" style="background:var(--cream)">
+<div class="offcanvas offcanvas-end" id="navOffcanvas" tabindex="-1" aria-label="Menu de navegação" style="background:var(--cream)">
   <div class="offcanvas-header">
     <span class="plc-brand"><img src="img/logo-adriana-melo-6e53bc.png" alt="Adriana Melo Acessórios" width="168" height="54"></span>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
   </div>
   <div class="offcanvas-body d-flex flex-column gap-3">
     <a href="#inicio" class="plc-nav-link">Início</a>
@@ -630,7 +630,7 @@
         </div>
       </div>
       <div class="col-lg-2 col-6">
-        <h6>Coleções</h6>
+        <h3 class="plc-footer-heading">Coleções</h3>
         <div class="d-flex flex-column gap-2">
           <a href="#colecoes">Maternidade</a>
           <a href="#colecoes">Festa</a>
@@ -639,7 +639,7 @@
         </div>
       </div>
       <div class="col-lg-2 col-6">
-        <h6>Ateliê</h6>
+        <h3 class="plc-footer-heading">Ateliê</h3>
         <div class="d-flex flex-column gap-2">
           <a href="#historia">Nossa história</a>
           <a href="#sobre">Como funciona</a>
@@ -650,7 +650,7 @@
         </div>
       </div>
       <div class="col-lg-4">
-        <h6>Formas de pagamento</h6>
+        <h3 class="plc-footer-heading">Formas de pagamento</h3>
                 <div class="d-flex flex-wrap gap-2">
           <span class="pay-badge" id="payBadgePix">Pix</span>
           <span class="pay-badge" id="payBadgeInstallments">Parcelamento no cartão</span>
@@ -697,12 +697,12 @@
 </div>
 
 <!-- ============ MODAL: QUICK VIEW ============ -->
-<div class="modal fade" id="quickViewModal" tabindex="-1">
+<div class="modal fade" id="quickViewModal" tabindex="-1" aria-labelledby="qvName" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content" style="border-radius:var(--radius-md); border:none">
       <div class="modal-header border-0">
         <h5 class="modal-title font-display" id="qvName">Laço</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
       <div class="modal-body">
         <div class="qv-thumb is-loading mb-2" id="qvThumb">
