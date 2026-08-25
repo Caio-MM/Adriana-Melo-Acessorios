@@ -506,6 +506,7 @@
   const editForm = document.getElementById("editProductForm");
   const epId = document.getElementById("epId");
   const epName = document.getElementById("epName");
+  const epDescription = document.getElementById("epDescription");
   const epPrice = document.getElementById("epPrice");
   const epPhotoFile = document.getElementById("epPhotoFile");
   const epAddPhotoBtn = document.getElementById("epAddPhotoBtn");
@@ -675,6 +676,7 @@
     if(!product) return;
     epId.value = product.id;
     epName.value = product.name;
+    epDescription.value = product.description || "";
     epPrice.value = product.price;
     epPhotoFile.value = "";
     renderCategoryOptions(epCategory, product.category || "");
@@ -706,6 +708,7 @@
     photoUploadInFlight = false;
     editOriginal = {
       name: product.name,
+      description: product.description || "",
       price: product.price,
       photos: [...pendingPhotos], // ordem importa — NÃO ordenar antes de comparar no submit
       category: product.category || "",
@@ -718,8 +721,11 @@
 
   /* ============ FOTO DO PRODUTO — recorte no navegador e depois upload ============ */
 
+  // 2:3 — mesma proporção do .ep-crop-stage (CSS) e do card/Quick View na
+  // loja. Batendo com a proporção das fotos reais (retrato, 4000x6000px),
+  // uma foto enviada sem mexer no zoom sai do recorte sem nenhum corte.
   const CROP_OUTPUT_W = 800;
-  const CROP_OUTPUT_H = 1000;
+  const CROP_OUTPUT_H = 1200;
   const CROP_JPEG_QUALITY = 0.9;
 
   const crop = { natW: 0, natH: 0, baseScale: 1, zoom: 1, x: 0, y: 0, objectUrl: null, stageW: 0, stageH: 0 };
@@ -937,12 +943,14 @@
     if(photoUploadInFlight) return; 
     const id = Number(epId.value);
     const name = epName.value.trim();
+    const description = epDescription.value.trim();
     const price = Number(epPrice.value);
     const category = epCategory.value;
     const badges = selectedBadges();
 
     const patch = {};
     if(name !== editOriginal.name) patch.name = name;
+    if(description !== editOriginal.description) patch.description = description;
     if(price !== editOriginal.price) patch.price = price;
     // Ordem é o próprio dado aqui (diferente de badges/cores, abaixo) — sem
     // .sort() antes de comparar, senão reordenar sem adicionar/remover nada
@@ -1077,6 +1085,7 @@
   const addProductModal = new bootstrap.Modal(addProductModalEl);
   const addProductForm = document.getElementById("addProductForm");
   const apName = document.getElementById("apName");
+  const apDescription = document.getElementById("apDescription");
   const apPrice = document.getElementById("apPrice");
   const apWeight = document.getElementById("apWeight");
   const apWidth = document.getElementById("apWidth");
@@ -1102,6 +1111,7 @@
     e.preventDefault();
     const payload = {
       name: apName.value.trim(),
+      description: apDescription.value.trim(),
       price: Number(apPrice.value),
       weight: Number(apWeight.value),
       width: Number(apWidth.value),

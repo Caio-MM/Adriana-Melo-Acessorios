@@ -175,3 +175,20 @@ test("upsertProductOverride — allow_second_color: NULL e 0 são a mesma coisa 
   const depoisDeOutraEdicao = db.upsertProductOverride(90003, { price: 55 });
   assert.equal(depoisDeOutraEdicao.allow_second_color, 1, "edição de outro campo preserva o estado ligado");
 });
+
+test("upsertProductOverride — description: mesmo padrão de name (ausente preserva, vazio limpa pro padrão)", () => {
+  const semTocar = db.upsertProductOverride(90004, { name: "Produto Teste Descrição" });
+  assert.equal(semTocar.description, null, "chave ausente preserva NULL — front-end cai pra descrição padrão");
+
+  const comDescricao = db.upsertProductOverride(90004, { description: "Laço todo feito à mão, em cetim importado." });
+  assert.equal(comDescricao.description, "Laço todo feito à mão, em cetim importado.");
+
+  // Editar outro campo sem tocar em description preserva a descrição salva.
+  const depoisDeOutraEdicao = db.upsertProductOverride(90004, { price: 42 });
+  assert.equal(depoisDeOutraEdicao.description, "Laço todo feito à mão, em cetim importado.", "edição de outro campo preserva a descrição");
+
+  // String vazia limpa de volta pro padrão (NULL) — diferente de
+  // available_colors/photos, não existe "descrição vazia de propósito".
+  const limpa = db.upsertProductOverride(90004, { description: "" });
+  assert.equal(limpa.description, null, "descrição vazia volta pro padrão (NULL)");
+});

@@ -504,7 +504,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 .product-card.is-featured{ border-color:var(--blush-300); box-shadow:0 12px 30px -20px rgba(192,84,128,.5); }
 .product-thumb{
-  aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+  /* 2:3 — mesma proporção das fotos reais que a loja usa (retrato,
+     4000x6000px). Batendo com a foto de origem, object-fit:cover não
+     precisa cortar nada; era 1:1 antes, cortando fotos retrato pros lados. */
+  aspect-ratio:2/3; display:flex; align-items:center; justify-content:center;
   position:relative; background:var(--blush-50); overflow:hidden;
 }
 .product-thumb .bow-icon{ width:46%; height:auto; }
@@ -587,16 +590,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 .qv-thumb{
-  /* Moldura fixa em 4:3 na vertical (não varia por foto) — com a galeria,
-     deixar a caixa mudar de tamanho a cada foto trocada (dependendo das
+  /* Moldura fixa em 2:3 (não varia por foto) — a mesma proporção das
+     fotos reais que a loja usa (retrato, 4000x6000px), então
+     object-fit:cover não precisa cortar nada; com a galeria, deixar a
+     caixa mudar de tamanho a cada foto trocada (dependendo das
      dimensões reais de cada uma) ficaria com um "pulo" visual feio ao
-     navegar; object-fit:cover no <img> já preenche o quadro cortando com
-     elegância, igual a qualquer vitrine de e-commerce.
+     navegar de qualquer forma.
      Altura (não largura) é o lado limitado, via vh: numa tela baixa
      (celular deitado, ou pouca altura de viewport) isso encolhe a foto
      em vez de empurrar preço/pagamento pra fora da área visível — a
      largura já vem de graça pelo aspect-ratio. */
-  position:relative; aspect-ratio:3/4;
+  position:relative; aspect-ratio:2/3;
   height:min(46vh, 480px); width:auto; max-width:100%; margin-inline:auto;
   border-radius:var(--radius-md); overflow:hidden;
   display:flex; align-items:center; justify-content:center; background:var(--blush-50);
@@ -2278,7 +2282,10 @@ body.admin-gate-active .admin-state-area{
 .ep-crop-hint{ font-size:.76rem; color:var(--ink-soft); line-height:1.4; }
 
 .ep-crop-stage{
-  position:relative; width:min(280px, 68vw); aspect-ratio:4/5; margin:0 auto;
+  /* 2:3 — mesma proporção do card da vitrine e do Quick View. Uma foto
+     enviada que já seja 2:3 (o padrão da loja) não perde nada com zoom
+     em 1 (crop.baseScale vira um "cover" exato, sem sobra pra cortar). */
+  position:relative; width:min(280px, 68vw); aspect-ratio:2/3; margin:0 auto;
   overflow:hidden; border-radius:var(--radius-md);
   background:var(--blush-50); cursor:grab; touch-action:none;
   outline-offset:3px;

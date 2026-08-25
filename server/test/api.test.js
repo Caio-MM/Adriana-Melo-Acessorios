@@ -440,3 +440,33 @@ test("2ª cor opcional (produtos vendidos em conjunto): exige allowsSecondColor,
   const corrida = await post("/api/create-preference", checkoutBody("#F4B4CC", "#DD6E9B"), clienteCookie);
   assert.equal(corrida.status, 409, "2ª cor que ficou esgotada entre a escolha e o checkout é rejeitada");
 });
+
+test("descrição do produto: PATCH edita, GET /api/products reflete, POST /api/admin/products aceita na criação", async () => {
+  const adminCookie = sharedAdminCookie;
+  assert.ok(adminCookie);
+
+  // Produto 4 (Laço Pérola) — ainda não tocado pelos testes anteriores.
+  const patched = await patch("/api/admin/products/4", { description: "Descrição escrita pela lojista." }, adminCookie);
+  assert.equal(patched.status, 200);
+  assert.equal((await patched.json()).description, "Descrição escrita pela lojista.");
+
+  const pub = await (await fetch(ORIGIN + "/api/products")).json();
+  assert.equal(pub.products.find(p => p.id === 4).description, "Descrição escrita pela lojista.");
+
+  // Descrição muito longa é rejeitada.
+  const longaDemais = await patch("/api/admin/products/4", { description: "x".repeat(501) }, adminCookie);
+  assert.equal(longaDemais.status, 400);
+
+  // String vazia limpa de volta pro padrão (null) — não é erro.
+  const limpa = await patch("/api/admin/products/4", { description: "" }, adminCookie);
+  assert.equal(limpa.status, 200);
+  assert.equal((await limpa.json()).description, null);
+
+  // Criar produto novo já com descrição.
+  const created = await post("/api/admin/products", {
+    name: "Produto Teste Descrição", description: "Feito sob encomenda.",
+    price: 39.9, weight: 0.05, width: 16, height: 3, length: 11, badges: [],
+  }, adminCookie);
+  assert.equal(created.status, 201);
+  assert.equal((await created.json()).description, "Feito sob encomenda.");
+});

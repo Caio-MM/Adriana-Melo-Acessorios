@@ -213,12 +213,13 @@ function effectiveProduct(id, overridesMap){
       // nada subitamente incomprável para produto que a lojista nunca editou).
       availableColors: custom.available_colors != null ? JSON.parse(custom.available_colors) : getAllColorHexes(),
       allowsSecondColor: Boolean(custom.allow_second_color),
+      description: custom.description || null,
     };
   }
   const base = PRODUCTS[id];
   if(!base) return null;
   const override = overridesMap.get(id);
-  if(!override) return { ...base, photos: [], photoUrl: null, availableColors: getAllColorHexes(), allowsSecondColor: false };
+  if(!override) return { ...base, photos: [], photoUrl: null, availableColors: getAllColorHexes(), allowsSecondColor: false, description: null };
   const photos = photosFromRow(override);
   return {
     ...base,
@@ -229,6 +230,7 @@ function effectiveProduct(id, overridesMap){
     badges: override.badges ? JSON.parse(override.badges) : base.badges,
     allowsSecondColor: Boolean(override.allow_second_color),
     availableColors: override.available_colors != null ? JSON.parse(override.available_colors) : getAllColorHexes(),
+    description: override.description || null,
   };
 }
 
@@ -2534,7 +2536,7 @@ app.get("/api/products", (req, res) => {
   const overridesMap = getProductOverridesMap();
   const products = getAllProductIds().map(id => {
     const p = effectiveProduct(id, overridesMap);
-    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, availableColors: p.availableColors, allowsSecondColor: p.allowsSecondColor };
+    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, availableColors: p.availableColors, allowsSecondColor: p.allowsSecondColor, description: p.description };
   });
   // `paymentRules` viaja junto do catálogo (em vez de numa rota própria) para
   // não gastar mais uma das requisições do rate limit por carregamento de
@@ -2561,7 +2563,7 @@ app.get("/api/admin/products", auth.requireAdmin, auth.requireAdminTwoFactor, (r
   const overridesMap = getProductOverridesMap();
   const products = getAllProductIds().map(id => {
     const p = effectiveProduct(id, overridesMap);
-    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, availableColors: p.availableColors, allowsSecondColor: p.allowsSecondColor };
+    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, availableColors: p.availableColors, allowsSecondColor: p.allowsSecondColor, description: p.description };
   });
   res.json({ products, categories: getAllCategories(), colors: getAllColors(), availableBadges: PRODUCT_BADGES });
 });
@@ -2672,14 +2674,19 @@ app.post("/api/admin/products", auth.requireAdmin, auth.requireAdminTwoFactor, (
     if(!isValidBadges(badges)){
       return res.status(400).json({ error: "Selo de destaque inválido." });
     }
+    const description = body.description ? String(body.description).trim() : "";
+    if(description.length > 500){
+      return res.status(400).json({ error: "Descrição muito longa (máximo 500 caracteres)." });
+    }
 
     const created = db.insertCustomProduct({
       startAt: CUSTOM_PRODUCT_ID_START, name, price: Math.round(price * 100) / 100,
-      weight, width, height, length, category: category || null, badges,
+      weight, width, height, length, category: category || null, badges, description: description || null,
     });
     res.status(201).json({
       id: created.id, name: created.name, price: created.price, photoUrl: null, photos: [],
       category: created.category, badges: created.badges ? JSON.parse(created.badges) : [],
+      description: created.description || null,
     });
   } catch (err) {
     console.error("Erro ao criar produto:", err);
@@ -2771,6 +2778,13 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFact
     if("allowSecondColor" in body){
       fields.allowSecondColor = Boolean(body.allowSecondColor);
     }
+    if("description" in body){
+      const description = body.description ? String(body.description).trim() : "";
+      if(description.length > 500){
+        return res.status(400).json({ error: "Descrição muito longa (máximo 500 caracteres)." });
+      }
+      fields.description = description || null;
+    }
 
     if(Object.keys(fields).length === 0){
       return res.status(400).json({ error: "Nada para salvar." });
@@ -2780,7 +2794,7 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFact
     else db.upsertProductOverride(id, fields);
 
     const updated = effectiveProduct(id, getProductOverridesMap());
-    res.json({ id, name: updated.name, price: updated.price, photoUrl: updated.photoUrl, photos: updated.photos, category: updated.category, badges: updated.badges, availableColors: updated.availableColors, allowsSecondColor: updated.allowsSecondColor });
+    res.json({ id, name: updated.name, price: updated.price, photoUrl: updated.photoUrl, photos: updated.photos, category: updated.category, badges: updated.badges, availableColors: updated.availableColors, allowsSecondColor: updated.allowsSecondColor, description: updated.description });
   } catch (err) {
     console.error("Erro ao atualizar produto:", err);
     res.status(500).json({ error: "Não foi possível salvar o produto agora." });

@@ -284,7 +284,7 @@
             color: allColors[o.id % allColors.length].hex,
             rating: 5, badges: Array.isArray(o.badges) ? o.badges : [],
             availableColors: Array.isArray(o.availableColors) ? o.availableColors : allColors.map(c => c.hex),
-            desc: "Peça exclusiva, feita à mão pela Adriana Melo Acessórios.",
+            desc: o.description || "Peça exclusiva, feita à mão pela Adriana Melo Acessórios.",
             image: o.photoUrl || null,
             photos: Array.isArray(o.photos) ? o.photos : (o.photoUrl ? [o.photoUrl] : []),
             allowsSecondColor: Boolean(o.allowsSecondColor),
@@ -295,6 +295,7 @@
           return;
         }
         if(o.name && o.name !== p.name){ p.name = o.name; changed = true; }
+        if(o.description && o.description !== p.desc){ p.desc = o.description; changed = true; }
         if(o.price != null && o.price !== p.price){ p.price = o.price; changed = true; }
         if(o.photoUrl && o.photoUrl !== p.image){ p.image = o.photoUrl; changed = true; }
         if(Array.isArray(o.photos) && !sameBadges(o.photos, photosFor(p))){ p.photos = o.photos; changed = true; }
