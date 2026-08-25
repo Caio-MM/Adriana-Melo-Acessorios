@@ -575,16 +575,39 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* ============ QUICK VIEW (detalhes do produto) ============ */
 
+/* No computador (mesmo breakpoint do .modal-lg do Bootstrap, que já
+   deixa o modal bem mais largo aqui) a foto vai numa coluna e as
+   informações — descrição, cor, quantidade e PREÇO — na outra, lado a
+   lado. Só isso já resolve o preço ficar espremido embaixo da foto; no
+   celular continua empilhado do jeito que sempre foi. */
+@media (min-width: 992px){
+  .qv-body{ display:flex; align-items:flex-start; gap:1.75rem; }
+  .qv-media{ flex:0 0 300px; }
+  .qv-info{ flex:1 1 auto; min-width:0; padding-top:.2rem; }
+}
+
 .qv-thumb{
   /* Moldura fixa em 4:3 na vertical (não varia por foto) — com a galeria,
      deixar a caixa mudar de tamanho a cada foto trocada (dependendo das
      dimensões reais de cada uma) ficaria com um "pulo" visual feio ao
      navegar; object-fit:cover no <img> já preenche o quadro cortando com
-     elegância, igual a qualquer vitrine de e-commerce. */
+     elegância, igual a qualquer vitrine de e-commerce.
+     Altura (não largura) é o lado limitado, via vh: numa tela baixa
+     (celular deitado, ou pouca altura de viewport) isso encolhe a foto
+     em vez de empurrar preço/pagamento pra fora da área visível — a
+     largura já vem de graça pelo aspect-ratio. */
   position:relative; aspect-ratio:3/4;
-  width:min(100%, 420px); margin-inline:auto;
+  height:min(46vh, 480px); width:auto; max-width:100%; margin-inline:auto;
   border-radius:var(--radius-md); overflow:hidden;
   display:flex; align-items:center; justify-content:center; background:var(--blush-50);
+}
+/* No computador a foto já não compete mais com o preço pela altura da
+   tela (foto e informações ficam lado a lado, ver .qv-body acima) —
+   pode crescer mais. Vem DEPOIS da regra base de propósito, pra
+   sobrescrever a mesma propriedade (mesma especificidade — quem vier
+   depois no arquivo vale). */
+@media (min-width: 992px){
+  .qv-thumb{ height:min(52vh, 560px); }
 }
 .qv-thumb img{
   position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
