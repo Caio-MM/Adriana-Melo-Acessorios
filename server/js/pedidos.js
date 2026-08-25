@@ -43,7 +43,7 @@
       const status = STATUS_LABELS[order.status] || { label: escapeHTML(order.status), cls:"order-status-pending" };
       const itemsHtml = order.items.map(item => `
         <li class="d-flex justify-content-between gap-3">
-          <span>${item.qty}x ${escapeHTML(item.name)}</span>
+          <span>${item.qty}x ${escapeHTML(item.name)}${item.color ? ` — cor: ${escapeHTML(item.color)}` : ""}</span>
           <span>${item.unitPrice != null ? formatMoney(item.unitPrice * item.qty) : "—"}</span>
         </li>
       `).join("");

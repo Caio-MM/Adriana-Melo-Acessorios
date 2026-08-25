@@ -30,7 +30,7 @@
  */
 const nodemailer = require("nodemailer");
 const path = require("path");
-const { colorLabelFor, formatCurrency, formatOrderDateTime, deliveryLineFor } = require("./orderFormatting");
+const { colorLabelForItem, formatCurrency, formatOrderDateTime, deliveryLineFor } = require("./orderFormatting");
 
 // Logo embutida como anexo inline (Content-ID) em vez de <img src> apontando
 // pra URL remota: e-mail nenhum carrega imagem remota sozinho — todo cliente
@@ -168,12 +168,12 @@ function linhaDado(rotulo, valor){
  * painel administrativo). Função pura — sem chamada de rede — fácil de
  * ajustar/testar isoladamente.
  */
-function formatOrderEmail({ externalReference, items, address, total, paidAt, adminUrl }) {
+function formatOrderEmail({ externalReference, items, address, total, paidAt, adminUrl, allColors }) {
   const itemLinesText = items
-    .map(({ id, qty, name }) => `${qty}x ${name} — cor: ${colorLabelFor(id)}`)
+    .map(item => `${item.qty}x ${item.name} — cor: ${colorLabelForItem(item, allColors)}`)
     .join("\n");
   const itemLinesHtml = items
-    .map(({ id, qty, name }) => `<li>${qty}x ${escapeHTML(name)} — cor: ${escapeHTML(colorLabelFor(id))}</li>`)
+    .map(item => `<li>${item.qty}x ${escapeHTML(item.name)} — cor: ${escapeHTML(colorLabelForItem(item, allColors))}</li>`)
     .join("");
 
   const subject = `🎀 Novo pedido pago — ${externalReference}`;
@@ -197,10 +197,10 @@ function formatOrderEmail({ externalReference, items, address, total, paidAt, ad
   ].join("\n");
 
   const itemRowsHtml = items
-    .map(({ id, qty, name }) => `
+    .map(item => `
       <tr>
         <td style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; padding:6px 0; border-bottom:1px solid #FBDCE8;">
-          ${escapeHTML(qty)}x ${escapeHTML(name)} — cor: ${escapeHTML(colorLabelFor(id))}
+          ${escapeHTML(item.qty)}x ${escapeHTML(item.name)} — cor: ${escapeHTML(colorLabelForItem(item, allColors))}
         </td>
       </tr>
     `).join("");

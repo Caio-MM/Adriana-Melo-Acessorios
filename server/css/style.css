@@ -576,9 +576,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 /* ============ QUICK VIEW (detalhes do produto) ============ */
 
 .qv-thumb{
-  position:relative; aspect-ratio:var(--qv-ratio, 4/5);
-
-  width:min(100%, calc(46vh * var(--qv-ar, .8))); margin-inline:auto;
+  /* Moldura fixa em 4:3 na vertical (não varia por foto) — com a galeria,
+     deixar a caixa mudar de tamanho a cada foto trocada (dependendo das
+     dimensões reais de cada uma) ficaria com um "pulo" visual feio ao
+     navegar; object-fit:cover no <img> já preenche o quadro cortando com
+     elegância, igual a qualquer vitrine de e-commerce. */
+  position:relative; aspect-ratio:3/4;
+  width:min(100%, 420px); margin-inline:auto;
   border-radius:var(--radius-md); overflow:hidden;
   display:flex; align-items:center; justify-content:center; background:var(--blush-50);
 }
@@ -594,6 +598,56 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   background-size:200% 100%;
   animation:shimmer 1.4s ease-in-out infinite;
 }
+
+/* ============ QUICK VIEW — galeria de fotos ============ */
+.qv-gallery-nav-btn{
+  position:absolute; top:50%; transform:translateY(-50%); width:36px; height:36px; border-radius:50%;
+  background:rgba(255,255,255,.9); border:none; display:flex; align-items:center; justify-content:center;
+  color:var(--blush-700); z-index:1; transition:background .2s ease, color .2s ease, opacity .2s ease;
+}
+.qv-gallery-nav-btn:hover:not(:disabled){ background:var(--blush-600); color:#fff; }
+.qv-gallery-nav-btn:disabled{ opacity:.35; cursor:not-allowed; }
+.qv-gallery-nav-btn.is-prev{ left:10px; }
+.qv-gallery-nav-btn.is-next{ right:10px; }
+.qv-gallery-thumbs{ display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.6rem; justify-content:center; }
+.qv-gallery-thumb{
+  width:52px; height:52px; border-radius:10px; overflow:hidden; padding:0; border:2px solid transparent;
+  box-shadow:0 0 0 1.5px var(--blush-200); background:var(--blush-50); transition:box-shadow .15s ease, border-color .15s ease;
+}
+.qv-gallery-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+.qv-gallery-thumb.is-active{ box-shadow:0 0 0 2.5px var(--blush-600); }
+.qv-gallery-thumb:focus-visible{ outline:3px solid var(--blush-600); outline-offset:2px; }
+
+/* ============ QUICK VIEW — escolha de cor ============ */
+.qv-color-options{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.4rem; }
+.qv-color-option{
+  position:relative; width:34px; height:34px; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.qv-color-swatch{
+  width:28px; height:28px; border-radius:50%; border:2px solid var(--white);
+  box-shadow:0 0 0 1.5px var(--blush-200); transition:box-shadow .15s ease;
+}
+.qv-color-option.selected .qv-color-swatch{ box-shadow:0 0 0 2.5px var(--blush-600); }
+.qv-color-option input{ position:absolute; inset:0; opacity:0; margin:0; cursor:pointer; }
+.qv-color-option:focus-within .qv-color-swatch{ outline:3px solid var(--blush-600); outline-offset:2px; }
+.qv-color-option.is-disabled{ cursor:not-allowed; }
+.qv-color-option.is-disabled .qv-color-swatch{ opacity:.35; box-shadow:0 0 0 1.5px var(--blush-100); }
+.qv-color-option.is-disabled::after{
+  content:""; position:absolute; width:30px; height:2px; background:var(--ink-soft);
+  transform:rotate(45deg); pointer-events:none;
+}
+.qv-color-option input:disabled{ cursor:not-allowed; }
+.qv-soldout-msg{ font-size:.8rem; color:var(--color-danger); margin-top:.4rem; }
+
+/* Chip "Sem 2ª cor" do seletor de cor secundária (produtos em conjunto) —
+   mesmo tamanho/formato de .qv-color-swatch, sem cor de fundo, com um X
+   no lugar do preenchimento. */
+.qv-color-swatch-none{
+  display:flex; align-items:center; justify-content:center;
+  background:var(--blush-50); color:var(--ink-soft); font-size:.7rem;
+}
+.qv-color-option-none.selected .qv-color-swatch-none{ color:var(--blush-700); }
 
 .qv-pix{
   background:var(--blush-50); border:1.5px solid var(--blush-200);
@@ -923,6 +977,23 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .cart-item-price{ color:var(--ink); font-size:.86rem; font-weight:600; white-space:nowrap; flex-shrink:0; }
 .cart-item-price small{ color:var(--ink-soft); font-weight:400; font-size:.72rem; margin-left:.2rem; }
+.cart-item-color-dot{ width:12px; height:12px; border-radius:50%; border:1px solid rgba(0,0,0,.08); flex-shrink:0; }
+.cart-item-color-edit{ margin:.15rem 0 .3rem; }
+.cart-item-color-summary{
+  display:flex; align-items:center; gap:.35rem; font-size:.78rem; color:var(--ink-soft);
+  cursor:pointer; list-style:none; width:fit-content;
+}
+.cart-item-color-summary::-webkit-details-marker{ display:none; }
+.cart-item-color-summary .bi-pencil-fill{ font-size:.65rem; color:var(--blush-500); margin-left:.1rem; }
+.cart-item-color-summary:hover .bi-pencil-fill,
+.cart-item-color-summary:focus-visible .bi-pencil-fill{ color:var(--blush-700); }
+.cart-item-color-panel{
+  display:flex; flex-direction:column; gap:.5rem;
+  padding:.6rem .1rem .1rem; animation:auth-pane-slide-back .25s ease;
+}
+.cart-item-color-group-label{ font-size:.68rem; color:var(--ink-soft); display:block; margin-bottom:.25rem; }
+.cart-item-color-swatches{ margin-top:0; }
+.cart-color-swatch-btn{ border:none; background:none; }
 .cart-item-controls{ display:flex; align-items:center; justify-content:space-between; gap:.6rem; }
 .cart-qty{ display:flex; align-items:center; gap:.5rem; }
 .cart-qty button{
@@ -2105,6 +2176,50 @@ body.admin-gate-active .admin-state-area{
   font-size:.7rem; font-weight:700; padding:.2rem .55rem; border-radius:999px; margin:0 .2rem .2rem 0;
 }
 
+.ep-color-options{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.35rem; }
+.ep-color-check{
+  display:flex; align-items:center; gap:.4rem; cursor:pointer;
+  border:1.5px solid var(--blush-200); border-radius:999px;
+  padding:.3rem .7rem .3rem .4rem; font-size:.78rem; transition:border-color .15s ease, background .15s ease;
+}
+.ep-color-check:has(.ep-color-input:checked){ border-color:var(--blush-600); background:var(--blush-50); }
+.ep-color-swatch{ width:18px; height:18px; border-radius:50%; flex-shrink:0; border:1px solid rgba(0,0,0,.08); }
+.ep-color-input{ accent-color:var(--blush-600); }
+.ep-color-check-wrap{ display:inline-flex; align-items:center; gap:.2rem; }
+.ep-color-delete{
+  width:20px; height:20px; padding:0; border:none; border-radius:50%; flex-shrink:0;
+  display:inline-flex; align-items:center; justify-content:center; font-size:.6rem;
+  background:var(--color-danger-soft); color:var(--color-danger); transition:background .15s ease, color .15s ease;
+}
+.ep-color-delete:hover{ background:var(--color-danger); color:var(--white); }
+
+.ep-photo-list{ display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:.6rem; }
+.ep-photo-item{
+  width:84px; border:1.5px solid var(--blush-200); border-radius:var(--radius-sm);
+  padding:.3rem; background:var(--white);
+}
+.ep-photo-thumb{ position:relative; aspect-ratio:1/1; border-radius:10px; overflow:hidden; background:var(--blush-50); }
+.ep-photo-thumb img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+.ep-photo-cover-badge{
+  position:absolute; left:4px; bottom:4px;
+  background:var(--blush-600); color:var(--white);
+  font-size:.62rem; font-weight:700; padding:.1rem .4rem; border-radius:999px;
+}
+.ep-photo-actions{ display:flex; flex-wrap:wrap; gap:.2rem; margin-top:.3rem; }
+.ep-photo-actions button{
+  flex:1 1 auto; min-width:26px; height:26px; padding:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  border:none; border-radius:8px; background:var(--blush-50); color:var(--blush-700);
+  font-size:.7rem; transition:background .15s ease, color .15s ease, opacity .15s ease;
+}
+.ep-photo-actions button:hover:not(:disabled){ background:var(--blush-600); color:var(--white); }
+.ep-photo-actions button:disabled{ opacity:.35; cursor:not-allowed; }
+.ep-photo-remove-btn{ background:var(--color-danger-soft)!important; color:var(--color-danger)!important; }
+.ep-photo-remove-btn:hover{ background:var(--color-danger)!important; color:var(--white)!important; }
+.ep-add-photo-btn{ padding:.4rem 1rem; font-size:.82rem; }
+.ep-check-blush:checked{ background-color:var(--blush-600); border-color:var(--blush-600); }
+.ep-check-blush:focus{ border-color:var(--blush-500); box-shadow:0 0 0 3px var(--blush-100); }
+
 .ep-preview-wrap{ display:flex; flex-direction:column; align-items:center; gap:.6rem; }
 .ep-preview-caption{
   font-family:var(--font-script); font-size:1.1rem; color:var(--blush-700);
@@ -2129,7 +2244,6 @@ body.admin-gate-active .admin-state-area{
   line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .ep-mini-price{ font-size:.85rem; font-weight:700; color:var(--blush-700); margin-top:.15rem; }
-.ep-recrop-btn{ padding:.35rem .9rem; font-size:.78rem; }
 
 .ep-cropper{
   border:1px solid var(--blush-100); border-radius:var(--radius-md);

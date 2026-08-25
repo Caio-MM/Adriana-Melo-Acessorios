@@ -152,6 +152,17 @@ db.exec(`
     created_at  INTEGER NOT NULL
   );
 
+  -- Cores de laço criadas pelo painel administrativo ("+ Nova cor"), além
+  -- das 6 fixas em js/colors.js (RIBBON_COLORS). Mesmo papel de
+  -- custom_categories: o hex é o valor salvo em
+  -- product_overrides.available_colors/custom_products.available_colors e
+  -- escolhido pela cliente no Quick View; o label é só o texto exibido.
+  CREATE TABLE IF NOT EXISTS custom_colors (
+    hex         TEXT PRIMARY KEY,
+    label       TEXT NOT NULL,
+    created_at  INTEGER NOT NULL
+  );
+
   /* Índices. Sem eles o SQLite varre a tabela inteira a cada consulta —
      imperceptível com centenas de pedidos, caro com dezenas de milhares.
      Só entram colunas que aparecem de fato em WHERE/ORDER BY das queries
@@ -202,6 +213,30 @@ ensureColumn("orders", "pix_discount", "REAL NOT NULL DEFAULT 0");
 ensureColumn("orders", "payment_method", "TEXT NOT NULL DEFAULT 'card'");
 ensureColumn("product_overrides", "category", "TEXT");
 ensureColumn("product_overrides", "badges", "TEXT");
+// Cores em estoque (array JSON de hex da paleta em js/colors.js). NULL
+// significa "nunca editado pela lojista" -> todas as cores disponíveis
+// (effectiveProduct() aplica esse default). Diferente de badges: aqui um
+// array VAZIO é um estado real ("esgotado em todas as cores"), então
+// upsertProductOverride/updateCustomProduct NUNCA colapsam [] para NULL
+// como fazem com badges.
+ensureColumn("product_overrides", "available_colors", "TEXT");
+ensureColumn("custom_products", "available_colors", "TEXT");
+// Galeria de fotos (array JSON de URLs, na ordem de exibição — a primeira
+// é a capa). NULL significa "nunca editado nesta coluna": effectiveProduct()
+// nesse caso cai para a foto única antiga (photo_url), então produtos que já
+// tinham uma foto salva antes desta coluna existir continuam funcionando sem
+// migração. Mesmo cuidado de available_colors: [] explícito é um estado real
+// ("removeu todas as fotos"), nunca colapsa para NULL.
+ensureColumn("product_overrides", "photos", "TEXT");
+ensureColumn("custom_products", "photos", "TEXT");
+// "Vender em conjunto" — libera a 2ª cor opcional no Quick View (kits com
+// mais de uma peça, onde a cliente pode querer metade numa cor e metade em
+// outra). Booleano simples (0/1): diferente de available_colors/photos,
+// NULL e 0 significam a MESMA coisa ("desligado") — não existe aqui a
+// distinção "nunca editado" vs. "editado e vazio de propósito" que aquelas
+// duas colunas precisam.
+ensureColumn("product_overrides", "allow_second_color", "INTEGER");
+ensureColumn("custom_products", "allow_second_color", "INTEGER");
 // Telefone só com dígitos, copiado do endereço na hora de gravar o pedido.
 // É o único identificador que sobra para quem compra sem conta — sem uma
 // coluna própria, casar "(61) 98274-9808" com "61982749808" dentro do JSON
@@ -627,11 +662,13 @@ function deleteOrder(ref) {
 const stmtGetProductOverride = db.prepare(`SELECT * FROM product_overrides WHERE product_id = ?`);
 const stmtListProductOverrides = db.prepare(`SELECT * FROM product_overrides`);
 const stmtUpsertProductOverride = db.prepare(`
-  INSERT INTO product_overrides (product_id, name, price, photo_url, category, badges, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO product_overrides (product_id, name, price, photo_url, category, badges, available_colors, photos, allow_second_color, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(product_id) DO UPDATE SET
     name = excluded.name, price = excluded.price, photo_url = excluded.photo_url,
-    category = excluded.category, badges = excluded.badges, updated_at = excluded.updated_at
+    category = excluded.category, badges = excluded.badges,
+    available_colors = excluded.available_colors, photos = excluded.photos,
+    allow_second_color = excluded.allow_second_color, updated_at = excluded.updated_at
 `);
 
 function getProductOverride(productId) {
@@ -656,7 +693,25 @@ function upsertProductOverride(productId, fields) {
   const badges = "badges" in fields
     ? (fields.badges && fields.badges.length ? JSON.stringify(fields.badges) : null)
     : (current.badges ?? null);
-  stmtUpsertProductOverride.run(productId, name, price, photoUrl, category, badges, Date.now());
+  // Diferente de badges: um array VAZIO é um estado real ("esgotado em
+  // todas as cores"), não pode ser colapsado para NULL como acima — NULL
+  // significa "nunca editado" (todas as cores disponíveis), [] significa
+  // "editado e zero cores em estoque". Grava sempre o array como veio.
+  const availableColors = "availableColors" in fields
+    ? JSON.stringify(Array.isArray(fields.availableColors) ? fields.availableColors : [])
+    : (current.available_colors ?? null);
+  // Mesma regra de availableColors: [] é "removeu todas as fotos", um
+  // estado real — nunca colapsa para NULL (que significaria "nunca mexeu
+  // nesta coluna", caindo de volta para a foto única antiga em photo_url).
+  const photos = "photos" in fields
+    ? JSON.stringify(Array.isArray(fields.photos) ? fields.photos : [])
+    : (current.photos ?? null);
+  // Booleano simples — NULL e 0 significam a mesma coisa ("desligado"),
+  // então não precisa da distinção NULL-vs-explícito de availableColors/photos.
+  const allowSecondColor = "allowSecondColor" in fields
+    ? (fields.allowSecondColor ? 1 : 0)
+    : (current.allow_second_color ?? 0);
+  stmtUpsertProductOverride.run(productId, name, price, photoUrl, category, badges, availableColors, photos, allowSecondColor, Date.now());
   return getProductOverride(productId);
 }
 
@@ -666,12 +721,12 @@ const stmtGetCustomProduct = db.prepare(`SELECT * FROM custom_products WHERE id 
 const stmtMaxCustomProductId = db.prepare(`SELECT MAX(id) AS maxId FROM custom_products`);
 const stmtInsertCustomProduct = db.prepare(`
   INSERT INTO custom_products
-    (id, name, price, weight, width, height, length, category, photo_url, badges, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (id, name, price, weight, width, height, length, category, photo_url, badges, available_colors, photos, allow_second_color, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const stmtUpdateCustomProduct = db.prepare(`
   UPDATE custom_products SET
-    name = ?, price = ?, category = ?, photo_url = ?, badges = ?, updated_at = ?
+    name = ?, price = ?, category = ?, photo_url = ?, badges = ?, available_colors = ?, photos = ?, allow_second_color = ?, updated_at = ?
   WHERE id = ?
 `);
 const stmtDeleteCustomProduct = db.prepare(`DELETE FROM custom_products WHERE id = ?`);
@@ -694,7 +749,11 @@ function insertCustomProduct({ startAt, name, price, weight, width, height, leng
   const now = Date.now();
   stmtInsertCustomProduct.run(
     id, name, price, weight, width, height, length, category || null, null,
-    badges && badges.length ? JSON.stringify(badges) : null, now, now
+    badges && badges.length ? JSON.stringify(badges) : null,
+    null, // available_colors: produto novo começa sem customização = todas as cores
+    null, // photos: produto novo começa sem foto — mesmo estado de photo_url null
+    0,    // allow_second_color: produto novo começa sem a 2ª cor liberada
+    now, now
   );
   return getCustomProduct(id);
 }
@@ -711,7 +770,18 @@ function updateCustomProduct(id, fields) {
   const badges = "badges" in fields
     ? (fields.badges && fields.badges.length ? JSON.stringify(fields.badges) : null)
     : current.badges;
-  stmtUpdateCustomProduct.run(name, price, category, photoUrl, badges, Date.now(), id);
+  // Mesmo cuidado de upsertProductOverride: [] é um estado real, nunca
+  // colapsa para NULL.
+  const availableColors = "availableColors" in fields
+    ? JSON.stringify(Array.isArray(fields.availableColors) ? fields.availableColors : [])
+    : (current.available_colors ?? null);
+  const photos = "photos" in fields
+    ? JSON.stringify(Array.isArray(fields.photos) ? fields.photos : [])
+    : (current.photos ?? null);
+  const allowSecondColor = "allowSecondColor" in fields
+    ? (fields.allowSecondColor ? 1 : 0)
+    : (current.allow_second_color ?? 0);
+  stmtUpdateCustomProduct.run(name, price, category, photoUrl, badges, availableColors, photos, allowSecondColor, Date.now(), id);
   return getCustomProduct(id);
 }
 // Não apaga a foto em disco — quem chama (server.js) já leu photo_url ANTES
@@ -736,6 +806,29 @@ function listCustomCategories() {
 function insertCustomCategory({ slug, label }) {
   stmtInsertCustomCategory.run(slug, label, Date.now());
   return { slug, label };
+}
+
+/* --------------------------- CUSTOM COLORS --------------------------- */
+const stmtListCustomColors = db.prepare(`SELECT * FROM custom_colors ORDER BY created_at`);
+const stmtInsertCustomColor = db.prepare(
+  `INSERT INTO custom_colors (hex, label, created_at) VALUES (?, ?, ?)`
+);
+
+const stmtDeleteCustomColor = db.prepare(`DELETE FROM custom_colors WHERE hex = ?`);
+
+function listCustomColors() {
+  return stmtListCustomColors.all();
+}
+function insertCustomColor({ hex, label }) {
+  stmtInsertCustomColor.run(hex, label, Date.now());
+  return { hex, label };
+}
+// Não limpa o hex de dentro de available_colors de produto nenhum — mesmo
+// racional de deleteCustomProduct: um produto que ainda referencia esta cor
+// simplesmente para de conseguir mostrá-la (isValidColorHex/getAllColors()
+// não a reconhecem mais), sem quebrar nada.
+function deleteCustomColor(hex) {
+  stmtDeleteCustomColor.run(hex);
 }
 
 /* ------------------------------ COUPONS ------------------------------ */
@@ -898,6 +991,9 @@ module.exports = {
   deleteCustomProduct,
   listCustomCategories,
   insertCustomCategory,
+  listCustomColors,
+  insertCustomColor,
+  deleteCustomColor,
   addNewsletterSubscriber,
   listNewsletterSubscribers,
   getOrCreateUnsubscribeToken,

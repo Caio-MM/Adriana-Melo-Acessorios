@@ -373,9 +373,6 @@
                 <div class="ep-mini-price" id="epPreviewPrice"></div>
               </div>
             </div>
-            <button type="button" class="btn-outline-blush ep-recrop-btn d-none" id="epRecropBtn">
-              <i class="bi bi-crop me-1"></i>Ajustar recorte
-            </button>
           </div>
 
                     <div class="ep-cropper d-none" id="epCropper">
@@ -411,9 +408,13 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label small fw-semibold" for="epPhotoFile">Foto</label>
-            <input type="file" class="form-control" id="epPhotoFile" accept="image/jpeg,image/png,image/webp,image/gif">
-            <div class="form-text">JPEG, PNG, WEBP ou GIF, até 4MB. Deixe sem escolher arquivo para manter a foto atual (ou a padrão do produto, se nunca enviou uma).</div>
+            <label class="form-label small fw-semibold d-block">Fotos</label>
+            <div class="ep-photo-list" id="epPhotosList"></div>
+            <input type="file" class="form-control d-none" id="epPhotoFile" accept="image/jpeg,image/png,image/webp,image/gif">
+            <button type="button" class="btn-outline-blush ep-add-photo-btn" id="epAddPhotoBtn">
+              <i class="bi bi-plus-lg me-1"></i>Adicionar foto
+            </button>
+            <div class="form-text">JPEG, PNG, WEBP ou GIF, até 4MB cada, até 8 fotos. A primeira da lista é a capa mostrada na loja — use as setinhas para reordenar.</div>
             <div id="epPhotoStatus" class="small mt-1"></div>
           </div>
 
@@ -435,6 +436,21 @@
               <input class="form-check-input" type="checkbox" id="epBadgeNew" value="Novo">
               <label class="form-check-label" for="epBadgeNew">Novo</label>
             </div>
+          </div>
+
+          <div class="mb-1">
+            <div class="d-flex align-items-center justify-content-between gap-2">
+              <label class="form-label small fw-semibold d-block mb-0">Cores disponíveis em estoque</label>
+              <button type="button" class="btn-outline-blush flex-shrink-0" id="epNewColorBtn" style="padding:.4rem .8rem;font-size:.8rem" title="Criar uma cor nova">+ Nova cor</button>
+            </div>
+            <div class="ep-color-options" id="epColorOptions"></div>
+            <div class="form-text">Desmarque uma cor quando não houver estoque — a cliente não vai conseguir escolhê-la na loja.</div>
+          </div>
+
+          <div class="mb-1 form-check">
+            <input class="form-check-input ep-check-blush" type="checkbox" id="epAllowSecondColor">
+            <label class="form-check-label small" for="epAllowSecondColor">Vender em conjunto — permitir escolher uma 2ª cor</label>
+            <div class="form-text">Para produtos com mais de uma peça (kits) em que a cliente pode querer metade numa cor e metade em outra.</div>
           </div>
 
           <div id="epMsg" class="small account-msg" role="alert"></div>
@@ -556,6 +572,7 @@
 <script src="js/vendor/JsBarcode.all.min.js" defer></script>
 <script src="js/auth.js" defer></script>
 <script src="js/pricing.js" defer></script>
+<script src="js/colors.js" defer></script>
 <script src="js/admin.js" defer></script>
 </body>
 </html>

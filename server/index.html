@@ -706,10 +706,24 @@
       </div>
       <div class="modal-body">
         <div class="qv-thumb is-loading mb-2" id="qvThumb">
-          <img id="qvImage" src="" alt="" width="480" height="600" decoding="async">
+          <img id="qvImage" src="" alt="" width="480" height="640" decoding="async">
           <svg class="bow-icon"><use href="#bow-shape"/></svg>
+          <button type="button" class="qv-gallery-nav-btn is-prev d-none" id="qvGalleryPrev" aria-label="Foto anterior"><i class="bi bi-chevron-left"></i></button>
+          <button type="button" class="qv-gallery-nav-btn is-next d-none" id="qvGalleryNext" aria-label="Próxima foto"><i class="bi bi-chevron-right"></i></button>
         </div>
+        <div class="qv-gallery-thumbs d-none" id="qvGalleryThumbs" role="group" aria-label="Fotos do produto"></div>
         <p class="section-sub" id="qvDesc">Descrição do produto.</p>
+
+        <div class="qv-colors mb-2">
+          <span class="section-sub mb-0 d-block">Cor do laço</span>
+          <div class="qv-color-options" id="qvColorOptions" role="radiogroup" aria-label="Escolha a cor do laço"></div>
+          <div class="qv-soldout-msg d-none" id="qvSoldOutMsg">Esgotado em todas as cores no momento.</div>
+        </div>
+
+        <div class="qv-colors mb-2 d-none" id="qvSecondColorSection">
+          <span class="section-sub mb-0 d-block">Cor secundária (opcional)</span>
+          <div class="qv-color-options" id="qvSecondColorOptions" role="radiogroup" aria-label="Escolha uma segunda cor (opcional)"></div>
+        </div>
 
         <div class="d-flex justify-content-between align-items-center mt-2">
           <span class="section-sub mb-0">Quantidade</span>
@@ -787,6 +801,7 @@
 
 <script src="js/auth.js" defer></script>
 <script src="js/pricing.js" defer></script>
+<script src="js/colors.js" defer></script>
 <script src="js/main.js" defer></script>
 <script src="js/cupom-toast.js" defer></script>
 <script src="js/cookie-consent.js" defer></script>

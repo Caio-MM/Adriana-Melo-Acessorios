@@ -36,13 +36,63 @@
 
   const productsById = new Map(products.map(p => [p.id, p]));
 
-  const CUSTOM_PRODUCT_PALETTE = ["#F4B4CC", "#DD6E9B", "#FBEAF0", "#F8ECF1", "#EA8FB4", "#C05480"];
+  const colors = window.PLCColors;
+
+  // Paleta ATUAL de cores — fixa (colors.RIBBON_COLORS) + criada pelo
+  // painel administrativo. Começa só com a fixa e loadProductOverrides()
+  // atualiza a partir de /api/products (mesmo padrão das categorias
+  // dinâmicas, ensureCategoryChips) assim que a resposta chegar.
+  let allColors = colors.RIBBON_COLORS.slice();
+  // Substituem colors.isValidColor/labelForColor (que só conhecem as 6
+  // fixas) em todo lugar do front-end que precisa reconhecer uma cor
+  // criada pelo painel administrativo.
+  function isKnownColor(hex){
+    return allColors.some(c => c.hex === hex);
+  }
+  function labelForKnownColor(hex){
+    return allColors.find(c => c.hex === hex)?.label || colors.labelForColor(hex);
+  }
+  // Só o FORMATO (não se a cor ainda existe na paleta atual) — usado ao
+  // carregar o carrinho salvo, antes de allColors ter chegado do servidor.
+  // A checagem "é uma cor que ainda existe de verdade" acontece depois, no
+  // conserto de cor do loadProductOverrides() (allColors já confiável).
+  const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
+  function isHexShape(v){
+    return typeof v === "string" && HEX_COLOR_PATTERN.test(v);
+  }
+
+  // `p.availableColors` só existe depois que loadProductOverrides() busca
+  // /api/products — até lá (e para produto nunca customizado pela lojista,
+  // que o servidor também trata como "todas as cores"), undefined vira
+  // "todas as cores em estoque", nunca "nenhuma".
+  function inStockColors(p){
+    return Array.isArray(p?.availableColors) ? p.availableColors : (colors ? colors.ALL_COLOR_HEXES : []);
+  }
+  // Cor padrão pra escolher sem abrir o Quick View (botão "+" rápido do
+  // card): a cor decorativa do próprio produto, se estiver em estoque;
+  // senão a primeira cor em estoque; null se esgotado em tudo.
+  function defaultColorFor(p){
+    if(!p) return null;
+    const inStock = inStockColors(p);
+    if(inStock.length === 0) return null;
+    return inStock.includes(p.color) ? p.color : inStock[0];
+  }
 
   const pricing = window.PLCPricing;
   const formatMoney = pricing.formatMoney;
 
   function imageFor(p){
     return p.image || "";
+  }
+  // Galeria completa do produto — usada só no Quick View (o card da grade
+  // continua mostrando uma imagem só, via imageFor). Cai para [imageFor(p)]
+  // quando `photos` ainda não chegou de /api/products (mesma ponte do
+  // servidor: p.image já É a capa, então isso nunca fica sem imagem
+  // enquanto imageFor(p) tiver algo).
+  function photosFor(p){
+    if(Array.isArray(p?.photos) && p.photos.length) return p.photos;
+    const img = imageFor(p);
+    return img ? [img] : [];
   }
 
   let cartCount = 0;
@@ -222,6 +272,7 @@
       if(!res.ok) return;
       const data = await res.json();
       ensureCategoryChips(data.categories);
+      if(Array.isArray(data.colors) && data.colors.length) allColors = data.colors;
       let changed = false;
       (Array.isArray(data.products) ? data.products : []).forEach(o => {
         const p = productsById.get(o.id);
@@ -230,10 +281,13 @@
           const fresh = {
             id: o.id, name: o.name, price: o.price,
             cat: o.category || "", catLabel: o.category ? categoryLabelFor(o.category) : "",
-            color: CUSTOM_PRODUCT_PALETTE[o.id % CUSTOM_PRODUCT_PALETTE.length],
+            color: allColors[o.id % allColors.length].hex,
             rating: 5, badges: Array.isArray(o.badges) ? o.badges : [],
+            availableColors: Array.isArray(o.availableColors) ? o.availableColors : allColors.map(c => c.hex),
             desc: "Peça exclusiva, feita à mão pela Adriana Melo Acessórios.",
             image: o.photoUrl || null,
+            photos: Array.isArray(o.photos) ? o.photos : (o.photoUrl ? [o.photoUrl] : []),
+            allowsSecondColor: Boolean(o.allowsSecondColor),
           };
           products.push(fresh);
           productsById.set(o.id, fresh);
@@ -243,6 +297,7 @@
         if(o.name && o.name !== p.name){ p.name = o.name; changed = true; }
         if(o.price != null && o.price !== p.price){ p.price = o.price; changed = true; }
         if(o.photoUrl && o.photoUrl !== p.image){ p.image = o.photoUrl; changed = true; }
+        if(Array.isArray(o.photos) && !sameBadges(o.photos, photosFor(p))){ p.photos = o.photos; changed = true; }
         if(o.category && o.category !== p.cat){
           p.cat = o.category;
           p.catLabel = categoryLabelFor(o.category);
@@ -252,8 +307,37 @@
           p.badges = o.badges;
           changed = true;
         }
+        if(Array.isArray(o.availableColors) && !sameBadges(o.availableColors, inStockColors(p))){
+          p.availableColors = o.availableColors;
+          changed = true;
+        }
+        if(Boolean(o.allowsSecondColor) !== Boolean(p.allowsSecondColor)){
+          p.allowsSecondColor = Boolean(o.allowsSecondColor);
+          changed = true;
+        }
       });
-      if(changed){ renderProducts(); renderCart(); }
+      // Conserto de carrinho salvo antes da escolha de cor existir (linha
+      // sem `color`) OU com uma cor que não existe mais na paleta atual
+      // (ex.: a lojista tirou uma cor personalizada) — resolve uma vez
+      // aqui, com allColors já sincronizado (linha acima), pra
+      // goToCheckout() nunca precisar tratar isso como caso especial.
+      let cartColorsFixed = false;
+      cart.forEach(item => {
+        if(!(item.color && isKnownColor(item.color))){
+          const fallback = defaultColorFor(findProduct(item.id));
+          if(fallback){ item.color = fallback; cartColorsFixed = true; }
+        }
+        // 2ª cor é opcional — perder a validade dela (cor apagada, ou a
+        // lojista desligou "vender em conjunto" nesse produto depois que a
+        // cliente já tinha escolhido) só limpa de volta pra "sem 2ª cor",
+        // nunca precisa de um substituto como a cor principal precisa.
+        if(item.secondColor && !(isKnownColor(item.secondColor) && findProduct(item.id)?.allowsSecondColor)){
+          item.secondColor = null;
+          cartColorsFixed = true;
+        }
+      });
+      if(cartColorsFixed) saveCart();
+      if(changed || cartColorsFixed){ renderProducts(); renderCart(); }
       verifyPaymentRules(data.paymentRules);
     }catch(err){
       console.warn("Não foi possível verificar atualizações do catálogo:", err);
@@ -295,7 +379,15 @@
       if(!Array.isArray(parsed)) return [];
       return parsed
         .filter(i => i && Number.isInteger(i.id) && Number.isInteger(i.qty))
-        .map(i => ({ id:i.id, qty: Math.min(10, Math.max(1, i.qty)) }));
+        .map(i => ({
+          id:i.id, qty: Math.min(10, Math.max(1, i.qty)),
+          // Carrinho salvo antes da escolha de cor existir (ou com uma cor
+          // que não é mais válida) não tem esta chave — fica null e quem
+          // consome resolve o fallback na hora (mesmo racional de sempre
+          // ter existido pra cor decorativa do produto).
+          color: isHexShape(i.color) ? i.color : null,
+          secondColor: isHexShape(i.secondColor) ? i.secondColor : null,
+        }));
     }catch(err){
       console.warn("Carrinho salvo estava corrompido, começando vazio.", err);
       return [];
@@ -329,8 +421,10 @@
     if(cartCountMobileEl) cartCountMobileEl.textContent = n;
   }
 
-  function patchCartItemQty(id, qty){
-    const row = cartItemsList.querySelector(`.cart-item[data-id="${id}"]`);
+  function patchCartItemQty(id, color, secondColor, qty){
+    const row = cartItemsList.querySelector(
+      `.cart-item[data-id="${id}"][data-color="${CSS.escape(String(color))}"][data-second-color="${CSS.escape(String(secondColor || ""))}"]`
+    );
     if(!row) return false;
     const qtyEl = row.querySelector(".cart-qty span");
     if(qtyEl) qtyEl.textContent = qty;
@@ -339,12 +433,17 @@
 
   const PENDING_ITEM_KEY = "plc_item_pendente";
 
-  function addToCart(id, qty){
-
+  function addToCart(id, qty, color, secondColor){
+    const p = findProduct(id);
+    const chosenColor = isKnownColor(color) ? color : defaultColorFor(p);
+    // 2ª cor só se o produto permitir (kits) — mesmo se vier preenchida,
+    // ignora silenciosamente num produto que não permite, em vez de barrar
+    // a compra inteira por um parâmetro que não devia nem ter chegado aqui.
+    const chosenSecondColor = (p?.allowsSecondColor && isKnownColor(secondColor)) ? secondColor : null;
 
     if(!currentUser){
       try{
-        sessionStorage.setItem(PENDING_ITEM_KEY, JSON.stringify({ id, qty }));
+        sessionStorage.setItem(PENDING_ITEM_KEY, JSON.stringify({ id, qty, color: chosenColor, secondColor: chosenSecondColor }));
       }catch(err){
         console.warn("Não foi possível guardar o item pendente:", err);
       }
@@ -359,40 +458,42 @@
       return;
     }
 
-    const existing = cart.find(i => i.id === id);
+    // Mesclagem por id+cor+2ªcor: duas combinações diferentes têm que virar
+    // duas linhas no carrinho, não uma só (perderia a combinação escolhida).
+    const existing = cart.find(i => i.id === id && i.color === chosenColor && (i.secondColor || null) === chosenSecondColor);
     if(existing){
       existing.qty = Math.min(10, existing.qty + qty);
       saveCart();
       updateCartBadges();
-      if(patchCartItemQty(id, existing.qty)){
+      if(patchCartItemQty(id, chosenColor, chosenSecondColor, existing.qty)){
         resetShipping();
         updateTotals();
       } else {
         renderCart();
       }
     } else {
-      cart.push({ id, qty: Math.min(10, Math.max(1, qty)) });
+      cart.push({ id, qty: Math.min(10, Math.max(1, qty)), color: chosenColor, secondColor: chosenSecondColor });
       saveCart();
       updateCartBadges();
-      renderCart(); 
+      renderCart();
     }
     cartToast.show();
   }
 
-  function removeFromCart(id){
-    cart = cart.filter(i => i.id !== id);
+  function removeFromCart(id, color, secondColor){
+    cart = cart.filter(i => !(i.id === id && i.color === color && (i.secondColor || null) === (secondColor || null)));
     saveCart();
     updateCartBadges();
-    renderCart(); 
+    renderCart();
   }
 
-  function setQty(id, qty){
-    const item = cart.find(i => i.id === id);
+  function setQty(id, color, secondColor, qty){
+    const item = cart.find(i => i.id === id && i.color === color && (i.secondColor || null) === (secondColor || null));
     if(!item) return;
     item.qty = Math.min(10, Math.max(1, qty));
     saveCart();
     updateCartBadges();
-    patchCartItemQty(id, item.qty);
+    patchCartItemQty(id, color, secondColor, item.qty);
     resetShipping();
     updateTotals();
   }
@@ -535,7 +636,7 @@
     }
 
     sessionStorage.removeItem(PENDING_ITEM_KEY);
-    if(pendente?.id) addToCart(Number(pendente.id), Number(pendente.qty) || 1);
+    if(pendente?.id) addToCart(Number(pendente.id), Number(pendente.qty) || 1, pendente.color, pendente.secondColor);
   }
   renderAuthGate();
 
@@ -576,6 +677,83 @@
     if(couponMsgEl) couponMsgEl.textContent = "";
   }
 
+  // Sentinela pro chip "Sem 2ª cor" dentro do carrinho — mesmo papel de
+  // QV_NO_SECOND_COLOR no Quick View, mas com nome próprio porque os dois
+  // pontos de escolha de cor (Quick View e carrinho) são independentes.
+  const CART_NO_SECOND_COLOR = "none";
+
+  // Painel de troca de cor de uma linha do carrinho, aberto por um
+  // <details>/<summary> (sem estado JS extra: o navegador já cuida de
+  // abrir/fechar). Reaproveita a MESMA aparência de swatch do Quick View
+  // (.qv-color-option/.qv-color-swatch), só que como <button> em vez de
+  // <label><input>, já que aqui cada linha do carrinho precisa do seu
+  // próprio grupo, independente, sem crescer o `name` do radiogroup toda vez.
+  function cartColorPickerHTML(p, item, displayColor){
+    const inStock = inStockColors(p);
+    const swatchBtn = (hex, selected, label) => {
+      const disabled = !inStock.includes(hex);
+      return `
+        <button type="button" class="qv-color-option cart-color-swatch-btn${selected ? " selected" : ""}${disabled ? " is-disabled" : ""}"
+          data-hex="${hex}" ${disabled ? "disabled" : ""} aria-label="${escapeHTML(label)}${disabled ? " — esgotado" : ""}">
+          <span class="qv-color-swatch" style="background:${hex}"></span>
+        </button>
+      `;
+    };
+    const primarySwatches = allColors.map(c => swatchBtn(c.hex, c.hex === displayColor, c.label)).join("");
+    const secondGroup = p.allowsSecondColor ? `
+      <div class="cart-item-color-group" data-role="second">
+        <span class="cart-item-color-group-label">Cor secundária</span>
+        <div class="qv-color-options cart-item-color-swatches">
+          <button type="button" class="qv-color-option qv-color-option-none cart-color-swatch-btn${!item.secondColor ? " selected" : ""}"
+            data-hex="${CART_NO_SECOND_COLOR}" aria-label="Sem segunda cor">
+            <span class="qv-color-swatch qv-color-swatch-none"><i class="bi bi-x-lg" aria-hidden="true"></i></span>
+          </button>
+          ${allColors.map(c => swatchBtn(c.hex, c.hex === item.secondColor, c.label)).join("")}
+        </div>
+      </div>
+    ` : "";
+    return `
+      <div class="cart-item-color-panel">
+        <div class="cart-item-color-group" data-role="primary">
+          <span class="cart-item-color-group-label">Cor</span>
+          <div class="qv-color-options cart-item-color-swatches">${primarySwatches}</div>
+        </div>
+        ${secondGroup}
+      </div>
+    `;
+  }
+
+  // Troca a cor (papel "primary" ou "second") de UMA linha específica do
+  // carrinho, identificada pela combinação antiga (id+cor+2ªcor) — mesma
+  // identidade composta usada em toda parte do carrinho. Se a combinação
+  // NOVA já existir em outra linha, funde as quantidades nela em vez de
+  // deixar duas linhas iguais (mesmo racional de addToCart).
+  function changeCartItemColor(id, oldColor, oldSecondColor, role, hex){
+    const item = cart.find(i => i.id === id && i.color === oldColor && (i.secondColor || null) === oldSecondColor);
+    if(!item) return;
+    const p = findProduct(id);
+    if(!p) return;
+    const inStock = inStockColors(p);
+    if(role === "primary"){
+      if(!inStock.includes(hex)) return;
+      if(item.color === hex) return;
+      item.color = hex;
+    } else {
+      const resolved = hex === CART_NO_SECOND_COLOR ? null : hex;
+      if(resolved && !inStock.includes(resolved)) return;
+      if((item.secondColor || null) === resolved) return;
+      item.secondColor = resolved;
+    }
+    const dup = cart.find(i => i !== item && i.id === item.id && i.color === item.color && (i.secondColor || null) === (item.secondColor || null));
+    if(dup){
+      dup.qty = Math.min(10, dup.qty + item.qty);
+      cart = cart.filter(i => i !== item);
+    }
+    saveCart();
+    updateCartBadges();
+    renderCart();
+  }
+
   function renderCart(){
 
     const checkoutPanel = document.getElementById("cartCheckoutPanel");
@@ -590,18 +768,31 @@
       cartItemsList.innerHTML = cart.map(item => {
         const p = findProduct(item.id);
         if(!p) return "";
+        const displayColor = item.color || defaultColorFor(p) || p.color;
         const photo = imageFor(p);
+        const colorLabel = item.secondColor
+          ? `${labelForKnownColor(displayColor)} + ${labelForKnownColor(item.secondColor)}`
+          : labelForKnownColor(displayColor);
         return `
-          <div class="cart-item" data-id="${p.id}">
-            <div class="cart-item-thumb${photo ? " is-loading" : ""}" style="background:${safeColor(p.color)}22">
+          <div class="cart-item" data-id="${p.id}" data-color="${escapeHTML(displayColor)}" data-second-color="${escapeHTML(item.secondColor || "")}">
+            <div class="cart-item-thumb${photo ? " is-loading" : ""}" style="background:${safeColor(displayColor)}22">
               ${photo ? `<img src="${escapeHTML(photo)}" alt="${escapeHTML(p.name)}" width="64" height="64" loading="lazy" decoding="async">` : ""}
-              <svg class="bow-icon" style="color:${safeColor(p.color)}"><use href="#bow-shape"/></svg>
+              <svg class="bow-icon" style="color:${safeColor(displayColor)}"><use href="#bow-shape"/></svg>
             </div>
             <div class="cart-item-body">
               <div class="cart-item-head">
                 <span class="cart-item-name">${escapeHTML(p.name)}</span>
                 <span class="cart-item-price">${formatMoney(p.price)}<small>un.</small></span>
               </div>
+              <details class="cart-item-color-edit">
+                <summary class="cart-item-color-summary">
+                  <span class="cart-item-color-dot" style="background:${safeColor(displayColor)}"></span>
+                  ${item.secondColor ? `<span class="cart-item-color-dot" style="background:${safeColor(item.secondColor)}"></span>` : ""}
+                  <span class="cart-item-color-label">${escapeHTML(colorLabel)}</span>
+                  <i class="bi bi-pencil-fill" aria-hidden="true"></i>
+                </summary>
+                ${cartColorPickerHTML(p, item, displayColor)}
+              </details>
               <div class="cart-item-controls">
                 <div class="cart-qty">
                   <button type="button" class="cart-qty-minus" aria-label="Diminuir quantidade">−</button>
@@ -665,22 +856,36 @@
   cartRecsListEl.addEventListener("click", function(e){
     const btn = e.target.closest(".cart-rec-add");
     if(!btn) return;
-    addToCart(Number(btn.dataset.id), 1);
-    bumpCartIcon(); 
+    const id = Number(btn.dataset.id);
+    const color = defaultColorFor(findProduct(id));
+    if(!color){
+      showCheckoutHintToast("Esse produto está esgotado em todas as cores no momento.");
+      return;
+    }
+    addToCart(id, 1, color);
+    bumpCartIcon();
   });
 
   cartItemsList.addEventListener("click", function(e){
     const row = e.target.closest(".cart-item");
     if(!row) return;
     const id = Number(row.dataset.id);
+    const color = row.dataset.color;
+    const secondColor = row.dataset.secondColor || null;
 
-    const item = cart.find(i => i.id === id);
+    const item = cart.find(i => i.id === id && i.color === color && (i.secondColor || null) === secondColor);
     if(e.target.closest(".cart-qty-plus")){
-      if(item) setQty(id, item.qty + 1);
+      if(item) setQty(id, color, secondColor, item.qty + 1);
     } else if(e.target.closest(".cart-qty-minus")){
-      if(!item || item.qty <= 1){ removeFromCart(id); } else { setQty(id, item.qty - 1); }
+      if(!item || item.qty <= 1){ removeFromCart(id, color, secondColor); } else { setQty(id, color, secondColor, item.qty - 1); }
     } else if(e.target.closest(".cart-item-remove")){
-      removeFromCart(id);
+      removeFromCart(id, color, secondColor);
+    } else {
+      const swatchBtn = e.target.closest(".cart-color-swatch-btn");
+      if(swatchBtn){
+        const role = swatchBtn.closest(".cart-item-color-group")?.dataset.role || "primary";
+        changeCartItemColor(id, color, secondColor, role, swatchBtn.dataset.hex);
+      }
     }
   });
 
@@ -992,7 +1197,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: cart.map(i => ({ id: i.id, qty: i.qty })),
+          items: cart.map(i => ({ id: i.id, qty: i.qty, color: i.color, secondColor: i.secondColor || undefined })),
           cep: cepInput.value.replace("-", ""),
           shipping_service_id: shipping.service_id,
           address: getAddress(),
@@ -1037,7 +1242,7 @@
   }
 
   /* ============ QUICK VIEW — tela de detalhes do produto ============ */
-  let qvProductId = null, qvQty = 1;
+  let qvProductId = null, qvQty = 1, qvSelectedColor = null, qvSelectedSecondColor = null;
   const qvModalEl = document.getElementById("quickViewModal");
   const qvModal = new bootstrap.Modal(qvModalEl);
   const qvQtyEl = document.getElementById("qvQty");
@@ -1045,6 +1250,132 @@
   const qvPixPriceEl = document.getElementById("qvPixPrice");
   const qvPixNoteEl = document.getElementById("qvPixNote");
   const qvInstallmentEl = document.getElementById("qvInstallment");
+  const qvColorOptionsEl = document.getElementById("qvColorOptions");
+  const qvSoldOutMsgEl = document.getElementById("qvSoldOutMsg");
+  const qvAddBtnEl = document.getElementById("qvAddBtn");
+  const qvSecondColorSectionEl = document.getElementById("qvSecondColorSection");
+  const qvSecondColorOptionsEl = document.getElementById("qvSecondColorOptions");
+  const QV_NO_SECOND_COLOR = "none";
+
+  /* ============ QUICK VIEW — galeria de fotos ============ */
+  let qvPhotos = [], qvPhotoIndex = 0;
+  const qvGalleryPrevEl = document.getElementById("qvGalleryPrev");
+  const qvGalleryNextEl = document.getElementById("qvGalleryNext");
+  const qvGalleryThumbsEl = document.getElementById("qvGalleryThumbs");
+
+  // Setas/miniaturas só aparecem com mais de 1 foto — com 0 ou 1, o Quick
+  // View fica idêntico a antes desta feature (mesma imagem única ou o
+  // ícone decorativo de fallback).
+  function renderQvGallery(){
+    const hasGallery = qvPhotos.length > 1;
+    qvGalleryPrevEl.classList.toggle("d-none", !hasGallery);
+    qvGalleryNextEl.classList.toggle("d-none", !hasGallery);
+    qvGalleryThumbsEl.classList.toggle("d-none", !hasGallery);
+    if(!hasGallery){ qvGalleryThumbsEl.innerHTML = ""; return; }
+    qvGalleryThumbsEl.innerHTML = qvPhotos.map((url, i) => `
+      <button type="button" class="qv-gallery-thumb${i === qvPhotoIndex ? " is-active" : ""}" data-index="${i}" aria-label="Foto ${i + 1} de ${qvPhotos.length}">
+        <img src="${escapeHTML(url)}" alt="" width="56" height="56" loading="lazy">
+      </button>
+    `).join("");
+  }
+
+  function setQvPhoto(index){
+    if(!qvPhotos.length) return;
+    qvPhotoIndex = Math.min(Math.max(index, 0), qvPhotos.length - 1);
+    const thumb = document.getElementById("qvThumb");
+    const img = document.getElementById("qvImage");
+    img.classList.remove("is-loaded", "is-error");
+    thumb.classList.add("is-loading");
+    img.src = qvPhotos[qvPhotoIndex];
+    qvGalleryPrevEl.disabled = qvPhotoIndex === 0;
+    qvGalleryNextEl.disabled = qvPhotoIndex === qvPhotos.length - 1;
+    qvGalleryThumbsEl.querySelectorAll(".qv-gallery-thumb").forEach(btn => {
+      btn.classList.toggle("is-active", Number(btn.dataset.index) === qvPhotoIndex);
+    });
+  }
+
+  qvGalleryPrevEl.addEventListener("click", () => setQvPhoto(qvPhotoIndex - 1));
+  qvGalleryNextEl.addEventListener("click", () => setQvPhoto(qvPhotoIndex + 1));
+  qvGalleryThumbsEl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".qv-gallery-thumb");
+    if(btn) setQvPhoto(Number(btn.dataset.index));
+  });
+  // Seta esquerda/direita do teclado navega a galeria — exceto quando o
+  // foco está no seletor de cor (radiogroup nativo), que já usa as mesmas
+  // teclas para mover entre as cores.
+  qvModalEl.addEventListener("keydown", (e) => {
+    if(qvPhotos.length <= 1) return;
+    if(e.target.closest("#qvColorOptions")) return;
+    if(e.key === "ArrowLeft"){ e.preventDefault(); setQvPhoto(qvPhotoIndex - 1); }
+    else if(e.key === "ArrowRight"){ e.preventDefault(); setQvPhoto(qvPhotoIndex + 1); }
+  });
+
+  function renderQuickViewColors(p){
+    const inStock = new Set(inStockColors(p));
+    qvColorOptionsEl.innerHTML = allColors.map(c => {
+      const disabled = !inStock.has(c.hex);
+      return `
+        <label class="qv-color-option${disabled ? " is-disabled" : ""}">
+          <input type="radio" name="qvColor" value="${c.hex}" ${disabled ? "disabled" : ""}>
+          <span class="qv-color-swatch" style="background:${c.hex}"></span>
+          <span class="visually-hidden">${escapeHTML(c.label)}${disabled ? " — esgotado" : ""}</span>
+        </label>
+      `;
+    }).join("");
+  }
+  function syncQvColorSelection(){
+    qvColorOptionsEl.querySelectorAll(".qv-color-option").forEach(label => {
+      label.classList.toggle("selected", label.querySelector("input").checked);
+    });
+  }
+  function updateQvThumbTint(){
+    const tint = safeColor(qvSelectedColor);
+    const thumb = document.getElementById("qvThumb");
+    thumb.style.background = tint + "22";
+    thumb.querySelector(".bow-icon").style.color = tint;
+  }
+  qvColorOptionsEl.addEventListener("change", (e) => {
+    const input = e.target.closest("input[name='qvColor']");
+    if(!input) return;
+    qvSelectedColor = input.value;
+    syncQvColorSelection();
+    updateQvThumbTint();
+  });
+
+  // 2ª cor opcional (produtos "vendidos em conjunto") — mesmo componente
+  // visual do seletor principal, com um chip a mais no início ("Sem 2ª
+  // cor") pra o radiogroup sempre ter uma opção marcada mesmo
+  // representando "nenhuma" (rádio nativo não tem como desmarcar sozinho).
+  function renderQuickViewSecondColor(p){
+    const inStock = new Set(inStockColors(p));
+    qvSecondColorOptionsEl.innerHTML = `
+      <label class="qv-color-option qv-color-option-none">
+        <input type="radio" name="qvSecondColor" value="${QV_NO_SECOND_COLOR}" checked>
+        <span class="qv-color-swatch qv-color-swatch-none"><i class="bi bi-x-lg" aria-hidden="true"></i></span>
+        <span class="visually-hidden">Sem segunda cor</span>
+      </label>
+    ` + allColors.map(c => {
+      const disabled = !inStock.has(c.hex);
+      return `
+        <label class="qv-color-option${disabled ? " is-disabled" : ""}">
+          <input type="radio" name="qvSecondColor" value="${c.hex}" ${disabled ? "disabled" : ""}>
+          <span class="qv-color-swatch" style="background:${c.hex}"></span>
+          <span class="visually-hidden">${escapeHTML(c.label)}${disabled ? " — esgotado" : ""}</span>
+        </label>
+      `;
+    }).join("");
+  }
+  function syncQvSecondColorSelection(){
+    qvSecondColorOptionsEl.querySelectorAll(".qv-color-option").forEach(label => {
+      label.classList.toggle("selected", label.querySelector("input").checked);
+    });
+  }
+  qvSecondColorOptionsEl.addEventListener("change", (e) => {
+    const input = e.target.closest("input[name='qvSecondColor']");
+    if(!input) return;
+    qvSelectedSecondColor = input.value === QV_NO_SECOND_COLOR ? null : input.value;
+    syncQvSecondColorSelection();
+  });
 
   function renderQuickViewPayment(){
     const p = findProduct(qvProductId);
@@ -1067,24 +1398,37 @@
     const p = findProduct(id);
     if(!p) return;
     qvProductId = p.id; qvQty = 1;
+
+    const inStock = inStockColors(p);
+    qvSelectedColor = inStock.includes(p.color) ? p.color : (inStock[0] || null);
+    renderQuickViewColors(p);
+    if(qvSelectedColor){
+      const input = qvColorOptionsEl.querySelector(`input[value="${CSS.escape(qvSelectedColor)}"]`);
+      if(input) input.checked = true;
+    }
+    syncQvColorSelection();
+    updateQvThumbTint();
+    qvSoldOutMsgEl.classList.toggle("d-none", inStock.length > 0);
+    qvAddBtnEl.disabled = inStock.length === 0;
+
+    qvSelectedSecondColor = null;
+    qvSecondColorSectionEl.classList.toggle("d-none", !p.allowsSecondColor);
+    if(p.allowsSecondColor) renderQuickViewSecondColor(p);
+
     document.getElementById("qvName").textContent = p.name;
     document.getElementById("qvDesc").textContent = p.desc;
 
     const thumb = document.getElementById("qvThumb");
     const img = document.getElementById("qvImage");
-    thumb.style.background = p.color + "22";
-    thumb.querySelector(".bow-icon").style.color = p.color;
-
-    img.classList.remove("is-loaded", "is-error");
     img.alt = p.name;
 
-    thumb.style.removeProperty("--qv-ratio");
-    thumb.style.removeProperty("--qv-ar");
-    const photo = imageFor(p);
-    if(photo){
-      thumb.classList.add("is-loading");
-      img.src = photo;
+    qvPhotos = photosFor(p);
+    qvPhotoIndex = 0;
+    renderQvGallery();
+    if(qvPhotos.length){
+      setQvPhoto(0);
     } else {
+      img.classList.remove("is-loaded", "is-error");
       thumb.classList.remove("is-loading");
       img.removeAttribute("src");
     }
@@ -1094,22 +1438,18 @@
   }
   wireImage(document.getElementById("qvImage"));
 
-  document.getElementById("qvImage").addEventListener("load", (e) => {
-    const { naturalWidth: w, naturalHeight: h } = e.target;
-    if(!w || !h) return;
-    const thumb = document.getElementById("qvThumb");
-    thumb.style.setProperty("--qv-ratio", `${w}/${h}`);
-
-    thumb.style.setProperty("--qv-ar", String(w / h));
-  });
-
   grid.addEventListener("click", function(e){
     const addBtn = e.target.closest(".btn-add");
     if(addBtn){
       const id = Number(addBtn.dataset.id);
       const p = findProduct(id);
-      addToCart(id, 1);
-      celebrateAddToCart(addBtn, p?.color);
+      const color = defaultColorFor(p);
+      if(!color){
+        showCheckoutHintToast(`${p?.name || "Este produto"} está esgotado em todas as cores no momento.`);
+        return;
+      }
+      addToCart(id, 1, color);
+      celebrateAddToCart(addBtn, color);
       pulseAddButton(addBtn);
       return;
     }
@@ -1137,10 +1477,9 @@
     renderQuickViewPayment();
   });
   document.getElementById("qvAddBtn").addEventListener("click", () => {
-    if(qvProductId != null){
-      const p = findProduct(qvProductId);
-      addToCart(qvProductId, qvQty);
-      celebrateAddToCart(document.getElementById("qvAddBtn"), p?.color);
+    if(qvProductId != null && qvSelectedColor){
+      addToCart(qvProductId, qvQty, qvSelectedColor, qvSelectedSecondColor);
+      celebrateAddToCart(document.getElementById("qvAddBtn"), qvSelectedColor);
     }
     qvModal.hide();
   });

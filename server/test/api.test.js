@@ -19,6 +19,16 @@ const ADMIN_HASH = crypto.createHash("sha256").update(ADMIN_EMAIL).digest("hex")
 const TMP_DB = path.join(os.tmpdir(), `plc-api-test-${process.pid}-${Date.now()}.db`);
 
 let child;
+// Cookie de admin reaproveitado entre testes (setado no primeiro login bem-
+// sucedido, abaixo). authLimiter (server.js) capa em 10 requisições por IP
+// a cada 15min nas rotas de auth — os testes já rodam bem perto desse teto
+// só com os registros/logins que precisam de contas DIFERENTES; um login
+// extra por teste que só precisa "ser admin" estoura o limite à toa.
+let sharedAdminCookie = null;
+// Mesma ideia de sharedAdminCookie: reaproveitado no lugar de registrar/
+// logar uma conta de cliente nova a cada teste que só precisa "ser uma
+// cliente logada" (setado no teste de estoque por cor, abaixo).
+let sharedClienteCookie = null;
 
 function cleanupDb() {
   for (const s of ["", "-wal", "-shm"]) { try { fs.unlinkSync(TMP_DB + s); } catch {} }
@@ -60,6 +70,13 @@ function post(url, body, cookie) {
 function put(url, body, cookie) {
   return fetch(ORIGIN + url, {
     method: "PUT",
+    headers: { "Content-Type": "application/json", Origin: ORIGIN, ...(cookie ? { Cookie: cookie } : {}) },
+    body: JSON.stringify(body),
+  });
+}
+function patch(url, body, cookie) {
+  return fetch(ORIGIN + url, {
+    method: "PATCH",
     headers: { "Content-Type": "application/json", Origin: ORIGIN, ...(cookie ? { Cookie: cookie } : {}) },
     body: JSON.stringify(body),
   });
@@ -173,4 +190,253 @@ test("GET/PUT /api/auth/address — sem sessão, endereço em branco, salva/atua
   const cookieB = cookieFrom(regB);
   const asB = await (await fetch(ORIGIN + "/api/auth/address", { headers: { Cookie: cookieB } })).json();
   assert.equal(asB.address, null, "endereço de outra conta não vaza");
+});
+
+test("estoque por cor: PATCH admin reflete no catálogo e é aplicado no checkout (incl. a corrida)", async () => {
+  const endereco = {
+    nome: "Cliente Cor", telefone: "61982749808", rua: "Rua das Flores",
+    numero: "100", bairro: "Centro", cidade: "Brasília", uf: "DF",
+  };
+  const checkoutBody = (color) => ({
+    items: [{ id: 1, qty: 1, color }],
+    cep: "70040020",
+    shipping_service_id: "1",
+    address: endereco,
+    paymentMethod: "card",
+  });
+
+  // Reaproveita a conta admin já criada no teste de controle de acesso
+  // (mesmo ADMIN_EMAIL/senha; registrar de novo daria 409, sem cookie).
+  const ra = await post("/api/auth/login", { email: ADMIN_EMAIL, password: "SenhaADM12345!" });
+  const adminCookie = cookieFrom(ra);
+  assert.ok(adminCookie, "login admin precisa devolver cookie de sessão");
+  sharedAdminCookie = adminCookie;
+  const patched = await patch("/api/admin/products/1", { availableColors: ["#F4B4CC"] }, adminCookie);
+  assert.equal(patched.status, 200);
+  assert.deepEqual((await patched.json()).availableColors, ["#F4B4CC"]);
+
+  // O catálogo público e o do admin refletem a restrição.
+  const pub = await (await fetch(ORIGIN + "/api/products")).json();
+  assert.deepEqual(pub.products.find(p => p.id === 1).availableColors, ["#F4B4CC"]);
+  const adminList = await (await fetch(ORIGIN + "/api/admin/products", { headers: { Cookie: adminCookie } })).json();
+  assert.deepEqual(adminList.products.find(p => p.id === 1).availableColors, ["#F4B4CC"]);
+
+  // Cliente comum faz login para testar o checkout.
+  const rc = await post("/api/auth/register", { name: "Cliente Cor", email: "clientecor@test.com", password: "SenhaC12345!", cpf: "11144477735" });
+  const clienteCookie = cookieFrom(rc);
+  sharedClienteCookie = clienteCookie;
+
+  // Cor fora da paleta inteira -> 400.
+  const forsDaPaleta = await post("/api/create-preference", checkoutBody("#000000"), clienteCookie);
+  assert.equal(forsDaPaleta.status, 400);
+
+  // Cor válida da paleta, mas fora do estoque ATUAL do produto -> 409,
+  // nomeando produto e cor (não é um 400 genérico).
+  const foraDeEstoque = await post("/api/create-preference", checkoutBody("#DD6E9B"), clienteCookie);
+  assert.equal(foraDeEstoque.status, 409);
+  const foraDeEstoqueMsg = (await foraDeEstoque.json()).error;
+  assert.match(foraDeEstoqueMsg, /Rosa pink/);
+  assert.match(foraDeEstoqueMsg, /Bailarina/);
+
+  // Cor que AINDA está em estoque passa da validação de cor (não é 400/409
+  // — o que sobrar de erro daqui pra frente é só a cotação de frete, que
+  // este ambiente de teste não tem credencial real pra completar).
+  const emEstoque = await post("/api/create-preference", checkoutBody("#F4B4CC"), clienteCookie);
+  assert.notEqual(emEstoque.status, 400);
+  assert.notEqual(emEstoque.status, 409);
+
+  // A CONDIÇÃO DE CORRIDA: a lojista tira a última cor do estoque DEPOIS
+  // que a cliente já tinha escolhido — o checkout, ao revalidar contra o
+  // estoque atual, tem que rejeitar com 409 em vez de aceitar a cor velha.
+  const removeu = await patch("/api/admin/products/1", { availableColors: [] }, adminCookie);
+  assert.equal(removeu.status, 200);
+  const corrida = await post("/api/create-preference", checkoutBody("#F4B4CC"), clienteCookie);
+  assert.equal(corrida.status, 409, "cor que ficou esgotada entre a escolha e o checkout é rejeitada");
+});
+
+test("galeria de fotos: PATCH admin reflete no catálogo (a 1ª é a capa) e valida limites", async () => {
+  // Reaproveita o cookie de admin do teste de estoque por cor, acima — ver
+  // comentário em sharedAdminCookie sobre o teto do authLimiter.
+  const adminCookie = sharedAdminCookie;
+  assert.ok(adminCookie, "precisa de um cookie de admin já autenticado");
+
+  const fotoA = "https://exemplo.test/foto-a.jpg";
+  const fotoB = "https://exemplo.test/foto-b.jpg";
+
+  const salvo = await patch("/api/admin/products/2", { photos: [fotoA, fotoB] }, adminCookie);
+  assert.equal(salvo.status, 200);
+  const salvoBody = await salvo.json();
+  assert.deepEqual(salvoBody.photos, [fotoA, fotoB]);
+  assert.equal(salvoBody.photoUrl, fotoA, "a 1ª foto da lista é a capa (photoUrl derivado)");
+
+  // Catálogo público e do admin refletem a galeria e a capa.
+  const pub = await (await fetch(ORIGIN + "/api/products")).json();
+  const p2 = pub.products.find(p => p.id === 2);
+  assert.deepEqual(p2.photos, [fotoA, fotoB]);
+  assert.equal(p2.photoUrl, fotoA);
+
+  // Só reordenar (sem adicionar/remover nada) já muda a capa.
+  const reordenado = await patch("/api/admin/products/2", { photos: [fotoB, fotoA] }, adminCookie);
+  assert.equal(reordenado.status, 200);
+  assert.equal((await reordenado.json()).photoUrl, fotoB);
+
+  // Mais de 8 fotos, URL duplicada e URL inválida são todas rejeitadas.
+  const demais = await patch(
+    "/api/admin/products/2",
+    { photos: Array.from({ length: 9 }, (_, i) => `https://exemplo.test/foto-${i}.jpg`) },
+    adminCookie
+  );
+  assert.equal(demais.status, 400);
+  const duplicada = await patch("/api/admin/products/2", { photos: [fotoA, fotoA] }, adminCookie);
+  assert.equal(duplicada.status, 400);
+  const invalida = await patch("/api/admin/products/2", { photos: ["nao-e-uma-url"] }, adminCookie);
+  assert.equal(invalida.status, 400);
+
+  // Removeu todas as fotos: [] explícito é um estado real (produto sem
+  // foto), não um erro — o servidor aceita e devolve photos: [].
+  const semFotos = await patch("/api/admin/products/2", { photos: [] }, adminCookie);
+  assert.equal(semFotos.status, 200);
+  assert.deepEqual((await semFotos.json()).photos, []);
+});
+
+test("galeria de fotos: upload real grava em img/products/ e remover a foto do PATCH apaga o arquivo", async () => {
+  const adminCookie = sharedAdminCookie;
+  assert.ok(adminCookie, "precisa de um cookie de admin já autenticado");
+
+  const form = new FormData();
+  form.append("photo", new Blob([Buffer.from([0xff, 0xd8, 0xff, 0xdb])], { type: "image/jpeg" }), "foto.jpg");
+  const up = await fetch(`${ORIGIN}/api/admin/products/3/photo`, {
+    method: "POST",
+    headers: { Origin: ORIGIN, Cookie: adminCookie },
+    body: form,
+  });
+  assert.equal(up.status, 201);
+  const { photoUrl } = await up.json();
+  assert.match(photoUrl, /^\/img\/products\/produto-3-\d+\.jpe?g$/);
+  const filePath = path.join(__dirname, "..", photoUrl);
+
+  // try/finally garante a limpeza do arquivo em disco mesmo se alguma
+  // asserção falhar no meio — este upload grava na MESMA pasta usada pelo
+  // servidor de verdade (server/img/products/), não numa pasta isolada de
+  // teste, então não pode deixar sobra.
+  try {
+    assert.ok(fs.existsSync(filePath), "arquivo devia existir em disco logo após o upload");
+
+    const salvo = await patch("/api/admin/products/3", { photos: [photoUrl] }, adminCookie);
+    assert.equal(salvo.status, 200);
+    assert.ok(fs.existsSync(filePath), "arquivo continua existindo enquanto está na lista");
+
+    // Remover a foto da lista (photos: []) apaga o arquivo do disco,
+    // melhor-esforço (mesmo racional de deleteOldLocalPhoto ao trocar a
+    // foto única antiga) — fs.unlink é assíncrono, por isso o poll curto.
+    const removido = await patch("/api/admin/products/3", { photos: [] }, adminCookie);
+    assert.equal(removido.status, 200);
+    for (let i = 0; i < 10 && fs.existsSync(filePath); i++) await new Promise(r => setTimeout(r, 50));
+    assert.ok(!fs.existsSync(filePath), "arquivo devia ter sido apagado do disco ao sair da lista");
+  } finally {
+    try { fs.unlinkSync(filePath); } catch {}
+  }
+});
+
+test("cor personalizada: POST /api/admin/colors cria, aparece em /api/products, e rejeita duplicata/hex inválido", async () => {
+  const adminCookie = sharedAdminCookie;
+  assert.ok(adminCookie, "precisa de um cookie de admin já autenticado");
+
+  const created = await post("/api/admin/colors", { hex: "#7a2e4f", label: "Vinho" }, adminCookie);
+  assert.equal(created.status, 201);
+  const createdBody = await created.json();
+  assert.equal(createdBody.hex, "#7A2E4F", "hex normalizado para maiúsculo");
+  assert.equal(createdBody.label, "Vinho");
+
+  const pub = await (await fetch(ORIGIN + "/api/products")).json();
+  assert.ok(pub.colors.some(c => c.hex === "#7A2E4F" && c.label === "Vinho"), "cor nova aparece na paleta pública");
+
+  const duplicada = await post("/api/admin/colors", { hex: "#7A2E4F", label: "Outro nome" }, adminCookie);
+  assert.equal(duplicada.status, 409);
+
+  const invalida = await post("/api/admin/colors", { hex: "vermelho", label: "X" }, adminCookie);
+  assert.equal(invalida.status, 400);
+
+  const semNome = await post("/api/admin/colors", { hex: "#112233", label: "a" }, adminCookie);
+  assert.equal(semNome.status, 400);
+});
+
+test("cor personalizada: DELETE /api/admin/colors/:hex apaga cor criada, mas nunca uma fixa", async () => {
+  const adminCookie = sharedAdminCookie;
+  assert.ok(adminCookie);
+
+  const created = await post("/api/admin/colors", { hex: "#334455", label: "Cinza Teste" }, adminCookie);
+  assert.equal(created.status, 201);
+
+  const del = (hex) => fetch(`${ORIGIN}/api/admin/colors/${encodeURIComponent(hex)}`, {
+    method: "DELETE",
+    headers: { Origin: ORIGIN, Cookie: adminCookie },
+  });
+
+  // Cor fixa (da paleta original) nunca pode ser apagada.
+  const fixaNegada = await del("#F4B4CC");
+  assert.equal(fixaNegada.status, 400);
+
+  // Hex que não existe -> 404.
+  const inexistente = await del("#999999");
+  assert.equal(inexistente.status, 404);
+
+  // Cor criada pelo painel é apagada de verdade.
+  const apagada = await del("#334455");
+  assert.equal(apagada.status, 200);
+  const pub = await (await fetch(ORIGIN + "/api/products")).json();
+  assert.ok(!pub.colors.some(c => c.hex === "#334455"), "cor apagada não aparece mais na paleta");
+});
+
+test("2ª cor opcional (produtos vendidos em conjunto): exige allowsSecondColor, valida cada cor separadamente (incl. a corrida)", async () => {
+  const adminCookie = sharedAdminCookie;
+  const clienteCookie = sharedClienteCookie;
+  assert.ok(adminCookie && clienteCookie, "precisa de admin e cliente já autenticados");
+
+  // Produto 6 ("Kit Presente 3 Laços") — id de kit de verdade no catálogo,
+  // ainda não tocado pelos testes anteriores.
+  const endereco = {
+    nome: "Cliente Kit", telefone: "61982749809", rua: "Rua das Flores",
+    numero: "200", bairro: "Centro", cidade: "Brasília", uf: "DF",
+  };
+  const checkoutBody = (color, secondColor) => ({
+    items: [{ id: 6, qty: 1, color, secondColor }],
+    cep: "70040020",
+    shipping_service_id: "1",
+    address: endereco,
+    paymentMethod: "card",
+  });
+
+  // Produto ainda não permite 2ª cor -> secondColor truthy é rejeitado (400),
+  // mesmo sendo uma cor válida e em estoque.
+  const semPermissao = await post("/api/create-preference", checkoutBody("#F4B4CC", "#DD6E9B"), clienteCookie);
+  assert.equal(semPermissao.status, 400);
+
+  const ligou = await patch("/api/admin/products/6", { allowSecondColor: true }, adminCookie);
+  assert.equal(ligou.status, 200);
+  assert.equal((await ligou.json()).allowsSecondColor, true);
+
+  // Com permissão, mas a 2ª cor está fora do estoque atual -> 409 nomeando ELA.
+  await patch("/api/admin/products/6", { availableColors: ["#F4B4CC"] }, adminCookie);
+  const foraDeEstoque = await post("/api/create-preference", checkoutBody("#F4B4CC", "#DD6E9B"), clienteCookie);
+  assert.equal(foraDeEstoque.status, 409);
+  assert.match((await foraDeEstoque.json()).error, /Rosa pink/);
+
+  // As duas cores em estoque -> passam da validação de cor.
+  await patch("/api/admin/products/6", { availableColors: ["#F4B4CC", "#DD6E9B"] }, adminCookie);
+  const comAsDuas = await post("/api/create-preference", checkoutBody("#F4B4CC", "#DD6E9B"), clienteCookie);
+  assert.notEqual(comAsDuas.status, 400);
+  assert.notEqual(comAsDuas.status, 409);
+
+  // A 2ª cor é OPCIONAL mesmo num produto elegível — só a principal continua válido.
+  const soPrincipal = await post("/api/create-preference", checkoutBody("#F4B4CC", undefined), clienteCookie);
+  assert.notEqual(soPrincipal.status, 400);
+  assert.notEqual(soPrincipal.status, 409);
+
+  // A CORRIDA: a 2ª cor escolhida fica esgotada DEPOIS da escolha da
+  // cliente — o checkout, revalidando contra o estoque atual, rejeita com
+  // 409 em vez de aceitar a cor velha (mesma lógica já provada pra cor única).
+  await patch("/api/admin/products/6", { availableColors: ["#F4B4CC"] }, adminCookie);
+  const corrida = await post("/api/create-preference", checkoutBody("#F4B4CC", "#DD6E9B"), clienteCookie);
+  assert.equal(corrida.status, 409, "2ª cor que ficou esgotada entre a escolha e o checkout é rejeitada");
 });

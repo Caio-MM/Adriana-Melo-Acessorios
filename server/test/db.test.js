@@ -100,3 +100,78 @@ test("getSavedAddress / saveAddress — endereço padrão por conta, isolado ent
   // Endereço de uma cliente nunca aparece para outra.
   assert.equal(db.getSavedAddress(b.id), null);
 });
+
+test("upsertProductOverride — available_colors: [] explícito nunca vira NULL (diferente de badges)", () => {
+  // Produto nunca customizado: sem linha em product_overrides.
+  // Salvar só o nome não deve mexer em available_colors (chave ausente
+  // em fields preserva o que já estava — aqui, nada/NULL).
+  const semCor = db.upsertProductOverride(90001, { name: "Produto Teste Cor" });
+  assert.equal(semCor.available_colors, null, "chave ausente preserva NULL");
+
+  // Define um subconjunto de cores em estoque.
+  const comDuasCores = db.upsertProductOverride(90001, { availableColors: ["#F4B4CC", "#DD6E9B"] });
+  assert.deepEqual(JSON.parse(comDuasCores.available_colors), ["#F4B4CC", "#DD6E9B"]);
+
+  // Esgotado em TODAS as cores: array vazio, tem que ser gravado como "[]",
+  // nunca colapsado para NULL (NULL significaria "todas as cores", o
+  // oposto do que a lojista quis dizer).
+  const esgotado = db.upsertProductOverride(90001, { availableColors: [] });
+  assert.equal(esgotado.available_colors, "[]", "array vazio grava como [], não NULL");
+  assert.deepEqual(JSON.parse(esgotado.available_colors), []);
+
+  // Salvar outro campo (ex.: preço) sem tocar em availableColors preserva
+  // o [] esgotado — não pode reverter silenciosamente para "todas as cores".
+  const depoisDeOutraEdicao = db.upsertProductOverride(90001, { price: 39.9 });
+  assert.equal(depoisDeOutraEdicao.available_colors, "[]", "edição de outro campo preserva o esgotado");
+});
+
+test("upsertProductOverride — photos: [] explícito nunca vira NULL, e a ORDEM é preservada (não é um Set)", () => {
+  const semFoto = db.upsertProductOverride(90002, { name: "Produto Teste Foto" });
+  assert.equal(semFoto.photos, null, "chave ausente preserva NULL — cai para a foto única antiga (photo_url) na leitura");
+
+  // Ordem é o próprio dado: a 1ª da lista é a capa.
+  const comFotos = db.upsertProductOverride(90002, { photos: ["/img/products/b.jpg", "/img/products/a.jpg"] });
+  assert.deepEqual(JSON.parse(comFotos.photos), ["/img/products/b.jpg", "/img/products/a.jpg"]);
+
+  // Removeu todas as fotos: array vazio grava como "[]", nunca colapsa para
+  // NULL (que significaria "nunca editado" -> cairia de volta pra foto
+  // única antiga em vez de "sem foto nenhuma").
+  const semFotoDeNovo = db.upsertProductOverride(90002, { photos: [] });
+  assert.equal(semFotoDeNovo.photos, "[]", "array vazio grava como [], não NULL");
+
+  // Editar outro campo sem tocar em photos preserva a lista salva.
+  const depoisDeOutraEdicao = db.upsertProductOverride(90002, { price: 39.9 });
+  assert.equal(depoisDeOutraEdicao.photos, "[]", "edição de outro campo preserva o estado sem foto");
+});
+
+test("listCustomColors / insertCustomColor — round-trip de uma cor criada pelo painel", () => {
+  assert.deepEqual(db.listCustomColors().map(c => c.hex), []);
+  const created = db.insertCustomColor({ hex: "#7A2E4F", label: "Vinho" });
+  assert.deepEqual(created, { hex: "#7A2E4F", label: "Vinho" });
+  const listed = db.listCustomColors();
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].hex, "#7A2E4F");
+  assert.equal(listed[0].label, "Vinho");
+
+  db.deleteCustomColor("#7A2E4F");
+  assert.deepEqual(db.listCustomColors().map(c => c.hex), []);
+
+  // Apagar um hex que não existe não quebra (mesmo racional de deleteCustomProduct).
+  db.deleteCustomColor("#000000");
+});
+
+test("upsertProductOverride — allow_second_color: NULL e 0 são a mesma coisa (desligado), sem distinção especial", () => {
+  const semTocar = db.upsertProductOverride(90003, { name: "Kit Teste" });
+  assert.ok(!semTocar.allow_second_color, "chave ausente fica \"desligado\" (NULL ou 0 — os dois são equivalentes aqui)");
+
+  const ligado = db.upsertProductOverride(90003, { allowSecondColor: true });
+  assert.equal(ligado.allow_second_color, 1);
+
+  const desligadoDeNovo = db.upsertProductOverride(90003, { allowSecondColor: false });
+  assert.equal(desligadoDeNovo.allow_second_color, 0);
+
+  // Editar outro campo sem tocar em allowSecondColor preserva o estado ligado.
+  db.upsertProductOverride(90003, { allowSecondColor: true });
+  const depoisDeOutraEdicao = db.upsertProductOverride(90003, { price: 55 });
+  assert.equal(depoisDeOutraEdicao.allow_second_color, 1, "edição de outro campo preserva o estado ligado");
+});
