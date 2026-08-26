@@ -439,14 +439,92 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .hero-stats .lbl{ font-size:.78rem; color:var(--ink-soft); }
 
 .hero-art{ position:relative; height:460px; }
-.hero-bow-main{ color:var(--blush-600); width:260px; height:auto; position:absolute; top:50%; left:50%; transform:translate(-50%,-52%); filter:drop-shadow(0 25px 35px rgba(192,84,128,.35)); z-index:1; }
-.hero-bow-shadow{ color:var(--blush-150); width:300px; height:auto; position:absolute; top:54%; left:47%; transform:translate(-50%,-50%) rotate(-8deg); z-index:0; }
-.floaty{ position:absolute; animation:floaty 6s ease-in-out infinite; }
-.floaty.f1{ top:6%; left:8%; width:46px; color:var(--blush-300); animation-delay:0s; }
-.floaty.f2{ top:14%; right:6%; width:34px; color:var(--blush-500); animation-delay:1.2s; }
-.floaty.f3{ bottom:10%; left:2%; width:56px; color:var(--blush-200); animation-delay:.6s; }
-.floaty.f4{ bottom:4%; right:14%; width:38px; color:var(--blush-600); animation-delay:1.8s; }
+
+/* A foto entra no lugar do laço grande que era só ilustração. Os quatro
+   lacinhos .floaty continuam em volta — por isso ela é posicionada em
+   absolute igual ao laço era, sem mexer nas coordenadas deles. */
+.hero-photo-wrap{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:min(84%, 380px); z-index:1;
+  /* Moldura branca, como foto revelada. É o que separa a imagem do fundo:
+     o bokeh da foto é rosa-claro e o hero também, então sem esta borda a
+     foto encosta no fundo e some. A sombra sozinha não dava conta. */
+  background:var(--white); padding:12px 12px 14px;
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-soft);
+}
+/* Cartão rosa inclinado atrás — dá profundidade e evita a foto "flutuar"
+   solta no creme. Usa --blush-200 (e não --blush-100) porque sobre o creme
+   do hero o tom mais claro ficava imperceptível. */
+.hero-photo-wrap::before{
+  content:""; position:absolute; inset:-16px -16px -24px;
+  background:var(--blush-200); border-radius:var(--radius-lg);
+  transform:rotate(-5deg); z-index:-1;
+}
+.hero-photo{
+  display:block; width:100%; height:auto;
+  border-radius:calc(var(--radius-lg) - 10px);
+}
+/* Selo em Caveat: é a assinatura artesanal da marca e ancora o canto
+   inferior, que antes ficava vazio. */
+.hero-photo-badge{
+  position:absolute; right:-14px; bottom:14px;
+  display:inline-flex; align-items:center; gap:.35rem;
+  font-family:var(--font-script); font-size:1.3rem; line-height:1;
+  color:var(--white); background:var(--blush-600);
+  padding:.5rem .95rem .55rem; border-radius:999px;
+  box-shadow:0 10px 20px -10px rgba(192,84,128,.6);
+  transform:rotate(-4deg);
+}
+.hero-photo-badge i{ font-size:.8rem; }
+/* Lacinhos ao redor da foto. Ficam nas faixas laterais que sobram dos dois
+   lados dela (a foto ocupa o miolo) — os que encostam na borda passam POR
+   TRÁS, porque .hero-photo-wrap tem z-index:1 e estes não. Tamanhos, tons e
+   atrasos variados de propósito: se todos subissem juntos e do mesmo
+   tamanho, viraria um padrão repetido em vez de algo solto. */
+/* z-index:2 fica ACIMA do .hero-photo-wrap (z-index:1). Sem isso o cartão
+   rosa inclinado — que é o ::before do wrap, e portanto participa do
+   stacking context dele — cobre os laços inteiros no celular, onde o cartão
+   ocupa quase toda a área. Encostar na borda da foto é proposital: dá
+   camada, como um adesivo. */
+.floaty{ position:absolute; z-index:2; animation:floaty 6s ease-in-out infinite; }
+.floaty.f1{ top:6%;    left:8%;   width:46px; color:var(--blush-300); animation-delay:0s; }
+.floaty.f2{ top:14%;   right:6%;  width:34px; color:var(--blush-500); animation-delay:1.2s; }
+.floaty.f3{ bottom:10%; left:2%;  width:56px; color:var(--blush-200); animation-delay:.6s; }
+.floaty.f4{ bottom:4%;  right:14%; width:38px; color:var(--blush-600); animation-delay:1.8s; }
+.floaty.f5{ top:36%;   left:0%;   width:30px; color:var(--blush-500); animation-delay:2.4s; }
+.floaty.f6{ top:46%;   right:0%;  width:42px; color:var(--blush-300); animation-delay:.9s; }
+.floaty.f7{ top:68%;   right:3%;  width:26px; color:var(--blush-600); animation-delay:3s; }
+.floaty.f8{ bottom:0%; left:26%;  width:28px; color:var(--blush-500); animation-delay:1.5s; }
 @keyframes floaty{ 0%,100%{ transform:translateY(0) rotate(0deg);} 50%{ transform:translateY(-16px) rotate(6deg);} }
+
+/* No celular a área da foto não some mais (antes era d-none, porque só tinha
+   ilustração decorativa ali). A altura fixa de 460px vira automática pra
+   não sobrar um vão embaixo da foto em tela pequena. */
+@media (max-width: 991.98px){
+  .hero{ padding:120px 0 70px; }
+  .hero-art{ height:auto; padding:1.5rem 0 1rem; display:flex; justify-content:center; }
+  /* Menor que no computador: no celular ela vem depois do texto e dos
+     botões, então serve de fecho do bloco — não precisa (nem deve) tomar a
+     tela inteira. */
+  /* position:relative (e não static): o cartão rosa é um ::before absoluto e
+     precisa se ancorar NA FOTO. Com static ele subia pro .hero-art, que é o
+     ancestral posicionado, e o cartão virava do tamanho da coluna inteira. */
+  .hero-photo-wrap{
+    position:relative; top:auto; left:auto; transform:none;
+    width:min(62%, 225px); padding:9px 9px 11px;
+  }
+  /* Os lacinhos referenciam as bordas do .hero-art; com ele em altura
+     automática as faixas laterais ficam estreitas, então sobram só quatro,
+     espalhados nos quatro cantos, pra não empilharem em cima da foto. */
+  .floaty.f3, .floaty.f4, .floaty.f7, .floaty.f8{ display:none; }
+  .floaty.f1{ top:0;   left:1%;  width:38px; }
+  .floaty.f2{ top:6%;  right:1%; width:30px; }
+  .floaty.f5{ bottom:6%; left:1%; top:auto; width:26px; }
+  .floaty.f6{ bottom:0;  right:1%; top:auto; width:34px; }
+  .hero-photo-badge{ font-size:.95rem; right:-6px; bottom:8px; padding:.32rem .65rem .36rem; }
+  .hero-photo-badge i{ font-size:.7rem; }
+}
 
 /* ============ MARQUEE STRIP ============ */
 
