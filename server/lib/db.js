@@ -644,6 +644,35 @@ function getOrderByExternalReference(ref) {
 function updateOrderStatus(ref, status, paymentId) {
   stmtUpdateOrderStatus.run(status, paymentId ?? null, Date.now(), ref);
 }
+// Usada só por "continuar pagamento" (POST /api/orders/:reference/resume-payment):
+// o pedido pendente já existe, mas frete/cupom/preço foram revalidados de novo
+// (podem ter mudado desde a tentativa original) — regrava o rascunho no MESMO
+// pedido em vez de criar um novo. Mantém external_reference, user_id, status,
+// payment_method e created_at intactos.
+const stmtUpdateOrderDraft = db.prepare(`
+  UPDATE orders SET
+    items_json = ?, address_json = ?, shipping_json = ?, coupon_code = ?,
+    subtotal = ?, discount = ?, pix_discount = ?, shipping_price = ?, total = ?,
+    customer_phone = ?, updated_at = ?
+  WHERE external_reference = ?
+`);
+function updateOrderDraft(ref, order) {
+  stmtUpdateOrderDraft.run(
+    JSON.stringify(order.items),
+    JSON.stringify(order.address),
+    JSON.stringify(order.shipping),
+    order.couponCode ?? null,
+    order.subtotal,
+    order.discount ?? 0,
+    order.pixDiscount ?? 0,
+    order.shippingPrice,
+    order.total,
+    order.customerPhone ?? null,
+    Date.now(),
+    ref
+  );
+  return getOrderByExternalReference(ref);
+}
 function listOrdersByUser(userId) {
   return stmtListOrdersByUser.all(userId);
 }
@@ -988,6 +1017,7 @@ module.exports = {
   createOrder,
   getOrderByExternalReference,
   updateOrderStatus,
+  updateOrderDraft,
   listOrdersByUser,
   listAllOrders,
   updateOrderTracking,

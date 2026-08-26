@@ -142,8 +142,20 @@
     }, 2000);
   });
 
+  const cartOffcanvasEl = document.getElementById("cartOffcanvas");
+  function cartIsOpen(){
+    return !!cartOffcanvasEl?.classList.contains("show");
+  }
+
+  cartOffcanvasEl?.addEventListener("show.bs.offcanvas", () => {
+    if(toastEl.classList.contains("show")) toast.hide();
+  });
+
   document.addEventListener("plc:auth", (e) => {
-    if(e.detail.user) return; 
-    setTimeout(() => toast.show(), 1200);
+    if(e.detail.user) return;
+    setTimeout(() => {
+      if(cartIsOpen()) return;
+      toast.show();
+    }, 1200);
   });
 })();

@@ -1020,7 +1020,18 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .cart-item-color-group-label{ font-size:.68rem; color:var(--ink-soft); display:block; margin-bottom:.25rem; }
 .cart-item-color-swatches{ margin-top:0; }
-.cart-color-swatch-btn{ border:none; background:none; }
+.cart-color-swatch-btn{
+  /* .qv-color-option (compartilhada com o Quick View) já define 34x34px,
+     mas dentro do flex-row do carrinho isso não bastava pra um <button>:
+     o container não declara align-items (stretch por padrão) e o navegador
+     aplica um "chrome" nativo de botão que ignora a altura fixa — a
+     bolinha saía oval. appearance:none tira esse chrome; flex:0 0 34px +
+     align-self:center travam o tamanho e cancelam o stretch só aqui,
+     sem tocar em .qv-color-option (usada também pelo Quick View). */
+  border:none; background:none; padding:0;
+  appearance:none; -webkit-appearance:none;
+  flex:0 0 34px; align-self:center;
+}
 .cart-item-controls{ display:flex; align-items:center; justify-content:space-between; gap:.6rem; }
 .cart-qty{ display:flex; align-items:center; gap:.5rem; }
 .cart-qty button{

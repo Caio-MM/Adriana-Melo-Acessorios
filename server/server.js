@@ -1479,6 +1479,129 @@ app.post("/api/create-pix-payment", strictLimiter, auth.requireAuth, async (req,
 });
 
 /* =========================================================================
+   POST /api/orders/:reference/resume-payment — continuar pagamento pendente
+   -------------------------------------------------------------------------
+   Gera um pagamento NOVO (Pix ou preferência do Checkout Pro) para um
+   pedido que já existe e está "pendente" — o link/QR de pagamento nunca é
+   guardado no banco (só payment_id, preenchido DEPOIS que o pagamento é
+   confirmado pelo webhook ou o Pix é gerado), então não dá para simplesmente
+   reexibir o que já existia; é preciso pedir um novo ao Mercado Pago.
+
+   Reconstrói o corpo que buildCheckoutDraft espera a partir do que já está
+   salvo no pedido (items_json, address_json, shipping_json, coupon_code,
+   payment_method) e revalida tudo de novo — frete, cupom, estoque de cor —
+   exatamente como um checkout novo faria, porque qualquer um pode ter
+   mudado desde a tentativa original (por isso pode devolver 409 se o frete
+   escolhido não existir mais ou o cupom tiver expirado). Atualiza o MESMO
+   pedido (updateOrderDraft) em vez de criar um duplicado.
+========================================================================= */
+app.post("/api/orders/:reference/resume-payment", strictLimiter, auth.requireAuth, async (req, res) => {
+  try {
+    const order = db.getOrderByExternalReference(req.params.reference);
+    if(!order || order.user_id !== req.user.id){
+      return res.status(404).json({ error: "Pedido não encontrado." });
+    }
+    if(order.status !== "pendente"){
+      return res.status(409).json({ error: "Este pedido não está mais pendente." });
+    }
+
+    const items = JSON.parse(order.items_json);
+    const address = JSON.parse(order.address_json);
+    const shipping = JSON.parse(order.shipping_json);
+
+    const draft = await buildCheckoutDraft({
+      user: req.user,
+      body: {
+        items: items.map(({ id, qty, color, secondColor }) => ({ id, qty, color, secondColor })),
+        cep: address.cep,
+        address,
+        shipping_service_id: shipping.service_id,
+        coupon: order.coupon_code,
+        paymentMethod: order.payment_method,
+        // Endereço já foi salvo como padrão da conta na tentativa original;
+        // não precisa repetir aqui.
+        saveAddress: false,
+      },
+    });
+    const orderRef = order.external_reference;
+
+    if(draft.paymentMethod === "pix"){
+      const payment = new Payment(mpClient);
+      const result = await payment.create({
+        body: {
+          transaction_amount: draft.total,
+          description: `Pedido ${orderRef.slice(0, 8)} — Adriana Melo Acessórios`,
+          payment_method_id: "pix",
+          external_reference: orderRef,
+          notification_url: `${process.env.SERVER_PUBLIC_URL || "https://SEU-DOMINIO-DO-SERVIDOR.com"}/api/webhook`,
+          payer: {
+            email: req.user.email,
+            first_name: draft.address.nome,
+          },
+        },
+        // Cada tentativa de retomar precisa de uma chave nova — reaproveitar
+        // orderRef aqui devolveria o MESMO Pix (provavelmente já expirado)
+        // gerado na tentativa anterior.
+        requestOptions: { idempotencyKey: `${orderRef}-resume-${randomUUID()}` },
+      });
+
+      const tx = result.point_of_interaction?.transaction_data;
+      if(!tx?.qr_code){
+        console.error("Pix (retomada) criado sem QR Code:", result.id, result.status);
+        return res.status(502).json({ error: "Não foi possível gerar o código Pix agora. Tente novamente em instantes." });
+      }
+
+      db.updateOrderDraft(orderRef, orderRowFrom(draft, orderRef, req.user.id));
+      db.updateOrderStatus(orderRef, "pendente", String(result.id));
+
+      return res.json({
+        reference: orderRef,
+        total: draft.total,
+        qrCode: tx.qr_code,
+        qrCodeBase64: tx.qr_code_base64,
+        expiresAt: result.date_of_expiration || null,
+      });
+    }
+
+    const { preferenceItems } = draft;
+    const payer = {
+      name: draft.address.nome,
+      ...(req.user?.email ? { email: req.user.email } : {}),
+    };
+    const preference = new Preference(mpClient);
+    const result = await preference.create({
+      body: {
+        items: preferenceItems,
+        payer,
+        payment_methods: {
+          excluded_payment_types: PAYMENT_METHODS[draft.paymentMethod].excludedPaymentTypes.map(id => ({ id })),
+          installments: pricing.PAYMENT_RULES.maxInstallments,
+        },
+        external_reference: orderRef,
+        back_urls: {
+          success: `${CLIENT_ORIGIN}/pagamento-sucesso.html`,
+          failure: `${CLIENT_ORIGIN}/pagamento-erro.html`,
+          pending: `${CLIENT_ORIGIN}/pagamento-pendente.html`,
+        },
+        auto_return: "approved",
+        notification_url: `${process.env.SERVER_PUBLIC_URL || "https://SEU-DOMINIO-DO-SERVIDOR.com"}/api/webhook`,
+        statement_descriptor: "PETIT LACO",
+      },
+    });
+
+    db.updateOrderDraft(orderRef, orderRowFrom(draft, orderRef, req.user.id));
+
+    res.json({ id: result.id, init_point: result.init_point });
+  } catch (err) {
+    if(!(err instanceof Error) && err.status && err.message){
+      return res.status(err.status).json({ error: err.message });
+    }
+    console.error("Erro ao retomar pagamento:", err);
+    res.status(500).json({ error: "Não foi possível retomar o pagamento agora. Tente novamente em instantes." });
+  }
+});
+
+/* =========================================================================
    GET /api/orders/:reference/status — usado pela página do Pix
    -------------------------------------------------------------------------
    Devolve só o status, e só para a dona do pedido (o filtro por user_id é o

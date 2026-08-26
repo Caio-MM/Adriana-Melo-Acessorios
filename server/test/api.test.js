@@ -18,6 +18,13 @@ const ADMIN_EMAIL = "admin@test.com";
 const ADMIN_HASH = crypto.createHash("sha256").update(ADMIN_EMAIL).digest("hex");
 const TMP_DB = path.join(os.tmpdir(), `plc-api-test-${process.pid}-${Date.now()}.db`);
 
+// Aponta pro MESMO arquivo (WAL) que o processo filho do server.js abaixo —
+// usado só para inserir pedidos "pago"/"pendente" diretamente (sem depender
+// de credencial real do Mercado Pago/Melhor Envio) nos testes de
+// "continuar pagamento". Precisa vir ANTES do require, igual db.test.js.
+process.env.DB_PATH = TMP_DB;
+const db = require("../lib/db.js");
+
 let child;
 // Cookie de admin reaproveitado entre testes (setado no primeiro login bem-
 // sucedido, abaixo). authLimiter (server.js) capa em 10 requisições por IP
@@ -469,4 +476,58 @@ test("descrição do produto: PATCH edita, GET /api/products reflete, POST /api/
   }, adminCookie);
   assert.equal(created.status, 201);
   assert.equal((await created.json()).description, "Feito sob encomenda.");
+});
+
+test("continuar pagamento: 404 se não existe/não é da cliente, 409 se já não está pendente", async () => {
+  // Duas clientes novas, cada uma dona de um pedido — tudo inserido direto
+  // no banco (db.createUser/createSession/createOrder), sem passar por
+  // /api/auth/register nem /api/auth/login: essas rotas dividem o mesmo
+  // authLimiter (10 req/15min por IP) com todos os testes deste arquivo, e
+  // esta suíte já está perto do teto só com os cadastros que os testes
+  // anteriores precisaram fazer. Sessão criada assim é idêntica, para fins
+  // de auth.requireAuth, a uma sessão de login de verdade — só pula o
+  // hash de senha e o rate limit, que não são o que este teste verifica.
+  // Pedidos "pago"/"pendente" também são inseridos direto (db.createOrder):
+  // este ambiente de teste não tem credencial real de Mercado Pago/Melhor
+  // Envio para levar um pedido de verdade até existir (mesma limitação já
+  // documentada nos testes de estoque por cor acima). Isso ainda cobre a
+  // parte que É nossa (as travas de dono/status), sem depender de rede.
+  function sessionCookieFor(userId){
+    const token = crypto.randomBytes(32).toString("hex");
+    db.createSession({
+      tokenHash: crypto.createHash("sha256").update(token).digest("hex"),
+      userId,
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    });
+    return `plc_session=${token}`;
+  }
+
+  const dona = db.createUser({ name: "Dona Pedido", email: "donapedido@test.com", passwordHash: "x", cpf: "11144477735" });
+  const donaCookie = sessionCookieFor(dona.id);
+  const donaId = dona.id;
+
+  const outra = db.createUser({ name: "Outra Cliente", email: "outracliente@test.com", passwordHash: "x", cpf: "11144477735" });
+  const outraCookie = sessionCookieFor(outra.id);
+
+  const pedidoBase = {
+    items: [{ id: 1, qty: 1, price: 34.9, color: "#F4B4CC" }],
+    address: { nome: "Dona Pedido", telefone: "61982749808", rua: "Rua X", numero: "1", bairro: "B", cidade: "Brasília", uf: "DF", cep: "70040020" },
+    shipping: { service_id: "1", name: "PAC", price: 10 },
+    subtotal: 34.9, shippingPrice: 10, total: 44.9, customerPhone: "61982749808",
+  };
+
+  const pago = db.createOrder({ ...pedidoBase, externalReference: "TEST-PAGO-1", userId: donaId, status: "pago" });
+  const pendenteDaDona = db.createOrder({ ...pedidoBase, externalReference: "TEST-PENDENTE-1", userId: donaId, status: "pendente" });
+
+  // Referência que não existe -> 404.
+  const inexistente = await post("/api/orders/nao-existe-esta-referencia/resume-payment", {}, donaCookie);
+  assert.equal(inexistente.status, 404);
+
+  // Pedido é de outra cliente -> 404 (nunca revela que o pedido existe).
+  const deOutra = await post(`/api/orders/${pendenteDaDona.external_reference}/resume-payment`, {}, outraCookie);
+  assert.equal(deOutra.status, 404);
+
+  // Pedido já pago -> 409, sem tentar gerar um pagamento novo.
+  const jaPago = await post(`/api/orders/${pago.external_reference}/resume-payment`, {}, donaCookie);
+  assert.equal(jaPago.status, 409);
 });

@@ -55,8 +55,15 @@
               <div class="fw-semibold">Pedido #${escapeHTML(order.reference.slice(0, 8))}</div>
               <div class="small" style="color:var(--ink-soft)">${formatDate(order.createdAt)}</div>
             </div>
-            <span class="order-status ${status.cls}">${status.label}</span>
+            <div class="d-flex flex-column align-items-end gap-1">
+              <span class="order-status ${status.cls}">${status.label}</span>
+              ${order.status === "pendente" ? `
+              <button type="button" class="btn btn-outline-blush btn-sm resume-payment-btn" data-reference="${escapeHTML(order.reference)}">
+                Continuar pagamento
+              </button>` : ""}
+            </div>
           </div>
+          ${order.status === "pendente" ? `<div class="small text-danger mb-2 resume-payment-error d-none"></div>` : ""}
           <ul class="list-unstyled small mb-2">${itemsHtml}</ul>
           <div class="d-flex justify-content-between small">
             <span>Subtotal</span><span>${formatMoney(order.subtotal)}</span>
@@ -98,6 +105,40 @@
   }
 
   retryBtn?.addEventListener("click", loadOrders);
+
+  listEl?.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".resume-payment-btn");
+    if(!btn) return;
+    const card = btn.closest(".order-card");
+    const errorEl = card?.querySelector(".resume-payment-error");
+    if(errorEl){ errorEl.classList.add("d-none"); errorEl.textContent = ""; }
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = "Preparando...";
+    try{
+      const res = await fetch(`/api/orders/${encodeURIComponent(btn.dataset.reference)}/resume-payment`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível continuar o pagamento agora.");
+
+      if(data.qrCode){
+        sessionStorage.setItem("plc_pix_pendente", JSON.stringify(data));
+        window.location.href = "pagamento-pix.html";
+        return;
+      }
+      if(!data.init_point) throw new Error("O servidor não devolveu o link de pagamento. Tente novamente.");
+      window.location.href = data.init_point;
+    }catch(err){
+      console.error("Erro ao continuar pagamento:", err);
+      if(errorEl){
+        errorEl.textContent = err.message || "Não foi possível continuar o pagamento agora. Tente novamente.";
+        errorEl.classList.remove("d-none");
+      }
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  });
 
   /* ============ EXCLUSÃO DE CONTA (LGPD) ============ */
   const accountDanger = document.getElementById("accountDanger");
