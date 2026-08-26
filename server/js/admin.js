@@ -479,10 +479,20 @@
 
   function renderProductsTable(products){
     productsCache = products;
-    productsTableBodyEl.innerHTML = products.map(p => {
+    productsTableBodyEl.innerHTML = products.map((p, index) => {
       const isCustom = p.id >= CUSTOM_PRODUCT_ID_START;
+      const primeiro = index === 0;
+      const ultimo = index === products.length - 1;
       return `
       <tr data-product-id="${p.id}">
+        <td>
+          <div class="admin-order-cell">
+            <button type="button" class="admin-order-btn" data-move="up" data-id="${p.id}" ${primeiro ? "disabled" : ""}
+                    aria-label="Mover ${escapeHTML(p.name)} para cima na vitrine"><i class="bi bi-chevron-up"></i></button>
+            <button type="button" class="admin-order-btn" data-move="down" data-id="${p.id}" ${ultimo ? "disabled" : ""}
+                    aria-label="Mover ${escapeHTML(p.name)} para baixo na vitrine"><i class="bi bi-chevron-down"></i></button>
+          </div>
+        </td>
         <td>${imageFor(p)
           ? `<img class="admin-product-thumb" src="${escapeHTML(imageFor(p))}" alt="${escapeHTML(p.name)}" width="44" height="44" loading="lazy">`
           : BOW_PLACEHOLDER}</td>
@@ -920,7 +930,55 @@
     }
   });
 
+  /* ============ ORDEM DOS PRODUTOS NA VITRINE ============
+     A lista já é redesenhada na hora do clique (a lojista vê o produto
+     subir na mesma hora) e só então a ordem vai pro servidor. Se a gravação
+     falhar, a tabela é recarregada do servidor — melhor voltar visivelmente
+     ao que está salvo do que deixar na tela uma ordem que não existe no
+     banco. */
+  let salvandoOrdem = false;
+
+  async function moverProduto(id, direcao){
+    if(salvandoOrdem) return;
+    const de = productsCache.findIndex(p => p.id === id);
+    const para = direcao === "up" ? de - 1 : de + 1;
+    if(de === -1 || para < 0 || para >= productsCache.length) return;
+
+    const nova = [...productsCache];
+    [nova[de], nova[para]] = [nova[para], nova[de]];
+    renderProductsTable(nova);
+
+    salvandoOrdem = true;
+    productsTableBodyEl.querySelectorAll(".admin-order-btn").forEach(b => { b.disabled = true; });
+    const msg = document.getElementById("productsOrderMsg");
+    msg.textContent = "Salvando a ordem...";
+    msg.className = "small mb-2 account-msg";
+    try{
+      const res = await fetchWithTimeout("/api/admin/products/order", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: nova.map(p => p.id) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível salvar a ordem.");
+      msg.textContent = "Ordem salva — a vitrine já está nesta ordem.";
+      msg.className = "small mb-2 account-msg text-success";
+    }catch(err){
+      console.error("Erro ao salvar a ordem dos produtos:", err);
+      msg.textContent = err.message || "Não foi possível salvar a ordem.";
+      msg.className = "small mb-2 account-msg text-danger";
+      await loadDashboard();   // volta pra ordem que está de fato salva
+    }finally{
+      salvandoOrdem = false;
+      productsTableBodyEl.querySelectorAll(".admin-order-btn").forEach(b => { b.disabled = false; });
+      // Reaplica os limites das pontas, que o loop acima liberou.
+      renderProductsTable(productsCache);
+    }
+  }
+
   productsTableBodyEl.addEventListener("click", (e) => {
+    const moveBtn = e.target.closest(".admin-order-btn");
+    if(moveBtn){ moverProduto(Number(moveBtn.dataset.id), moveBtn.dataset.move); return; }
     const editBtn = e.target.closest(".edit-product-btn");
     if(editBtn){ openEditModal(Number(editBtn.dataset.id)); return; }
     const deleteBtn = e.target.closest(".delete-product-btn");

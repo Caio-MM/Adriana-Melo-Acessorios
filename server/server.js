@@ -186,8 +186,33 @@ function getProductOverridesMap(){
   for(const row of db.listProductOverrides()) map.set(row.product_id, row);
   return map;
 }
+/* Ordem em que os produtos aparecem na vitrine e no painel.
+   A ordem base continua sendo "catálogo fixo primeiro, criados no painel
+   depois" — é ela que vale enquanto a lojista nunca tiver reordenado nada.
+   Quem tem sort_order gravado (ver setProductsOrder em lib/db.js) vem
+   primeiro, na ordem escolhida; quem está com NULL cai no fim mantendo a
+   ordem base entre si, que é onde um produto novo deve entrar. */
 function getAllProductIds(){
-  return [...Object.keys(PRODUCTS).map(Number), ...db.listCustomProducts().map(p => p.id)];
+  const baseOrder = [...Object.keys(PRODUCTS).map(Number), ...db.listCustomProducts().map(p => p.id)];
+  const sortOrderById = new Map();
+  for(const row of db.listProductOverrides()){
+    if(row.sort_order != null) sortOrderById.set(row.product_id, row.sort_order);
+  }
+  for(const p of db.listCustomProducts()){
+    if(p.sort_order != null) sortOrderById.set(p.id, p.sort_order);
+  }
+  if(sortOrderById.size === 0) return baseOrder;
+  // Ordenação estável: o índice na ordem base é o desempate, então produtos
+  // sem posição salva não embaralham entre si de um carregamento pro outro.
+  return baseOrder
+    .map((id, baseIndex) => ({ id, baseIndex, pos: sortOrderById.get(id) }))
+    .sort((a, b) => {
+      if(a.pos == null && b.pos == null) return a.baseIndex - b.baseIndex;
+      if(a.pos == null) return 1;
+      if(b.pos == null) return -1;
+      return a.pos - b.pos || a.baseIndex - b.baseIndex;
+    })
+    .map(item => item.id);
 }
 // `photos` (array, na ordem de exibição) é a fonte da verdade da galeria;
 // `photoUrl` (string) continua existindo como a "capa" — sempre photos[0] —
@@ -2756,6 +2781,48 @@ app.get("/api/admin/products", auth.requireAdmin, auth.requireAdminTwoFactor, (r
     return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, availableColors: p.availableColors, allowsSecondColor: p.allowsSecondColor, description: p.description };
   });
   res.json({ products, categories: getAllCategories(), colors: getAllColors(), availableBadges: PRODUCT_BADGES });
+});
+
+/* =========================================================================
+   PUT /api/admin/products/order — ordem dos produtos na vitrine
+   -------------------------------------------------------------------------
+   Recebe { ids: [...] } com TODOS os ids do catálogo, já na ordem desejada.
+   Exigir a lista inteira (e não "mova o produto X para a posição 3") é o
+   que torna a operação idempotente e livre de corrida: duas abas do painel
+   salvando ao mesmo tempo produzem uma ordem completa e válida, nunca uma
+   lista com posições duplicadas ou buracos.
+========================================================================= */
+app.put("/api/admin/products/order", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
+  try {
+    const ids = req.body?.ids;
+    if(!Array.isArray(ids) || ids.length === 0){
+      return res.status(400).json({ error: "Envie a lista de produtos na ordem desejada." });
+    }
+    const numericIds = ids.map(Number);
+    if(numericIds.some(id => !Number.isInteger(id))){
+      return res.status(400).json({ error: "Lista de produtos inválida." });
+    }
+    if(new Set(numericIds).size !== numericIds.length){
+      return res.status(400).json({ error: "Lista de produtos com itens repetidos." });
+    }
+    // A lista precisa bater EXATAMENTE com o catálogo atual. Se um produto
+    // foi criado ou excluído em outra aba desde que esta tela carregou, a
+    // ordem enviada está velha — gravar assim deixaria o produto novo sem
+    // posição ou apontaria para um que não existe mais.
+    const atuais = getAllProductIds();
+    const mesmoConjunto = numericIds.length === atuais.length
+      && numericIds.every(id => atuais.includes(id));
+    if(!mesmoConjunto){
+      return res.status(409).json({ error: "A lista de produtos mudou. Recarregue a página e ordene de novo." });
+    }
+
+    const customIds = numericIds.filter(id => id >= CUSTOM_PRODUCT_ID_START);
+    db.setProductsOrder(numericIds, customIds);
+    res.json({ ok: true, ids: getAllProductIds() });
+  } catch (err) {
+    console.error("Erro ao salvar a ordem dos produtos:", err);
+    res.status(500).json({ error: "Não foi possível salvar a ordem agora." });
+  }
 });
 
 function isValidProductPrice(v){

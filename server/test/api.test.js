@@ -531,3 +531,44 @@ test("continuar pagamento: 404 se não existe/não é da cliente, 409 se já nã
   const jaPago = await post(`/api/orders/${pago.external_reference}/resume-payment`, {}, donaCookie);
   assert.equal(jaPago.status, 409);
 });
+
+test("ordem dos produtos: PUT reordena a vitrine, e rejeita lista incompleta/repetida", async () => {
+  const adminCookie = sharedAdminCookie;
+  assert.ok(adminCookie);
+
+  const idsOriginais = (await (await fetch(ORIGIN + "/api/products")).json()).products.map(p => p.id);
+  assert.ok(idsOriginais.length >= 3, "precisa de pelo menos 3 produtos pra testar a troca");
+
+  // Inverter a lista inteira é o caso mais simples de conferir: se a ordem
+  // valeu, o primeiro vira o último.
+  const invertida = [...idsOriginais].reverse();
+  const ok = await put("/api/admin/products/order", { ids: invertida }, adminCookie);
+  assert.equal(ok.status, 200);
+
+  const depois = (await (await fetch(ORIGIN + "/api/products")).json()).products.map(p => p.id);
+  assert.deepEqual(depois, invertida, "a vitrine passa a seguir a ordem salva");
+
+  // O painel enxerga a mesma ordem que a cliente — se divergirem, a lojista
+  // arrasta um produto olhando para uma lista que não é a da loja.
+  const noPainel = (await (await fetch(ORIGIN + "/api/admin/products", { headers: { Cookie: adminCookie } })).json()).products.map(p => p.id);
+  assert.deepEqual(noPainel, invertida, "painel e vitrine na mesma ordem");
+
+  // Lista sem todos os produtos -> 409 (a tela está velha; gravar deixaria
+  // produto sem posição).
+  const incompleta = await put("/api/admin/products/order", { ids: invertida.slice(1) }, adminCookie);
+  assert.equal(incompleta.status, 409);
+
+  // Id repetido -> 400, antes mesmo de comparar com o catálogo.
+  const repetida = await put("/api/admin/products/order", { ids: [invertida[0], ...invertida] }, adminCookie);
+  assert.equal(repetida.status, 400);
+
+  // Lista vazia -> 400.
+  assert.equal((await put("/api/admin/products/order", { ids: [] }, adminCookie)).status, 400);
+
+  // Cliente comum não reordena a vitrine da loja.
+  const comoCliente = await put("/api/admin/products/order", { ids: idsOriginais }, sharedClienteCookie);
+  assert.equal(comoCliente.status, 403);
+
+  // Devolve a ordem original pra não interferir em outros testes.
+  await put("/api/admin/products/order", { ids: idsOriginais }, adminCookie);
+});

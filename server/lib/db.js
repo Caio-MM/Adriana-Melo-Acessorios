@@ -244,6 +244,14 @@ ensureColumn("custom_products", "allow_second_color", "INTEGER");
 // especial como em available_colors/photos.
 ensureColumn("product_overrides", "description", "TEXT");
 ensureColumn("custom_products", "description", "TEXT");
+// Posição do produto na vitrine, definida pela lojista no painel. Fica nas
+// DUAS tabelas porque produto fixo do catálogo e produto criado no painel
+// moram em lugares diferentes, e a ordem precisa valer para os dois na
+// mesma lista. NULL = nunca ordenado: esses vão para o fim, preservando a
+// ordem antiga (catálogo primeiro, criados depois) enquanto a lojista não
+// mexer — e é também onde um produto novo entra, sem furar a fila.
+ensureColumn("product_overrides", "sort_order", "INTEGER");
+ensureColumn("custom_products", "sort_order", "INTEGER");
 // Telefone só com dígitos, copiado do endereço na hora de gravar o pedido.
 // É o único identificador que sobra para quem compra sem conta — sem uma
 // coluna própria, casar "(61) 98274-9808" com "61982749808" dentro do JSON
@@ -708,6 +716,37 @@ const stmtUpsertProductOverride = db.prepare(`
     updated_at = excluded.updated_at
 `);
 
+/* Ordem da vitrine. Statements próprios, que tocam SÓ sort_order: passar
+   pelo upsertProductOverride abaixo obrigaria a reenviar nome/preço/foto a
+   cada reordenação, e qualquer descuido ali apagaria customização. */
+const stmtSetOverrideSortOrder = db.prepare(`
+  INSERT INTO product_overrides (product_id, sort_order, updated_at) VALUES (?, ?, ?)
+  ON CONFLICT(product_id) DO UPDATE SET sort_order = excluded.sort_order, updated_at = excluded.updated_at
+`);
+const stmtSetCustomProductSortOrder = db.prepare(
+  `UPDATE custom_products SET sort_order = ? WHERE id = ?`
+);
+/* Recebe os ids JÁ na ordem desejada e grava 0,1,2... em todos de uma vez.
+   Numa transação porque uma gravação parcial deixaria a vitrine com duas
+   posições iguais ou um buraco — ordem é um estado do conjunto, não de
+   cada produto isolado. `customIds` diz quais ids são de produto criado no
+   painel (moram em custom_products); o resto é catálogo fixo. */
+function setProductsOrder(orderedIds, customIds) {
+  const now = Date.now();
+  const custom = new Set(customIds);
+  db.exec("BEGIN");
+  try {
+    orderedIds.forEach((id, index) => {
+      if (custom.has(id)) stmtSetCustomProductSortOrder.run(index, id);
+      else stmtSetOverrideSortOrder.run(id, index, now);
+    });
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+}
+
 function getProductOverride(productId) {
   return stmtGetProductOverride.get(productId) || null;
 }
@@ -1029,6 +1068,7 @@ module.exports = {
   // (listProductOverrides) para montar o catálogo de uma vez.
   listProductOverrides,
   upsertProductOverride,
+  setProductsOrder,
   listCustomProducts,
   getCustomProduct,
   insertCustomProduct,

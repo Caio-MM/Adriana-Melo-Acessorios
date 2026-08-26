@@ -705,7 +705,17 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
      em vez de empurrar preço/pagamento pra fora da área visível — a
      largura já vem de graça pelo aspect-ratio. */
   position:relative; aspect-ratio:2/3;
-  height:min(46vh, 480px); width:auto; max-width:100%; margin-inline:auto;
+  /* O `calc(100vh - 26rem)` é o que faz a foto ceder espaço para quem usa
+     letra grande no celular. vh NÃO acompanha o tamanho da fonte: sem esse
+     termo, o texto crescia, a foto continuava com os mesmos 46vh, e
+     preço/cor/quantidade saíam da área visível — dava para tocar em
+     "Adicionar ao carrinho" sem nunca ter visto o preço.
+     Como rem cresce junto com a letra da pessoa, 26rem é uma RESERVA para
+     o que vem abaixo da foto (descrição, cores, quantidade e preço): quanto
+     maior a fonte, maior a reserva, menor a foto. O max(140px) impede que
+     ela suma de vez numa combinação extrema de fonte enorme e tela baixa. */
+  height:max(140px, min(46vh, 480px, calc(100vh - 26rem)));
+  width:auto; max-width:100%; margin-inline:auto;
   border-radius:var(--radius-md); overflow:hidden;
   display:flex; align-items:center; justify-content:center; background:var(--blush-50);
 }
@@ -750,6 +760,26 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .qv-gallery-thumb:focus-visible{ outline:3px solid var(--blush-600); outline-offset:2px; }
 
 /* ============ QUICK VIEW — escolha de cor ============ */
+/* "Quantidade" + os botões −/+ na mesma linha. Com a letra grande do
+   sistema o rótulo empurrava o botão "+" pra fora da tela (a linha não
+   quebrava). Quebrar é melhor do que cortar um controle. */
+.qv-qty-row{ flex-wrap:wrap; gap:.5rem 1rem; }
+
+/* O preço gruda no rodapé da área que rola. Com letra grande o conteúdo
+   passa a ser mais alto que o modal, e sem isto o preço ficava abaixo da
+   dobra enquanto "Adicionar ao carrinho" — que fica no rodapé fixo —
+   continuava clicável: dava pra comprar sem nunca ter visto o valor.
+   Só no celular: no computador a coluna da direita já mostra tudo junto.
+   Fundo opaco porque o resto do conteúdo passa por baixo ao rolar. */
+/* Rodapé do Quick View: preço em cima, botão embaixo, os dois ocupando a
+   largura toda. O .modal-footer do Bootstrap é uma linha com os itens à
+   direita — sem isto o preço e o botão brigariam pela mesma linha. */
+.qv-footer{ display:block; padding-top:.75rem; }
+.qv-footer .qv-payment{
+  padding-bottom:.75rem; margin-bottom:.75rem;
+  border-bottom:1px solid var(--blush-100);
+}
+
 .qv-color-options{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.4rem; }
 .qv-color-option{
   position:relative; width:34px; height:34px; border-radius:50%; cursor:pointer;
@@ -2004,6 +2034,21 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .edit-order-icon-btn:focus-visible{ outline:2px solid var(--blush-600); outline-offset:2px; }
 
 .admin-row-actions{ display:flex; justify-content:flex-end; align-items:center; gap:.4rem; flex-wrap:nowrap; }
+
+/* Setas de ordem da vitrine, na primeira coluna da tabela de produtos.
+   Empilhadas na vertical porque é assim que a lojista lê o movimento:
+   a de cima sobe o produto na loja, a de baixo desce. */
+.admin-order-cell{ display:flex; flex-direction:column; gap:2px; }
+.admin-order-btn{
+  width:26px; height:22px; padding:0;
+  display:flex; align-items:center; justify-content:center;
+  border:1px solid var(--blush-100); background:var(--white);
+  color:var(--blush-700); border-radius:7px; font-size:.7rem;
+  cursor:pointer; transition:all .15s ease;
+}
+.admin-order-btn:hover:not(:disabled){ background:var(--blush-100); border-color:var(--blush-200); }
+.admin-order-btn:disabled{ opacity:.35; cursor:default; }
+.admin-order-btn:focus-visible{ outline:2px solid var(--blush-600); outline-offset:2px; }
 
 /* ============ TELA DE CARREGAMENTO (conexão lenta) — ver js/loading.js ============ */
 .app-loading{

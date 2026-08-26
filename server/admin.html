@@ -213,12 +213,19 @@
                 <i class="bi bi-plus-lg me-1"></i>Adicionar produto
               </button>
             </div>
-            <p class="admin-hint">Edite nome, preço, foto, categoria e selos de destaque — a vitrine da loja atualiza sozinha em poucos segundos.</p>
+            <p class="admin-hint">
+              Edite nome, preço, foto, categoria e selos de destaque — a vitrine da loja
+              atualiza sozinha em poucos segundos. Use as setas <i class="bi bi-chevron-up" aria-hidden="true"></i>
+              <i class="bi bi-chevron-down" aria-hidden="true"></i> para escolher a ordem em que os produtos
+              aparecem para as clientes: a ordem desta lista é a mesma da loja.
+            </p>
+            <div class="small mb-2 account-msg" id="productsOrderMsg" role="status" aria-live="polite"></div>
             <div class="admin-table-wrap">
               <div class="table-responsive">
                 <table class="table align-middle admin-products-table mb-0">
                   <thead>
                     <tr>
+                      <th scope="col"><span class="visually-hidden">Ordem na vitrine</span></th>
                       <th scope="col">Foto</th>
                       <th scope="col">Nome</th>
                       <th scope="col">Preço</th>
