@@ -261,7 +261,7 @@
   function renderBarList(el, items, emptyMessage){
     if(!el) return;
     if(!items.length){
-      el.innerHTML = `<p class="section-sub mb-0" style="font-size:.85rem">${escapeHTML(emptyMessage)}</p>`;
+      el.innerHTML = `<p class="admin-hint mb-0">${escapeHTML(emptyMessage)}</p>`;
       return;
     }
     const max = Math.max(...items.map(i => i.value), 0);
@@ -421,7 +421,7 @@
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
           <div>
             <div class="fw-semibold">${escapeHTML(order.customer?.nome || "Cliente")}</div>
-            <div class="small" style="color:var(--ink-soft)">Iniciado em ${formatDate(order.createdAt)}</div>
+            <div class="small text-ink-soft">Iniciado em ${formatDate(order.createdAt)}</div>
           </div>
           <span class="order-status order-status-pending">${escapeHTML(order.items.length)} ${order.items.length === 1 ? "item" : "itens"} — ${formatMoney(order.total)}</span>
         </div>
@@ -488,13 +488,15 @@
           : BOW_PLACEHOLDER}</td>
         <td>${escapeHTML(p.name)}</td>
         <td>${formatMoney(p.price)}</td>
-        <td class="small" style="color:var(--ink-soft)">${escapeHTML(CATEGORY_LABELS[p.category] || p.category || "—")}</td>
+        <td class="small text-ink-soft">${escapeHTML(CATEGORY_LABELS[p.category] || p.category || "—")}</td>
         <td>${(p.badges && p.badges.length) ? p.badges.map(b => `<span class="admin-badge-pill">${escapeHTML(b)}</span>`).join("") : "—"}</td>
-        <td class="text-end">
-          <button type="button" class="btn-outline-blush edit-product-btn" data-id="${p.id}">Editar</button>
-          ${isCustom
-            ? `<button type="button" class="delete-product-btn ms-2" data-id="${p.id}" aria-label="Excluir produto" style="border:none;background:none;color:var(--ink-soft);padding:.3rem"><i class="bi bi-trash3"></i></button>`
-            : `<button type="button" class="ms-2" disabled title="Produto do catálogo original — não pode ser excluído, só editado" style="border:none;background:none;color:var(--blush-100);padding:.3rem;cursor:not-allowed"><i class="bi bi-trash3"></i></button>`}
+        <td>
+          <div class="admin-row-actions">
+            <button type="button" class="btn-outline-blush edit-product-btn" data-id="${p.id}">Editar</button>
+            ${isCustom
+              ? `<button type="button" class="delete-order-icon-btn delete-product-btn" data-id="${p.id}" aria-label="Excluir produto"><i class="bi bi-trash3"></i></button>`
+              : `<button type="button" class="delete-order-icon-btn" disabled title="Produto do catálogo original — não pode ser excluído, só editado"><i class="bi bi-trash3"></i></button>`}
+          </div>
         </td>
       </tr>
     `;
@@ -1096,11 +1098,142 @@
   const apBadgeNew = document.getElementById("apBadgeNew");
   const apMsg = document.getElementById("apMsg");
   const apSaveBtn = document.getElementById("apSaveBtn");
+  const apPhotoFile = document.getElementById("apPhotoFile");
+  const apAddPhotoBtn = document.getElementById("apAddPhotoBtn");
+  const apPhotosListEl = document.getElementById("apPhotosList");
+  const apPhotoStatus = document.getElementById("apPhotoStatus");
+
+  /* ============ FOTOS NA CRIAÇÃO DO PRODUTO ============
+     O upload (POST /api/admin/products/:id/photo) exige um id, que só existe
+     depois de criar o produto — então aqui a foto não sobe na hora: ela é
+     recortada no navegador e fica guardada como blob até o submit, que faz
+     criar -> subir cada foto -> PATCH com a lista final.
+
+     Sem o recorte interativo de propósito: o enquadramento aplicado é o MESMO
+     que o cropper do modal de edição usa por padrão (cobrir, centralizado), e
+     numa foto que já é 2:3 — o formato que a loja usa (4000x6000) — isso não
+     corta nada. Quem quiser reenquadrar tem o botão de recorte no modal de
+     edição, que abre logo depois de criar. */
+  let apPendingPhotos = [];   // [{ blob, previewUrl }]
+
+  // Mesmo enquadramento inicial de openCropper: escala "cobrir" e centralizado.
+  function fitPhotoTo23(file){
+    return new Promise((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = CROP_OUTPUT_W;
+        canvas.height = CROP_OUTPUT_H;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, CROP_OUTPUT_W, CROP_OUTPUT_H);
+
+        const scale = Math.max(CROP_OUTPUT_W / img.naturalWidth, CROP_OUTPUT_H / img.naturalHeight);
+        const srcW = CROP_OUTPUT_W / scale;
+        const srcH = CROP_OUTPUT_H / scale;
+        ctx.drawImage(img, (img.naturalWidth - srcW) / 2, (img.naturalHeight - srcH) / 2, srcW, srcH,
+                      0, 0, CROP_OUTPUT_W, CROP_OUTPUT_H);
+        URL.revokeObjectURL(objectUrl);
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error("Não foi possível preparar a imagem.")),
+          "image/jpeg",
+          CROP_JPEG_QUALITY
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error(`Não foi possível ler "${file.name}".`));
+      };
+      img.src = objectUrl;
+    });
+  }
+
+  function renderApPhotoList(){
+    apPhotosListEl.innerHTML = apPendingPhotos.map((p, i) => `
+      <div class="ep-photo-item">
+        <div class="ep-photo-thumb">
+          <img src="${escapeHTML(p.previewUrl)}" alt="Foto ${i + 1} do produto" width="64" height="64">
+          ${i === 0 ? `<span class="ep-photo-cover-badge">Capa</span>` : ""}
+        </div>
+        <div class="ep-photo-actions">
+          <button type="button" class="ep-photo-move-btn" data-action="left" data-index="${i}" ${i === 0 ? "disabled" : ""} aria-label="Mover foto ${i + 1} para a esquerda"><i class="bi bi-chevron-left"></i></button>
+          <button type="button" class="ep-photo-move-btn" data-action="right" data-index="${i}" ${i === apPendingPhotos.length - 1 ? "disabled" : ""} aria-label="Mover foto ${i + 1} para a direita"><i class="bi bi-chevron-right"></i></button>
+          <button type="button" class="ep-photo-remove-btn" data-action="remove" data-index="${i}" aria-label="Remover foto ${i + 1}"><i class="bi bi-x-lg"></i></button>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function resetApPhotos(){
+    apPendingPhotos.forEach(p => URL.revokeObjectURL(p.previewUrl));
+    apPendingPhotos = [];
+    apPhotoFile.value = "";
+    apPhotoStatus.textContent = "";
+    apPhotoStatus.className = "small mt-1";
+    renderApPhotoList();
+  }
+
+  apPhotosListEl.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if(!btn) return;
+    const index = Number(btn.dataset.index);
+    const action = btn.dataset.action;
+    if(action === "left" && index > 0){
+      [apPendingPhotos[index - 1], apPendingPhotos[index]] = [apPendingPhotos[index], apPendingPhotos[index - 1]];
+    }else if(action === "right" && index < apPendingPhotos.length - 1){
+      [apPendingPhotos[index + 1], apPendingPhotos[index]] = [apPendingPhotos[index], apPendingPhotos[index + 1]];
+    }else if(action === "remove"){
+      URL.revokeObjectURL(apPendingPhotos[index].previewUrl);
+      apPendingPhotos.splice(index, 1);
+    }else{
+      return;
+    }
+    renderApPhotoList();
+  });
+
+  apAddPhotoBtn.addEventListener("click", () => {
+    if(apPendingPhotos.length >= 8){
+      apPhotoStatus.textContent = "Máximo de 8 fotos por produto.";
+      apPhotoStatus.className = "small mt-1 is-error";
+      return;
+    }
+    apPhotoFile.value = "";
+    apPhotoFile.click();
+  });
+
+  apPhotoFile.addEventListener("change", async () => {
+    const files = [...apPhotoFile.files];
+    if(!files.length) return;
+    apPhotoStatus.textContent = "";
+    apPhotoStatus.className = "small mt-1";
+
+    const livres = 8 - apPendingPhotos.length;
+    const aceitos = files.slice(0, Math.max(0, livres));
+    try{
+      for(const file of aceitos){
+        const blob = await fitPhotoTo23(file);
+        apPendingPhotos.push({ blob, previewUrl: URL.createObjectURL(blob) });
+      }
+      renderApPhotoList();
+      if(files.length > aceitos.length){
+        apPhotoStatus.textContent = "Máximo de 8 fotos por produto — as demais foram ignoradas.";
+        apPhotoStatus.className = "small mt-1 is-error";
+      }
+    }catch(err){
+      renderApPhotoList();
+      apPhotoStatus.textContent = err.message || "Não foi possível preparar a imagem.";
+      apPhotoStatus.className = "small mt-1 is-error";
+    }finally{
+      apPhotoFile.value = "";
+    }
+  });
 
   document.getElementById("apNewCategoryBtn").addEventListener("click", () => promptNewCategory(apCategory));
 
   document.getElementById("addProductBtn").addEventListener("click", () => {
     addProductForm.reset();
+    resetApPhotos();
     renderCategoryOptions(apCategory, "");
     apMsg.textContent = "";
     apMsg.className = "small account-msg";
@@ -1135,10 +1268,44 @@
       const data = await res.json().catch(() => ({}));
       if(!res.ok) throw new Error(data.error || "Não foi possível criar o produto.");
 
+      // Produto criado: agora as fotos têm um id pra onde subir. Uma falha
+      // aqui NÃO desfaz a criação (o produto já existe) — o modal de edição
+      // abre em seguida com o que subiu, pra terminar sem recomeçar tudo.
+      let fotosComProblema = false;
+      if(apPendingPhotos.length){
+        apSaveBtn.textContent = "Enviando fotos...";
+        const urls = [];
+        for(const [i, foto] of apPendingPhotos.entries()){
+          try{
+            const formData = new FormData();
+            formData.append("photo", new File([foto.blob], `produto-${data.id}.jpg`, { type: "image/jpeg" }));
+            const up = await fetchWithTimeout(`/api/admin/products/${data.id}/photo`, { method: "POST", body: formData }, 20000);
+            const upData = await up.json().catch(() => ({}));
+            if(!up.ok) throw new Error(upData.error || "falha no envio");
+            urls.push(upData.photoUrl);
+          }catch(err){
+            console.error(`Falha ao enviar a foto ${i + 1}:`, err);
+            fotosComProblema = true;
+          }
+        }
+        if(urls.length){
+          const patch = await fetchWithTimeout(`/api/admin/products/${data.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ photos: urls }),
+          });
+          if(!patch.ok) fotosComProblema = true;
+        }
+      }
+
       addProductModal.hide();
+      resetApPhotos();
 
       await loadDashboard();
       openEditModal(data.id);
+      if(fotosComProblema){
+        alert("O produto foi criado, mas pelo menos uma foto não subiu. Confira a lista de fotos e adicione de novo o que faltar.");
+      }
     }catch(err){
       apMsg.textContent = err.message || "Erro ao criar o produto.";
       apMsg.classList.add("text-danger");
@@ -1175,7 +1342,7 @@
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
           <div>
             <div class="fw-semibold">Pedido #${escapeHTML(ref.slice(0, 8))}</div>
-            <div class="small" style="color:var(--ink-soft)">${formatDate(order.createdAt)}</div>
+            <div class="small text-ink-soft">${formatDate(order.createdAt)}</div>
           </div>
           <div class="d-flex align-items-center gap-2">
             <span class="order-status ${status.cls}">${status.label}</span>
@@ -1183,16 +1350,16 @@
           </div>
         </div>
 
-        <div class="small mb-3" style="color:var(--ink-soft)">
-          <div><strong style="color:var(--ink)">Cliente:</strong> ${escapeHTML(order.customer?.nome || "—")}</div>
-          <div><strong style="color:var(--ink)">Telefone:</strong> ${escapeHTML(order.customer?.telefone || "—")}</div>
-          ${order.customer?.email ? `<div><strong style="color:var(--ink)">E-mail da conta:</strong> ${escapeHTML(order.customer.email)}</div>` : ""}
-          <div><strong style="color:var(--ink)">Entrega:</strong> ${escapeHTML(addressLine(order.address))}${order.shipping?.name ? ` — ${escapeHTML(order.shipping.name)}` : ""}</div>
+        <div class="small mb-3 text-ink-soft">
+          <div><strong>Cliente:</strong> ${escapeHTML(order.customer?.nome || "—")}</div>
+          <div><strong>Telefone:</strong> ${escapeHTML(order.customer?.telefone || "—")}</div>
+          ${order.customer?.email ? `<div><strong>E-mail da conta:</strong> ${escapeHTML(order.customer.email)}</div>` : ""}
+          <div><strong>Entrega:</strong> ${escapeHTML(addressLine(order.address))}${order.shipping?.name ? ` — ${escapeHTML(order.shipping.name)}` : ""}</div>
         </div>
 
         ${contactUrl ? `
         <div class="mb-3">
-          <a href="${contactUrl}" target="_blank" rel="noopener noreferrer" class="btn-outline-blush" style="padding:.4rem 1rem;font-size:.82rem" title="Abrir conversa no WhatsApp com o cliente">
+          <a href="${contactUrl}" target="_blank" rel="noopener noreferrer" class="btn-outline-blush btn-sm-blush" title="Abrir conversa no WhatsApp com o cliente">
             <i class="bi bi-whatsapp me-1"></i>Contatar via WhatsApp
           </a>
         </div>` : ""}
@@ -1200,18 +1367,18 @@
         <ul class="list-unstyled small mb-2">${itemsHtml}</ul>
 
         ${order.discount > 0 ? `
-        <div class="d-flex justify-content-between small" style="color:var(--blush-700)">
+        <div class="d-flex justify-content-between small text-blush">
           <span>Desconto${order.couponCode ? " (" + escapeHTML(order.couponCode) + ")" : ""}</span>
           <span>-${formatMoney(order.discount)}</span>
         </div>` : ""}
         ${order.pixDiscount > 0 ? `
-        <div class="d-flex justify-content-between small" style="color:var(--blush-700)">
+        <div class="d-flex justify-content-between small text-blush">
           <span>Desconto Pix</span><span>-${formatMoney(order.pixDiscount)}</span>
         </div>` : ""}
 
         <div class="d-flex justify-content-between fw-semibold pt-2 mt-1 border-top" style="border-color:var(--blush-100)!important">
-          <span>Total <span class="fw-normal small" style="color:var(--ink-soft)">· ${escapeHTML(PAYMENT_METHOD_LABELS[order.paymentMethod] || "Cartão ou boleto")}</span></span>
-          <span style="color:var(--blush-700)">${formatMoney(order.total)}</span>
+          <span>Total <span class="fw-normal small text-ink-soft">· ${escapeHTML(PAYMENT_METHOD_LABELS[order.paymentMethod] || "Cartão ou boleto")}</span></span>
+          <span class="text-blush">${formatMoney(order.total)}</span>
         </div>
 
         ${isPaid ? `
@@ -1426,7 +1593,7 @@
     body.innerHTML = customers.map((c, i) => {
       const contactUrl = whatsappUrl(c.telefone, WHATSAPP_POST_SALE_MESSAGE);
       const historyRows = c.orders.map(o => `
-        <div class="d-flex justify-content-between gap-2 py-1" style="font-size:.82rem">
+        <div class="d-flex justify-content-between gap-2 py-1 small">
           <span>${formatDate(o.createdAt)}</span>
           <span>${escapeHTML(o.reference)}</span>
           <span>${escapeHTML(STATUS_LABELS[o.status]?.label || o.status)}${o.couponCode ? ` · ${escapeHTML(o.couponCode)}` : ""}</span>
@@ -1439,14 +1606,14 @@
           <strong>${escapeHTML(c.nome)}</strong>
           ${c.hasAccount ? '<span class="admin-badge-pill ms-1">tem conta</span>' : ""}
         </td>
-        <td style="font-size:.84rem">
+        <td class="small">
           ${c.email ? escapeHTML(c.email) + "<br>" : ""}
           ${c.telefone ? escapeHTML(c.telefone) : "—"}
           ${contactUrl ? ` <a href="${contactUrl}" target="_blank" rel="noopener noreferrer" title="Abrir conversa no WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ""}
         </td>
-        <td class="text-center">${c.paidOrders}<span style="color:var(--ink-soft)">/${c.totalOrders}</span></td>
+        <td class="text-center">${c.paidOrders}<span class="text-ink-soft">/${c.totalOrders}</span></td>
         <td class="text-end"><strong>${formatMoney(c.totalSpent)}</strong></td>
-        <td style="font-size:.84rem">${formatDate(c.lastOrderAt)}</td>
+        <td class="small">${formatDate(c.lastOrderAt)}</td>
       </tr>
       <tr class="customer-history d-none" data-history-for="${i}">
         <td colspan="5" style="background:var(--blush-50)">${historyRows}</td>
@@ -1474,14 +1641,14 @@
       <div class="order-card">
         <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
           <strong>${escapeHTML(m.nome)}</strong>
-          <span class="section-sub" style="font-size:.8rem">${formatDate(m.createdAt)}</span>
+          <span class="small text-ink-soft">${formatDate(m.createdAt)}</span>
         </div>
-        <p class="mb-2" style="font-size:.9rem">${escapeHTML(m.mensagem)}</p>
-        <div class="d-flex flex-wrap align-items-center gap-2" style="font-size:.84rem">
+        <p class="mb-2">${escapeHTML(m.mensagem)}</p>
+        <div class="d-flex flex-wrap align-items-center gap-2 small">
           <span>${escapeHTML(m.telefone)}</span>
           ${m.ocasiao ? `<span class="admin-badge-pill">${escapeHTML(m.ocasiao)}</span>` : ""}
-          ${contactUrl ? `<a href="${contactUrl}" target="_blank" rel="noopener noreferrer" class="btn-outline-blush" style="padding:.3rem .8rem;font-size:.78rem"><i class="bi bi-whatsapp me-1"></i>Responder</a>` : ""}
-          <button type="button" class="delete-message-btn ms-auto" data-id="${m.id}" aria-label="Apagar mensagem" style="border:none;background:none;color:var(--ink-soft);padding:.3rem"><i class="bi bi-trash3"></i></button>
+          ${contactUrl ? `<a href="${contactUrl}" target="_blank" rel="noopener noreferrer" class="btn-outline-blush btn-sm-blush"><i class="bi bi-whatsapp me-1"></i>Responder</a>` : ""}
+          <button type="button" class="delete-order-icon-btn delete-message-btn ms-auto" data-id="${m.id}" aria-label="Apagar mensagem"><i class="bi bi-trash3"></i></button>
         </div>
       </div>`;
     }).join("");
@@ -1496,7 +1663,7 @@
     toggleBlock(wrap, subscribers.length > 0);
     toggleBlock(empty, subscribers.length === 0);
     body.innerHTML = subscribers.map(s =>
-      `<tr><td>${escapeHTML(s.email)}</td><td style="font-size:.84rem">${formatDate(s.createdAt)}</td></tr>`
+      `<tr><td>${escapeHTML(s.email)}</td><td class="small">${formatDate(s.createdAt)}</td></tr>`
     ).join("");
   }
 
@@ -1514,14 +1681,14 @@
 
   function renderCouponsTable(coupons){
     if(!coupons.length){
-      couponsTableBodyEl.innerHTML = `<tr><td colspan="4" class="text-center small py-3" style="color:var(--ink-soft)">Nenhum cupom cadastrado.</td></tr>`;
+      couponsTableBodyEl.innerHTML = `<tr><td colspan="4" class="text-center small py-3 text-ink-soft">Nenhum cupom cadastrado.</td></tr>`;
       return;
     }
     couponsTableBodyEl.innerHTML = coupons.map(c => `
       <tr data-code="${escapeHTML(c.code)}">
         <td class="fw-semibold">${escapeHTML(c.code)}</td>
         <td>${c.percentOff}%</td>
-        <td class="small" style="color:var(--ink-soft)">${escapeHTML(c.description || "—")}</td>
+        <td class="small text-ink-soft">${escapeHTML(c.description || "—")}</td>
         <td class="text-end">
           <div class="admin-row-actions">
             <button type="button" class="edit-order-icon-btn edit-coupon-btn" data-code="${escapeHTML(c.code)}" data-percent="${c.percentOff}" data-desc="${escapeHTML(c.description || "")}" aria-label="Editar cupom" title="Editar cupom"><i class="bi bi-pencil"></i></button>

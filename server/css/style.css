@@ -39,6 +39,16 @@
   --radius-sm:14px;
   --shadow-soft: 0 20px 45px -20px rgba(192,84,128,0.35);
 
+  /* Cartão do painel: superfície branca sobre o fundo creme. Estes três
+     valores já existiam escritos à mão em 4 componentes diferentes
+     (.stat-tile, .dashboard-chart-card, .admin-table-wrap, .order-card) —
+     virar token não muda nada na tela, só passa a existir um lugar só pra
+     mexer. Não confundir com --shadow-sm logo abaixo: aquele tem blur e
+     spread de verdade diferentes. */
+  --shadow-card: 0 10px 25px -20px rgba(84,41,60,.3);
+  --shadow-card-hover: 0 16px 32px -18px rgba(84,41,60,.4);
+  --admin-card-pad: 1.25rem 1.4rem;
+
   --color-primary: var(--blush-600);
   --color-primary-dark: var(--blush-700);
   --color-text-dark: var(--ink);
@@ -124,6 +134,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   color:var(--ink-soft);
   max-width:560px;
 }
+
+/* Utilitários de cor — existem pra tirar `style="color:var(--…)"` de dentro
+   dos templates do painel (js/admin.js), onde a mesma cor era repetida
+   dezenas de vezes à mão. */
+.text-ink-soft{ color:var(--ink-soft); }
+.text-ink-soft strong{ color:var(--ink); }
+.text-blush{ color:var(--blush-700); }
 
 /* ============ BOW ICON ============ */
 .bow-icon{ display:inline-block; fill:currentColor; }
@@ -234,7 +251,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border-radius:999px; padding:.6rem 1.4rem; font-weight:600; font-size:.9rem;
   transition:background .2s ease, transform .2s ease, box-shadow .2s ease;
 }
-.btn-blush:hover{ background:var(--blush-700); color:#fff; transform:translateY(-2px); box-shadow:var(--shadow-soft); }
+.btn-blush:hover{ background:var(--blush-700); color:var(--white); transform:translateY(-2px); box-shadow:var(--shadow-soft); }
 .btn-blush:active{ transform:translateY(0) scale(.97); }
 .btn-outline-blush{
   background:transparent; border:1.5px solid var(--blush-500); color:var(--blush-700);
@@ -243,6 +260,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .btn-outline-blush:hover{ background:var(--blush-100); color:var(--blush-700); }
 .btn-outline-blush:active{ transform:scale(.97); }
+
+/* Botão compacto — a ÚNICA definição de "botão pequeno" do painel. Antes esta
+   mesma medida existia em dois seletores de contexto (.tracking-row,
+   .admin-products-table) e mais 8 vezes como style= inline no HTML/JS. */
+.btn-sm-blush,
+.tracking-row .btn-outline-blush,
+.admin-products-table .btn-outline-blush{
+  padding:.4rem 1rem; font-size:.82rem; white-space:nowrap;
+}
 
 /* Botões de ação destrutiva (ex.: excluir conta) — cor de perigo, discreta */
 .btn-outline-danger{
@@ -1856,7 +1882,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .orders-list{ display:flex; flex-direction:column; gap:1rem; }
 .order-card{
   background:var(--white); border:1px solid var(--blush-100); border-radius:var(--radius-md);
-  padding:1.25rem 1.4rem; box-shadow:0 10px 25px -20px rgba(84,41,60,.3);
+  padding:1.25rem 1.4rem; box-shadow:var(--shadow-card);
 }
 .order-status{
   font-size:.72rem; font-weight:700; padding:.3rem .7rem; border-radius:999px; white-space:nowrap;
@@ -1870,7 +1896,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   border-color:var(--blush-500); box-shadow:0 0 0 3px var(--blush-100);
   transition:box-shadow .3s ease, border-color .3s ease;
 }
-.tracking-row .btn-outline-blush{ padding:.4rem 1rem; font-size:.82rem; white-space:nowrap; }
 
 .tracking-barcode-wrap{ display:flex; flex-direction:column; align-items:flex-start; gap:.5rem; width:100%; }
 .tracking-barcode{ display:block; width:100%; max-width:260px; height:0; }
@@ -1890,6 +1915,15 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .delete-order-icon-btn:hover{ background:#FBE1E1; border-color:#FBE1E1; color:var(--color-danger); }
 .edit-order-icon-btn:hover{ background:var(--blush-100); border-color:var(--blush-150); color:var(--color-primary-dark); }
+/* Produto do catálogo original não pode ser excluído — o botão continua
+   ocupando o lugar (a coluna não "pula" de linha pra linha), só apagado. */
+.delete-order-icon-btn:disabled{ opacity:.4; cursor:not-allowed; }
+.delete-order-icon-btn:disabled:hover{
+  background:var(--white); border-color:var(--blush-100); color:var(--ink-soft);
+}
+.admin-tab-btn:focus-visible,
+.delete-order-icon-btn:focus-visible,
+.edit-order-icon-btn:focus-visible{ outline:2px solid var(--blush-600); outline-offset:2px; }
 
 .admin-row-actions{ display:flex; justify-content:flex-end; align-items:center; gap:.4rem; flex-wrap:nowrap; }
 
@@ -2061,11 +2095,71 @@ body.admin-gate-active .admin-state-area{
   .tfa-recovery-list{ grid-template-columns:1fr; }
 }
 
+/* Cabeçalho do painel: sóbrio de propósito. A vitrine usa o par
+   .section-eyebrow (Caveat cursivo) + .section-title grande; aqui isso
+   repetia "painel administrativo" duas vezes e roubava a altura da tela de
+   quem só quer ver os números. */
+.admin-page-head{ border-bottom:1px solid var(--blush-100); padding-bottom:1rem; }
+.admin-page-title{
+  font-family:var(--font-display); font-weight:600; font-size:1.65rem;
+  letter-spacing:-.01em; margin:0;
+  display:flex; align-items:center; gap:.55rem;
+}
+.admin-page-title i{ font-size:1.15rem; color:var(--blush-600); }
+
 .admin-section-title{
   font-family:var(--font-display); font-weight:600; font-size:1.2rem; margin-bottom:1rem;
 }
 
+/* Título de seção com uma ação à direita (ex.: "Produtos" + "Adicionar").
+   Substitui a repetição de `d-flex flex-wrap align-items-center
+   justify-content-between gap-2 mb-1` em 4 lugares.
+   margin-bottom:0 de propósito: o botão é mais alto que o h2, e o
+   align-items:center já deixa uma folga embaixo do título — a mesma que o par
+   .admin-section-title + .admin-hint produz na seção SEM botão. Somar margem
+   aqui deixaria as duas desalinhadas (era 14px contra 7px). Todo
+   .admin-section-head é seguido de um .admin-hint, que traz o próprio
+   espaço até o conteúdo. */
+.admin-section-head{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:.5rem; margin-bottom:0;
+}
+.admin-section-head .admin-section-title{ margin-bottom:0; }
+
+/* Texto de apoio embaixo de cada título de seção. Fica colado no título
+   (margin-top negativa, contra o margin-bottom de 1rem do .admin-section-title)
+   pra ler como parte do cabeçalho e não como um parágrafo solto. */
+.admin-hint{
+  color:var(--ink-soft); font-size:var(--font-size-small);
+  line-height:1.5; max-width:62ch; margin:0 0 1.1rem;
+}
+.admin-section-title + .admin-hint{ margin-top:-.55rem; }
+
+/* Estado vazio: ocupa a largura do conteúdo que substitui. Antes usava
+   .account-card, que é max-width:440px — dentro do painel de 1100px virava
+   uma caixinha encostada à esquerda, sem relação com a tabela/lista ausente. */
+.admin-empty{
+  width:100%; padding:2.25rem 1.5rem; text-align:center;
+  background:var(--blush-50); border:1px dashed var(--blush-200);
+  border-radius:var(--radius-md);
+}
+/* O <p> aqui carrega .section-sub (max-width:560px, sem margem automática) —
+   sem isto o texto encostaria à esquerda dentro da caixa centralizada. */
+.admin-empty p{ max-width:38ch; margin-left:auto; margin-right:auto; }
+
+/* Exportar planilha: ação secundária, vai pro rodapé do painel pra não
+   empurrar as métricas pra baixo da dobra. */
+.admin-export-row{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:1rem; margin-top:1.5rem; padding-top:1.25rem;
+  border-top:1px solid var(--blush-100);
+}
+.admin-export-row .admin-hint{ flex:1 1 320px; margin-bottom:0; }
+
 .admin-wrap{ max-width:1100px; }
+
+/* Todos os modais do site já eram declarados assim, um por um, no HTML. */
+.modal-content{ border-radius:var(--radius-md); border:none; }
 
 /* ============ NAVEGAÇÃO EM ABAS DO PAINEL ============ */
 .admin-layout{ display:flex; align-items:flex-start; gap:2rem; }
@@ -2074,13 +2168,20 @@ body.admin-gate-active .admin-state-area{
   position:sticky; top:24px;
 }
 .admin-tab-btn{
+  position:relative;
   display:flex; align-items:center; gap:.6rem; text-align:left;
   padding:.7rem 1rem; border-radius:var(--radius-md); border:none; background:none;
   font-weight:600; font-size:.9rem; color:var(--ink-soft); cursor:pointer; transition:all .2s ease;
 }
 .admin-tab-btn i{ font-size:1rem; width:1.1em; text-align:center; }
 .admin-tab-btn:hover{ background:var(--blush-50); color:var(--ink); }
-.admin-tab-btn.is-active{ background:var(--blush-100); color:var(--blush-700); }
+.admin-tab-btn.is-active{ background:var(--blush-100); color:var(--blush-700); font-weight:700; }
+/* Barra de acento: o fundo rosa-claro sozinho é fraco demais pra dizer
+   "você está aqui" numa lista vertical de 6 itens. */
+.admin-tab-btn.is-active::before{
+  content:""; position:absolute; left:0; top:.55rem; bottom:.55rem;
+  width:3px; border-radius:999px; background:var(--blush-600);
+}
 .admin-tab-panels{ flex:1 1 0; min-width:0; }
 @media (max-width: 767.98px){
 
@@ -2093,17 +2194,37 @@ body.admin-gate-active .admin-state-area{
     flex-shrink:0; white-space:nowrap; border:1.5px solid var(--blush-200); border-radius:999px;
     padding:.55rem 1.1rem;
   }
-  .admin-tab-btn.is-active{ border-color:var(--blush-600); }
+  /* Na régua horizontal a barra de acento não cabe: a pílula ativa vira
+     sólida, que se distingue mesmo com as abas passando cortadas na borda. */
+  .admin-tab-btn.is-active::before{ display:none; }
+  .admin-tab-btn.is-active{
+    background:var(--blush-600); color:var(--white); border-color:var(--blush-600);
+  }
 }
+
+/* ============ BASE COMPARTILHADA DOS CARTÕES DO PAINEL ============
+   Um lugar só define superfície + borda + sombra. Antes cada um destes
+   quatro reescrevia os mesmos três valores à mão, com paddings que variavam
+   de 1.2 a 1.5rem sem motivo — diferenças pequenas demais pra notar uma a
+   uma, e é a soma delas que fazia o painel parecer desalinhado.
+   .order-card fica de fora de propósito: é compartilhado com a página
+   "Meus pedidos" da cliente e não deve depender de uma regra do admin. */
+.stat-tile,
+.dashboard-chart-card,
+.admin-table-wrap,
+.ep-mini-card{
+  background:var(--white); border:1px solid var(--blush-100);
+  border-radius:var(--radius-md); box-shadow:var(--shadow-card);
+}
+.stat-tile,
+.dashboard-chart-card{ padding:var(--admin-card-pad); }
 
 /* ============ VISÃO GERAL — CARDS DE MÉTRICA ============ */
 .stats-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; }
 .stat-tile{
-  background:var(--white); border:1px solid var(--blush-100); border-radius:var(--radius-md);
-  padding:1.2rem 1.3rem; box-shadow:0 10px 25px -20px rgba(84,41,60,.3);
   display:flex; align-items:center; gap:.9rem; transition:transform .2s ease, box-shadow .2s ease;
 }
-.stat-tile:hover{ transform:translateY(-3px); box-shadow:0 16px 32px -18px rgba(84,41,60,.4); }
+.stat-tile:hover{ transform:translateY(-3px); box-shadow:var(--shadow-card-hover); }
 .stat-tile-icon{
   width:46px; height:46px; border-radius:50%; flex-shrink:0;
   display:flex; align-items:center; justify-content:center; font-size:1.15rem;
@@ -2116,11 +2237,7 @@ body.admin-gate-active .admin-state-area{
 .stat-tile .stat-label{ font-size:.78rem; color:var(--ink-soft); }
 
 /* ============ GRÁFICO DE VENDAS POR MÊS ============ */
-.dashboard-chart-card{
-  background:var(--white); border:1px solid var(--blush-100); border-radius:var(--radius-md);
-  padding:1.4rem 1.5rem 1.1rem; box-shadow:0 10px 25px -20px rgba(84,41,60,.3);
-  margin-top:1.25rem;
-}
+.dashboard-chart-card{ margin-top:1.25rem; }
 .dashboard-chart-header{
   display:flex; align-items:baseline; justify-content:space-between; gap:1rem;
   margin-bottom:1.4rem; flex-wrap:wrap;
@@ -2179,7 +2296,7 @@ body.admin-gate-active .admin-state-area{
 }
 .sales-chart-tooltip{
   position:absolute; bottom:100%; left:50%; transform:translate(-50%, 6px);
-  background:var(--ink); color:#fff; font-size:.74rem; font-weight:600; text-align:center;
+  background:var(--ink); color:var(--white); font-size:.74rem; font-weight:600; text-align:center;
   padding:.4rem .65rem; border-radius:10px; white-space:nowrap; pointer-events:none;
   opacity:0; transition:opacity .18s ease, transform .18s ease; z-index:2;
   box-shadow:0 10px 20px -8px rgba(0,0,0,.4);
@@ -2194,10 +2311,10 @@ body.admin-gate-active .admin-state-area{
   .sales-chart-tooltip{ font-size:.66rem; padding:.32rem .5rem; }
 }
 
-.admin-table-wrap{
-  background:var(--white); border:1px solid var(--blush-100); border-radius:var(--radius-md);
-  box-shadow:0 10px 25px -20px rgba(84,41,60,.3);
-}
+/* overflow:hidden pra tabela larga não passar por cima dos cantos
+   arredondados. Quem rola é a .table-responsive DENTRO deste cartão — por
+   isso o wrapper e o container de rolagem são duas divs, e não uma. */
+.admin-table-wrap{ overflow:hidden; }
 .admin-products-table{ font-size:.9rem; }
 .admin-products-table th{
   font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);
@@ -2254,7 +2371,6 @@ body.admin-gate-active .admin-state-area{
 .ep-photo-actions button:disabled{ opacity:.35; cursor:not-allowed; }
 .ep-photo-remove-btn{ background:var(--color-danger-soft)!important; color:var(--color-danger)!important; }
 .ep-photo-remove-btn:hover{ background:var(--color-danger)!important; color:var(--white)!important; }
-.ep-add-photo-btn{ padding:.4rem 1rem; font-size:.82rem; }
 .ep-check-blush:checked{ background-color:var(--blush-600); border-color:var(--blush-600); }
 .ep-check-blush:focus{ border-color:var(--blush-500); box-shadow:0 0 0 3px var(--blush-100); }
 
@@ -2263,9 +2379,7 @@ body.admin-gate-active .admin-state-area{
   font-family:var(--font-script); font-size:1.1rem; color:var(--blush-700);
 }
 .ep-mini-card{
-  width:170px; background:var(--white);
-  border:1px solid var(--blush-100); border-radius:var(--radius-md);
-  overflow:hidden; box-shadow:0 10px 24px -20px rgba(84,41,60,.45);
+  width:170px; overflow:hidden;
 }
 .ep-mini-thumb{
   position:relative; aspect-ratio:1/1;
