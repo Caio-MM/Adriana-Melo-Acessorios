@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voltamos já — Adriana Melo Acessórios</title>
+<meta name="description" content="A loja está passando por uma atualização rápida. Voltamos em instantes.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+
+<!-- Recarrega sozinha: quando a loja voltar, a cliente já cai no site sem
+     precisar atualizar na mão. É <meta refresh> e não JavaScript porque a
+     CSP do servidor não permite script inline, e esta página precisa
+     funcionar mesmo servida por um servidor de arquivos qualquer, sem o
+     Node no ar (ver o comentário do MAINTENANCE_MODE no server.js). -->
+<meta http-equiv="refresh" content="30">
+
+<!--
+  ⚠️ ESTA PÁGINA É PROPOSITALMENTE AUTOSSUFICIENTE.
+  Nada de <link rel="stylesheet">, nada de <script src>, nenhuma imagem
+  externa: todo o estilo está no <style> abaixo e o laço é um <svg> inline.
+  O motivo: ela aparece justamente quando o site NÃO está normal — durante
+  um deploy, um reinício ou uma queda. Se ela dependesse de css/style.css
+  ou do logo em img/, poderia abrir sem estilo nenhum, que é pior do que a
+  tela de erro do navegador que ela veio substituir.
+  Fontes: pilhas do sistema, pelo mesmo motivo — os .woff2 da marca podem
+  não estar sendo servidos na hora em que esta página é exibida.
+-->
+<style>
+  :root{
+    --cream:#FFFDFC;
+    --white:#FFFFFF;
+    --blush-100:#FDE7EF;
+    --blush-200:#FAD3E1;
+    --blush-300:#F4B4CC;
+    --blush-500:#EA8FB4;
+    --blush-600:#DD6E9B;
+    --blush-700:#C05480;
+    --ink:#54293C;
+    --ink-soft:#8C6577;
+    --radius-lg:28px;
+    --font-display:Georgia, 'Times New Roman', serif;
+    --font-body:system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    font-family:var(--font-body);
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 85% 12%, var(--blush-100) 0%, transparent 45%),
+      radial-gradient(circle at 10% 88%, #FFF5F9 0%, transparent 50%),
+      var(--cream);
+    display:flex; align-items:center; justify-content:center;
+    padding:1.5rem;
+    -webkit-font-smoothing:antialiased;
+  }
+  .card{
+    background:var(--white);
+    border:1px solid var(--blush-100);
+    border-radius:var(--radius-lg);
+    box-shadow:0 20px 45px -20px rgba(192,84,128,.35);
+    max-width:460px; width:100%;
+    padding:2.75rem 1.75rem 2.25rem;
+    text-align:center;
+  }
+  .bow{
+    width:64px; height:46px; fill:var(--blush-500);
+    display:block; margin:0 auto;
+  }
+  h1{
+    font-family:var(--font-display);
+    font-size:1.6rem; font-weight:600; line-height:1.2;
+    margin:1.25rem 0 .6rem; letter-spacing:-.01em;
+  }
+  .lead{
+    color:var(--ink-soft); font-size:.98rem; line-height:1.6;
+    margin:0 auto 1.75rem; max-width:34ch;
+  }
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+    background:var(--blush-600); color:var(--white);
+    border-radius:999px; padding:.8rem 1.6rem;
+    font-weight:600; font-size:.95rem; text-decoration:none;
+    transition:background .2s ease, transform .2s ease;
+  }
+  .btn:hover{ background:var(--blush-700); transform:translateY(-2px); }
+  .btn svg{ width:18px; height:18px; fill:currentColor; }
+  .foot{
+    margin:1.75rem 0 0; padding-top:1.25rem;
+    border-top:1px solid var(--blush-100);
+    font-size:.82rem; color:var(--ink-soft); line-height:1.55;
+  }
+  .foot strong{ color:var(--ink); font-weight:600; }
+  @media (max-width:480px){
+    .card{ padding:2.25rem 1.25rem 1.75rem; }
+    h1{ font-size:1.4rem; }
+  }
+  /* A animação é só um respiro; some pra quem pediu menos movimento. */
+  @media (prefers-reduced-motion: no-preference){
+    .bow{ animation:respira 3.5s ease-in-out infinite; }
+    @keyframes respira{
+      0%,100%{ transform:translateY(0) rotate(0deg); }
+      50%    { transform:translateY(-7px) rotate(4deg); }
+    }
+  }
+</style>
+</head>
+<body>
+
+  <main class="card">
+    <svg class="bow" viewBox="0 0 100 70" aria-hidden="true" focusable="false">
+      <path d="M50 35 C50 35 38 6 15 10 C-4 13 -4 47 15 51 C36 56 50 35 50 35 Z"/>
+      <path d="M50 35 C50 35 62 6 85 10 C104 13 104 47 85 51 C64 56 50 35 50 35 Z"/>
+      <rect x="42" y="26" width="16" height="18" rx="5"/>
+      <path d="M45 44 L38 68 L48 60 Z"/>
+      <path d="M55 44 L62 68 L52 60 Z"/>
+    </svg>
+
+    <h1>Já já a gente volta</h1>
+    <p class="lead">
+      A loja está passando por uma atualização rápida.
+      Esta página se atualiza sozinha assim que tudo voltar ao normal.
+    </p>
+
+    <a class="btn" href="https://wa.me/5561982749808" target="_blank" rel="noopener noreferrer">
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+        <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .164 3.463.164 7.83c0 1.38.36 2.73 1.05 3.92L.057 16l4.4-1.15a7.8 7.8 0 0 0 3.537.9h.003c4.368 0 7.83-3.463 7.83-7.83a7.8 7.8 0 0 0-2.226-5.594m-5.607 12.05a6.5 6.5 0 0 1-3.316-.91l-.24-.14-2.46.64.66-2.4-.16-.25a6.5 6.5 0 0 1-1-3.48c0-3.6 2.94-6.53 6.54-6.53 1.75 0 3.39.68 4.62 1.92a6.5 6.5 0 0 1 1.92 4.62c0 3.6-2.94 6.53-6.55 6.53zm3.58-4.89c-.2-.1-1.17-.58-1.35-.64s-.31-.1-.44.1-.51.64-.63.78-.23.15-.43.05a5.4 5.4 0 0 1-1.58-.97 6 6 0 0 1-1.1-1.36c-.11-.2 0-.3.09-.4s.2-.23.3-.35a1.4 1.4 0 0 0 .2-.33.36.36 0 0 0 0-.35c0-.1-.44-1.08-.61-1.47s-.32-.34-.44-.34h-.38a.72.72 0 0 0-.52.25 2.2 2.2 0 0 0-.68 1.63 3.8 3.8 0 0 0 .8 2.02 8.7 8.7 0 0 0 3.35 2.96c.47.2.83.32 1.11.42.47.14.89.13 1.23.08.37-.06 1.16-.48 1.33-.94s.16-.86.11-.94-.18-.14-.38-.24"/>
+      </svg>
+      Falar no WhatsApp
+    </a>
+
+    <p class="foot">
+      Seu carrinho e seus pedidos estão <strong>guardados</strong> — nada se perde.
+      Se precisar de alguma coisa agora, é só chamar no WhatsApp que a gente atende.
+    </p>
+  </main>
+
+</body>
+</html>

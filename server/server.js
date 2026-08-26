@@ -384,6 +384,69 @@ app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
 // imagens/binários (já vêm comprimidos, gastar CPU tentando de novo
 // não ajuda).
 app.use(compression());
+
+/* =========================================================================
+   MODO MANUTENÇÃO — MAINTENANCE_MODE=true no .env
+   -------------------------------------------------------------------------
+   Serve manutencao.html no lugar do site inteiro, para uma parada
+   PLANEJADA (mexer no banco, trocar preços em massa, testar algo pesado)
+   sem a cliente ver meia loja funcionando.
+
+   ⚠️ O QUE ISTO **NÃO** RESOLVE: se o processo do Node cair ou estiver
+   reiniciando, nada aqui roda — o navegador mostra "não foi possível
+   conectar ao servidor", porque não há servidor para responder. Para
+   cobrir esse caso, quem tem que servir o manutencao.html é o servidor
+   web na frente (nginx/Apache do painel da Hostinger), com algo como:
+       error_page 502 503 504 /manutencao.html;
+   Este middleware cobre a parada planejada; a config do host cobre a queda.
+
+   Vem logo depois do compression() e ANTES do parser de JSON, do
+   attachUser e dos limitadores: em manutenção não faz sentido gastar
+   consulta ao banco nem contar requisição de rate limit.
+========================================================================= */
+const MAINTENANCE_MODE = String(process.env.MAINTENANCE_MODE || "").toLowerCase() === "true";
+if (MAINTENANCE_MODE) {
+  // Lida do disco UMA vez, na subida, e servida da memória. Não é
+  // micro-otimização: res.sendFile falha em silêncio quando o caminho do
+  // projeto tem um diretório começando com ponto (o `send` recusa
+  // dot-segments por padrão) e devolve "Erro interno" — justo nesta página,
+  // que só existe para o momento em que tudo já está dando errado. Ler aqui
+  // também faz um arquivo ausente aparecer no boot, e não na pior hora.
+  let maintenancePage;
+  try {
+    maintenancePage = fs.readFileSync(path.join(__dirname, "manutencao.html"), "utf8");
+  } catch (err) {
+    console.error("Não foi possível ler manutencao.html:", err.message);
+    maintenancePage = "<!doctype html><meta charset=\"utf-8\"><title>Em manutenção</title>"
+      + "<p>A loja está em manutenção. Voltamos em alguns minutos.</p>";
+  }
+  console.warn("⚠️  MAINTENANCE_MODE ligado — o site está servindo manutencao.html para todo mundo.");
+  app.use((req, res, next) => {
+    // O webhook do Mercado Pago é a ÚNICA exceção, e não é detalhe: é por
+    // ele que um pagamento aprovado vira pedido pago. Respondendo 503 aqui,
+    // uma cliente que pagou durante a manutenção ficaria com o pedido
+    // "pendente" — o MP até reenvia, mas com espera crescente e um limite
+    // de tentativas. Deixar passar é mais seguro do que confiar no retry.
+    if (req.path === "/api/webhook") return next();
+
+    // 503 (e não 200) de propósito: diz ao Google "é temporário, não
+    // desindexe a loja". Retry-After completa o recado.
+    res.status(503);
+    res.set("Retry-After", "900");
+    // Sem cache: quando a manutenção acabar, ninguém pode ficar preso
+    // nesta página por causa de um cache intermediário.
+    res.set("Cache-Control", "no-store");
+    if (req.path.startsWith("/api/")) {
+      return res.json({ error: "A loja está em manutenção. Tente novamente em alguns minutos." });
+    }
+    if ((req.method === "GET" || req.method === "HEAD") && req.accepts("html")) {
+      res.type("html");
+      return res.send(maintenancePage);
+    }
+    return res.send("A loja está em manutenção. Tente novamente em alguns minutos.");
+  });
+}
+
 app.use(express.json({ limit: "50kb" }));   // corpo pequeno: evita payloads gigantes (DoS simples)
 app.use(auth.attachUser);                   // preenche req.user (ou null) a partir do cookie de sessão
 
@@ -489,6 +552,10 @@ const PUBLIC_TOP_LEVEL = new Set([
   "pagamento-sucesso.html", "pagamento-erro.html", "pagamento-pendente.html",
   "pagamento-pix.html",
   "redefinir-senha.html", "politica.html", "404.html", "429.html", "css", "js", "img",
+  // Precisa ser alcançável por caminho direto para o servidor web da frente
+  // (nginx/Apache) poder servi-la quando o Node estiver fora do ar — que é
+  // justamente quando este middleware aqui não roda. Ver MAINTENANCE_MODE.
+  "manutencao.html",
   // Buscadores e navegadores pedem estes na raiz, por convenção — sem entrar
   // aqui eles caem no 404 mesmo existindo em disco. O .ico e o apple-touch
   // são pedidos sozinhos pelo navegador, mesmo sem <link> na página.
