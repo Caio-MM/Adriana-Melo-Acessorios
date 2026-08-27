@@ -136,23 +136,52 @@
             <div class="auth-pane auth-pane-twofactor">
         <div class="auth-form">
           <p class="auth-eyebrow">só mais um passo</p>
-          <h1 class="auth-title">Código de verificação</h1>
-          <p class="auth-subtitle">Abra seu app de autenticação e digite o código de 6 dígitos.</p>
-          <form id="twoFactorForm" novalidate>
-            <div class="mb-3">
-              <label class="form-label small fw-semibold" for="twoFactorCode">Código</label>
-                            <input type="text" class="form-control auth-code-input" id="twoFactorCode" required
-                     inputmode="numeric" autocomplete="one-time-code" maxlength="6"
-                     placeholder="000000" aria-describedby="twoFactorHint">
-              <div class="form-text" id="twoFactorHint">Perdeu o celular? Digite um dos seus códigos de recuperação.</div>
+          <h1 class="auth-title">Confirmar identidade</h1>
+
+                    <div id="twoFactorChoiceStep">
+            <p class="auth-subtitle">Como você quer confirmar?</p>
+            <div class="verify-choice-group">
+              <button type="button" class="verify-choice" id="chooseAppBtn">
+                <span class="vc-icon"><i class="bi bi-shield-lock"></i></span>
+                <span class="vc-body">
+                  <span class="vc-name">Código do app autenticador</span>
+                  <span class="vc-note">ou um código de recuperação salvo</span>
+                </span>
+              </button>
+              <button type="button" class="verify-choice" id="chooseEmailBtn">
+                <span class="vc-icon"><i class="bi bi-envelope"></i></span>
+                <span class="vc-body">
+                  <span class="vc-name">Receber código por e-mail</span>
+                  <span class="vc-note">enviamos um código de 6 dígitos</span>
+                </span>
+              </button>
             </div>
-            <button class="btn-blush w-100" type="submit" id="twoFactorSubmitBtn">Confirmar</button>
-            <div class="small mt-2 account-msg" id="twoFactorMsg" role="alert"></div>
             <p class="auth-foot">
-              <button type="button" class="auth-link" id="twoFactorEmailBtn">Receber código por e-mail</button>
               <button type="button" class="auth-link" data-auth-mode="login">Voltar para o login</button>
             </p>
-          </form>
+          </div>
+
+                    <div id="twoFactorCodeStep" class="d-none">
+            <button type="button" class="auth-link auth-back-link" id="twoFactorBackBtn">
+              <i class="bi bi-arrow-left"></i> escolher outro jeito
+            </button>
+            <p class="auth-subtitle" id="twoFactorCodeSubtitle">Abra seu app de autenticação e digite o código de 6 dígitos.</p>
+            <form id="twoFactorForm" novalidate>
+              <div class="mb-3">
+                <label class="form-label small fw-semibold" for="twoFactorCode">Código</label>
+                <input type="text" class="form-control auth-code-input" id="twoFactorCode" required
+                       inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                       placeholder="000000" aria-describedby="twoFactorHint">
+                <div class="form-text" id="twoFactorHint">Perdeu o celular? Digite um dos seus códigos de recuperação.</div>
+                <div class="form-text d-none" id="twoFactorEmailHint">
+                  Confira seu e-mail. <button type="button" class="auth-link" id="twoFactorEmailBtn">Reenviar código</button>
+                </div>
+              </div>
+              <button class="btn-blush w-100" type="submit" id="twoFactorSubmitBtn">Confirmar</button>
+            </form>
+          </div>
+
+          <div class="small mt-2 account-msg" id="twoFactorMsg" role="alert"></div>
         </div>
       </div>
 

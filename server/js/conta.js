@@ -27,7 +27,11 @@
     });
     const data = await res.json().catch(() => ({}));
     if(!res.ok){
-      throw new Error(data.error || "Algo deu errado. Tente novamente em instantes.");
+      const err = new Error(data.error || "Algo deu errado. Tente novamente em instantes.");
+      // Cooldown de reenvio (2FA por e-mail) manda quanto falta em ms — sem
+      // isso o chamador só teria a mensagem de texto, não o número.
+      if(typeof data.retryAfterMs === "number") err.retryAfterMs = data.retryAfterMs;
+      throw err;
     }
     return data;
   }
@@ -91,9 +95,7 @@
       if(user?.twoFactorRequired){
         pendingChallengeToken = user.challengeToken;
         setLoading(btn, false);
-        showMessage(twoFactorMsg, "", null);
-        document.getElementById("twoFactorCode").value = "";
-        resetEmailCooldownUI();
+        resetTwoFactorStepsUI();
         setAuthMode("twofactor", true);
         return;
       }
@@ -104,9 +106,117 @@
     }
   });
 
+  /* ============ 2FA — escolha do método, depois o código ============
+     Passo 1 (twoFactorChoiceStep): "app" ou "e-mail" — clique já é a ação,
+     não uma seleção que espera confirmação depois.
+     Passo 2 (twoFactorCodeStep): mesmo campo #twoFactorCode/#twoFactorForm
+     para os dois métodos — um código emailado entra no mesmo lugar que um
+     código do app, o back-end (/api/auth/login/2fa) já tenta os dois. */
+  const twoFactorChoiceStep = document.getElementById("twoFactorChoiceStep");
+  const twoFactorCodeStep = document.getElementById("twoFactorCodeStep");
+  const chooseAppBtn = document.getElementById("chooseAppBtn");
+  const chooseEmailBtn = document.getElementById("chooseEmailBtn");
+  const twoFactorBackBtn = document.getElementById("twoFactorBackBtn");
+  const twoFactorCodeSubtitle = document.getElementById("twoFactorCodeSubtitle");
+  const twoFactorHint = document.getElementById("twoFactorHint");
+  const twoFactorEmailHint = document.getElementById("twoFactorEmailHint");
   const twoFactorForm = document.getElementById("twoFactorForm");
   const twoFactorMsg = document.getElementById("twoFactorMsg");
   const twoFactorCode = document.getElementById("twoFactorCode");
+  const twoFactorEmailBtn = document.getElementById("twoFactorEmailBtn");
+
+  const APP_SUBTITLE = "Abra seu app de autenticação e digite o código de 6 dígitos.";
+  const EMAIL_SUBTITLE = "Enviamos um código para o seu e-mail — confira a caixa de entrada e digite abaixo.";
+
+  let emailCooldownTimer = null;
+
+  function resetEmailCooldownUI(){
+    clearInterval(emailCooldownTimer);
+    emailCooldownTimer = null;
+    if(twoFactorEmailBtn){
+      twoFactorEmailBtn.disabled = false;
+      twoFactorEmailBtn.textContent = "Reenviar código";
+    }
+  }
+
+  function startEmailCooldown(seconds){
+    clearInterval(emailCooldownTimer);
+    let remaining = Math.max(1, Math.round(seconds));
+    twoFactorEmailBtn.disabled = true;
+    twoFactorEmailBtn.textContent = `Reenviar em ${remaining}s`;
+    emailCooldownTimer = setInterval(() => {
+      remaining -= 1;
+      if(remaining <= 0){ resetEmailCooldownUI(); return; }
+      twoFactorEmailBtn.textContent = `Reenviar em ${remaining}s`;
+    }, 1000);
+  }
+
+  // Chamado ao entrar na tela (login com 2FA) e sempre que o desafio
+  // caduca no meio do caminho — começa sempre do passo de escolha.
+  function resetTwoFactorStepsUI(){
+    resetEmailCooldownUI();
+    showMessage(twoFactorMsg, "", null);
+    twoFactorCode.value = "";
+    twoFactorChoiceStep.classList.remove("d-none");
+    twoFactorCodeStep.classList.add("d-none");
+    chooseAppBtn.disabled = false;
+    chooseEmailBtn.disabled = false;
+    chooseEmailBtn.classList.remove("is-sending");
+  }
+
+  function showCodeStep(method){
+    twoFactorChoiceStep.classList.add("d-none");
+    twoFactorCodeStep.classList.remove("d-none");
+    twoFactorCodeSubtitle.textContent = method === "email" ? EMAIL_SUBTITLE : APP_SUBTITLE;
+    twoFactorHint.classList.toggle("d-none", method === "email");
+    twoFactorEmailHint.classList.toggle("d-none", method !== "email");
+    twoFactorCode.value = "";
+    setTimeout(() => twoFactorCode.focus(), 50);
+  }
+
+  // Trata o desafio caduco do mesmo jeito nos dois caminhos (código/e-mail):
+  // volta pro login E reseta esta tela pro passo de escolha, pra próxima
+  // vez começar do zero.
+  function handleExpiredChallenge(message){
+    pendingChallengeToken = null;
+    resetTwoFactorStepsUI();
+    setAuthMode("login", true);
+    showMessage(loginMsg, message, "error");
+  }
+
+  chooseAppBtn?.addEventListener("click", () => showCodeStep("app"));
+
+  chooseEmailBtn?.addEventListener("click", async () => {
+    if(!pendingChallengeToken) return;
+    showMessage(twoFactorMsg, "", null);
+    chooseAppBtn.disabled = true;
+    chooseEmailBtn.disabled = true;
+    chooseEmailBtn.classList.add("is-sending");
+    try{
+      await postJSON("/api/auth/login/2fa/email", { challengeToken: pendingChallengeToken });
+      chooseEmailBtn.classList.remove("is-sending");
+      showCodeStep("email");
+      startEmailCooldown(60);
+    }catch(err){
+      chooseAppBtn.disabled = false;
+      chooseEmailBtn.disabled = false;
+      chooseEmailBtn.classList.remove("is-sending");
+      if(/expirada/i.test(err.message)){
+        handleExpiredChallenge(err.message);
+        return;
+      }
+      showMessage(twoFactorMsg, err.message, "error");
+    }
+  });
+
+  twoFactorBackBtn?.addEventListener("click", () => {
+    resetEmailCooldownUI();
+    showMessage(twoFactorMsg, "", null);
+    twoFactorChoiceStep.classList.remove("d-none");
+    twoFactorCodeStep.classList.add("d-none");
+    chooseAppBtn.disabled = false;
+    chooseEmailBtn.disabled = false;
+  });
 
   twoFactorCode?.addEventListener("input", () => {
     const v = twoFactorCode.value.toUpperCase();
@@ -129,9 +239,7 @@
       setLoading(btn, false);
 
       if(/expirada/i.test(err.message)){
-        pendingChallengeToken = null;
-        setAuthMode("login", true);
-        showMessage(loginMsg, err.message, "error");
+        handleExpiredChallenge(err.message);
         return;
       }
       showMessage(twoFactorMsg, err.message, "error");
@@ -139,34 +247,10 @@
     }
   });
 
-  /* Alternativa ao app: manda um código de 6 dígitos para o e-mail da
-     conta, para o MESMO desafio de login — o campo #twoFactorCode acima
-     não muda em nada, o código emailado entra no mesmo lugar que o do
-     app. */
-  const twoFactorEmailBtn = document.getElementById("twoFactorEmailBtn");
-  let emailCooldownTimer = null;
-
-  function resetEmailCooldownUI(){
-    clearInterval(emailCooldownTimer);
-    emailCooldownTimer = null;
-    if(twoFactorEmailBtn){
-      twoFactorEmailBtn.disabled = false;
-      twoFactorEmailBtn.textContent = "Receber código por e-mail";
-    }
-  }
-
-  function startEmailCooldown(seconds){
-    clearInterval(emailCooldownTimer);
-    let remaining = seconds;
-    twoFactorEmailBtn.disabled = true;
-    twoFactorEmailBtn.textContent = `Reenviar em ${remaining}s`;
-    emailCooldownTimer = setInterval(() => {
-      remaining -= 1;
-      if(remaining <= 0){ resetEmailCooldownUI(); return; }
-      twoFactorEmailBtn.textContent = `Reenviar em ${remaining}s`;
-    }, 1000);
-  }
-
+  // Reenviar dentro do passo de e-mail: mesma chamada do cartão de escolha,
+  // só que agora já estamos no passo 2. Se o servidor disser que ainda tem
+  // cooldown ativo (voltou pro passo 1 e escolheu e-mail de novo antes dos
+  // 60s), usa o retryAfterMs real em vez de assumir 60s de novo.
   twoFactorEmailBtn?.addEventListener("click", async () => {
     if(!pendingChallengeToken) return;
     showMessage(twoFactorMsg, "", null);
@@ -176,13 +260,14 @@
       showMessage(twoFactorMsg, data.message || "Código enviado! Confira seu e-mail.", "success");
       startEmailCooldown(60);
     }catch(err){
-      twoFactorEmailBtn.disabled = false;
       if(/expirada/i.test(err.message)){
-        pendingChallengeToken = null;
-        resetEmailCooldownUI();
-        setAuthMode("login", true);
-        showMessage(loginMsg, err.message, "error");
+        handleExpiredChallenge(err.message);
         return;
+      }
+      if(typeof err.retryAfterMs === "number" && err.retryAfterMs > 0){
+        startEmailCooldown(err.retryAfterMs / 1000);
+      }else{
+        twoFactorEmailBtn.disabled = false;
       }
       showMessage(twoFactorMsg, err.message, "error");
     }
