@@ -1496,6 +1496,22 @@
     bootstrap.Offcanvas.getInstance(document.getElementById("cartOffcanvas"))?.hide();
   });
 
+  /* Clique em link de âncora (#historia, #colecoes etc.) rola até a seção
+     mas NUNCA deixa o # entrar na URL — sem isso, o navegador grava o hash
+     no endereço e um F5 mais tarde (já fora do contexto do clique) pula de
+     novo para aquela seção, em vez de abrir do topo como o resto do site. */
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest('a[href^="#"]');
+    if(!link) return;
+    const id = link.getAttribute("href").slice(1);
+    if(!id) return;
+    const target = document.getElementById(id);
+    if(!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ block: "start" });
+    history.replaceState(null, "", location.pathname + location.search);
+  });
+
   const nav = document.getElementById("mainNav");
   const btnTop = document.getElementById("btnTop");
 
