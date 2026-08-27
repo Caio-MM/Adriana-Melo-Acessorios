@@ -859,14 +859,15 @@ function atributoCupomBoasVindas(){
     .replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
-// Pega href/src de css/… e js/… que ainda não tenham query própria, e
-// também favicon.ico/apple-touch-icon.png na raiz — esses dois ficam em
-// cache de 365 dias (setHeaders mais abaixo, maxAge padrão do
-// express.static) sem o "no-cache" que .html/.css/.js têm via
-// REVALIDATE_ALWAYS, então são os que mais precisam do endereço mudar
-// quando o arquivo muda — sem isso, quem visitou antes de uma troca de
-// ícone fica com o antigo por até um ano.
-const REF_ASSET = /\b(href|src)="((?:css|js)\/[^"?#]+\.(?:css|js)|favicon\.ico|apple-touch-icon\.png)"/g;
+// Pega href/src de css/…, js/… e img/… que ainda não tenham query própria, e
+// também favicon.ico/apple-touch-icon.png na raiz — todos ficam em cache de
+// 365 dias (setHeaders mais abaixo, maxAge padrão do express.static) sem o
+// "no-cache" que .html/.css/.js têm via REVALIDATE_ALWAYS, então são os que
+// mais precisam do endereço mudar quando o arquivo muda — sem isso, quem
+// visitou antes de uma troca (ícone, foto do hero etc.) fica com a versão
+// antiga por até um ano em qualquer aparelho, sem jeito de forçar
+// atualização a não ser limpando o cache manualmente.
+const REF_ASSET = /\b(href|src)="((?:css|js|img)\/[^"?#]+\.(?:css|js|jpg|jpeg|png|svg|webp|gif)|favicon\.ico|apple-touch-icon\.png)"/g;
 // Marcadores no <head>/<body> do index.html, trocados na hora de servir.
 const MARCA_JSONLD = "<!--#DADOS-ESTRUTURADOS#-->";
 const MARCA_CUPOM = "<!--#CUPOM-BOAS-VINDAS#-->";
