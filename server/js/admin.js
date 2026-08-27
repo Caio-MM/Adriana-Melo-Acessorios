@@ -479,33 +479,34 @@
 
   function renderProductsTable(products){
     productsCache = products;
-    productsTableBodyEl.innerHTML = products.map((p, index) => {
+    productsTableBodyEl.innerHTML = products.map((p) => {
       const isCustom = p.id >= CUSTOM_PRODUCT_ID_START;
-      const primeiro = index === 0;
-      const ultimo = index === products.length - 1;
       return `
-      <tr data-product-id="${p.id}">
+      <tr data-product-id="${p.id}" class="${p.hidden ? "is-hidden-product" : ""}">
         <td>
-          <div class="admin-order-cell">
-            <button type="button" class="admin-order-btn" data-move="up" data-id="${p.id}" ${primeiro ? "disabled" : ""}
-                    aria-label="Mover ${escapeHTML(p.name)} para cima na vitrine"><i class="bi bi-chevron-up"></i></button>
-            <button type="button" class="admin-order-btn" data-move="down" data-id="${p.id}" ${ultimo ? "disabled" : ""}
-                    aria-label="Mover ${escapeHTML(p.name)} para baixo na vitrine"><i class="bi bi-chevron-down"></i></button>
-          </div>
+          <button type="button" class="admin-drag-handle" data-id="${p.id}" tabindex="0"
+                  aria-label="Arrastar ${escapeHTML(p.name)} para reordenar — setas para cima/baixo também funcionam">
+            <i class="bi bi-grip-vertical"></i>
+          </button>
         </td>
         <td>${imageFor(p)
           ? `<img class="admin-product-thumb" src="${escapeHTML(imageFor(p))}" alt="${escapeHTML(p.name)}" width="44" height="44" loading="lazy">`
           : BOW_PLACEHOLDER}</td>
-        <td>${escapeHTML(p.name)}</td>
+        <td>${escapeHTML(p.name)}${p.hidden ? ` <span class="admin-hidden-pill">Oculto</span>` : ""}</td>
         <td>${formatMoney(p.price)}</td>
         <td class="small text-ink-soft">${escapeHTML(CATEGORY_LABELS[p.category] || p.category || "—")}</td>
         <td>${(p.badges && p.badges.length) ? p.badges.map(b => `<span class="admin-badge-pill">${escapeHTML(b)}</span>`).join("") : "—"}</td>
         <td>
           <div class="admin-row-actions">
             <button type="button" class="btn-outline-blush edit-product-btn" data-id="${p.id}">Editar</button>
+            <button type="button" class="delete-order-icon-btn toggle-hidden-product-btn" data-id="${p.id}"
+                    aria-label="${p.hidden ? "Mostrar" : "Ocultar"} ${escapeHTML(p.name)} na vitrine"
+                    title="${p.hidden ? "Mostrar na vitrine" : "Ocultar da vitrine"}">
+              <i class="bi ${p.hidden ? "bi-eye" : "bi-eye-slash"}"></i>
+            </button>
             ${isCustom
               ? `<button type="button" class="delete-order-icon-btn delete-product-btn" data-id="${p.id}" aria-label="Excluir produto"><i class="bi bi-trash3"></i></button>`
-              : `<button type="button" class="delete-order-icon-btn" disabled title="Produto do catálogo original — não pode ser excluído, só editado"><i class="bi bi-trash3"></i></button>`}
+              : `<button type="button" class="delete-order-icon-btn" disabled title="Produto do catálogo original — não pode ser excluído. Use o ícone de olho para ocultá-lo em vez de excluir."><i class="bi bi-trash3"></i></button>`}
           </div>
         </td>
       </tr>
@@ -961,25 +962,17 @@
   });
 
   /* ============ ORDEM DOS PRODUTOS NA VITRINE ============
-     A lista já é redesenhada na hora do clique (a lojista vê o produto
-     subir na mesma hora) e só então a ordem vai pro servidor. Se a gravação
-     falhar, a tabela é recarregada do servidor — melhor voltar visivelmente
-     ao que está salvo do que deixar na tela uma ordem que não existe no
-     banco. */
+     A lista já é redesenhada na hora do gesto (arrastar ou seta do teclado
+     — a lojista vê o produto se mover na mesma hora) e só então a ordem vai
+     pro servidor. Se a gravação falhar, a tabela é recarregada do servidor
+     — melhor voltar visivelmente ao que está salvo do que deixar na tela
+     uma ordem que não existe no banco. */
   let salvandoOrdem = false;
 
-  async function moverProduto(id, direcao){
-    if(salvandoOrdem) return;
-    const de = productsCache.findIndex(p => p.id === id);
-    const para = direcao === "up" ? de - 1 : de + 1;
-    if(de === -1 || para < 0 || para >= productsCache.length) return;
-
-    const nova = [...productsCache];
-    [nova[de], nova[para]] = [nova[para], nova[de]];
+  async function saveProductsOrder(nova){
     renderProductsTable(nova);
-
+    if(salvandoOrdem) return;
     salvandoOrdem = true;
-    productsTableBodyEl.querySelectorAll(".admin-order-btn").forEach(b => { b.disabled = true; });
     const msg = document.getElementById("productsOrderMsg");
     msg.textContent = "Salvando a ordem...";
     msg.className = "small mb-2 account-msg";
@@ -1000,20 +993,144 @@
       await loadDashboard();   // volta pra ordem que está de fato salva
     }finally{
       salvandoOrdem = false;
-      productsTableBodyEl.querySelectorAll(".admin-order-btn").forEach(b => { b.disabled = false; });
-      // Reaplica os limites das pontas, que o loop acima liberou.
-      renderProductsTable(productsCache);
     }
   }
 
+  function moverProdutoPorTeclado(id, direcao){
+    if(salvandoOrdem) return;
+    const de = productsCache.findIndex(p => p.id === id);
+    const para = direcao === "up" ? de - 1 : de + 1;
+    if(de === -1 || para < 0 || para >= productsCache.length) return;
+    const nova = [...productsCache];
+    [nova[de], nova[para]] = [nova[para], nova[de]];
+    saveProductsOrder(nova);
+    // Mantém o foco no mesmo produto depois do re-render (ele trocou de <tr>).
+    requestAnimationFrame(() => {
+      productsTableBodyEl.querySelector(`.admin-drag-handle[data-id="${id}"]`)?.focus();
+    });
+  }
+
+  /* Arrastar e soltar: o gancho (.admin-drag-handle) segue o ponteiro em
+     tempo real (translateY direto, sem transição — precisa acompanhar sem
+     atraso); as OUTRAS linhas abrem espaço com uma transição suave conforme
+     o ponto de solta muda, dando a sensação de "passar por cima" dos outros
+     produtos. A troca de posição de verdade (no array e no servidor) só
+     acontece ao soltar — durante o arrasto é tudo visual. Pointer Events
+     (não HTML5 drag-and-drop) de propósito: funciona igual com mouse e
+     dedo, sem precisar de polyfill para toque. */
+  let drag = null;
+
+  function rowFor(id){
+    return productsTableBodyEl.querySelector(`tr[data-product-id="${id}"]`);
+  }
+
+  function applyDragGap(){
+    productsCache.forEach((p, i) => {
+      if(p.id === drag.id) return;
+      const row = rowFor(p.id);
+      if(!row) return;
+      let shift = 0;
+      if(drag.origIndex < drag.newIndex && i > drag.origIndex && i <= drag.newIndex) shift = -1;
+      else if(drag.origIndex > drag.newIndex && i >= drag.newIndex && i < drag.origIndex) shift = 1;
+      row.style.transform = shift ? `translateY(${shift * drag.rowHeight}px)` : "";
+    });
+  }
+
+  function clearDragStyles(){
+    productsTableBodyEl.querySelectorAll("tr[data-product-id]").forEach(r => {
+      r.style.transform = "";
+      r.classList.remove("is-dragging");
+    });
+    productsTableBodyEl.classList.remove("is-reordering");
+  }
+
+  function onDragPointerMove(e){
+    if(!drag || e.pointerId !== drag.pointerId) return;
+    const deltaY = e.clientY - drag.startY;
+    drag.row.style.transform = `translateY(${deltaY}px)`;
+    const rawIndex = drag.origIndex + Math.round(deltaY / drag.rowHeight);
+    const newIndex = Math.max(0, Math.min(productsCache.length - 1, rawIndex));
+    if(newIndex !== drag.newIndex){
+      drag.newIndex = newIndex;
+      applyDragGap();
+    }
+  }
+
+  function onDragPointerUp(e){
+    if(!drag || e.pointerId !== drag.pointerId) return;
+    const { id, origIndex, newIndex } = drag;
+    clearDragStyles();
+    window.removeEventListener("pointermove", onDragPointerMove);
+    window.removeEventListener("pointerup", onDragPointerUp);
+    window.removeEventListener("pointercancel", onDragPointerUp);
+    drag = null;
+    if(newIndex === origIndex) return;
+    const nova = [...productsCache];
+    const [moved] = nova.splice(origIndex, 1);
+    nova.splice(newIndex, 0, moved);
+    saveProductsOrder(nova);
+  }
+
+  productsTableBodyEl.addEventListener("pointerdown", (e) => {
+    if(salvandoOrdem) return;
+    const handle = e.target.closest(".admin-drag-handle");
+    if(!handle) return;
+    const row = handle.closest("tr");
+    const id = Number(handle.dataset.id);
+    const origIndex = productsCache.findIndex(p => p.id === id);
+    if(origIndex === -1) return;
+    drag = {
+      id, row, pointerId: e.pointerId, startY: e.clientY,
+      origIndex, newIndex: origIndex, rowHeight: row.getBoundingClientRect().height,
+    };
+    handle.setPointerCapture(e.pointerId);
+    row.classList.add("is-dragging");
+    productsTableBodyEl.classList.add("is-reordering");
+    window.addEventListener("pointermove", onDragPointerMove);
+    window.addEventListener("pointerup", onDragPointerUp);
+    window.addEventListener("pointercancel", onDragPointerUp);
+    e.preventDefault();
+  });
+
+  productsTableBodyEl.addEventListener("keydown", (e) => {
+    const handle = e.target.closest(".admin-drag-handle");
+    if(!handle || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+    e.preventDefault();
+    moverProdutoPorTeclado(Number(handle.dataset.id), e.key === "ArrowUp" ? "up" : "down");
+  });
+
   productsTableBodyEl.addEventListener("click", (e) => {
-    const moveBtn = e.target.closest(".admin-order-btn");
-    if(moveBtn){ moverProduto(Number(moveBtn.dataset.id), moveBtn.dataset.move); return; }
     const editBtn = e.target.closest(".edit-product-btn");
     if(editBtn){ openEditModal(Number(editBtn.dataset.id)); return; }
     const deleteBtn = e.target.closest(".delete-product-btn");
-    if(deleteBtn) deleteProductWithConfirm(Number(deleteBtn.dataset.id));
+    if(deleteBtn){ deleteProductWithConfirm(Number(deleteBtn.dataset.id)); return; }
+    const toggleHiddenBtn = e.target.closest(".toggle-hidden-product-btn");
+    if(toggleHiddenBtn) toggleProductHidden(Number(toggleHiddenBtn.dataset.id));
   });
+
+  /* Ocultar: some da vitrine (index.html) e do checkout, mas continua no
+     painel para poder reativar — a alternativa pros 8 produtos do catálogo
+     fixo, que não podem ser excluídos de verdade (ver botão de lixeira
+     desabilitado). Produto criado no painel também pode ser ocultado (por
+     exemplo para "pausar" um item sem apagar o histórico dele). */
+  async function toggleProductHidden(id){
+    const product = productsCache.find(p => p.id === id);
+    if(!product) return;
+    const nextHidden = !product.hidden;
+    try{
+      const res = await fetchWithTimeout(`/api/admin/products/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hidden: nextHidden }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível atualizar o produto.");
+      product.hidden = data.hidden;
+      renderProductsTable(productsCache);
+    }catch(err){
+      alert(err.message || "Não foi possível atualizar o produto agora.");
+    }
+  }
 
   async function deleteProductWithConfirm(id){
     if(!confirm("Excluir este produto? Essa ação não pode ser desfeita.")) return;

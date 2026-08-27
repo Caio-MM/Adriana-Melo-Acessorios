@@ -337,6 +337,27 @@
           cartColorsFixed = true;
         }
       });
+      // O laço acima só ATUALIZA campos dos produtos já conhecidos — nunca
+      // reordena nem remove nada de `products` (o array que renderProducts()
+      // percorre). Sem este passo, mudar a ordem no painel (ou ocultar um
+      // produto) nunca aparecia na vitrine: os objetos eram corrigidos "no
+      // lugar", mas o lugar continuava sendo a ordem fixa deste arquivo.
+      // `data.products` já vem na ordem certa E sem os ocultos (o servidor
+      // filtra); reconstruir `products` nessa ordem resolve as duas coisas
+      // de uma vez. Não mexe em `productsById` — um produto que acabou de
+      // ficar oculto continua encontrável ali, então um carrinho que já
+      // tinha esse item (de antes de virar oculto) não quebra ao renderizar.
+      const serverIds = Array.isArray(data.products) ? data.products.map(o => o.id) : null;
+      if(serverIds){
+        const currentOrder = products.map(p => p.id).join(",");
+        const nextOrder = serverIds.join(",");
+        if(currentOrder !== nextOrder){
+          const reordered = serverIds.map(id => productsById.get(id)).filter(Boolean);
+          products.length = 0;
+          products.push(...reordered);
+          changed = true;
+        }
+      }
       if(cartColorsFixed) saveCart();
       if(changed || cartColorsFixed){ renderProducts(); renderCart(); }
       verifyPaymentRules(data.paymentRules);

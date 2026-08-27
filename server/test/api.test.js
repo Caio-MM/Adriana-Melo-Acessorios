@@ -635,3 +635,35 @@ test("ordem dos produtos: PUT reordena a vitrine, e rejeita lista incompleta/rep
   // Devolve a ordem original pra não interferir em outros testes.
   await put("/api/admin/products/order", { ids: idsOriginais }, adminCookie);
 });
+
+test("ocultar produto: some de /api/products, continua em /api/admin/products, e volta ao desocultar", async () => {
+  const adminCookie = sharedAdminCookie;
+  assert.ok(adminCookie);
+
+  const antes = await (await fetch(ORIGIN + "/api/products")).json();
+  assert.ok(antes.products.some(p => p.id === 5), "produto 5 deve estar visível antes do teste");
+
+  const ocultou = await patch("/api/admin/products/5", { hidden: true }, adminCookie);
+  assert.equal(ocultou.status, 200);
+  assert.equal((await ocultou.json()).hidden, true);
+
+  const pubDepois = await (await fetch(ORIGIN + "/api/products")).json();
+  assert.equal(pubDepois.products.some(p => p.id === 5), false, "produto oculto some da vitrine pública");
+
+  const adminDepois = await (await fetch(ORIGIN + "/api/admin/products", { headers: { Cookie: adminCookie } })).json();
+  const noPainel = adminDepois.products.find(p => p.id === 5);
+  assert.ok(noPainel, "produto oculto continua aparecendo no painel");
+  assert.equal(noPainel.hidden, true);
+
+  // Não compra escondido nem chamando a API direto, pulando a vitrine —
+  // /api/validate-coupon também passa pelos itens por buildValidatedItems.
+  const bloqueado = await post("/api/validate-coupon", { code: "BEMVINDA10", items: [{ id: 5, qty: 1 }] });
+  assert.equal(bloqueado.status, 409);
+  assert.match((await bloqueado.json()).error, /não está mais disponível/);
+
+  const desocultou = await patch("/api/admin/products/5", { hidden: false }, adminCookie);
+  assert.equal(desocultou.status, 200);
+  assert.equal((await desocultou.json()).hidden, false);
+  const pubFinal = await (await fetch(ORIGIN + "/api/products")).json();
+  assert.ok(pubFinal.products.some(p => p.id === 5), "produto volta a aparecer ao desocultar");
+});

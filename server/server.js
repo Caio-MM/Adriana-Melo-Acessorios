@@ -243,12 +243,13 @@ function effectiveProduct(id, overridesMap){
       availableColors: custom.available_colors != null ? JSON.parse(custom.available_colors) : getAllColorHexes(),
       allowsSecondColor: Boolean(custom.allow_second_color),
       description: custom.description || null,
+      hidden: Boolean(custom.hidden),
     };
   }
   const base = PRODUCTS[id];
   if(!base) return null;
   const override = overridesMap.get(id);
-  if(!override) return { ...base, photos: [], photoUrl: null, availableColors: getAllColorHexes(), allowsSecondColor: false, description: null };
+  if(!override) return { ...base, photos: [], photoUrl: null, availableColors: getAllColorHexes(), allowsSecondColor: false, description: null, hidden: false };
   const photos = photosFromRow(override);
   return {
     ...base,
@@ -260,6 +261,7 @@ function effectiveProduct(id, overridesMap){
     allowsSecondColor: Boolean(override.allow_second_color),
     availableColors: override.available_colors != null ? JSON.parse(override.available_colors) : getAllColorHexes(),
     description: override.description || null,
+    hidden: Boolean(override.hidden),
   };
 }
 
@@ -1037,6 +1039,9 @@ function buildValidatedItems(items, opts){
     const product = Number.isInteger(id) ? effectiveProduct(id, overridesMap) : null;
     if(!product){
       throw { status:400, message:`Produto inválido: ${raw?.id}` };
+    }
+    if(product.hidden){
+      throw { status:409, message:`"${product.name}" não está mais disponível.` };
     }
     if(!Number.isInteger(qty) || qty < 1 || qty > 10){
       throw { status:400, message:`Quantidade inválida para o produto ${id}.` };
@@ -2973,10 +2978,10 @@ app.patch("/api/admin/orders/:reference/delivered", auth.requireAdmin, auth.requ
 ========================================================================= */
 app.get("/api/products", (req, res) => {
   const overridesMap = getProductOverridesMap();
-  const products = getAllProductIds().map(id => {
-    const p = effectiveProduct(id, overridesMap);
-    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, availableColors: p.availableColors, allowsSecondColor: p.allowsSecondColor, description: p.description };
-  });
+  const products = getAllProductIds()
+    .map(id => ({ id, p: effectiveProduct(id, overridesMap) }))
+    .filter(({ p }) => !p.hidden)
+    .map(({ id, p }) => ({ id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, availableColors: p.availableColors, allowsSecondColor: p.allowsSecondColor, description: p.description }));
   // `paymentRules` viaja junto do catálogo (em vez de numa rota própria) para
   // não gastar mais uma das requisições do rate limit por carregamento de
   // página. A vitrine calcula os preços sozinha com o js/pricing.js que já
@@ -3002,7 +3007,7 @@ app.get("/api/admin/products", auth.requireAdmin, auth.requireAdminTwoFactor, (r
   const overridesMap = getProductOverridesMap();
   const products = getAllProductIds().map(id => {
     const p = effectiveProduct(id, overridesMap);
-    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, availableColors: p.availableColors, allowsSecondColor: p.allowsSecondColor, description: p.description };
+    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, availableColors: p.availableColors, allowsSecondColor: p.allowsSecondColor, description: p.description, hidden: p.hidden };
   });
   res.json({ products, categories: getAllCategories(), colors: getAllColors(), availableBadges: PRODUCT_BADGES });
 });
@@ -3268,6 +3273,9 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFact
       }
       fields.description = description || null;
     }
+    if("hidden" in body){
+      fields.hidden = Boolean(body.hidden);
+    }
 
     if(Object.keys(fields).length === 0){
       return res.status(400).json({ error: "Nada para salvar." });
@@ -3277,7 +3285,7 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFact
     else db.upsertProductOverride(id, fields);
 
     const updated = effectiveProduct(id, getProductOverridesMap());
-    res.json({ id, name: updated.name, price: updated.price, photoUrl: updated.photoUrl, photos: updated.photos, category: updated.category, badges: updated.badges, availableColors: updated.availableColors, allowsSecondColor: updated.allowsSecondColor, description: updated.description });
+    res.json({ id, name: updated.name, price: updated.price, photoUrl: updated.photoUrl, photos: updated.photos, category: updated.category, badges: updated.badges, availableColors: updated.availableColors, allowsSecondColor: updated.allowsSecondColor, description: updated.description, hidden: updated.hidden });
   } catch (err) {
     console.error("Erro ao atualizar produto:", err);
     res.status(500).json({ error: "Não foi possível salvar o produto agora." });

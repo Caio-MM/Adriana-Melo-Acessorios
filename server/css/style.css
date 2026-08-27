@@ -2092,20 +2092,40 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 .admin-row-actions{ display:flex; justify-content:flex-end; align-items:center; gap:.4rem; flex-wrap:nowrap; }
 
-/* Setas de ordem da vitrine, na primeira coluna da tabela de produtos.
-   Empilhadas na vertical porque é assim que a lojista lê o movimento:
-   a de cima sobe o produto na loja, a de baixo desce. */
-.admin-order-cell{ display:flex; flex-direction:column; gap:2px; }
-.admin-order-btn{
-  width:26px; height:22px; padding:0;
+/* Gancho de arrastar, na primeira coluna da tabela de produtos — pega,
+   segura e leva pra cima/baixo (Pointer Events, ver js/admin.js) passando
+   por cima dos outros produtos. Também aceita seta pra cima/baixo pelo
+   teclado, pra continuar acessível sem o ponteiro. */
+.admin-drag-handle{
+  width:30px; height:30px; padding:0;
   display:flex; align-items:center; justify-content:center;
   border:1px solid var(--blush-100); background:var(--white);
-  color:var(--blush-700); border-radius:7px; font-size:.7rem;
-  cursor:pointer; transition:all .15s ease;
+  color:var(--blush-700); border-radius:8px; font-size:.95rem;
+  cursor:grab; transition:background .15s ease, border-color .15s ease;
+  touch-action:none; /* sem isso, arrastar no celular rola a página em vez de mover a linha */
 }
-.admin-order-btn:hover:not(:disabled){ background:var(--blush-100); border-color:var(--blush-200); }
-.admin-order-btn:disabled{ opacity:.35; cursor:default; }
-.admin-order-btn:focus-visible{ outline:2px solid var(--blush-600); outline-offset:2px; }
+.admin-drag-handle:hover{ background:var(--blush-100); border-color:var(--blush-200); }
+.admin-drag-handle:focus-visible{ outline:2px solid var(--blush-600); outline-offset:2px; }
+.admin-drag-handle:active{ cursor:grabbing; }
+
+/* Linhas da tabela de produtos: transição suave por padrão, pra quando
+   outras linhas abrem espaço durante um arrasto (ver applyDragGap em
+   js/admin.js) — a linha SENDO arrastada tem essa transição desligada
+   (.is-dragging), porque ela precisa acompanhar o ponteiro sem atraso. */
+#productsTableBody tr{ transition:transform .15s ease; }
+#productsTableBody tr.is-dragging{
+  transition:none; position:relative;
+  box-shadow:var(--shadow-card-hover); background:var(--white);
+}
+#productsTableBody tr.is-dragging td{ background:var(--blush-50); }
+#productsTableBody.is-reordering tr:not(.is-dragging){ cursor:default; }
+
+.admin-hidden-pill{
+  display:inline-block; margin-left:.4rem; padding:.1rem .5rem;
+  border-radius:999px; background:var(--blush-100); color:var(--ink-soft);
+  font-size:.68rem; font-weight:600; vertical-align:middle;
+}
+tr.is-hidden-product{ opacity:.6; }
 
 /* ============ TELA DE CARREGAMENTO (conexão lenta) — ver js/loading.js ============ */
 .app-loading{

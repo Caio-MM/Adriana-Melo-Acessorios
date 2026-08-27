@@ -266,6 +266,13 @@ ensureColumn("custom_products", "description", "TEXT");
 // mexer — e é também onde um produto novo entra, sem furar a fila.
 ensureColumn("product_overrides", "sort_order", "INTEGER");
 ensureColumn("custom_products", "sort_order", "INTEGER");
+// Produto oculto da vitrine (a lojista quis "remover" um produto que não
+// pode ser apagado de verdade, ou pausar temporariamente um produto criado
+// no painel). Booleano simples, mesmo racional de allow_second_color — só
+// esconde da listagem pública (/api/products) e do checkout; o painel
+// continua mostrando e permitindo reativar.
+ensureColumn("product_overrides", "hidden", "INTEGER");
+ensureColumn("custom_products", "hidden", "INTEGER");
 // Telefone só com dígitos, copiado do endereço na hora de gravar o pedido.
 // É o único identificador que sobra para quem compra sem conta — sem uma
 // coluna própria, casar "(61) 98274-9808" com "61982749808" dentro do JSON
@@ -830,14 +837,14 @@ function deleteProductPhoto(id) {
 const stmtGetProductOverride = db.prepare(`SELECT * FROM product_overrides WHERE product_id = ?`);
 const stmtListProductOverrides = db.prepare(`SELECT * FROM product_overrides`);
 const stmtUpsertProductOverride = db.prepare(`
-  INSERT INTO product_overrides (product_id, name, price, photo_url, category, badges, available_colors, photos, allow_second_color, description, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO product_overrides (product_id, name, price, photo_url, category, badges, available_colors, photos, allow_second_color, description, hidden, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(product_id) DO UPDATE SET
     name = excluded.name, price = excluded.price, photo_url = excluded.photo_url,
     category = excluded.category, badges = excluded.badges,
     available_colors = excluded.available_colors, photos = excluded.photos,
     allow_second_color = excluded.allow_second_color, description = excluded.description,
-    updated_at = excluded.updated_at
+    hidden = excluded.hidden, updated_at = excluded.updated_at
 `);
 
 /* Ordem da vitrine. Statements próprios, que tocam SÓ sort_order: passar
@@ -916,7 +923,8 @@ function upsertProductOverride(productId, fields) {
   // novo) — sem a distinção NULL-vs-vazio que available_colors/photos
   // precisam, já que aqui não existe um "descrição vazia de propósito".
   const description = "description" in fields ? (fields.description || null) : (current.description ?? null);
-  stmtUpsertProductOverride.run(productId, name, price, photoUrl, category, badges, availableColors, photos, allowSecondColor, description, Date.now());
+  const hidden = "hidden" in fields ? (fields.hidden ? 1 : 0) : (current.hidden ?? 0);
+  stmtUpsertProductOverride.run(productId, name, price, photoUrl, category, badges, availableColors, photos, allowSecondColor, description, hidden, Date.now());
   return getProductOverride(productId);
 }
 
@@ -926,12 +934,12 @@ const stmtGetCustomProduct = db.prepare(`SELECT * FROM custom_products WHERE id 
 const stmtMaxCustomProductId = db.prepare(`SELECT MAX(id) AS maxId FROM custom_products`);
 const stmtInsertCustomProduct = db.prepare(`
   INSERT INTO custom_products
-    (id, name, price, weight, width, height, length, category, photo_url, badges, available_colors, photos, allow_second_color, description, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (id, name, price, weight, width, height, length, category, photo_url, badges, available_colors, photos, allow_second_color, description, hidden, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const stmtUpdateCustomProduct = db.prepare(`
   UPDATE custom_products SET
-    name = ?, price = ?, category = ?, photo_url = ?, badges = ?, available_colors = ?, photos = ?, allow_second_color = ?, description = ?, updated_at = ?
+    name = ?, price = ?, category = ?, photo_url = ?, badges = ?, available_colors = ?, photos = ?, allow_second_color = ?, description = ?, hidden = ?, updated_at = ?
   WHERE id = ?
 `);
 const stmtDeleteCustomProduct = db.prepare(`DELETE FROM custom_products WHERE id = ?`);
@@ -959,6 +967,7 @@ function insertCustomProduct({ startAt, name, price, weight, width, height, leng
     null, // photos: produto novo começa sem foto — mesmo estado de photo_url null
     0,    // allow_second_color: produto novo começa sem a 2ª cor liberada
     description || null,
+    0,    // hidden: produto novo começa visível na vitrine
     now, now
   );
   return getCustomProduct(id);
@@ -988,7 +997,8 @@ function updateCustomProduct(id, fields) {
     ? (fields.allowSecondColor ? 1 : 0)
     : (current.allow_second_color ?? 0);
   const description = "description" in fields ? (fields.description || null) : (current.description ?? null);
-  stmtUpdateCustomProduct.run(name, price, category, photoUrl, badges, availableColors, photos, allowSecondColor, description, Date.now(), id);
+  const hidden = "hidden" in fields ? (fields.hidden ? 1 : 0) : (current.hidden ?? 0);
+  stmtUpdateCustomProduct.run(name, price, category, photoUrl, badges, availableColors, photos, allowSecondColor, description, hidden, Date.now(), id);
   return getCustomProduct(id);
 }
 // Não apaga a foto em disco — quem chama (server.js) já leu photo_url ANTES
