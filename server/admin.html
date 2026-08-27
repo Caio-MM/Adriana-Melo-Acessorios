@@ -441,10 +441,13 @@
             <div class="photo-dropzone" id="epPhotoDropzone">
               <div class="ep-photo-list" id="epPhotosList"></div>
               <input type="file" class="form-control d-none" id="epPhotoFile" accept="image/jpeg,image/png,image/webp,image/gif">
-              <button type="button" class="btn-outline-blush btn-sm-blush" id="epAddPhotoBtn">
-                <i class="bi bi-plus-lg me-1"></i>Adicionar foto
-              </button>
-              <div class="form-text">JPEG, PNG, WEBP ou GIF, até 4MB cada, até 8 fotos. A primeira da lista é a capa mostrada na loja — use as setinhas para reordenar, ou arraste o arquivo até aqui.</div>
+              <div class="photo-drop-row">
+                <button type="button" class="btn-outline-blush btn-sm-blush" id="epAddPhotoBtn">
+                  <i class="bi bi-plus-lg me-1"></i>Adicionar foto
+                </button>
+                <span class="photo-drop-hint"><i class="bi bi-cloud-arrow-up"></i>Arraste a foto aqui</span>
+              </div>
+              <div class="form-text">JPEG, PNG, WEBP ou GIF, até 4MB cada, até 8 fotos. A primeira da lista é a capa mostrada na loja — use as setinhas para reordenar.</div>
               <div id="epPhotoStatus" class="small mt-1"></div>
             </div>
           </div>
@@ -553,12 +556,15 @@
             <div class="photo-dropzone" id="apPhotoDropzone">
               <div class="ep-photo-list" id="apPhotosList"></div>
               <input type="file" id="apPhotoFile" accept="image/jpeg,image/png,image/webp" multiple hidden>
-              <button type="button" class="btn-outline-blush btn-sm-blush" id="apAddPhotoBtn">
-                <i class="bi bi-image me-1"></i>Adicionar foto
-              </button>
+              <div class="photo-drop-row">
+                <button type="button" class="btn-outline-blush btn-sm-blush" id="apAddPhotoBtn">
+                  <i class="bi bi-image me-1"></i>Adicionar foto
+                </button>
+                <span class="photo-drop-hint"><i class="bi bi-cloud-arrow-up"></i>Arraste a foto aqui</span>
+              </div>
               <div class="form-text">
                 A primeira foto é a capa. As fotos são enviadas quando você criar o produto —
-                depois dá pra ajustar o recorte de cada uma. Também dá pra arrastar os arquivos até aqui.
+                depois dá pra ajustar o recorte de cada uma.
               </div>
               <div class="small mt-1" id="apPhotoStatus"></div>
             </div>

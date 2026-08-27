@@ -2504,6 +2504,15 @@ body.admin-gate-active .admin-state-area{
 
 .photo-dropzone{ border-radius:var(--radius-md); border:1.5px dashed transparent; padding:.4rem; margin:-.4rem; transition:background .15s ease, border-color .15s ease; }
 .photo-dropzone.is-dragover{ background:var(--blush-50); border-color:var(--blush-500); }
+.photo-drop-row{ display:flex; align-items:center; flex-wrap:wrap; gap:.6rem; }
+.photo-drop-hint{
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.4rem .85rem; border-radius:999px;
+  border:1.5px dashed var(--blush-200); background:var(--blush-50);
+  color:var(--ink-soft); font-size:.8rem; transition:border-color .15s ease, color .15s ease;
+}
+.photo-drop-hint i{ color:var(--blush-500); }
+.photo-dropzone.is-dragover .photo-drop-hint{ border-color:var(--blush-600); color:var(--blush-700); }
 .ep-photo-list{ display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:.6rem; }
 .ep-photo-item{
   width:84px; border:1.5px solid var(--blush-200); border-radius:var(--radius-sm);
