@@ -2502,6 +2502,8 @@ body.admin-gate-active .admin-state-area{
 }
 .ep-color-delete:hover{ background:var(--color-danger); color:var(--white); }
 
+.photo-dropzone{ border-radius:var(--radius-md); border:1.5px dashed transparent; padding:.4rem; margin:-.4rem; transition:background .15s ease, border-color .15s ease; }
+.photo-dropzone.is-dragover{ background:var(--blush-50); border-color:var(--blush-500); }
 .ep-photo-list{ display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:.6rem; }
 .ep-photo-item{
   width:84px; border:1.5px solid var(--blush-200); border-radius:var(--radius-sm);

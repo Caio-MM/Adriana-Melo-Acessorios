@@ -901,8 +901,7 @@
       });
   }
 
-  epPhotoFile.addEventListener("change", () => {
-    const file = epPhotoFile.files[0];
+  function handleEpFileSelected(file){
     if(!file) return;
     epMsg.textContent = "";
     epMsg.className = "small account-msg";
@@ -911,6 +910,37 @@
     if(crop.objectUrl) URL.revokeObjectURL(crop.objectUrl);
     crop.objectUrl = URL.createObjectURL(file);
     openCropper(crop.objectUrl);
+  }
+
+  epPhotoFile.addEventListener("change", () => {
+    handleEpFileSelected(epPhotoFile.files[0]);
+  });
+
+  // Arrastar um arquivo até a área de fotos faz o mesmo que clicar em
+  // "Adicionar foto" — mesmo limite de 8, mesmo fluxo de recorte 2:3 logo
+  // em seguida (só 1 arquivo por vez aqui, igual ao <input> sem `multiple`).
+  const epPhotoDropzone = document.getElementById("epPhotoDropzone");
+  ["dragenter", "dragover"].forEach(evt => epPhotoDropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    epPhotoDropzone.classList.add("is-dragover");
+  }));
+  epPhotoDropzone.addEventListener("dragleave", (e) => {
+    // dragleave dispara ao passar por cima de qualquer filho (miniatura,
+    // botão) — só tira o destaque quando o cursor realmente saiu da área.
+    if(!epPhotoDropzone.contains(e.relatedTarget)) epPhotoDropzone.classList.remove("is-dragover");
+  });
+  epPhotoDropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    epPhotoDropzone.classList.remove("is-dragover");
+    if(pendingPhotos.length >= 8){
+      epPhotoStatus.textContent = "Máximo de 8 fotos por produto.";
+      epPhotoStatus.className = "small mt-1 is-error";
+      return;
+    }
+    const file = [...(e.dataTransfer?.files || [])][0];
+    if(!file) return;
+    photoCropTarget = null;
+    handleEpFileSelected(file);
   });
 
   epCropCancel.addEventListener("click", () => {
@@ -1260,8 +1290,7 @@
     apPhotoFile.click();
   });
 
-  apPhotoFile.addEventListener("change", async () => {
-    const files = [...apPhotoFile.files];
+  async function handleApFiles(files){
     if(!files.length) return;
     apPhotoStatus.textContent = "";
     apPhotoStatus.className = "small mt-1";
@@ -1282,9 +1311,28 @@
       renderApPhotoList();
       apPhotoStatus.textContent = err.message || "Não foi possível preparar a imagem.";
       apPhotoStatus.className = "small mt-1 is-error";
-    }finally{
-      apPhotoFile.value = "";
     }
+  }
+
+  apPhotoFile.addEventListener("change", async () => {
+    await handleApFiles([...apPhotoFile.files]);
+    apPhotoFile.value = "";
+  });
+
+  // Mesmo fluxo do <input multiple>, mas soltando os arquivos na área de
+  // fotos em vez de escolher pelo seletor do sistema.
+  const apPhotoDropzone = document.getElementById("apPhotoDropzone");
+  ["dragenter", "dragover"].forEach(evt => apPhotoDropzone.addEventListener(evt, (e) => {
+    e.preventDefault();
+    apPhotoDropzone.classList.add("is-dragover");
+  }));
+  apPhotoDropzone.addEventListener("dragleave", (e) => {
+    if(!apPhotoDropzone.contains(e.relatedTarget)) apPhotoDropzone.classList.remove("is-dragover");
+  });
+  apPhotoDropzone.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    apPhotoDropzone.classList.remove("is-dragover");
+    await handleApFiles([...(e.dataTransfer?.files || [])]);
   });
 
   document.getElementById("apNewCategoryBtn").addEventListener("click", () => promptNewCategory(apCategory));
