@@ -11,6 +11,11 @@ const os = require("node:os");
 const fs = require("node:fs");
 const crypto = require("node:crypto");
 const { spawn } = require("node:child_process");
+// Usado só para gerar um JPEG de verdade no teste de upload de foto —
+// sharp() rejeita os bytes falsos que bastavam quando o upload só gravava
+// em disco sem processar a imagem (ver server.js: rota de upload agora
+// comprime com sharp antes de salvar no banco).
+const sharp = require("sharp");
 
 const PORT = 39557;
 const ORIGIN = `http://localhost:${PORT}`;
@@ -86,6 +91,11 @@ function patch(url, body, cookie) {
     method: "PATCH",
     headers: { "Content-Type": "application/json", Origin: ORIGIN, ...(cookie ? { Cookie: cookie } : {}) },
     body: JSON.stringify(body),
+  });
+}
+function get(url, cookie) {
+  return fetch(ORIGIN + url, {
+    headers: cookie ? { Cookie: cookie } : {},
   });
 }
 function cookieFrom(res) {
@@ -306,12 +316,19 @@ test("galeria de fotos: PATCH admin reflete no catálogo (a 1ª é a capa) e val
   assert.deepEqual((await semFotos.json()).photos, []);
 });
 
-test("galeria de fotos: upload real grava em img/products/ e remover a foto do PATCH apaga o arquivo", async () => {
+test("galeria de fotos: upload real grava no banco (product_photos) e remover a foto do PATCH apaga a linha", async () => {
   const adminCookie = sharedAdminCookie;
   assert.ok(adminCookie, "precisa de um cookie de admin já autenticado");
 
+  // sharp() no servidor recusa bytes que não sejam uma imagem de verdade
+  // (diferente do upload antigo, que só gravava em disco sem processar) —
+  // por isso o teste precisa de um JPEG real, gerado aqui na hora.
+  const jpegBuffer = await sharp({
+    create: { width: 4, height: 4, channels: 3, background: { r: 200, g: 120, b: 160 } },
+  }).jpeg().toBuffer();
+
   const form = new FormData();
-  form.append("photo", new Blob([Buffer.from([0xff, 0xd8, 0xff, 0xdb])], { type: "image/jpeg" }), "foto.jpg");
+  form.append("photo", new Blob([jpegBuffer], { type: "image/jpeg" }), "foto.jpg");
   const up = await fetch(`${ORIGIN}/api/admin/products/3/photo`, {
     method: "POST",
     headers: { Origin: ORIGIN, Cookie: adminCookie },
@@ -319,30 +336,24 @@ test("galeria de fotos: upload real grava em img/products/ e remover a foto do P
   });
   assert.equal(up.status, 201);
   const { photoUrl } = await up.json();
-  assert.match(photoUrl, /^\/img\/products\/produto-3-\d+\.jpe?g$/);
-  const filePath = path.join(__dirname, "..", photoUrl);
+  assert.match(photoUrl, /^\/api\/products\/photos\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 
-  // try/finally garante a limpeza do arquivo em disco mesmo se alguma
-  // asserção falhar no meio — este upload grava na MESMA pasta usada pelo
-  // servidor de verdade (server/img/products/), não numa pasta isolada de
-  // teste, então não pode deixar sobra.
-  try {
-    assert.ok(fs.existsSync(filePath), "arquivo devia existir em disco logo após o upload");
+  const served = await fetch(ORIGIN + photoUrl);
+  assert.equal(served.status, 200);
+  assert.equal(served.headers.get("content-type"), "image/jpeg");
+  const servedBuffer = Buffer.from(await served.arrayBuffer());
+  const metadata = await sharp(servedBuffer).metadata();
+  assert.equal(metadata.format, "jpeg", "bytes devolvidos precisam ser um JPEG decodificável");
 
-    const salvo = await patch("/api/admin/products/3", { photos: [photoUrl] }, adminCookie);
-    assert.equal(salvo.status, 200);
-    assert.ok(fs.existsSync(filePath), "arquivo continua existindo enquanto está na lista");
+  const salvo = await patch("/api/admin/products/3", { photos: [photoUrl] }, adminCookie);
+  assert.equal(salvo.status, 200);
+  assert.equal((await fetch(ORIGIN + photoUrl)).status, 200, "foto continua servida enquanto está na lista");
 
-    // Remover a foto da lista (photos: []) apaga o arquivo do disco,
-    // melhor-esforço (mesmo racional de deleteOldLocalPhoto ao trocar a
-    // foto única antiga) — fs.unlink é assíncrono, por isso o poll curto.
-    const removido = await patch("/api/admin/products/3", { photos: [] }, adminCookie);
-    assert.equal(removido.status, 200);
-    for (let i = 0; i < 10 && fs.existsSync(filePath); i++) await new Promise(r => setTimeout(r, 50));
-    assert.ok(!fs.existsSync(filePath), "arquivo devia ter sido apagado do disco ao sair da lista");
-  } finally {
-    try { fs.unlinkSync(filePath); } catch {}
-  }
+  // Remover a foto da lista (photos: []) apaga a linha em product_photos —
+  // mesmo racional de deleteOldLocalPhoto ao trocar a foto única antiga.
+  const removido = await patch("/api/admin/products/3", { photos: [] }, adminCookie);
+  assert.equal(removido.status, 200);
+  assert.equal((await fetch(ORIGIN + photoUrl)).status, 404, "foto devia deixar de existir depois de sair da lista");
 });
 
 test("cor personalizada: POST /api/admin/colors cria, aparece em /api/products, e rejeita duplicata/hex inválido", async () => {
@@ -530,6 +541,58 @@ test("continuar pagamento: 404 se não existe/não é da cliente, 409 se já nã
   // Pedido já pago -> 409, sem tentar gerar um pagamento novo.
   const jaPago = await post(`/api/orders/${pago.external_reference}/resume-payment`, {}, donaCookie);
   assert.equal(jaPago.status, 409);
+});
+
+test("GET /api/orders/:reference — detalhe só para a dona do pedido, com rastreio degradando para null sem Melhor Envio configurado", async () => {
+  function sessionCookieFor(userId){
+    const token = crypto.randomBytes(32).toString("hex");
+    db.createSession({
+      tokenHash: crypto.createHash("sha256").update(token).digest("hex"),
+      userId,
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    });
+    return `plc_session=${token}`;
+  }
+
+  const dona = db.createUser({ name: "Dona Rastreio", email: "donarastreio@test.com", passwordHash: "x", cpf: "11144477735" });
+  const donaCookie = sessionCookieFor(dona.id);
+  const outra = db.createUser({ name: "Outra Rastreio", email: "outrarastreio@test.com", passwordHash: "x", cpf: "11144477735" });
+  const outraCookie = sessionCookieFor(outra.id);
+
+  const pedido = db.createOrder({
+    externalReference: "TEST-DETALHE-1", userId: dona.id, status: "pago",
+    items: [{ id: 1, qty: 1, price: 34.9, color: "#F4B4CC" }],
+    address: { nome: "Dona Rastreio", telefone: "61982749808", rua: "Rua X", numero: "1", bairro: "B", cidade: "Brasília", uf: "DF", cep: "70040020" },
+    shipping: { service_id: "1", name: "PAC", price: 10 },
+    subtotal: 34.9, shippingPrice: 10, total: 44.9, customerPhone: "61982749808",
+  });
+  db.markOrderInProduction(pedido.external_reference);
+  db.updateOrderTracking(pedido.external_reference, "AA123456789BR");
+
+  // Sem login -> 401.
+  const semLogin = await get(`/api/orders/${pedido.external_reference}`);
+  assert.equal(semLogin.status, 401);
+
+  // Referência que não existe -> 404.
+  const inexistente = await get("/api/orders/nao-existe-esta-referencia", donaCookie);
+  assert.equal(inexistente.status, 404);
+
+  // Pedido é de outra cliente -> 404 (nunca revela que o pedido existe).
+  const deOutra = await get(`/api/orders/${pedido.external_reference}`, outraCookie);
+  assert.equal(deOutra.status, 404);
+
+  // Dona do pedido -> 200, com o formato esperado.
+  const res = await get(`/api/orders/${pedido.external_reference}`, donaCookie);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.reference, pedido.external_reference);
+  assert.equal(body.status, "pago");
+  assert.equal(body.fulfillmentStatus, "postado");
+  assert.equal(body.trackingCode, "AA123456789BR");
+  assert.equal(body.carrierUrl, "https://rastreamento.correios.com.br/app/index.php?objetos=AA123456789BR");
+  // MELHOR_ENVIO_TOKEN não está configurado neste ambiente de teste — a
+  // consulta de rastreio ao vivo sempre degrada para null, nunca quebra.
+  assert.equal(body.tracking, null);
 });
 
 test("ordem dos produtos: PUT reordena a vitrine, e rejeita lista incompleta/repetida", async () => {

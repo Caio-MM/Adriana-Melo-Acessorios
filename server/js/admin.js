@@ -1448,6 +1448,9 @@
             <button type="button" class="btn-outline-blush save-tracking-btn" data-ref="${escapeHTML(ref)}">Salvar</button>
             <button type="button" class="btn-outline-blush show-barcode-btn" data-ref="${escapeHTML(ref)}" title="Desenha o código digitado acima como código de barras"><i class="bi bi-upc-scan me-1"></i>Gerar código de barras</button>
             <button type="button" class="btn-outline-blush generate-label-btn" data-ref="${escapeHTML(ref)}" title="Compra a etiqueta no Melhor Envio (gasta saldo real) e preenche o código automaticamente"><i class="bi bi-stars me-1"></i>Comprar etiqueta</button>
+            ${order.fulfillmentStatus === "postado" ? `
+            <button type="button" class="btn-outline-blush mark-delivered-btn" data-ref="${escapeHTML(ref)}" title="Marca este pedido como entregue"><i class="bi bi-check2-circle me-1"></i>Marcar como entregue</button>
+            ` : order.fulfillmentStatus === "entregue" ? `<span class="small fw-semibold" style="color:var(--color-success)"><i class="bi bi-check2-circle me-1"></i>Entregue</span>` : ""}
           </div>
           <span class="small tracking-feedback" data-ref-feedback="${escapeHTML(ref)}"></span>
           <div class="tracking-barcode-wrap">
@@ -1589,12 +1592,39 @@
     }
   }
 
+  async function markDelivered(ref, feedbackEl, btn){
+    if(!confirm("Marcar este pedido como entregue?")) return;
+    btn.disabled = true;
+    feedbackEl.textContent = "Salvando...";
+    feedbackEl.classList.remove("is-success", "is-error");
+    try{
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(ref)}/delivered`, { method: "PATCH" });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível marcar como entregue.");
+      feedbackEl.textContent = "Entregue!";
+      feedbackEl.classList.add("is-success");
+      btn.outerHTML = `<span class="small fw-semibold" style="color:var(--color-success)"><i class="bi bi-check2-circle me-1"></i>Entregue</span>`;
+    }catch(err){
+      feedbackEl.textContent = err.message || "Erro ao marcar como entregue.";
+      feedbackEl.classList.add("is-error");
+      btn.disabled = false;
+    }
+  }
+
   listEl.addEventListener("click", (e) => {
     const trackBtn = e.target.closest(".save-tracking-btn");
     const barcodeBtn = e.target.closest(".show-barcode-btn");
     const labelBtn = e.target.closest(".generate-label-btn");
+    const deliveredBtn = e.target.closest(".mark-delivered-btn");
     const deleteBtn = e.target.closest(".delete-order-btn");
     const downloadBtn = e.target.closest(".barcode-download-btn");
+
+    if(deliveredBtn){
+      const ref = deliveredBtn.dataset.ref;
+      const feedbackEl = listEl.querySelector(`[data-ref-feedback="${ref}"]`);
+      if(feedbackEl) markDelivered(ref, feedbackEl, deliveredBtn);
+      return;
+    }
 
     if(barcodeBtn){
       const ref = barcodeBtn.dataset.ref;

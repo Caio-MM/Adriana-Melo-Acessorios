@@ -75,6 +75,20 @@ db.exec(`
     updated_at          INTEGER NOT NULL
   );
 
+  -- Bytes das fotos de produto enviadas pelo painel. Guardadas aqui (e não
+  -- em arquivo no disco) porque só data.db tem backup automático
+  -- (server/scripts/backup-db.js) — uma pasta de upload em disco é apagada
+  -- por qualquer redeploy que reinstale a aplicação do zero (ver comentário
+  -- de UPLOAD DE FOTO DE PRODUTO em server.js). Cada linha é um upload;
+  -- nunca é sobrescrita no lugar (um novo upload sempre ganha um id novo),
+  -- então a rota que serve por id pode cachear como "immutable".
+  CREATE TABLE IF NOT EXISTS product_photos (
+    id          TEXT PRIMARY KEY,
+    mime_type   TEXT NOT NULL,
+    data        BLOB NOT NULL,
+    created_at  INTEGER NOT NULL
+  );
+
   -- Edições feitas no painel administrativo (nome/preço/foto) por cima do
   -- catálogo estático em PRODUCTS (server.js). Uma linha por produto só
   -- quando ele foi editado; sem edição, o servidor usa o valor de PRODUCTS
@@ -261,6 +275,27 @@ ensureColumn("orders", "customer_phone", "TEXT");
 // a coluna é criada por este ensureColumn, então num banco antigo ela ainda
 // não existiria no momento em que o bloco CREATE TABLE roda.
 db.exec(`CREATE INDEX IF NOT EXISTS idx_orders_phone ON orders(customer_phone);`);
+// Estado de produção/postagem — ORTOGONAL ao status de pagamento (`status`
+// acima, que só fala de dinheiro: pago/pendente/recusado/etc). NULL até o
+// pagamento ser aprovado (um pedido pendente não está "em produção" de
+// nada); o webhook do Mercado Pago grava 'em_producao' assim que aprova;
+// updateOrderTracking grava 'postado' assim que um código de rastreio é
+// salvo (manual ou via etiqueta); um botão do painel grava 'entregue'.
+// Sem CHECK/enum de propósito — mesmo racional do `status` de pagamento:
+// validação de valor aceito vive no JS (server.js), não no schema.
+ensureColumn("orders", "fulfillment_status", "TEXT");
+// Marcados na mesma hora que fulfillment_status vira 'postado'/'entregue',
+// respectivamente — dão a data para a linha do tempo da página de
+// acompanhamento sem precisar reconsultar o Melhor Envio toda vez.
+ensureColumn("orders", "shipped_at", "INTEGER");
+ensureColumn("orders", "delivered_at", "INTEGER");
+// Id do envio devolvido por POST /me/cart ao comprar a etiqueta
+// (purchaseShippingLabel, em server.js) — antes descartado em memória assim
+// que a etiqueta era gerada. Precisa ficar salvo porque a consulta de
+// rastreio ao vivo (POST /me/shipment/tracking) acontece depois, numa
+// requisição separada, feita quando a cliente abre a página de
+// acompanhamento.
+ensureColumn("orders", "melhor_envio_shipment_id", "TEXT");
 // Cupom de uso único por cliente (ex.: o de boas-vindas). Fica no cupom, e
 // não no código, para a loja poder ter os dois tipos.
 ensureColumn("coupons", "once_per_customer", "INTEGER NOT NULL DEFAULT 0");
@@ -578,8 +613,30 @@ const stmtListOrdersByUser = db.prepare(
   `SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC`
 );
 const stmtListAllOrders = db.prepare(`SELECT * FROM orders ORDER BY created_at DESC`);
-const stmtUpdateOrderTracking = db.prepare(
-  `UPDATE orders SET tracking_code = ?, updated_at = ? WHERE external_reference = ?`
+// Grava o código de rastreio e, se ele não for vazio, também avança
+// fulfillment_status para 'postado' — cobre os dois pontos que hoje chamam
+// updateOrderTracking (PATCH manual da lojista e geração de etiqueta no
+// Melhor Envio, ambos em server.js) sem precisar duplicar essa regra nos
+// dois lugares. `shipped_at` só é gravado da primeira vez (WHEN shipped_at
+// IS NULL): reenviar/corrigir o código depois não deve reiniciar a linha
+// do tempo da cliente. Limpar o código (trackingCode vazio) NÃO reverte
+// fulfillment_status/shipped_at — não existe hoje um fluxo de "despostar".
+const stmtUpdateOrderTracking = db.prepare(`
+  UPDATE orders SET
+    tracking_code = ?,
+    updated_at = ?,
+    fulfillment_status = CASE WHEN ? IS NOT NULL THEN 'postado' ELSE fulfillment_status END,
+    shipped_at = CASE WHEN ? IS NOT NULL AND shipped_at IS NULL THEN ? ELSE shipped_at END
+  WHERE external_reference = ?
+`);
+const stmtMarkOrderInProduction = db.prepare(
+  `UPDATE orders SET fulfillment_status = 'em_producao', updated_at = ? WHERE external_reference = ?`
+);
+const stmtMarkOrderDelivered = db.prepare(
+  `UPDATE orders SET fulfillment_status = 'entregue', delivered_at = ?, updated_at = ? WHERE external_reference = ?`
+);
+const stmtSetMelhorEnvioShipmentId = db.prepare(
+  `UPDATE orders SET melhor_envio_shipment_id = ?, updated_at = ? WHERE external_reference = ?`
 );
 // "Vendas" = pedidos com pagamento confirmado — pendente/recusado/cancelado
 // não contam como venda na Visão Geral do painel administrativo.
@@ -688,8 +745,20 @@ function listAllOrders() {
   return stmtListAllOrders.all();
 }
 function updateOrderTracking(ref, trackingCode) {
-  stmtUpdateOrderTracking.run(trackingCode || null, Date.now(), ref);
+  const code = trackingCode || null;
+  const now = Date.now();
+  stmtUpdateOrderTracking.run(code, now, code, code, now, ref);
   return getOrderByExternalReference(ref);
+}
+function markOrderInProduction(ref) {
+  stmtMarkOrderInProduction.run(Date.now(), ref);
+}
+function markOrderDelivered(ref) {
+  const now = Date.now();
+  stmtMarkOrderDelivered.run(now, now, ref);
+}
+function setMelhorEnvioShipmentId(ref, shipmentId) {
+  stmtSetMelhorEnvioShipmentId.run(shipmentId, Date.now(), ref);
 }
 function getOrderStats() {
   return stmtOrderStats.get();
@@ -700,6 +769,33 @@ function getOrderStats() {
 // resto deste arquivo.
 function deleteOrder(ref) {
   stmtDeleteOrder.run(ref);
+}
+
+/* ------------------------- PRODUCT PHOTOS (BLOB) ------------------------- */
+// Sem FK para product_overrides/custom_products de propósito: photo_url/
+// photos, nessas duas tabelas, são só strings apontando para uma rota (ou
+// para uma URL http(s) externa, colada à mão) — nunca houve uma relação de
+// banco entre "produto" e "onde a foto mora", e continuar assim evita ter
+// que popular product_id aqui para um upload que ainda nem foi salvo em
+// nenhum produto (ver comentário de UPLOAD DE FOTO DE PRODUTO em server.js:
+// a rota de upload só grava a foto e devolve o id — quem decide se aquilo
+// vira o photoUrl de algum produto é o PATCH seguinte).
+const stmtInsertProductPhoto = db.prepare(
+  `INSERT INTO product_photos (id, mime_type, data, created_at) VALUES (?, ?, ?, ?)`
+);
+const stmtGetProductPhoto = db.prepare(`SELECT mime_type, data FROM product_photos WHERE id = ?`);
+const stmtDeleteProductPhoto = db.prepare(`DELETE FROM product_photos WHERE id = ?`);
+
+function insertProductPhoto(id, mimeType, buffer) {
+  stmtInsertProductPhoto.run(id, mimeType, buffer, Date.now());
+}
+// node:sqlite devolve BLOB como Uint8Array, não Buffer — quem serve isso
+// numa resposta HTTP precisa envolver em Buffer.from(...) antes.
+function getProductPhoto(id) {
+  return stmtGetProductPhoto.get(id) || null;
+}
+function deleteProductPhoto(id) {
+  stmtDeleteProductPhoto.run(id);
 }
 
 /* ------------------------- PRODUCT OVERRIDES ------------------------- */
@@ -1060,9 +1156,15 @@ module.exports = {
   listOrdersByUser,
   listAllOrders,
   updateOrderTracking,
+  markOrderInProduction,
+  markOrderDelivered,
+  setMelhorEnvioShipmentId,
   getOrderStats,
   deleteOrder,
   hasUsedCoupon,
+  insertProductPhoto,
+  getProductPhoto,
+  deleteProductPhoto,
   // getProductOverride não é exportada de propósito: ninguém fora daqui lê
   // um override isolado — quem consome sempre quer o mapa inteiro
   // (listProductOverrides) para montar o catálogo de uma vez.
