@@ -2363,6 +2363,11 @@ app.post("/api/auth/login/2fa", authLimiter, async (req, res) => {
         db.setUserTotp(user.id, { secret: user.totp_secret, recoveryJson: JSON.stringify(restantes) });
       }
     }
+    // Nem app nem recuperação: por último, tenta como o código mandado por
+    // e-mail (POST /api/auth/login/2fa/email, abaixo) para este mesmo desafio.
+    if(!ok){
+      ok = await auth.verifyTwoFactorEmailCode(challengeToken, code);
+    }
 
     if(!ok){
       db.recordLoginAttempt({ email: user.email, ip, ok: false });
@@ -2376,6 +2381,61 @@ app.post("/api/auth/login/2fa", authLimiter, async (req, res) => {
   } catch (err) {
     console.error("Erro na verificação em duas etapas:", err);
     res.status(500).json({ error: "Não foi possível verificar o código agora." });
+  }
+});
+
+/* =========================================================================
+   POST /api/auth/login/2fa/email — pede um código de verificação por
+   e-mail, para quem está no meio do login em duas etapas mas não tem o app
+   autenticador nem um código de recuperação salvo. O código gerado aqui é
+   verificado na MESMA rota de sempre (/api/auth/login/2fa, acima) — esta
+   rota só cuida de gerar e mandar por e-mail.
+========================================================================= */
+app.post("/api/auth/login/2fa/email", authLimiter, async (req, res) => {
+  try {
+    const challengeToken = String(req.body?.challengeToken || "");
+    const userId = auth.peekTwoFactorChallenge(challengeToken);
+    if(!userId){
+      return res.status(401).json({ error: "Sessão expirada. Faça login novamente.", restart: true });
+    }
+    const user = db.getUserById(userId);
+    if(!user?.totp_secret){
+      auth.consumeTwoFactorChallenge(challengeToken);
+      return res.status(401).json({ error: "Sessão expirada. Faça login novamente.", restart: true });
+    }
+
+    // Mesmo bloqueio do login por senha/TOTP: uma conta já travada não
+    // ganha uma via nova de bombardear a caixa de entrada com e-mails.
+    const ip = auth.clientIp(req);
+    const lockout = auth.checkLoginLockout(user.email, ip);
+    if(lockout.locked){
+      const minutos = Math.ceil(lockout.retryAfterMs / 60000);
+      return res.status(429).json({ error: `Muitas tentativas. Tente novamente em ${minutos} minuto${minutos === 1 ? "" : "s"}.` });
+    }
+
+    const result = await auth.issueTwoFactorEmailCode(challengeToken);
+    if(result.error === "expired"){
+      return res.status(401).json({ error: "Sessão expirada. Faça login novamente.", restart: true });
+    }
+    if(result.error === "cooldown"){
+      const segundos = Math.ceil(result.retryAfterMs / 1000);
+      return res.status(429).json({ error: `Aguarde ${segundos} segundo${segundos === 1 ? "" : "s"} para pedir um novo código.` });
+    }
+
+    try{
+      await email.sendTwoFactorEmailCode({
+        to: result.user.email, name: result.user.name, code: result.code,
+        expiresInMinutes: Math.round(auth.EMAIL_2FA_CODE_TTL_MS / 60000),
+      });
+    }catch(mailErr){
+      console.error("Falha ao enviar código de verificação por e-mail:", mailErr.message);
+      return res.status(502).json({ error: "Não foi possível enviar o e-mail agora. Tente novamente em instantes." });
+    }
+
+    res.json({ ok: true, message: "Enviamos um código para o e-mail da sua conta." });
+  } catch (err) {
+    console.error("Erro ao enviar código de verificação por e-mail:", err);
+    res.status(500).json({ error: "Não foi possível enviar o e-mail agora." });
   }
 });
 

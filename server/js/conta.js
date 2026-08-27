@@ -93,6 +93,7 @@
         setLoading(btn, false);
         showMessage(twoFactorMsg, "", null);
         document.getElementById("twoFactorCode").value = "";
+        resetEmailCooldownUI();
         setAuthMode("twofactor", true);
         return;
       }
@@ -135,6 +136,55 @@
       }
       showMessage(twoFactorMsg, err.message, "error");
       twoFactorCode.select();
+    }
+  });
+
+  /* Alternativa ao app: manda um código de 6 dígitos para o e-mail da
+     conta, para o MESMO desafio de login — o campo #twoFactorCode acima
+     não muda em nada, o código emailado entra no mesmo lugar que o do
+     app. */
+  const twoFactorEmailBtn = document.getElementById("twoFactorEmailBtn");
+  let emailCooldownTimer = null;
+
+  function resetEmailCooldownUI(){
+    clearInterval(emailCooldownTimer);
+    emailCooldownTimer = null;
+    if(twoFactorEmailBtn){
+      twoFactorEmailBtn.disabled = false;
+      twoFactorEmailBtn.textContent = "Receber código por e-mail";
+    }
+  }
+
+  function startEmailCooldown(seconds){
+    clearInterval(emailCooldownTimer);
+    let remaining = seconds;
+    twoFactorEmailBtn.disabled = true;
+    twoFactorEmailBtn.textContent = `Reenviar em ${remaining}s`;
+    emailCooldownTimer = setInterval(() => {
+      remaining -= 1;
+      if(remaining <= 0){ resetEmailCooldownUI(); return; }
+      twoFactorEmailBtn.textContent = `Reenviar em ${remaining}s`;
+    }, 1000);
+  }
+
+  twoFactorEmailBtn?.addEventListener("click", async () => {
+    if(!pendingChallengeToken) return;
+    showMessage(twoFactorMsg, "", null);
+    twoFactorEmailBtn.disabled = true;
+    try{
+      const data = await postJSON("/api/auth/login/2fa/email", { challengeToken: pendingChallengeToken });
+      showMessage(twoFactorMsg, data.message || "Código enviado! Confira seu e-mail.", "success");
+      startEmailCooldown(60);
+    }catch(err){
+      twoFactorEmailBtn.disabled = false;
+      if(/expirada/i.test(err.message)){
+        pendingChallengeToken = null;
+        resetEmailCooldownUI();
+        setAuthMode("login", true);
+        showMessage(loginMsg, err.message, "error");
+        return;
+      }
+      showMessage(twoFactorMsg, err.message, "error");
     }
   });
 

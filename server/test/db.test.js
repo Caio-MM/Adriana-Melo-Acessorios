@@ -14,6 +14,10 @@ const bcrypt = require("bcryptjs");
 const TMP_DB = path.join(os.tmpdir(), `plc-test-${process.pid}-${Date.now()}.db`);
 process.env.DB_PATH = TMP_DB;
 const db = require("../lib/db.js");
+// Carregado DEPOIS de db.js já estar preso no DB_PATH de teste: auth.js faz
+// require("./db") internamente, e o cache de módulos do Node devolve essa
+// MESMA instância (já apontando pro banco tmp), não uma segunda conexão.
+const auth = require("../lib/auth.js");
 
 after(() => {
   for (const suffix of ["", "-wal", "-shm"]) {
@@ -239,4 +243,74 @@ test("upsertProductOverride — description: mesmo padrão de name (ausente pres
   // available_colors/photos, não existe "descrição vazia de propósito".
   const limpa = db.upsertProductOverride(90004, { description: "" });
   assert.equal(limpa.description, null, "descrição vazia volta pro padrão (NULL)");
+});
+
+// Reproduz o mesmo SHA-256 de lib/auth.js (hashToken, não exportada) só
+// para conseguir mexer direto numa linha de desafio nos testes de prazo
+// abaixo — não é um algoritmo novo, é o mesmo já usado em produção.
+function hashToken(token) {
+  return require("node:crypto").createHash("sha256").update(token).digest("hex");
+}
+
+function criarUsuarioCom2FA(email) {
+  const u = db.createUser({ name: "2FA", email, passwordHash: "x", cpf: "11144477735" });
+  db.setUserTotp(u.id, { secret: "JBSWY3DPEHPK3PXP", recoveryJson: null });
+  return u;
+}
+
+test("issueTwoFactorEmailCode / verifyTwoFactorEmailCode — ida e volta", async () => {
+  const u = criarUsuarioCom2FA("2fa-roundtrip@example.com");
+  const token = auth.issueTwoFactorChallenge(u.id);
+
+  const result = await auth.issueTwoFactorEmailCode(token);
+  assert.equal(result.error, undefined);
+  assert.match(result.code, /^\d{6}$/, "código de 6 dígitos");
+
+  assert.equal(await auth.verifyTwoFactorEmailCode(token, result.code), true);
+  assert.equal(await auth.verifyTwoFactorEmailCode(token, "000000"), false, "código errado nunca bate");
+});
+
+test("verifyTwoFactorEmailCode — limite de tentativas invalida até o código certo", async () => {
+  const u = criarUsuarioCom2FA("2fa-tentativas@example.com");
+  const token = auth.issueTwoFactorChallenge(u.id);
+  const { code } = await auth.issueTwoFactorEmailCode(token);
+
+  for (let i = 0; i < 5; i++) {
+    assert.equal(await auth.verifyTwoFactorEmailCode(token, "111111"), false);
+  }
+  // Esgotou EMAIL_2FA_MAX_ATTEMPTS (5) só com códigos errados — o certo
+  // também para de valer, tem que pedir um código novo.
+  assert.equal(await auth.verifyTwoFactorEmailCode(token, code), false, "após 5 tentativas erradas, nem o código certo vale mais");
+});
+
+test("issueTwoFactorEmailCode — cooldown de reenvio bloqueia pedido duplicado imediato", async () => {
+  const u = criarUsuarioCom2FA("2fa-cooldown@example.com");
+  const token = auth.issueTwoFactorChallenge(u.id);
+
+  const primeiro = await auth.issueTwoFactorEmailCode(token);
+  assert.equal(primeiro.error, undefined);
+
+  const segundo = await auth.issueTwoFactorEmailCode(token);
+  assert.equal(segundo.error, "cooldown");
+  assert.ok(segundo.retryAfterMs > 0);
+});
+
+test("verifyTwoFactorEmailCode — código expirado nunca verifica, mesmo com o valor certo", async () => {
+  const u = criarUsuarioCom2FA("2fa-expirado@example.com");
+  const token = auth.issueTwoFactorChallenge(u.id);
+  const bcrypt = require("bcryptjs");
+
+  // Grava direto (sem passar por issueTwoFactorEmailCode) um código já
+  // expirado, pra não depender de esperar o TTL de verdade no teste.
+  const code = "654321";
+  const codeHash = await bcrypt.hash(code, 4);
+  db.setTwoFactorEmailCode({
+    tokenHash: hashToken(token),
+    codeHash,
+    codeExpiresAt: Date.now() - 1000, // já expirou
+    sentAt: Date.now() - 2000,
+    challengeExpiresAt: Date.now() + 5 * 60 * 1000,
+  });
+
+  assert.equal(await auth.verifyTwoFactorEmailCode(token, code), false, "expirado não verifica mesmo com o código certo");
 });

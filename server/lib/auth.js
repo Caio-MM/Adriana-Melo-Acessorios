@@ -362,6 +362,69 @@ function consumeTwoFactorChallenge(token) {
   db.deleteTwoFactorChallenge(hashToken(token));
 }
 
+/* --------------- CÓDIGO POR E-MAIL (alternativa ao app) --------------- */
+// Terceira porta de entrada do 2º fator, além do app e dos códigos de
+// recuperação — pensada para quando a lojista perdeu o celular E não tem
+// nenhum código de recuperação anotado. Fica presa ao MESMO desafio de
+// login (nunca flutua sozinha), então um login abandonado não deixa um
+// código válido perdido por aí.
+const EMAIL_2FA_CODE_TTL_MS = 10 * 60 * 1000; // mais folga que os 5min do desafio: abrir e-mail demora mais que abrir o app já instalado
+const EMAIL_2FA_RESEND_COOLDOWN_MS = 60 * 1000; // evita bombardear a caixa/SMTP num duplo-clique
+const EMAIL_2FA_MAX_ATTEMPTS = 5; // tentativas contra ESTE código específico, além do bloqueio geral por (email, ip)
+
+function generateEmailTwoFactorCode() {
+  return String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+}
+
+// Gera e grava um código novo para o desafio, respeitando o cooldown de
+// reenvio. O código em texto puro só existe no valor de retorno, para a
+// chamadora mandar por e-mail — nunca é persistido, só o hash bcrypt (é um
+// segredo curto/baixa entropia, como os códigos de recuperação — não um
+// token de 256 bits, que dispensaria esse custo).
+async function issueTwoFactorEmailCode(challengeToken) {
+  const userId = peekTwoFactorChallenge(challengeToken);
+  if (!userId) return { error: "expired" };
+  const user = db.getUserById(userId);
+  if (!user?.totp_secret) {
+    consumeTwoFactorChallenge(challengeToken);
+    return { error: "expired" };
+  }
+  const tokenHash = hashToken(challengeToken);
+  const row = db.getTwoFactorChallenge(tokenHash);
+  const now = Date.now();
+  if (row.email_code_sent_at && now - row.email_code_sent_at < EMAIL_2FA_RESEND_COOLDOWN_MS) {
+    return { error: "cooldown", retryAfterMs: EMAIL_2FA_RESEND_COOLDOWN_MS - (now - row.email_code_sent_at) };
+  }
+  const code = generateEmailTwoFactorCode();
+  const codeHash = await bcrypt.hash(code, BCRYPT_COST);
+  const codeExpiresAt = now + EMAIL_2FA_CODE_TTL_MS;
+  db.setTwoFactorEmailCode({
+    tokenHash, codeHash, codeExpiresAt, sentAt: now,
+    challengeExpiresAt: Math.max(row.expires_at, codeExpiresAt),
+  });
+  return { code, user };
+}
+
+// Confere o código emailado para este desafio. Não consome sozinho — quem
+// consome (apaga o desafio inteiro, código incluso) é o sucesso geral da
+// rota de login, igual já acontece para TOTP e código de recuperação.
+async function verifyTwoFactorEmailCode(challengeToken, code) {
+  if (!challengeToken || typeof challengeToken !== "string") return false;
+  const tokenHash = hashToken(challengeToken);
+  const row = db.getTwoFactorChallenge(tokenHash);
+  if (!row || !row.email_code_hash) return false;
+  if (row.email_code_expires_at && row.email_code_expires_at < Date.now()) return false;
+  if (row.email_code_attempts >= EMAIL_2FA_MAX_ATTEMPTS) return false;
+  const clean = String(code || "").replace(/\D/g, "");
+  if (clean.length !== 6) return false;
+  const match = await bcrypt.compare(clean, row.email_code_hash);
+  if (!match) {
+    db.incrementTwoFactorEmailCodeAttempts(tokenHash);
+    return false;
+  }
+  return true;
+}
+
 /* ------------------------------ ADMIN ------------------------------ */
 // Não existe uma tabela/coluna "role": o acesso de administrador é dado por
 // e-mail, via ADMIN_EMAIL_HASHES no .env (lista de hashes SHA-256,
@@ -493,6 +556,9 @@ module.exports = {
   issueTwoFactorChallenge,
   peekTwoFactorChallenge,
   consumeTwoFactorChallenge,
+  issueTwoFactorEmailCode,
+  verifyTwoFactorEmailCode,
+  EMAIL_2FA_CODE_TTL_MS,
   ADMIN_2FA_REQUIRED,
   // Exportado só para o login/cadastro poderem devolver `isAdmin` junto da
   // resposta (o front decide para onde redirecionar). Continua sendo o

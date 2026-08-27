@@ -339,6 +339,65 @@ async function sendPasswordResetEmail({ to, name, resetUrl, expiresInMinutes }) 
 }
 
 /**
+ * Código de verificação em duas etapas por e-mail — alternativa ao app
+ * autenticador, no MESMO desafio de login (server.js: POST
+ * /api/auth/login/2fa/email). Propaga erro — diferente do reset de senha,
+ * aqui quem pediu já provou a senha e tem um desafio válido, então uma
+ * falha real de envio deve virar um erro real na tela, não um sucesso
+ * genérico (não há risco de enumeração de conta nesta etapa).
+ */
+async function sendTwoFactorEmailCode({ to, name, code, expiresInMinutes }) {
+  const firstName = String(name || "").trim().split(" ")[0] || "";
+  const subject = "Seu código de verificação — Adriana Melo Acessórios";
+
+  const text = [
+    firstName ? `Olá, ${firstName}!` : "Olá!",
+    "",
+    "Você pediu um código de verificação para entrar no painel administrativo.",
+    "",
+    `Código: ${code}`,
+    `Vale por ${expiresInMinutes} minutos.`,
+    "",
+    "Se não foi você que tentou entrar, troque sua senha assim que possível.",
+  ].join("\n");
+
+  const html = emailShell({
+    titulo: subject,
+    preheader: `Seu código vale por ${expiresInMinutes} minutos.`,
+    eyebrow: "verificação em duas etapas",
+    tituloCartao: "Aqui está seu código 🔐",
+    corpoHtml: `
+      <tr>
+        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:15px; line-height:1.6; padding-bottom:22px;">
+          Use este código para entrar no painel administrativo — vale por
+          <strong style="color:#54293C;">${escapeHTML(String(expiresInMinutes))} minutos</strong>.
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding-bottom:22px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center" style="background:#FFF5F9; border:2px dashed #EA8FB4; border-radius:16px; padding:16px 36px;">
+                <span style="font-family:${FONT_CORPO}; font-size:28px; font-weight:bold; letter-spacing:6px; color:#C05480;">
+                  ${escapeHTML(code)}
+                </span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6;">
+          Se não foi você que tentou entrar, troque sua senha assim que possível.
+        </td>
+      </tr>
+    `,
+  });
+
+  await sendEmail({ to, subject, text, html });
+}
+
+/**
  * Cupom de boas-vindas, enviado para quem se inscreve na newsletter da home.
  * Propaga erro — quem chama (server.js) trata como melhor esforço, porque a
  * inscrição em si já foi gravada e o código também volta na resposta HTTP.
@@ -527,6 +586,7 @@ module.exports = {
   notifyOwnerOfPaidOrder,
   notifyOwnerOfContactMessage,
   sendPasswordResetEmail,
+  sendTwoFactorEmailCode,
   sendWelcomeCouponEmail,
   sendAdminLoginAlert,
 };

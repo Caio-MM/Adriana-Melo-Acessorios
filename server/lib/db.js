@@ -360,6 +360,16 @@ db.exec(`
   );
 `);
 
+// Retorno por e-mail do 2FA: colunas extras na PRÓPRIA linha do desafio
+// (não uma tabela nova) — o código emailado só pode valer para ESTE
+// desafio específico, e como token_hash já é a chave desse desafio, essas
+// colunas amarram os dois de graça, sem FK/join. NULL = nenhum código
+// pedido ainda para este desafio.
+ensureColumn("two_factor_challenges", "email_code_hash", "TEXT");
+ensureColumn("two_factor_challenges", "email_code_expires_at", "INTEGER");
+ensureColumn("two_factor_challenges", "email_code_attempts", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn("two_factor_challenges", "email_code_sent_at", "INTEGER");
+
 // Garante que o cupom que já existia fixo no código (BEMVINDA10) continua
 // funcionando depois da migração pra banco — só insere se a tabela
 // coupons estiver vazia (banco novo, ou banco de antes dessa tabela
@@ -581,6 +591,15 @@ const stmtDeleteChallenge = db.prepare(`DELETE FROM two_factor_challenges WHERE 
 const stmtDeleteExpiredChallenges = db.prepare(
   `DELETE FROM two_factor_challenges WHERE expires_at < ?`
 );
+const stmtSetTwoFactorEmailCode = db.prepare(`
+  UPDATE two_factor_challenges
+  SET email_code_hash = ?, email_code_expires_at = ?, email_code_attempts = 0,
+      email_code_sent_at = ?, expires_at = ?
+  WHERE token_hash = ?
+`);
+const stmtIncrementEmailCodeAttempts = db.prepare(
+  `UPDATE two_factor_challenges SET email_code_attempts = email_code_attempts + 1 WHERE token_hash = ?`
+);
 
 // secret/recoveryJson nulos = 2FA desligado (é assim que a desativação passa).
 function setUserTotp(userId, { secret, recoveryJson }) {
@@ -595,6 +614,15 @@ function getTwoFactorChallenge(tokenHash) {
 }
 function deleteTwoFactorChallenge(tokenHash) {
   stmtDeleteChallenge.run(tokenHash);
+}
+// Grava um código novo (substitui qualquer código anterior do mesmo
+// desafio) e estende expires_at do desafio para acompanhar o prazo do
+// código, já que pedir por e-mail pode levar mais tempo que os 5min padrão.
+function setTwoFactorEmailCode({ tokenHash, codeHash, codeExpiresAt, sentAt, challengeExpiresAt }) {
+  stmtSetTwoFactorEmailCode.run(codeHash, codeExpiresAt, sentAt, challengeExpiresAt, tokenHash);
+}
+function incrementTwoFactorEmailCodeAttempts(tokenHash) {
+  stmtIncrementEmailCodeAttempts.run(tokenHash);
 }
 
 /* ---------------------------- ORDERS ---------------------------- */
@@ -1149,6 +1177,8 @@ module.exports = {
   createTwoFactorChallenge,
   getTwoFactorChallenge,
   deleteTwoFactorChallenge,
+  setTwoFactorEmailCode,
+  incrementTwoFactorEmailCodeAttempts,
   createOrder,
   getOrderByExternalReference,
   updateOrderStatus,
