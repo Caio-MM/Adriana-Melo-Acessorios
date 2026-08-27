@@ -217,10 +217,14 @@ function checkLoginLockout(email, ip) {
 // 1Password e afins — todos implementam este mesmo RFC.
 const TOTP_STEP_SECONDS = 30;
 const TOTP_DIGITS = 6;
-// Aceita o código do passo anterior e do seguinte além do atual (±30s): o
-// relógio do celular quase nunca bate exatamente com o do servidor, e sem
-// essa folga um código legítimo é recusado justo na virada do intervalo.
-const TOTP_WINDOW = 1;
+// Aceita até 4 passos antes/depois do atual (~2min de folga garantida): o
+// relógio do celular quase nunca bate exatamente com o do servidor, e uma
+// janela de só ±1 passo (~30-60s) já foi curta demais na prática — um
+// celular com "hora automática" desligada ou recém trocado de fuso ficava
+// recusando o código certo o tempo todo. O custo em segurança é
+// desprezível (9 códigos válidos por vez em vez de 3, entre 1 milhão de
+// combinações, sempre atrás de senha + bloqueio por tentativas).
+const TOTP_WINDOW = 4;
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 function base32Encode(buffer) {
