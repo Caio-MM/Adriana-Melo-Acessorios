@@ -31,6 +31,10 @@ const cors = require("cors");
 const helmet = require("helmet");
 const compression = require("compression");
 const multer = require("multer");
+// Comprime/redimensiona a foto de produto antes de gravar no banco (ver
+// UPLOAD DE FOTO DE PRODUTO, abaixo) — sem isso, um upload de 4MB
+// multiplicado por vários produtos incharia rápido o data.db.
+const sharp = require("sharp");
 const { randomUUID } = require("crypto");
 const rateLimit = require("express-rate-limit");
 // Só para desenhar o QR code do cadastro da verificação em duas etapas —
@@ -574,6 +578,7 @@ const statusPollLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 500, handle
 const SITE_ROOT = __dirname;
 const PUBLIC_TOP_LEVEL = new Set([
   "index.html", "conta.html", "pedidos.html", "admin.html",
+  "acompanhar-pedido.html",
   "pagamento-sucesso.html", "pagamento-erro.html", "pagamento-pendente.html",
   "pagamento-pix.html",
   "redefinir-senha.html", "politica.html", "404.html", "429.html", "css", "js", "img",
@@ -919,23 +924,23 @@ app.use(express.static(SITE_ROOT, {
    -------------------------------------------------------------------------
    Antes o painel só aceitava colar a URL de uma imagem já hospedada em
    outro lugar. Agora a lojista pode enviar o arquivo direto do computador
-   dela — o multer grava em disco (img/products/, dentro da allowlist
-   acima, então já é servido estaticamente sem rota nova) e devolve o
-   caminho curto (ex.: "/img/products/laco-bailarina-a1b2c3.jpg") para o
-   painel salvar como `photoUrl`, exatamente como já fazia com uma URL
-   externa — ver POST /api/admin/products/:id/photo, mais abaixo.
-   Por que gravar em disco em vez de guardar a imagem em base64 no banco:
-   o `photoUrl` de cada produto viaja em TODA resposta de /api/products
-   (carregado por qualquer visitante da vitrine); um base64 de algumas
-   centenas de KB nesse payload, multiplicado por 8 produtos, pesaria a
-   página inicial do site inteiro. Um caminho de poucos bytes mantém o
-   payload do catálogo do tamanho de sempre, e a imagem em si é servida
-   (e cacheada pelo navegador) do mesmo jeito que qualquer outro arquivo
-   estático do site.
+   dela — o arquivo é comprimido (sharp) e gravado como BLOB na tabela
+   product_photos (lib/db.js), não em disco: um upload em img/products/ é
+   apagado por qualquer redeploy que reinstale a aplicação do zero (pasta
+   fora do git, sem backup — foi exatamente assim que as fotos já enviadas
+   sumiram), enquanto data.db é a única coisa com backup automático
+   (server/scripts/backup-db.js).
+   POST /api/admin/products/:id/photo devolve um caminho curto
+   ("/api/products/photos/<uuid>") para o painel salvar como `photoUrl`,
+   exatamente como já fazia com uma URL externa — ver a rota, mais abaixo.
+   Por que um caminho curto e não a imagem em base64 direto no JSON: o
+   `photoUrl`/`photos` de cada produto viaja em TODA resposta de
+   /api/products (carregado por qualquer visitante da vitrine); embutir
+   base64 ali, multiplicado por até 8 fotos por produto, pesaria a home
+   inteira. O caminho curto mantém esse payload do tamanho de sempre — a
+   imagem em si é servida (e cacheada como immutable, já que cada id nunca
+   muda de conteúdo) pela rota GET /api/products/photos/:id, mais abaixo.
 ========================================================================= */
-const PRODUCT_UPLOADS_DIR = path.join(SITE_ROOT, "img", "products");
-fs.mkdirSync(PRODUCT_UPLOADS_DIR, { recursive: true });
-
 const PRODUCT_PHOTO_MIME_EXT = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -943,37 +948,40 @@ const PRODUCT_PHOTO_MIME_EXT = {
   "image/gif": "gif",
 };
 
+// memoryStorage: o arquivo chega inteiro em req.file.buffer, sem tocar o
+// disco — é comprimido/redimensionado (sharp) e gravado no banco dentro do
+// handler da rota, mais abaixo.
 const productPhotoUpload = multer({
-  storage: multer.diskStorage({
-    destination: PRODUCT_UPLOADS_DIR,
-    // Nome gerado pelo servidor, nunca a partir do nome original do
-    // arquivo do cliente: evita path traversal (ex.: "../../server/.env")
-    // e colisão entre uploads de produtos diferentes.
-    filename(req, file, cb){
-      const ext = PRODUCT_PHOTO_MIME_EXT[file.mimetype];
-      cb(null, `produto-${req.params.id}-${Date.now()}.${ext}`);
-    },
-  }),
-  limits: { fileSize: 4 * 1024 * 1024, files: 1 }, // 4MB — folgado para foto de produto, sem deixar a requisição pesada
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 4 * 1024 * 1024, files: 1 }, // 4MB — teto do envio bruto; o arquivo salvo fica bem menor após a compressão
   fileFilter(req, file, cb){
     // O `accept="image/*"` no <input type="file"> do admin.html é só uma
     // dica de UI — um cliente HTTP direto (curl/Postman) pode mandar
     // qualquer coisa, então o tipo é revalidado aqui contra uma allowlist
-    // fixa antes de qualquer gravação em disco.
+    // fixa antes de processar/gravar.
     cb(null, Boolean(PRODUCT_PHOTO_MIME_EXT[file.mimetype]));
   },
 });
 
-// Se o `photoUrl` sendo substituído aponta para um upload anterior nosso
-// (e não uma URL externa colada à mão), apaga o arquivo velho do disco —
-// best-effort: nunca deve derrubar a resposta do PATCH por causa disso.
-// Só chamado de dentro do PATCH, depois que o novo valor já foi
-// confirmado como o que vai ser salvo (nunca apaga um arquivo que ainda
-// está em uso, mesmo que a lojista tenha enviado uma foto nova e cancelado
-// o modal sem salvar — nesse caso o upload novo é que fica órfão, não o
-// antigo, que é sempre o lado mais seguro do erro).
+// Se o `photoUrl` sendo substituído aponta para um upload nosso (e não uma
+// URL externa colada à mão), apaga a foto velha — best-effort: nunca deve
+// derrubar a resposta do PATCH por causa disso. Só chamado de dentro do
+// PATCH, depois que o novo valor já foi confirmado como o que vai ser
+// salvo (nunca apaga uma foto que ainda está em uso, mesmo que a lojista
+// tenha enviado uma foto nova e cancelado o modal sem salvar — nesse caso
+// o upload novo é que fica órfão, não o antigo, que é sempre o lado mais
+// seguro do erro).
+// Trata os dois formatos possíveis de photoUrl: o atual (rota apontando
+// para o banco) e o antigo (caminho em disco, de antes desta mudança) —
+// nenhum arquivo novo é gravado em img/products/, mas uma aba do admin
+// aberta antes do deploy ainda pode reenviar o formato antigo.
 function deleteOldLocalPhoto(oldPhotoUrl){
-  if(!oldPhotoUrl || !oldPhotoUrl.startsWith("/img/products/")) return;
+  if(!oldPhotoUrl) return;
+  if(PHOTO_ROUTE_PATTERN.test(oldPhotoUrl)){
+    db.deleteProductPhoto(oldPhotoUrl.slice(oldPhotoUrl.lastIndexOf("/") + 1));
+    return;
+  }
+  if(!oldPhotoUrl.startsWith("/img/products/")) return;
   const filePath = path.join(SITE_ROOT, oldPhotoUrl);
   fs.unlink(filePath, (err) => {
     if(err && err.code !== "ENOENT"){
@@ -1711,6 +1719,52 @@ app.get("/api/orders/:reference/status", statusPollLimiter, auth.requireAuth, (r
 });
 
 /* =========================================================================
+   GET /api/orders/:reference — detalhe de UM pedido, para a página de
+   acompanhamento (acompanhar-pedido.html).
+   -------------------------------------------------------------------------
+   Mesma checagem de dono do endpoint /status acima (404 tanto para pedido
+   inexistente quanto para pedido de outra cliente, de propósito — não dá
+   pista sobre qual dos dois casos é). Só consulta o rastreio ao vivo
+   (fetchLiveTracking) quando já existe um código salvo — sem isso, é uma
+   chamada de rede a mais para todo pedido pago, mesmo antes de postado.
+========================================================================= */
+app.get("/api/orders/:reference", statusPollLimiter, auth.requireAuth, async (req, res) => {
+  try {
+    const order = db.getOrderByExternalReference(req.params.reference);
+    if(!order || order.user_id !== req.user.id){
+      return res.status(404).json({ error: "Pedido não encontrado." });
+    }
+    const overridesMap = getProductOverridesMap();
+    const allColors = getAllColors();
+    const items = JSON.parse(order.items_json).map(item => ({
+      id: item.id, qty: item.qty,
+      name: effectiveProduct(item.id, overridesMap)?.name || `Produto #${item.id}`,
+      color: colorLabelForItem(item, allColors),
+    }));
+    const shipping = JSON.parse(order.shipping_json);
+    const trackingCode = order.tracking_code || "";
+    const live = trackingCode ? await fetchLiveTracking(order.melhor_envio_shipment_id) : null;
+    res.json({
+      reference: order.external_reference,
+      status: order.status,
+      fulfillmentStatus: order.fulfillment_status || null,
+      shippedAt: order.shipped_at || null,
+      deliveredAt: order.delivered_at || null,
+      items,
+      shipping: { name: shipping.name, deliveryTime: shipping.delivery_time },
+      total: order.total,
+      createdAt: order.created_at,
+      trackingCode,
+      carrierUrl: carrierTrackingUrl(trackingCode),
+      tracking: live,
+    });
+  } catch (err) {
+    console.error("Erro ao carregar detalhe do pedido:", err);
+    res.status(500).json({ error: "Não foi possível carregar o pedido agora." });
+  }
+});
+
+/* =========================================================================
    Compra da etiqueta de envio no Melhor Envio (opcional, best-effort)
    -------------------------------------------------------------------------
    ⚠️ Isto gasta saldo de verdade da sua conta Melhor Envio. Por isso vem
@@ -1729,7 +1783,7 @@ app.get("/api/orders/:reference/status", statusPollLimiter, auth.requireAuth, (r
    primeira vez, acompanhe o primeiro pedido de perto (o passo 1, /me/cart,
    é reversível pelo painel do Melhor Envio; a partir do checkout, não).
 ========================================================================= */
-async function purchaseShippingLabel(order){
+async function purchaseShippingLabel(order, externalReference){
   const seller = {
     name: process.env.SELLER_NAME,
     phone: process.env.SELLER_PHONE,
@@ -1791,6 +1845,13 @@ async function purchaseShippingLabel(order){
     },
   });
 
+  // Guardado ANTES do checkout/generate abaixo, que ainda podem falhar: se
+  // falharem, pelo menos fica registrado com qual envio esta tentativa
+  // mexeu (útil para depuração e para uma nova tentativa não perder o
+  // vínculo), e é este id que a página de acompanhamento da cliente usa
+  // depois para consultar o rastreio ao vivo (fetchLiveTracking, abaixo).
+  if(externalReference) db.setMelhorEnvioShipmentId(externalReference, String(cartItem.id));
+
   await meFetch("/api/v2/me/shipment/checkout", {
     method: "POST",
     body: { orders: [cartItem.id] },
@@ -1802,6 +1863,71 @@ async function purchaseShippingLabel(order){
   });
 
   return generated;
+}
+
+/* =========================================================================
+   Rastreio ao vivo (Melhor Envio) — best-effort, nunca lança.
+   -------------------------------------------------------------------------
+   A página de acompanhamento de pedido (acompanhar-pedido.html) chama isto
+   sob demanda quando a cliente abre a página — não há polling nem webhook
+   de rastreio, é uma consulta pontual.
+   A documentação pública de POST /api/v2/me/shipment/tracking não pôde ser
+   confirmada em detalhe (formato exato da resposta, se traz um histórico
+   de eventos com local/data ou só um status atual). Por isso
+   normalizeTrackingResponse tenta reconhecer algumas formas plausíveis e,
+   se não reconhecer nada, devolve null — quem chama sempre cai de volta
+   para a linha do tempo manual (fulfillmentStatus) + link oficial da
+   transportadora (carrierTrackingUrl), nunca deixa a página quebrada.
+========================================================================= */
+async function fetchLiveTracking(shipmentId){
+  if(!shipmentId || !process.env.MELHOR_ENVIO_TOKEN) return null;
+  try{
+    const data = await meFetch("/api/v2/me/shipment/tracking", {
+      method: "POST",
+      body: { orders: [shipmentId] },
+    });
+    return normalizeTrackingResponse(data, shipmentId);
+  }catch(err){
+    console.error(`Não foi possível consultar rastreio ao vivo (envio ${shipmentId}):`, err.message || err);
+    return null;
+  }
+}
+
+function normalizeTrackingResponse(data, shipmentId){
+  if(!data || typeof data !== "object") return null;
+  // A resposta pode vir como um objeto chaveado pelo id do envio
+  // ({ "<id>": {...} }) ou, para uma consulta de um único envio, já como o
+  // objeto direto — aceita as duas formas.
+  const entry = data[shipmentId] && typeof data[shipmentId] === "object" ? data[shipmentId] : data;
+  const rawEvents = entry.tracking_events || entry.events || entry.occurrences || entry.tracking || null;
+  const events = Array.isArray(rawEvents)
+    ? rawEvents.map(normalizeTrackingEvent).filter(Boolean)
+    : [];
+  const status = typeof entry.status === "string" ? entry.status : null;
+  if(!status && events.length === 0) return null;
+  return { status, events };
+}
+
+function normalizeTrackingEvent(raw){
+  if(!raw || typeof raw !== "object") return null;
+  const description = raw.description || raw.message || raw.status || raw.title || null;
+  const date = raw.date || raw.created_at || raw.occurred_at || raw.time || null;
+  const location = raw.location || raw.local || [raw.city, raw.state].filter(Boolean).join("/") || null;
+  if(!description && !date) return null;
+  return { description, date, location: location || null };
+}
+
+// Link de rastreio da transportadora, sempre presente quando há código —
+// complemento permanente da rota "ao vivo" (fetchLiveTracking), não um
+// fallback só de erro. Código dos Correios tem sempre 13 caracteres,
+// terminando em "BR" (ex.: AA123456789BR); qualquer outro formato (etiqueta
+// de outra transportadora comprada via Melhor Envio) cai no link do
+// próprio Melhor Envio, que redireciona para a transportadora certa.
+function carrierTrackingUrl(trackingCode){
+  if(!trackingCode) return null;
+  return /^[A-Z]{2}\d{9}BR$/.test(trackingCode)
+    ? `https://rastreamento.correios.com.br/app/index.php?objetos=${encodeURIComponent(trackingCode)}`
+    : `https://www.melhorenvio.com.br/rastreio/${encodeURIComponent(trackingCode)}`;
 }
 
 /* =========================================================================
@@ -1842,7 +1968,7 @@ async function runApprovedOrderSideEffects(orderRow, info){
 
   if(process.env.AUTO_PURCHASE_SHIPPING_LABEL === "true"){
     try{
-      const label = await purchaseShippingLabel(order);
+      const label = await purchaseShippingLabel(order, info.external_reference);
       console.log("Etiqueta de envio comprada:", label);
       // TODO: salvar o código de rastreio automaticamente (hoje a
       // lojista preenche à mão no painel /admin.html).
@@ -1958,6 +2084,12 @@ app.post("/api/webhook", async (req, res) => {
       const wasAlreadyApproved = orderRow.status === "pago";
       const status = PAYMENT_STATUS_MAP[info.status] || info.status;
       db.updateOrderStatus(info.external_reference, status, String(paymentId));
+      // "Em produção" começa a valer assim que o pagamento é aprovado pela
+      // primeira vez — mesma guarda de idempotência de runApprovedOrderSideEffects,
+      // logo abaixo, para um reenvio do mesmo webhook não fazer nada de novo.
+      if(info.status === "approved" && !wasAlreadyApproved){
+        db.markOrderInProduction(info.external_reference);
+      }
 
       // Responde ao Mercado Pago AGORA. O que falta (etiqueta, avisos)
       // são chamadas de rede a terceiros que podem demorar — rodam depois,
@@ -2418,6 +2550,10 @@ app.get("/api/orders", auth.requireAuth, (req, res) => {
       return {
         reference: row.external_reference,
         status: row.status,
+        fulfillmentStatus: row.fulfillment_status || null,
+        shippedAt: row.shipped_at || null,
+        deliveredAt: row.delivered_at || null,
+        trackingCode: row.tracking_code || "",
         items,
         shipping: { name: shipping.name, deliveryTime: shipping.delivery_time },
         couponCode: row.coupon_code,
@@ -2563,6 +2699,9 @@ app.get("/api/admin/orders", auth.requireAdmin, auth.requireAdminTwoFactor, (req
         address,
         shipping: { name: shipping.name, deliveryTime: shipping.delivery_time },
         trackingCode: row.tracking_code || "",
+        fulfillmentStatus: row.fulfillment_status || null,
+        shippedAt: row.shipped_at || null,
+        deliveredAt: row.delivered_at || null,
         subtotal: row.subtotal,
         discount: row.discount,
         pixDiscount: row.pix_discount || 0,
@@ -2742,6 +2881,30 @@ app.patch("/api/admin/orders/:reference/tracking", auth.requireAdmin, auth.requi
   }
 });
 
+/* PATCH /api/admin/orders/:reference/delivered — marca manualmente que a
+   entrega chegou. Existe porque a resposta de rastreio do Melhor Envio
+   (fetchLiveTracking) não tem formato de "entregue" confirmado — a lojista
+   sempre pode fechar esse último passo à mão, do mesmo jeito que sempre
+   pôde digitar o código de rastreio à mão. Só faz sentido depois de
+   'postado' (não dá pra pular etapa da linha do tempo). */
+app.patch("/api/admin/orders/:reference/delivered", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
+  try {
+    const reference = String(req.params.reference || "");
+    const order = db.getOrderByExternalReference(reference);
+    if(!order){
+      return res.status(404).json({ error: "Pedido não encontrado." });
+    }
+    if(order.fulfillment_status !== "postado"){
+      return res.status(409).json({ error: "Só é possível marcar como entregue um pedido já postado." });
+    }
+    db.markOrderDelivered(reference);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Erro ao marcar pedido como entregue:", err);
+    res.status(500).json({ error: "Não foi possível marcar o pedido como entregue agora." });
+  }
+});
+
 /* =========================================================================
    GET /api/products — catálogo público (nome/preço/foto já mesclando
    eventuais edições do painel administrativo). O front-end (js/main.js)
@@ -2829,21 +2992,23 @@ app.put("/api/admin/products/order", auth.requireAdmin, auth.requireAdminTwoFact
 function isValidProductPrice(v){
   return typeof v === "number" && Number.isFinite(v) && v > 0 && v < 100000;
 }
-// Padrão EXATO do nome de arquivo gerado por productPhotoUpload, acima —
-// nunca aceita um caminho local fora desse formato (bloqueia qualquer
-// tentativa de apontar `photoUrl` para outro arquivo do servidor, tipo
-// "/img/products/../../server/.env", mandando o PATCH direto sem passar
-// pelo upload).
+// Formato antigo (de antes das fotos passarem a ser gravadas no banco) —
+// mantido só para não rejeitar um PATCH vindo de uma aba do admin ainda
+// aberta com esse formato em cache; nenhum upload novo gera mais isto.
 const LOCAL_UPLOAD_PATTERN = /^\/img\/products\/produto-\d+-\d+\.(jpe?g|png|webp|gif)$/;
+// Formato atual, devolvido por POST /api/admin/products/:id/photo — um
+// UUID apontando para uma linha da tabela product_photos (lib/db.js),
+// servida por GET /api/products/photos/:id, abaixo.
+const PHOTO_ROUTE_PATTERN = /^\/api\/products\/photos\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 // Aceita vazio (remove a foto customizada, volta para o padrão calculado no
 // front-end a partir do nome), uma URL http(s) (link colado à mão) ou um
-// caminho local de upload (gerado por POST /api/admin/products/:id/photo,
-// abaixo) — nunca javascript:/data: etc., que não fazem sentido como
-// <img src> de um formulário.
+// caminho de upload (gerado por POST /api/admin/products/:id/photo,
+// abaixo, atual ou antigo) — nunca javascript:/data: etc., que não fazem
+// sentido como <img src> de um formulário.
 function isValidPhotoUrl(v){
   if(!v) return true;
   if(typeof v !== "string" || v.length > 2000) return false;
-  if(LOCAL_UPLOAD_PATTERN.test(v)) return true;
+  if(LOCAL_UPLOAD_PATTERN.test(v) || PHOTO_ROUTE_PATTERN.test(v)) return true;
   try{
     const parsed = new URL(v);
     return parsed.protocol === "http:" || parsed.protocol === "https:";
@@ -3104,14 +3269,14 @@ app.delete("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFac
    próximo clique em "Salvar alterações", passando pelo mesmo payload
    compacto e pela mesma validação de sempre) — assim um upload feito e
    depois descartado (lojista fecha o modal sem salvar) nunca deixa o
-   produto apontando para um arquivo indevido.
+   produto apontando para uma foto indevida.
 ========================================================================= */
 app.post("/api/admin/products/:id/photo", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   const id = Number(req.params.id);
   if(!productExists(id)){
     return res.status(404).json({ error: "Produto não encontrado." });
   }
-  productPhotoUpload.single("photo")(req, res, (err) => {
+  productPhotoUpload.single("photo")(req, res, async (err) => {
     if(err instanceof multer.MulterError){
       if(err.code === "LIMIT_FILE_SIZE"){
         return res.status(413).json({ error: "Imagem muito grande. O limite é 4MB." });
@@ -3125,8 +3290,48 @@ app.post("/api/admin/products/:id/photo", auth.requireAdmin, auth.requireAdminTw
     if(!req.file){
       return res.status(400).json({ error: "Envie um arquivo de imagem (JPEG, PNG, WEBP ou GIF)." });
     }
-    res.status(201).json({ photoUrl: `/img/products/${req.file.filename}` });
+    try{
+      // rotate() sem argumento reorienta pela EXIF (uma foto tirada com o
+      // celular de lado não fica deitada na vitrine); resize().fit:"inside"
+      // nunca estica a imagem, só limita o maior lado; sempre reencodada
+      // para JPEG — produto de loja de acessórios é sempre fundo opaco, não
+      // há necessidade real de transparência aqui (quem quiser um PNG com
+      // transparência ainda pode colar uma URL externa em vez de enviar
+      // arquivo).
+      const compressed = await sharp(req.file.buffer)
+        .rotate()
+        .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: 80, mozjpeg: true })
+        .toBuffer();
+      const photoId = randomUUID();
+      db.insertProductPhoto(photoId, "image/jpeg", compressed);
+      res.status(201).json({ photoUrl: `/api/products/photos/${photoId}` });
+    }catch(procErr){
+      console.error("Erro ao processar imagem de produto:", procErr);
+      res.status(500).json({ error: "Não foi possível processar a imagem enviada." });
+    }
   });
+});
+
+/* =========================================================================
+   GET /api/products/photos/:id — serve o BLOB gravado em product_photos.
+   -------------------------------------------------------------------------
+   Pública (sem auth), como qualquer outra imagem de produto hoje — a
+   vitrine é pública. Cache-Control "immutable" é seguro aqui porque um id
+   nunca é reescrito: um novo upload sempre grava uma linha nova, então o
+   conteúdo por trás de uma URL já emitida jamais muda.
+========================================================================= */
+app.get("/api/products/photos/:id", (req, res) => {
+  if(!PHOTO_ROUTE_PATTERN.test(`/api/products/photos/${req.params.id}`)){
+    return res.status(404).end();
+  }
+  const photo = db.getProductPhoto(req.params.id);
+  if(!photo){
+    return res.status(404).end();
+  }
+  res.setHeader("Content-Type", photo.mime_type);
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.end(Buffer.from(photo.data));
 });
 
 /* Slug curto e sem acento a partir do texto digitado — o mesmo formato dos
@@ -3361,7 +3566,7 @@ app.post("/api/admin/orders/:reference/generate-label", auth.requireAdmin, auth.
       address: JSON.parse(orderRow.address_json),
       shipping: JSON.parse(orderRow.shipping_json),
     };
-    const generated = await purchaseShippingLabel(order);
+    const generated = await purchaseShippingLabel(order, reference);
     const trackingCode = generated?.[0]?.tracking || generated?.tracking || null;
     if(trackingCode){
       db.updateOrderTracking(reference, trackingCode);

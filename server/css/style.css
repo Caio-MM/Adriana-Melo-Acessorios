@@ -1999,6 +1999,37 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .order-status-paid{ background:var(--color-success-soft); color:var(--color-success); }
 .order-status-failed{ background:#FBE1E1; color:var(--color-danger); }
 
+/* ============ ACOMPANHAMENTO DE PEDIDO (acompanhar-pedido.html) ============ */
+/* Linha do tempo Confirmado -> Em produção -> Postado -> Entregue. Cada
+   passo tem uma "linha" (::before) ligando ao anterior, colorida conforme
+   o passo já foi concluído (.is-done) ou não — o primeiro passo não tem
+   linha à esquerda (não há "anterior" antes dele). */
+.fulfillment-timeline{
+  display:flex; justify-content:space-between; gap:.25rem; margin:1.25rem 0 1.5rem;
+}
+.fulfillment-step{
+  flex:1; display:flex; flex-direction:column; align-items:center; text-align:center;
+  position:relative; font-size:.72rem; color:var(--ink-soft);
+}
+.fulfillment-step::before{
+  content:""; position:absolute; top:9px; left:-50%; width:100%; height:2px;
+  background:var(--blush-100); z-index:0;
+}
+.fulfillment-step:first-child::before{ display:none; }
+.fulfillment-step .fulfillment-dot{
+  width:20px; height:20px; border-radius:50%; background:var(--white);
+  border:2px solid var(--blush-100); margin-bottom:.4rem; position:relative; z-index:1;
+}
+.fulfillment-step.is-done .fulfillment-dot{ background:var(--color-success); border-color:var(--color-success); }
+.fulfillment-step.is-done::before{ background:var(--color-success); }
+.fulfillment-step.is-current .fulfillment-dot{ background:var(--blush-500); border-color:var(--blush-500); }
+.fulfillment-step.is-current, .fulfillment-step.is-done{ color:var(--ink); font-weight:600; }
+
+.tracking-route{ display:flex; flex-direction:column; gap:.85rem; margin:0; padding:0; list-style:none; }
+.tracking-route-item{ border-left:2px solid var(--blush-100); padding-left:.9rem; }
+.tracking-route-item .tracking-route-date{ font-size:.72rem; color:var(--ink-soft); }
+.tracking-route-item .tracking-route-desc{ font-size:.85rem; }
+
 /* ============ PAINEL ADMINISTRATIVO (admin.html) ============ */
 .order-card.is-highlighted{
   border-color:var(--blush-500); box-shadow:0 0 0 3px var(--blush-100);

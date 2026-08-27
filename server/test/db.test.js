@@ -53,6 +53,54 @@ test("hasUsedCoupon — pedido PENDENTE recente bloqueia (fecha o TOCTOU)", () =
   assert.equal(db.hasUsedCoupon({ code: "BEMVINDA10", phone: "61911112222" }), true, "por telefone");
 });
 
+test("updateOrderTracking avança fulfillment_status para 'postado' e grava shipped_at só uma vez", () => {
+  const u = db.createUser({ name: "Rastreio", email: "rastreio@example.com", passwordHash: "x", cpf: "11144477735" });
+  db.createOrder({
+    externalReference: "TRACK1", userId: u.id, status: "pago",
+    items: [{ id: 1, qty: 1, price: 34.9 }],
+    address: { nome: "R", telefone: "x", rua: "R", numero: "1", bairro: "B", cidade: "Bsb", uf: "DF", cep: "70040020" },
+    shipping: { name: "X", price: 10 }, subtotal: 34.9, shippingPrice: 10, total: 44.9, customerPhone: "61933334444",
+  });
+
+  db.markOrderInProduction("TRACK1");
+  let order = db.getOrderByExternalReference("TRACK1");
+  assert.equal(order.fulfillment_status, "em_producao");
+  assert.equal(order.shipped_at, null);
+
+  db.updateOrderTracking("TRACK1", "AA123456789BR");
+  order = db.getOrderByExternalReference("TRACK1");
+  assert.equal(order.fulfillment_status, "postado");
+  assert.equal(order.tracking_code, "AA123456789BR");
+  const firstShippedAt = order.shipped_at;
+  assert.ok(firstShippedAt, "shipped_at devia ser gravado ao postar");
+
+  // Corrigir/reenviar o código depois não deve reiniciar shipped_at.
+  db.updateOrderTracking("TRACK1", "BB987654321BR");
+  order = db.getOrderByExternalReference("TRACK1");
+  assert.equal(order.fulfillment_status, "postado");
+  assert.equal(order.tracking_code, "BB987654321BR");
+  assert.equal(order.shipped_at, firstShippedAt, "shipped_at não muda numa correção de código");
+
+  db.markOrderDelivered("TRACK1");
+  order = db.getOrderByExternalReference("TRACK1");
+  assert.equal(order.fulfillment_status, "entregue");
+  assert.ok(order.delivered_at);
+});
+
+test("setMelhorEnvioShipmentId grava o id do envio sem mexer em mais nada", () => {
+  const u = db.createUser({ name: "Envio", email: "envio@example.com", passwordHash: "x", cpf: "11144477735" });
+  db.createOrder({
+    externalReference: "SHIP1", userId: u.id, status: "pago",
+    items: [{ id: 1, qty: 1, price: 34.9 }],
+    address: { nome: "E", telefone: "x", rua: "R", numero: "1", bairro: "B", cidade: "Bsb", uf: "DF", cep: "70040020" },
+    shipping: { name: "X", price: 10 }, subtotal: 34.9, shippingPrice: 10, total: 44.9, customerPhone: "61955556666",
+  });
+  db.setMelhorEnvioShipmentId("SHIP1", "999888");
+  const order = db.getOrderByExternalReference("SHIP1");
+  assert.equal(order.melhor_envio_shipment_id, "999888");
+  assert.equal(order.fulfillment_status, null, "só grava o id do envio, não avança a linha do tempo");
+});
+
 test("deleteUserAccount — apaga o titular e anonimiza os pedidos (LGPD)", () => {
   const u = db.createUser({ name: "Del", email: "del@example.com", passwordHash: bcrypt.hashSync("x", 4), cpf: "11144477735" });
   db.addNewsletterSubscriber("del@example.com");
