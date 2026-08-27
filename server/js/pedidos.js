@@ -61,6 +61,10 @@
               <button type="button" class="btn btn-outline-blush btn-sm resume-payment-btn" data-reference="${escapeHTML(order.reference)}">
                 Continuar pagamento
               </button>` : ""}
+              ${order.status === "pago" ? `
+              <a href="acompanhar-pedido.html?pedido=${encodeURIComponent(order.reference)}" class="btn btn-outline-blush btn-sm">
+                Acompanhar pedido
+              </a>` : ""}
             </div>
           </div>
           ${order.status === "pendente" ? `<div class="small text-danger mb-2 resume-payment-error d-none"></div>` : ""}

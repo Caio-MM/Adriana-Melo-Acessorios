@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acompanhar pedido — Adriana Melo Acessórios</title>
+<meta name="description" content="Acompanhe a produção e o envio do seu pedido na Adriana Melo Acessórios.">
+
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; script-src 'self' https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: data:; connect-src 'self' https://api.mercadopago.com https://viacep.com.br; frame-src https://www.mercadopago.com https://www.mercadopago.com.br; object-src 'none'; form-action 'self'">
+<link rel="icon" href="favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+
+<link rel="stylesheet" href="css/vendor/bootstrap.min.css">
+<link rel="stylesheet" href="css/vendor/bootstrap-icons.min.css">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="simple-header">
+  <div class="container d-flex align-items-center justify-content-between">
+    <a href="index.html" class="plc-brand" aria-label="Adriana Melo Acessórios — página inicial">
+      <img src="img/logo-adriana-melo-6e53bc.png" alt="Adriana Melo Acessórios" width="168" height="54">
+    </a>
+    <div id="navAccount" class="d-flex align-items-center gap-2"></div>
+  </div>
+</header>
+
+<main class="account-main">
+  <div class="container">
+    <div class="orders-wrap mx-auto">
+      <a href="pedidos.html" class="policy-back"><i class="bi bi-arrow-left"></i> Meus pedidos</a>
+      <div class="mb-4">
+        <span class="section-eyebrow"><i class="bi bi-truck"></i> acompanhamento</span>
+        <h1 class="section-title" style="font-size:1.8rem">Seu pedido</h1>
+      </div>
+
+      <div id="trackLoading" class="text-center py-5">
+        <div class="spinner-border" role="status" style="color:var(--blush-600)">
+          <span class="visually-hidden">Carregando pedido...</span>
+        </div>
+        <p class="section-sub mt-3">Carregando seu pedido...</p>
+      </div>
+
+      <div id="trackLoggedOut" class="account-card text-center d-none">
+        <i class="bi bi-lock" style="font-size:2rem; color:var(--blush-600)"></i>
+        <p class="mt-3 mb-3">Faça login para acompanhar este pedido.</p>
+        <a href="conta.html" class="btn-blush">Entrar ou criar conta</a>
+      </div>
+
+      <div id="trackNotFound" class="account-card text-center d-none">
+        <i class="bi bi-question-circle" style="font-size:2rem; color:var(--blush-300)"></i>
+        <p class="section-sub mt-3 mb-3">Não encontramos este pedido na sua conta.</p>
+        <a href="pedidos.html" class="btn-blush">Ver meus pedidos</a>
+      </div>
+
+      <div id="trackError" class="account-card text-center d-none">
+        <i class="bi bi-exclamation-triangle" style="font-size:2rem; color:var(--blush-700)"></i>
+        <p class="section-sub mt-3 mb-3">Não foi possível carregar este pedido agora.</p>
+        <button type="button" class="btn-outline-blush" id="trackRetryBtn">Tentar de novo</button>
+      </div>
+
+      <div id="trackContent" class="d-none">
+        <div class="order-card mb-4">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-1">
+            <div>
+              <div class="fw-semibold" id="trackReference">Pedido</div>
+              <div class="small" style="color:var(--ink-soft)" id="trackDate"></div>
+            </div>
+            <span class="order-status" id="trackStatusBadge"></span>
+          </div>
+        </div>
+
+        <div id="trackTimelineWrap" class="order-card mb-4 d-none">
+          <div class="fulfillment-timeline" id="trackTimeline"></div>
+        </div>
+
+        <div id="trackPaymentIssue" class="account-card text-center d-none">
+          <p class="section-sub mb-0" id="trackPaymentIssueText"></p>
+        </div>
+
+        <div id="trackShippingWrap" class="order-card d-none">
+          <h2 class="section-title" style="font-size:1.05rem">Rastreio</h2>
+
+          <div id="trackNoCode" class="section-sub d-none" style="font-size:.9rem">
+            Ainda não foi postado — assim que a lojista despachar, o código de rastreio aparece aqui.
+          </div>
+
+          <div id="trackWithCode" class="d-none">
+            <p class="small mb-2">
+              Código de rastreio: <strong id="trackCode"></strong>
+              — <a id="trackCarrierLink" href="#" target="_blank" rel="noopener noreferrer">ver na transportadora <i class="bi bi-box-arrow-up-right"></i></a>
+            </p>
+
+            <div id="trackNoRoute" class="small d-none" style="color:var(--ink-soft)">
+              Ainda não temos o detalhe da rota — use o link acima para consultar direto na transportadora.
+            </div>
+
+            <ol class="tracking-route d-none" id="trackRoute"></ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="js/error-boundary.js" defer></script>
+<script src="js/loading.js" defer></script>
+<script src="js/vendor/bootstrap.bundle.min.js" defer></script>
+<script src="js/auth.js" defer></script>
+<script src="js/acompanhar-pedido.js" defer></script>
+<script src="js/cookie-consent.js" defer></script>
+</body>
+</html>
