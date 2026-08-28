@@ -29,6 +29,7 @@ const TMP_DB = path.join(os.tmpdir(), `plc-api-test-${process.pid}-${Date.now()}
 // "continuar pagamento". Precisa vir ANTES do require, igual db.test.js.
 process.env.DB_PATH = TMP_DB;
 const db = require("../lib/db.js");
+const auth = require("../lib/auth.js");
 
 let child;
 // Cookie de admin reaproveitado entre testes (setado no primeiro login bem-
@@ -98,6 +99,19 @@ function get(url, cookie) {
     headers: cookie ? { Cookie: cookie } : {},
   });
 }
+// Cria usuário + sessão direto no banco (mesmo arquivo WAL do processo
+// filho, ver DB_PATH acima) em vez de POST /api/auth/register — evita
+// gastar do orçamento compartilhado do authLimiter (10 req/15min) num
+// teste que não está testando cadastro, só precisa de "uma conta já
+// logada". Replica hashToken (server/lib/auth.js, não exportada de
+// propósito) porque é só SHA-256 do token, não um segredo de verdade.
+async function seedLoggedInUser({ name, email, password, cpf }) {
+  const user = db.createUser({ name, email, passwordHash: await auth.hashPassword(password), cpf });
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  db.createSession({ tokenHash, userId: user.id, expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+  return { user, cookie: `plc_session=${token}` };
+}
 function cookieFrom(res) {
   const raw = res.headers.get("set-cookie");
   return raw ? raw.split(";")[0] : null;
@@ -146,30 +160,6 @@ test("controle de acesso admin: cliente comum não entra, admin entra", async ()
   assert.equal((await ra.json()).isAdmin, true);
   const asAdmin = await fetch(ORIGIN + "/api/admin/orders", { headers: { Cookie: adminCookie } });
   assert.equal(asAdmin.status, 200, "admin -> 200");
-});
-
-test("exclusão de conta: senha errada barra; senha certa apaga e invalida login", async () => {
-  const reg = await post("/api/auth/register", { name: "Del", email: "del@test.com", password: "SenhaDEL12345!", cpf: "11144477735" });
-  const cookie = cookieFrom(reg);
-
-  // Senha errada -> 401, conta permanece.
-  const bad = await fetch(ORIGIN + "/api/auth/account", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json", Origin: ORIGIN, Cookie: cookie },
-    body: JSON.stringify({ password: "errada" }),
-  });
-  assert.equal(bad.status, 401);
-
-  // Senha certa -> 200.
-  const ok = await fetch(ORIGIN + "/api/auth/account", {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json", Origin: ORIGIN, Cookie: cookie },
-    body: JSON.stringify({ password: "SenhaDEL12345!" }),
-  });
-  assert.equal(ok.status, 200);
-
-  // Conta some: login falha.
-  assert.equal((await post("/api/auth/login", { email: "del@test.com", password: "SenhaDEL12345!" })).status, 401);
 });
 
 test("GET/PUT /api/auth/address — sem sessão, endereço em branco, salva/atualiza, isolado entre clientes", async () => {
@@ -666,4 +656,37 @@ test("ocultar produto: some de /api/products, continua em /api/admin/products, e
   assert.equal((await desocultou.json()).hidden, false);
   const pubFinal = await (await fetch(ORIGIN + "/api/products")).json();
   assert.ok(pubFinal.products.some(p => p.id === 5), "produto volta a aparecer ao desocultar");
+});
+
+// DELETE /api/auth/account agora leva authLimiter (mesma proteção de
+// login/2FA — antes a rota não tinha limitador dedicado, um oráculo de
+// senha com 500 tentativas/15min em vez de 10). Pra não gastar do balde
+// compartilhado (10/15min, já usado quase todo pelos testes de
+// cadastro/login acima) à toa, a conta de teste é criada direto no banco
+// (seedLoggedInUser) e a checagem final é uma leitura direta também — só
+// as 2 chamadas de DELETE em si (o que este teste realmente testa) passam
+// pelo authLimiter de verdade.
+test("exclusão de conta: senha errada barra; senha certa apaga e invalida login", async () => {
+  const { cookie } = await seedLoggedInUser({ name: "Del", email: "del@test.com", password: "SenhaDEL12345!", cpf: "11144477735" });
+
+  // Senha errada -> 401, conta permanece.
+  const bad = await fetch(ORIGIN + "/api/auth/account", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", Origin: ORIGIN, Cookie: cookie },
+    body: JSON.stringify({ password: "errada" }),
+  });
+  assert.equal(bad.status, 401);
+  assert.ok(db.getUserByEmail("del@test.com"), "conta continua existindo após senha errada");
+
+  // Senha certa -> 200.
+  const ok = await fetch(ORIGIN + "/api/auth/account", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", Origin: ORIGIN, Cookie: cookie },
+    body: JSON.stringify({ password: "SenhaDEL12345!" }),
+  });
+  assert.equal(ok.status, 200);
+
+  // Conta some de verdade (checagem direta no banco, sem gastar mais uma
+  // chamada do authLimiter num login que já sabemos que vai falhar).
+  assert.equal(db.getUserByEmail("del@test.com"), null, "conta apagada");
 });

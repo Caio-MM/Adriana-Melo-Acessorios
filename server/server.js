@@ -2454,7 +2454,10 @@ app.post("/api/auth/logout", (req, res) => {
    sequestrada ou um CSRF poderia apagar a conta. Apaga login/PII e anonimiza
    os pedidos, preservando o histórico financeiro (ver db.deleteUserAccount).
    É irreversível — o front confirma com o usuário antes de chamar. */
-app.delete("/api/auth/account", auth.requireAuth, async (req, res) => {
+// authLimiter (não só o limitador genérico da API): esta rota confere
+// senha, igual login/2FA/reset — sem o mesmo orçamento apertado, vira um
+// oráculo de tentativa de senha com 500 tentativas/15min em vez de 10.
+app.delete("/api/auth/account", authLimiter, auth.requireAuth, async (req, res) => {
   try {
     const password = req.body?.password;
     if (!password || typeof password !== "string") {
@@ -2505,20 +2508,26 @@ app.post("/api/auth/forgot-password", authLimiter, async (req, res) => {
     const resetUrl = `${CLIENT_ORIGIN}/redefinir-senha.html?token=${encodeURIComponent(token)}`;
     const expiresInMinutes = Math.round(auth.PASSWORD_RESET_TTL_MS / 60000);
 
-    try {
-      await email.sendPasswordResetEmail({
-        to: user.email,
-        name: user.name,
-        resetUrl,
-        expiresInMinutes,
+    // Fire-and-forget (não espera o envio terminar antes de responder,
+    // mesmo padrão de sendAdminLoginAlert acima): a resposta já era
+    // idêntica para e-mail existente/inexistente, mas dar `await` aqui
+    // fazia o TEMPO de resposta vazar a diferença — uma conta existente
+    // esperava o round-trip real do SMTP, uma inexistente voltava na
+    // hora. Isso reabria por timing a mesma enumeração que a resposta
+    // igual foi desenhada para fechar.
+    email.sendPasswordResetEmail({ to: user.email, name: user.name, resetUrl, expiresInMinutes })
+      .catch(mailErr => {
+        console.error("Falha ao enviar e-mail de redefinição de senha:", mailErr.message);
+        // Só imprime o link em texto puro quando o SMTP nem está
+        // configurado — é a única forma de testar o fluxo localmente
+        // antes de preencher o .env. Com SMTP configurado (produção), uma
+        // falha aqui é só uma instabilidade pontual, e não vale o risco
+        // de um token de redefinição válido parar num log, que pode ter
+        // acesso mais amplo que o próprio banco.
+        if(!process.env.SMTP_HOST){
+          console.warn(`[redefinição de senha] Link para ${user.email}: ${resetUrl}`);
+        }
       });
-    } catch (mailErr) {
-      // Sem SMTP configurado o link não tem como sair daqui. Registrar no
-      // console é o único jeito de a loja conseguir usar/testar o fluxo
-      // enquanto o SMTP não é preenchido — e só acontece nesse caso.
-      console.error("Falha ao enviar e-mail de redefinição de senha:", mailErr.message);
-      console.warn(`[redefinição de senha] Link para ${user.email}: ${resetUrl}`);
-    }
 
     return genericOk();
   } catch (err) {
