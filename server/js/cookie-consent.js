@@ -54,8 +54,11 @@
     return banner;
   }
 
-  function dismiss(banner, decision) {
+  function dismiss(banner, decision, resizeObserver) {
     save(decision);
+    if (resizeObserver) resizeObserver.disconnect();
+    document.body.classList.remove("has-cookie-consent");
+    document.body.style.removeProperty("--cookie-consent-space");
     banner.classList.add("is-leaving");
     var done = function () { banner.remove(); };
     banner.addEventListener("animationend", done, { once: true });
@@ -66,9 +69,25 @@
   function mount() {
     var banner = build();
     document.body.appendChild(banner);
+    document.body.classList.add("has-cookie-consent");
+
+    // Reserva espaço rolável do tamanho do banner: sem isso, em telas
+    // curtas (celular) com pouco conteúdo, o banner fixo no rodapé pode
+    // cobrir permanentemente algo importante ali (ex.: um botão), sem
+    // nenhum jeito de rolar a página pra revelar o que está atrás dele.
+    var resizeObserver = null;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(function () {
+        document.body.style.setProperty("--cookie-consent-space", banner.offsetHeight + "px");
+      });
+      resizeObserver.observe(banner);
+    } else {
+      document.body.style.setProperty("--cookie-consent-space", banner.offsetHeight + "px");
+    }
+
     banner.addEventListener("click", function (e) {
       var btn = e.target.closest("[data-consent]");
-      if (btn) dismiss(banner, btn.getAttribute("data-consent"));
+      if (btn) dismiss(banner, btn.getAttribute("data-consent"), resizeObserver);
     });
     // Foco no primeiro botão para quem navega por teclado — sem prender o foco
     // (é banner, não modal): Tab continua saindo normalmente para a página.

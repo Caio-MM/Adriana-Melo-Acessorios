@@ -307,6 +307,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .cookie-consent.is-visible{ opacity:1; transform:none; }
 .cookie-consent.is-leaving{ opacity:0; transform:translateY(16px); }
 
+/* Garante espaço rolável do tamanho do banner: em páginas curtas (ex.: tela
+   de login/2FA no celular) sem isso o banner fixo pode cobrir conteúdo do
+   rodapé sem nenhum jeito de rolar até ele. */
+body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
+
 .cookie-consent-head{ display:flex; align-items:center; gap:.6rem; margin-bottom:.6rem; }
 .cookie-consent-icon{
   display:inline-flex; align-items:center; justify-content:center;
