@@ -87,11 +87,33 @@ app.set("trust proxy", 1);
    Mercado Pago: https://www.mercadopago.com.br/developers/panel
    Melhor Envio: https://melhorenvio.com.br/painel/gerenciar/tokens
 ----------------------------------------------------------------------- */
+/* Checagem de configuração no boot. Em produção (CLIENT_ORIGIN https, o
+   mesmo sinal que a CSP já usa, em vez de depender de NODE_ENV) os avisos
+   de segredo essencial ausente saem em DESTAQUE — a ideia é transformar um
+   erro de configuração silencioso (loja no ar com checkout quebrado, ou
+   webhook sem assinatura) numa mensagem impossível de não ver no log do
+   deploy. Não aborta o processo de propósito: este mesmo servidor também
+   serve o site inteiro, então derrubá-lo por um segredo faltando seria um
+   apagão maior que o problema que ele resolve. */
+const EM_PRODUCAO = CLIENT_ORIGIN.startsWith("https://");
+function avisoConfig(mensagem){
+  console.warn(`${EM_PRODUCAO ? "🔴 [PRODUÇÃO] " : "⚠️  "}${mensagem}`);
+}
 if(!process.env.MP_ACCESS_TOKEN){
-  console.warn("⚠️  MP_ACCESS_TOKEN não definido. Copie server/.env.example para server/.env e preencha antes de aceitar pagamentos reais.");
+  avisoConfig("MP_ACCESS_TOKEN não definido. Copie server/.env.example para server/.env e preencha antes de aceitar pagamentos reais — sem ele, o checkout QUEBRA na hora de pagar.");
 }
 if(!process.env.MELHOR_ENVIO_TOKEN){
-  console.warn("⚠️  MELHOR_ENVIO_TOKEN não definido. O cálculo de frete não vai funcionar até preencher o .env.");
+  avisoConfig("MELHOR_ENVIO_TOKEN não definido. O cálculo de frete não vai funcionar até preencher o .env.");
+}
+if(!process.env.ADMIN_EMAIL_HASHES){
+  avisoConfig("ADMIN_EMAIL_HASHES não definido. NINGUÉM consegue entrar no painel administrativo (todo login vira cliente comum) até preencher o .env.");
+}
+// F2 da auditoria: sem o segredo, a assinatura do webhook do Mercado Pago
+// não é verificada (ver verifyMpWebhookSignature). Continua aceitando (a
+// confirmação real do pagamento vem do payment.get autenticado, então não
+// dá para forjar um "pago"), mas em produção isso precisa gritar no log.
+if(EM_PRODUCAO && !process.env.MP_WEBHOOK_SECRET){
+  avisoConfig("MP_WEBHOOK_SECRET não definido. O webhook do Mercado Pago aceita chamadas SEM verificar a assinatura — configure o segredo no painel do MP e no .env para fechar essa porta.");
 }
 
 const mpClient = new MercadoPagoConfig({
@@ -350,6 +372,26 @@ app.use((req, res, next) => {
   if (semQuery.includes("//")) {
     const query = req.originalUrl.slice(semQuery.length);
     return res.redirect(301, semQuery.replace(/\/{2,}/g, "/") + query);
+  }
+  // Segmentos "." e ".." NUNCA são legítimos neste site (URLs são todas
+  // limpas; o versionamento de asset usa ?v=hash, não caminho). Sem barrá-los
+  // AQUI, na entrada, "/js/../server.js" passa pela allowlist PUBLIC_TOP_LEVEL
+  // (o 1º segmento vira "js", que é permitido) e chega ao express.static, que
+  // colapsa o ".." e serve arquivos de FORA da pasta pública — o código-fonte
+  // do back-end, e o próprio data.db quando o DB_PATH aponta para cá. É um
+  // vazamento de leitura arbitrária de arquivo, anônimo e sem 2FA.
+  // Decodifica antes de checar para pegar também as formas escapadas
+  // (%2e%2e, ..%2f); uma URL com codificação inválida (decode falha) também
+  // não é legítima e cai no 404. Cobre o mesmo furo que o tratamento de
+  // barra dupla acima cobria só pela metade.
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(semQuery);
+  } catch {
+    return sendNotFound(req, res);
+  }
+  if (decodedPath.split("/").some(seg => seg === "." || seg === "..")) {
+    return sendNotFound(req, res);
   }
   next();
 });
@@ -2702,6 +2744,20 @@ app.post("/api/admin/2fa/activate", auth.requireAdmin, async (req, res) => {
     const code = String(req.body?.code || "").trim();
     if(!/^[A-Z2-7]{32}$/.test(secret)){
       return res.status(400).json({ error: "Segredo inválido. Recarregue a página e tente de novo." });
+    }
+    // Se o 2FA JÁ está ativo, reativar (trocar de aparelho) exige a senha da
+    // conta — sem isso, quem só sequestrou a sessão poderia reinscrever o 2FA
+    // num aparelho próprio e queimar os códigos de recuperação, virando a
+    // sessão temporária em posse permanente. Pedir a SENHA (e não o código
+    // atual) fecha essa porta sem estragar a recuperação de aparelho perdido:
+    // a lojista entra por código de recuperação/e-mail e ainda sabe a senha,
+    // enquanto um sequestrador de sessão normalmente não.
+    const usuarioAtual = db.getUserById(req.user.id);
+    if(usuarioAtual?.totp_secret){
+      const senha = req.body?.password;
+      if(!senha || typeof senha !== "string" || !(await auth.verifyPassword(senha, usuarioAtual.password_hash))){
+        return res.status(401).json({ error: "Confirme sua senha para trocar a verificação em duas etapas.", needsPassword: true });
+      }
     }
     if(!auth.verifyTotp(secret, code)){
       return res.status(400).json({ error: "Código incorreto. Confira o app e tente de novo." });

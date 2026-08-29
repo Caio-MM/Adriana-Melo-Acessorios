@@ -7,6 +7,15 @@
     }[ch]));
   }
 
+  // Cor usada dentro de atributos (style/value/data-hex). Como é contexto
+  // CSS/atributo e não texto, escapar não basta — valida como hex estrito e
+  // cai num fallback seguro se vier qualquer outra coisa, evitando quebra de
+  // atributo caso um hex inválido chegue ao banco por outra via. Mesmo
+  // safeColor de js/main.js.
+  function safeColor(color){
+    return /^#[0-9a-fA-F]{3,8}$/.test(String(color || "")) ? color : "#F4B4CC";
+  }
+
   function fetchWithTimeout(url, options, timeoutMs){
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs || 8000);
@@ -574,14 +583,15 @@
     const options = [...currentColors, ...pendingNewColors.map(c => ({ ...c, pending: true }))];
     epColorOptionsEl.innerHTML = options.map(c => {
       const deletable = !fixedHexes.has(c.hex);
+      const cor = safeColor(c.hex);
       return `
       <span class="ep-color-check-wrap">
         <label class="ep-color-check">
-          <input type="checkbox" class="ep-color-input" value="${c.hex}" ${selectedHexes.includes(c.hex) ? "checked" : ""}>
-          <span class="ep-color-swatch" style="background:${c.hex}"></span>
+          <input type="checkbox" class="ep-color-input" value="${cor}" ${selectedHexes.includes(c.hex) ? "checked" : ""}>
+          <span class="ep-color-swatch" style="background:${cor}"></span>
           <span class="ep-color-name">${escapeHTML(c.label)}${c.pending ? " (nova)" : ""}</span>
         </label>
-        ${deletable ? `<button type="button" class="ep-color-delete" data-hex="${c.hex}" data-pending="${c.pending ? "1" : "0"}" aria-label="Apagar cor ${escapeHTML(c.label)}"><i class="bi bi-x-lg"></i></button>` : ""}
+        ${deletable ? `<button type="button" class="ep-color-delete" data-hex="${cor}" data-pending="${c.pending ? "1" : "0"}" aria-label="Apagar cor ${escapeHTML(c.label)}"><i class="bi bi-x-lg"></i></button>` : ""}
       </span>
     `;
     }).join("");

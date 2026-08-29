@@ -11,6 +11,7 @@ const os = require("node:os");
 const fs = require("node:fs");
 const crypto = require("node:crypto");
 const { spawn } = require("node:child_process");
+const net = require("node:net");
 // Usado só para gerar um JPEG de verdade no teste de upload de foto —
 // sharp() rejeita os bytes falsos que bastavam quando o upload só gravava
 // em disco sem processar a imagem (ver server.js: rota de upload agora
@@ -131,6 +132,50 @@ test("cadastro define sessão e /api/auth/me responde ao dono", async () => {
 test("login com senha errada é rejeitado", async () => {
   const res = await post("/api/auth/login", { email: "a@test.com", password: "errada" });
   assert.equal(res.status, 401);
+});
+
+// GET por SOCKET CRU: fetch()/curl normalizam "../" no cliente e nunca
+// chegariam a mandar o caminho travesso pro servidor — o único jeito de
+// testar a defesa é falar HTTP na mão.
+function rawGet(caminho){
+  return new Promise((resolve, reject) => {
+    const sock = net.createConnection(PORT, "127.0.0.1");
+    let buf = "";
+    sock.setTimeout(8000, () => { sock.destroy(); reject(new Error("timeout")); });
+    sock.on("connect", () => sock.write(`GET ${caminho} HTTP/1.1\r\nHost: localhost:${PORT}\r\nConnection: close\r\n\r\n`));
+    sock.on("data", (d) => { buf += d; if(buf.length > 300000) sock.destroy(); });
+    sock.on("close", () => {
+      const statusLine = buf.split("\r\n", 1)[0];
+      const status = Number(statusLine.split(" ")[1]) || 0;
+      resolve({ status, length: buf.length });
+    });
+    sock.on("error", reject);
+  });
+}
+
+test("path traversal: '../' e formas escapadas nunca vazam arquivo de fora da pasta pública", async () => {
+  // Cada um destes, ANTES da correção, servia um arquivo real de fora do
+  // site (código-fonte, e o data.db com hashes de senha + segredo TOTP).
+  const ataques = [
+    "/js/../server.js",
+    "/js/../data.db",
+    "/js/../lib/auth.js",
+    "/js/../admin.html",           // contorna o guarda de admin
+    "/js/%2e%2e/server.js",        // ".." percent-encoded
+    "/img/..%2fadmin.html",        // "/" percent-encoded
+    "/js/../../server/data.db",
+    "/js/./main.js",               // "." também não é caminho legítimo
+  ];
+  for(const a of ataques){
+    const r = await rawGet(a);
+    assert.notEqual(r.status, 200, `PATH TRAVERSAL VAZOU em ${a} (status 200)`);
+    assert.ok(r.status === 404 || r.status === 301, `${a} devia ser 404/301, veio ${r.status}`);
+  }
+
+  // Sanidade: caminhos legítimos continuam funcionando.
+  assert.equal((await rawGet("/js/main.js")).status, 200);
+  assert.equal((await rawGet("/css/style.css")).status, 200);
+  assert.equal((await rawGet("/index.html")).status, 200);
 });
 
 test("rotas protegidas exigem sessão (401 sem cookie)", async () => {

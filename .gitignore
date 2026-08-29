@@ -23,3 +23,7 @@ server/*.db-shm
 # usuário, não código-fonte — ver POST /api/admin/products/:id/photo em
 # server/server.js)
 server/img/products/
+
+# Relatório de auditoria de segurança — uso interno, NÃO vai pro GitHub
+# (contém o mapa dos pontos fracos do site; fica só na máquina).
+docs/security-audit/

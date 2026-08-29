@@ -714,10 +714,11 @@
     const inStock = inStockColors(p);
     const swatchBtn = (hex, selected, label) => {
       const disabled = !inStock.includes(hex);
+      const cor = safeColor(hex);
       return `
         <button type="button" class="qv-color-option cart-color-swatch-btn${selected ? " selected" : ""}${disabled ? " is-disabled" : ""}"
-          data-hex="${hex}" ${disabled ? "disabled" : ""} aria-label="${escapeHTML(label)}${disabled ? " — esgotado" : ""}">
-          <span class="qv-color-swatch" style="background:${hex}"></span>
+          data-hex="${cor}" ${disabled ? "disabled" : ""} aria-label="${escapeHTML(label)}${disabled ? " — esgotado" : ""}">
+          <span class="qv-color-swatch" style="background:${cor}"></span>
         </button>
       `;
     };
@@ -1336,10 +1337,11 @@
     const inStock = new Set(inStockColors(p));
     qvColorOptionsEl.innerHTML = allColors.map(c => {
       const disabled = !inStock.has(c.hex);
+      const cor = safeColor(c.hex);
       return `
         <label class="qv-color-option${disabled ? " is-disabled" : ""}">
-          <input type="radio" name="qvColor" value="${c.hex}" ${disabled ? "disabled" : ""}>
-          <span class="qv-color-swatch" style="background:${c.hex}"></span>
+          <input type="radio" name="qvColor" value="${cor}" ${disabled ? "disabled" : ""}>
+          <span class="qv-color-swatch" style="background:${cor}"></span>
           <span class="visually-hidden">${escapeHTML(c.label)}${disabled ? " — esgotado" : ""}</span>
         </label>
       `;
@@ -1378,10 +1380,11 @@
       </label>
     ` + allColors.map(c => {
       const disabled = !inStock.has(c.hex);
+      const cor = safeColor(c.hex);
       return `
         <label class="qv-color-option${disabled ? " is-disabled" : ""}">
-          <input type="radio" name="qvSecondColor" value="${c.hex}" ${disabled ? "disabled" : ""}>
-          <span class="qv-color-swatch" style="background:${c.hex}"></span>
+          <input type="radio" name="qvSecondColor" value="${cor}" ${disabled ? "disabled" : ""}>
+          <span class="qv-color-swatch" style="background:${cor}"></span>
           <span class="visually-hidden">${escapeHTML(c.label)}${disabled ? " — esgotado" : ""}</span>
         </label>
       `;
