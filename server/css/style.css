@@ -344,7 +344,13 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 }
 
 @media (max-width:576px){
-  .cookie-consent{ left:1rem; right:1rem; bottom:1rem; width:auto; padding:1.1rem 1.15rem; }
+  .cookie-consent{ left:1rem; right:1rem; bottom:1rem; width:auto; padding:.65rem .8rem; }
+  .cookie-consent-head{ gap:.4rem; margin-bottom:.3rem; }
+  .cookie-consent-icon{ width:24px; height:24px; font-size:.82rem; }
+  .cookie-consent-title{ font-size:.92rem; }
+  .cookie-consent-text{ font-size:.74rem; line-height:1.35; margin-bottom:.55rem; }
+  .cookie-consent-actions{ gap:.4rem; }
+  .cookie-consent-btn{ padding:.4rem .7rem; font-size:.78rem; }
 }
 @media (prefers-reduced-motion: reduce){
   .cookie-consent{ transition:none; transform:none; }
@@ -1613,14 +1619,15 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 }
 
 @media (max-width: 991.98px){
-  /* Mais para baixo no tablet: fica logo acima do botão do WhatsApp, em vez
-     de flutuar alto no meio da tela. */
-  .coupon-toast-container{ width:clamp(260px, 32vw, 300px); bottom:92px; }
+  /* Mais para baixo no tablet: fica logo acima do botão "voltar ao topo"
+     (.fab-top, que também fica de pé em bottom:92px+44px de altura) — não
+     em cima do WhatsApp (.fab) direto, senão os dois se sobrepõem. */
+  .coupon-toast-container{ width:clamp(260px, 32vw, 300px); bottom:148px; }
 }
 
 @media (max-width: 575.98px){
   .coupon-toast-container{
-    right:var(--spacing-sm); left:auto; bottom:92px;
+    right:var(--spacing-sm); left:auto; bottom:148px;
 
     width:min(58vw, 236px); max-width:none;
   }
