@@ -1268,6 +1268,38 @@
   let qvProductId = null, qvQty = 1, qvSelectedColor = null, qvSelectedSecondColor = null;
   const qvModalEl = document.getElementById("quickViewModal");
   const qvModal = new bootstrap.Modal(qvModalEl);
+
+  // O Quick View parece uma tela própria (título, foto grande, ocupa a
+  // viewport) então o botão/gesto de voltar do navegador precisa fechá-lo
+  // e devolver o usuário pra vitrine — sem isso, abrir o modal nunca
+  // empilha uma entrada de histórico, e "voltar" pula direto pra página
+  // que estava aberta antes do site (a vitrine em si nunca é recarregada,
+  // então filtro e scroll já ficam intactos sozinhos; só falta o
+  // navegador ter uma entrada própria pra descartar).
+  let qvHistoryPushed = false;
+  let qvClosingFromPopstate = false;
+
+  qvModalEl.addEventListener("hidden.bs.modal", () => {
+    if(qvHistoryPushed && !qvClosingFromPopstate){
+      qvHistoryPushed = false;
+      history.back();
+    }
+    qvClosingFromPopstate = false;
+  });
+
+  window.addEventListener("popstate", (e) => {
+    if(e.state && e.state.quickView != null){
+      // Reabrir pelo "avançar" pousa numa entrada que já tem quickView no
+      // state — sem marcar aqui, um fechamento por X/Esc logo em seguida
+      // não saberia que precisa consumir essa entrada com history.back().
+      qvHistoryPushed = true;
+      openQuickView(e.state.quickView, { fromPopState: true });
+    } else if(qvHistoryPushed){
+      qvClosingFromPopstate = true;
+      qvHistoryPushed = false;
+      qvModal.hide();
+    }
+  });
   const qvQtyEl = document.getElementById("qvQty");
   const qvPriceEl = document.getElementById("qvPrice");
   const qvPixPriceEl = document.getElementById("qvPixPrice");
@@ -1419,7 +1451,8 @@
       : "à vista ou boleto";
   }
 
-  function openQuickView(id){
+  function openQuickView(id, opts){
+    opts = opts || {};
     const p = findProduct(id);
     if(!p) return;
     qvProductId = p.id; qvQty = 1;
@@ -1460,6 +1493,10 @@
 
     renderQuickViewPayment();
     qvModal.show();
+    if(!opts.fromPopState){
+      history.pushState({ quickView: id }, "", location.pathname + location.search);
+      qvHistoryPushed = true;
+    }
   }
   wireImage(document.getElementById("qvImage"));
 
