@@ -78,21 +78,6 @@
     return fetchOriginal.apply(this, arguments).finally(terminou);
   };
 
-  document.addEventListener("click", function(e){
-    var link = e.target.closest && e.target.closest("a[href]");
-    if(!link || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || link.target === "_blank") return;
-    var href = link.getAttribute("href");
-
-    if(!href || href.charAt(0) === "#" || link.hasAttribute("download") || /^[a-z]+:/i.test(href) && !/^https?:/i.test(href)) return;
-    if(link.origin && link.origin !== location.origin) return;
-    agendar();
-  }, true);
-
-  document.addEventListener("submit", function(e){
-
-    if(e.target && !e.defaultPrevented) agendar();
-  }, true);
-
   window.addEventListener("pageshow", cancelar);
   window.addEventListener("pagehide", cancelar);
 })();

@@ -1499,10 +1499,22 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 }
 .coupon-toast:hover{ box-shadow:var(--shadow-md); }
 
-.coupon-toast.show{ animation:couponToastPopIn var(--animation-long) var(--ease-out) both; }
+/* Pop-in de entrada + um halo pulsando bem sutil enquanto o toast fica
+   parado na tela — chama o olho de novo depois que a entrada já passou,
+   sem competir com o resto da página (só o brilho, sem mover nada). Pausa
+   no hover pra não distrair enquanto a pessoa lê/preenche o e-mail. */
+.coupon-toast.show{
+  animation:couponToastPopIn var(--animation-long) var(--ease-out) both,
+            couponToastGlow 2.8s ease-in-out var(--animation-long) infinite;
+}
+.coupon-toast.show:hover{ animation-play-state:paused; }
 @keyframes couponToastPopIn{
   from{ opacity:0; transform:scale(.8); }
   to{ opacity:1; transform:scale(1); }
+}
+@keyframes couponToastGlow{
+  0%, 100%{ box-shadow:var(--shadow-sm); }
+  50%{ box-shadow:0 0 0 6px rgba(192,84,128,.14), var(--shadow-md); }
 }
 
 .coupon-toast.coupon-toast-closing{
