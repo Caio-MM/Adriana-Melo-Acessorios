@@ -67,7 +67,7 @@
       <a href="#colecoes" class="plc-nav-link">Coleções</a>
       <a href="#historia" class="plc-nav-link">Nossa história</a>
       <a href="#sobre" class="plc-nav-link">Como funciona</a>
-      <a href="#depoimentos" class="plc-nav-link">Depoimentos</a>
+      <a href="#depoimentos" class="plc-nav-link">Garantias</a>
       <a href="#contato" class="nav-cta">Contato</a>
     </div>
 
@@ -98,7 +98,7 @@
     <a href="#colecoes" class="plc-nav-link">Coleções</a>
     <a href="#historia" class="plc-nav-link">Nossa história</a>
     <a href="#sobre" class="plc-nav-link">Como funciona</a>
-    <a href="#depoimentos" class="plc-nav-link">Depoimentos</a>
+    <a href="#depoimentos" class="plc-nav-link">Garantias</a>
     <a href="#contato" class="plc-nav-link">Contato</a>
         <div id="navAccountMobile" class="d-flex flex-column gap-2 pt-2 border-top" style="border-color:var(--blush-100)!important"></div>
     <a href="#contato" class="btn-blush text-center mt-2">Fazer pedido</a>
@@ -398,16 +398,49 @@
         </div>
         <div class="d-flex flex-wrap align-items-center gap-3 pt-4 border-top" style="border-color:var(--blush-100)!important">
           <div>
-            <span class="section-eyebrow"><i class="bi bi-camera"></i> na régua</span>
+            <span class="section-eyebrow"><i class="bi bi-instagram"></i> Nos siga:</span>
             <div class="fw-semibold font-display" style="font-size:1.05rem">Nos siga @adriana_melo_acessorios</div>
           </div>
           <a href="https://www.instagram.com/adriana_melo_acessorios/" target="_blank" rel="noopener noreferrer" class="btn-outline-blush ms-auto"><i class="bi bi-instagram me-1"></i> Seguir no Instagram</a>
         </div>
       </div>
       <div class="col-lg-6 reveal reveal-delay-1">
-        <div class="historia-frame">
-          <svg class="bow-icon" style="width:38%; top:14%; left:12%; position:absolute; color:var(--blush-200)"><use href="#bow-shape"/></svg>
-          <svg class="bow-icon" style="width:55%"><use href="#bow-shape"/></svg>
+        <div class="instagram-feed-card" id="instagramFeedCard" data-state="loading">
+          <div class="instagram-feed-loading">
+            <div class="instagram-feed-header">
+              <div class="instagram-feed-avatar is-loading"></div>
+              <div class="instagram-feed-headline">
+                <div class="instagram-feed-skeleton-line" style="width:60%"></div>
+                <div class="instagram-feed-skeleton-line" style="width:40%"></div>
+              </div>
+            </div>
+            <div class="instagram-feed-grid">
+              <div class="instagram-feed-thumb is-loading"></div>
+              <div class="instagram-feed-thumb is-loading"></div>
+              <div class="instagram-feed-thumb is-loading"></div>
+              <div class="instagram-feed-thumb is-loading"></div>
+              <div class="instagram-feed-thumb is-loading"></div>
+              <div class="instagram-feed-thumb is-loading"></div>
+            </div>
+          </div>
+
+          <div class="instagram-feed-live d-none">
+            <a class="instagram-feed-header instagram-feed-profile-link" href="https://www.instagram.com/adriana_melo_acessorios/" target="_blank" rel="noopener noreferrer">
+              <img class="instagram-feed-avatar" alt="" width="52" height="52">
+              <div class="instagram-feed-headline">
+                <span class="instagram-feed-username"></span>
+                <span class="instagram-feed-cta">Ver perfil no Instagram <i class="bi bi-box-arrow-up-right"></i></span>
+              </div>
+            </a>
+            <div class="instagram-feed-grid"></div>
+          </div>
+
+          <div class="instagram-feed-fallback d-none">
+            <div class="instagram-feed-fallback-icon"><i class="bi bi-instagram"></i></div>
+            <div class="fw-semibold font-display" style="font-size:1.15rem">@adriana_melo_acessorios</div>
+            <p class="section-sub mb-3" style="font-size:.9rem">Acompanhe as novidades e bastidores no nosso perfil.</p>
+            <a href="https://www.instagram.com/adriana_melo_acessorios/" target="_blank" rel="noopener noreferrer" class="btn-outline-blush"><i class="bi bi-instagram me-1"></i> Seguir no Instagram</a>
+          </div>
         </div>
       </div>
     </div>
@@ -453,52 +486,321 @@
   </div>
 </section>
 
-<!-- ============ DEPOIMENTOS ============ -->
-<section id="depoimentos" class="py-5" style="padding-top:5rem; padding-bottom:5rem;">
+<!-- ============ GARANTIAS ============ -->
+<section id="depoimentos" class="scrolly-section">
   <div class="container">
-    <div class="text-center mb-5 reveal">
-      <span class="section-eyebrow"><i class="bi bi-chat-heart"></i> quem já comprou</span>
-      <h2 class="section-title">Carinho que aparece nos detalhes</h2>
+    <div class="text-center mx-auto scrolly-head reveal">
+      <span class="section-eyebrow"><i class="bi bi-shield-heart"></i> nossa promessa pra você</span>
+      <h2 class="section-title">Sua compra, protegida do início ao fim</h2>
     </div>
+  </div>
 
-    <div id="testiCarousel" class="carousel slide reveal reveal-delay-1" data-bs-ride="carousel">
-      <div class="carousel-inner">
-        <div class="carousel-item active">
-          <div class="testi-card">
-            <div class="testi-stars" aria-hidden="true"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i></div>
-            <p class="testi-quote">"Os laços chegaram lindos, embalados como um presente. A qualidade do cetim é visivelmente superior."</p>
-            <div class="testi-avatar">MF</div>
-            <strong>Mariana Ferreira</strong>
-            <div class="section-sub mx-auto">Brasília, DF</div>
+  <!-- No computador a seção fica presa na tela enquanto a pessoa rola, e os
+       cartões sobem em bloco, um empurrando o outro; o texto de cada passo
+       abre só quando ele fica ativo. No celular nada disso se aplica: a
+       mesma marcação vira uma lista empilhada (ver o media query no CSS), e
+       aí quem mostra o título de cada painel é o .scrolly-card-head.
+
+       Os painéis são HTML de verdade, não captura de tela: assim encaixam
+       exatamente na moldura em qualquer tamanho (print sempre acabava
+       cortado), ficam nítidos em tela retina e permitem esconder os dados
+       sensíveis do Pix por design. As fotos de produto são as reais da loja. -->
+  <div class="scrolly-pin-wrap" id="scrollyPin">
+    <div class="scrolly-pin">
+
+      <svg class="bow-icon scrolly-bow sb1" aria-hidden="true"><use href="#bow-shape"/></svg>
+      <svg class="bow-icon scrolly-bow sb2" aria-hidden="true"><use href="#bow-shape"/></svg>
+      <svg class="bow-icon scrolly-bow sb3" aria-hidden="true"><use href="#bow-shape"/></svg>
+      <svg class="bow-icon scrolly-bow sb4" aria-hidden="true"><use href="#bow-shape"/></svg>
+      <svg class="bow-icon scrolly-bow sb5" aria-hidden="true"><use href="#bow-shape"/></svg>
+
+      <div class="container">
+        <div class="scrolly-layout">
+
+          <ol class="scrolly-steps">
+            <li class="scrolly-step is-active" data-step="0">
+              <button type="button" class="scrolly-step-btn">
+                <span class="scrolly-num">01</span>
+                <span class="scrolly-title font-display">Pagamento seguro</span>
+                <span class="scrolly-desc"><span class="scrolly-desc-inner">Pix com 5% de desconto ou cartão em até 3x sem juros, processado pelo Mercado Pago.</span></span>
+              </button>
+            </li>
+            <li class="scrolly-step" data-step="1">
+              <button type="button" class="scrolly-step-btn">
+                <span class="scrolly-num">02</span>
+                <span class="scrolly-title font-display">Feito sob encomenda</span>
+                <span class="scrolly-desc"><span class="scrolly-desc-inner">Assim que o pagamento entra, sua peça vai para a fila de produção — feita à mão, uma de cada vez.</span></span>
+              </button>
+            </li>
+            <li class="scrolly-step" data-step="2">
+              <button type="button" class="scrolly-step-btn">
+                <span class="scrolly-num">03</span>
+                <span class="scrolly-title font-display">Atendimento direto</span>
+                <span class="scrolly-desc"><span class="scrolly-desc-inner">Dúvida antes ou depois da compra? Você fala com a gente no WhatsApp, sem robô no meio.</span></span>
+              </button>
+            </li>
+            <li class="scrolly-step" data-step="3">
+              <button type="button" class="scrolly-step-btn">
+                <span class="scrolly-num">04</span>
+                <span class="scrolly-title font-display">Troca grátis em 7 dias</span>
+                <span class="scrolly-desc"><span class="scrolly-desc-inner">Não gostou? Reembolso integral, com o frete de volta por nossa conta e sem precisar justificar.</span></span>
+              </button>
+            </li>
+          </ol>
+
+          <div class="scrolly-deck-viewport">
+            <div class="scrolly-deck" id="scrollyDeck" style="--active:0">
+
+              <!-- 01 — pagamento seguro: reproduz a página real pagamento-pix.html
+                   (mesmas classes .pix-*, .account-card), só com o QR e o código
+                   borrados. O "Aguardando o pagamento…" usa o .pix-spinner real,
+                   que já gira sozinho pelo keyframe pix-spin. -->
+              <figure class="scrolly-card" style="--i:0">
+                <div class="scrolly-card-head">
+                  <span class="scrolly-num">01</span>
+                  <h3 class="h5 font-display mb-1">Pagamento seguro</h3>
+                  <p class="section-sub mb-0">Pix com 5% de desconto ou cartão em até 3x sem juros, processado pelo Mercado Pago.</p>
+                </div>
+                <div class="scrolly-frame">
+                  <div class="scrolly-frame-bar" aria-hidden="true">
+                    <span class="scrolly-frame-dot"></span><span class="scrolly-frame-dot"></span><span class="scrolly-frame-dot"></span>
+                    <span class="scrolly-frame-url"><i class="bi bi-lock-fill"></i> adrianameloacessorios.com/pagamento-pix.html</span>
+                  </div>
+                  <div class="mock" aria-hidden="true">
+                    <div class="mock-escala"><div class="mock-escala-inner">
+                      <div class="mock-nav is-simples">
+                        <img src="img/logo-adriana-melo-6e53bc.png" alt="" width="168" height="54">
+                        <span class="mock-nav-conta"><i class="bi bi-person"></i></span>
+                      </div>
+                      <div class="mock-pagina">
+                        <div class="mock-duas is-pagamento">
+                          <div>
+                            <span class="section-eyebrow">último passo</span>
+                            <h4 class="section-title mb-3" style="font-size:1.7rem">Escolha como pagar</h4>
+                            <div class="order-card mb-2">
+                              <div class="mock-produto">
+                                <img src="img/mock-produto-1.jpg" alt="" width="373" height="560">
+                                <div><strong>Laço Duquesa</strong><span class="mock-muted">Rosa pink · 1 un.</span></div>
+                                <span class="mock-preco">R$ 49,90</span>
+                              </div>
+                            </div>
+                            <div class="order-card mb-3">
+                              <div class="mock-produto">
+                                <img src="img/mock-produto-2.jpg" alt="" width="373" height="560">
+                                <div><strong>Laço Borboleta</strong><span class="mock-muted">Rosa bebê · 2 un.</span></div>
+                                <span class="mock-preco">R$ 89,80</span>
+                              </div>
+                            </div>
+                            <dl class="mock-resumo">
+                              <div><dt>Subtotal</dt><dd>R$ 139,70</dd></div>
+                              <div class="is-desconto"><dt>Desconto Pix (5%)</dt><dd>−R$ 6,99</dd></div>
+                              <div><dt>Frete</dt><dd>Grátis</dd></div>
+                            </dl>
+                            <div class="mock-total">
+                              <div><span class="mock-muted">Total no Pix</span><strong>R$ 132,71</strong></div>
+                              <span class="mock-economia">você economiza R$ 6,99</span>
+                            </div>
+                          </div>
+                          <div class="account-card text-center mock-cartao">
+                            <span class="pix-badge"><i class="bi bi-qr-code"></i> Pix</span>
+                            <h4 class="section-title mt-3 mb-1" style="font-size:1.5rem">Quase lá!</h4>
+                            <p class="section-sub mb-3">Abra o app do seu banco e escaneie o código abaixo.</p>
+                            <p class="pix-amount">R$ 132,71</p>
+                            <div class="pix-qr-frame mock-qr-frame">
+                              <div class="pix-qr mock-qr-art"></div>
+                              <span class="mock-oculto"><i class="bi bi-eye-slash-fill"></i> código ocultado</span>
+                            </div>
+                            <p class="pix-or">ou copie o código</p>
+                            <div class="pix-copy-row">
+                              <span class="form-control mock-borrado">00020126360014br.gov.bcb.pix0136</span>
+                              <span class="btn-outline-blush pix-copy-btn"><i class="bi bi-clipboard"></i> Copiar</span>
+                            </div>
+                            <p class="pix-status"><span class="pix-spinner"></span> Aguardando o pagamento…</p>
+                            <p class="cart-hint">Este código vale até 01/09, 09:21.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div></div>
+                  </div>
+                </div>
+              </figure>
+
+              <!-- 02 — feito sob encomenda: página real acompanhar-pedido.html -->
+              <figure class="scrolly-card" style="--i:1">
+                <div class="scrolly-card-head">
+                  <span class="scrolly-num">02</span>
+                  <h3 class="h5 font-display mb-1">Feito sob encomenda</h3>
+                  <p class="section-sub mb-0">Assim que o pagamento entra, sua peça vai para a fila de produção — feita à mão, uma de cada vez.</p>
+                </div>
+                <div class="scrolly-frame">
+                  <div class="scrolly-frame-bar" aria-hidden="true">
+                    <span class="scrolly-frame-dot"></span><span class="scrolly-frame-dot"></span><span class="scrolly-frame-dot"></span>
+                    <span class="scrolly-frame-url">adrianameloacessorios.com/acompanhar-pedido.html</span>
+                  </div>
+                  <div class="mock" aria-hidden="true">
+                    <div class="mock-escala"><div class="mock-escala-inner">
+                      <div class="mock-nav is-simples">
+                        <img src="img/logo-adriana-melo-6e53bc.png" alt="" width="168" height="54">
+                        <span class="mock-nav-conta"><i class="bi bi-person"></i></span>
+                      </div>
+                      <div class="mock-pagina">
+                        <div class="mock-largura">
+                          <span class="policy-back"><i class="bi bi-arrow-left"></i> Meus pedidos</span>
+                          <div class="mb-4 mt-2">
+                            <span class="section-eyebrow"><i class="bi bi-truck"></i> acompanhamento</span>
+                            <h4 class="section-title" style="font-size:1.8rem">Seu pedido</h4>
+                          </div>
+                          <div class="order-card mb-3">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                              <div>
+                                <div class="fw-semibold">Pedido #AM-2481</div>
+                                <div class="small" style="color:var(--ink-soft)">Hoje, 09:12</div>
+                              </div>
+                              <span class="order-status order-status-paid">Em produção</span>
+                            </div>
+                          </div>
+                          <div class="order-card mb-3">
+                            <div class="mock-produto is-grande">
+                              <img src="img/mock-produto-2.jpg" alt="" width="373" height="560">
+                              <div>
+                                <strong>Laço Borboleta</strong>
+                                <span class="mock-muted">Rosa bebê · 2 unidades</span>
+                              </div>
+                              <span class="mock-preco">R$ 89,80</span>
+                            </div>
+                          </div>
+                          <div class="order-card">
+                            <ol class="mock-timeline">
+                              <li class="is-done"><span></span><div><strong>Pagamento confirmado</strong><em>hoje, 09:12</em></div></li>
+                              <li class="is-now"><span></span><div><strong>Na fila de produção</strong><em>feita à mão, uma peça de cada vez</em></div></li>
+                              <li><span></span><div><strong>Embalada para presente</strong><em>vai com laço e cartãozinho</em></div></li>
+                              <li><span></span><div><strong>A caminho</strong><em>com código de rastreio por e-mail</em></div></li>
+                            </ol>
+                          </div>
+                        </div>
+                      </div>
+                    </div></div>
+                  </div>
+                </div>
+              </figure>
+
+              <!-- 03 — atendimento direto: seção de contato real da home -->
+              <figure class="scrolly-card" style="--i:2">
+                <div class="scrolly-card-head">
+                  <span class="scrolly-num">03</span>
+                  <h3 class="h5 font-display mb-1">Atendimento direto</h3>
+                  <p class="section-sub mb-0">Dúvida antes ou depois da compra? Você fala com a gente no WhatsApp, sem robô no meio.</p>
+                </div>
+                <div class="scrolly-frame">
+                  <div class="scrolly-frame-bar" aria-hidden="true">
+                    <span class="scrolly-frame-dot"></span><span class="scrolly-frame-dot"></span><span class="scrolly-frame-dot"></span>
+                    <span class="scrolly-frame-url">adrianameloacessorios.com/#contato</span>
+                  </div>
+                  <div class="mock" aria-hidden="true">
+                    <div class="mock-escala"><div class="mock-escala-inner">
+                      <div class="mock-nav is-simples">
+                        <img src="img/logo-adriana-melo-6e53bc.png" alt="" width="168" height="54">
+                        <span class="mock-nav-conta"><i class="bi bi-person"></i></span>
+                      </div>
+                      <div class="mock-pagina">
+                        <div class="mock-duas">
+                          <div>
+                            <span class="section-eyebrow"><i class="bi bi-envelope-heart"></i> fale com a gente</span>
+                            <h4 class="section-title" style="font-size:1.8rem">Vamos criar seu laço?</h4>
+                            <p class="section-sub mb-4">Conte a ocasião, a cor e o tamanho — respondemos em até 24h úteis.</p>
+                            <div class="contact-info-row">
+                              <span class="social-circle contact-info-icon"><i class="bi bi-whatsapp"></i></span>
+                              <div><div class="fw-semibold">WhatsApp</div><span class="mock-link">(61) 98274-9808</span></div>
+                            </div>
+                            <div class="contact-info-row">
+                              <span class="social-circle contact-info-icon"><i class="bi bi-envelope"></i></span>
+                              <div><div class="fw-semibold">E-mail</div><span class="mock-link">adrianameloacessorios@gmail.com</span></div>
+                            </div>
+                            <div class="contact-info-row contact-info-row-last">
+                              <span class="social-circle contact-info-icon"><i class="bi bi-geo-alt"></i></span>
+                              <div><div class="fw-semibold">Ateliê</div><span class="mock-muted">Brasília, DF — envios para todo o Brasil</span></div>
+                            </div>
+                          </div>
+                          <div class="contact-form-card">
+                            <div class="mock-campos">
+                              <div><span class="mock-rotulo">Nome</span><span class="mock-input"></span></div>
+                              <div><span class="mock-rotulo">WhatsApp</span><span class="mock-input"></span></div>
+                            </div>
+                            <span class="mock-rotulo">Ocasião</span>
+                            <span class="mock-input is-select">Selecione...</span>
+                            <span class="mock-rotulo">Mensagem</span>
+                            <span class="mock-input is-area">Cor, tamanho, quantidade...</span>
+                            <span class="btn-blush mock-enviar">Enviar mensagem <i class="bi bi-send"></i></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div></div>
+                  </div>
+                </div>
+              </figure>
+
+              <!-- 04 — troca grátis: página real politica.html (#arrependimento) -->
+              <figure class="scrolly-card" style="--i:3">
+                <div class="scrolly-card-head">
+                  <span class="scrolly-num">04</span>
+                  <h3 class="h5 font-display mb-1">Troca grátis em 7 dias</h3>
+                  <p class="section-sub mb-0">Não gostou? Reembolso integral, com o frete de volta por nossa conta e sem precisar justificar.</p>
+                </div>
+                <div class="scrolly-frame">
+                  <div class="scrolly-frame-bar" aria-hidden="true">
+                    <span class="scrolly-frame-dot"></span><span class="scrolly-frame-dot"></span><span class="scrolly-frame-dot"></span>
+                    <span class="scrolly-frame-url">adrianameloacessorios.com/politica.html</span>
+                  </div>
+                  <div class="mock" aria-hidden="true">
+                    <div class="mock-escala"><div class="mock-escala-inner">
+                      <div class="mock-nav is-simples">
+                        <img src="img/logo-adriana-melo-6e53bc.png" alt="" width="168" height="54">
+                        <span class="mock-nav-conta"><i class="bi bi-person"></i></span>
+                      </div>
+                      <div class="mock-pagina">
+                        <div class="mock-largura">
+                          <span class="policy-back"><i class="bi bi-arrow-left"></i> Voltar à loja</span>
+                          <div class="mt-2 mb-3">
+                            <h4 class="section-title" style="font-size:1.8rem">Políticas da loja</h4>
+                            <span class="policy-updated">Última atualização: 26/08/2026</span>
+                          </div>
+                          <div class="mock-abas">
+                            <span>Quem somos</span><span>Privacidade e dados</span><span class="is-ativa">Direito de arrependimento</span><span>Trocas e devoluções</span>
+                          </div>
+                          <div class="mock-policy">
+                            <h5>Direito de arrependimento (7 dias)</h5>
+                            <div class="policy-highlight">
+                              <p class="mb-0">Comprou e se arrependeu? Você tem <strong>7 dias corridos após receber</strong> o pedido para desistir da compra, <strong>sem precisar dar nenhum motivo</strong>. Devolvemos <strong>100% do valor pago, incluindo o frete</strong>.</p>
+                            </div>
+                            <p>Para exercer esse direito, é só nos avisar pelo WhatsApp ou e-mail dentro do prazo.</p>
+                            <ul>
+                              <li>A peça precisa voltar sem sinais de uso, com a embalagem original.</li>
+                              <li>O custo do envio de volta é por nossa conta.</li>
+                              <li>O reembolso acontece em até 10 dias após recebermos a peça.</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div></div>
+                  </div>
+                </div>
+              </figure>
+
+
+
+
+
+
+
+            </div>
           </div>
+
         </div>
-        <div class="carousel-item">
-          <div class="testi-card">
-            <div class="testi-stars" aria-hidden="true"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i></div>
-            <p class="testi-quote">"Pedi o kit personalizado com o nome da minha filha para o batizado. Ficou exatamente como eu imaginei."</p>
-            <div class="testi-avatar">CL</div>
-            <strong>Camila Lopes</strong>
-            <div class="section-sub mx-auto">Goiânia, GO</div>
-          </div>
-        </div>
-        <div class="carousel-item">
-          <div class="testi-card">
-            <div class="testi-stars" aria-hidden="true"><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i></div>
-            <p class="testi-quote">"Comprei para revender e o acabamento impressionou minhas clientes. Já virou fornecedora fixa."</p>
-            <div class="testi-avatar">RS</div>
-            <strong>Renata Souza</strong>
-            <div class="section-sub mx-auto">Anápolis, GO</div>
-          </div>
-        </div>
-      </div>
-      <div class="carousel-indicators position-relative mt-4" style="gap:.4rem">
-        <button type="button" data-bs-target="#testiCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Depoimento de Mariana Ferreira"></button>
-        <button type="button" data-bs-target="#testiCarousel" data-bs-slide-to="1" aria-label="Depoimento de Camila Lopes"></button>
-        <button type="button" data-bs-target="#testiCarousel" data-bs-slide-to="2" aria-label="Depoimento de Renata Souza"></button>
       </div>
     </div>
   </div>
 </section>
+
 
 <!-- ============ CTA / NEWSLETTER ============ -->
 <section class="py-5" style="padding-top:5rem; padding-bottom:5rem;">
@@ -651,13 +953,13 @@
         <div class="d-flex flex-column gap-2">
           <a href="#historia">Nossa história</a>
           <a href="#sobre">Como funciona</a>
-          <a href="#depoimentos">Depoimentos</a>
+          <a href="#depoimentos">Garantias</a>
           <a href="#contato">Contato</a>
           <a href="politica.html">Trocas e devoluções</a>
           <a href="politica.html#privacidade">Privacidade</a>
         </div>
       </div>
-      <div class="col-lg-4">
+      <div class="col-lg-4" id="formasPagamento">
         <h3 class="plc-footer-heading">Formas de pagamento</h3>
                 <div class="d-flex flex-wrap gap-2">
           <span class="pay-badge" id="payBadgePix">Pix</span>
@@ -820,6 +1122,7 @@
 <script src="js/pricing.js" defer></script>
 <script src="js/colors.js" defer></script>
 <script src="js/main.js" defer></script>
+<script src="js/instagram-feed.js" defer></script>
 <script src="js/cupom-toast.js" defer></script>
 <script src="js/cookie-consent.js" defer></script>
 </body>

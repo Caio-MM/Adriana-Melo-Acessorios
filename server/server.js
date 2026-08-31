@@ -45,6 +45,7 @@ const db = require("./lib/db");
 const spreadsheetExport = require("./lib/export-spreadsheet");
 const auth = require("./lib/auth");
 const whatsapp = require("./lib/whatsapp");
+const instagram = require("./lib/instagram");
 const email = require("./lib/email");
 const { colorLabelForItem } = require("./lib/orderFormatting");
 // Mesmo arquivo que a vitrine e o carrinho carregam no navegador (js/pricing.js,
@@ -104,6 +105,9 @@ if(!process.env.MP_ACCESS_TOKEN){
 }
 if(!process.env.MELHOR_ENVIO_TOKEN){
   avisoConfig("MELHOR_ENVIO_TOKEN não definido. O cálculo de frete não vai funcionar até preencher o .env.");
+}
+if(!process.env.INSTAGRAM_ACCESS_TOKEN){
+  avisoConfig("INSTAGRAM_ACCESS_TOKEN não definido. A seção \"nossa história\" mostra o botão \"Seguir no Instagram\" em vez do feed ao vivo até preencher o .env (ver docs/instagram-setup.md).");
 }
 if(!process.env.ADMIN_EMAIL_HASHES){
   avisoConfig("ADMIN_EMAIL_HASHES não definido. NINGUÉM consegue entrar no painel administrativo (todo login vira cliente comum) até preencher o .env.");
@@ -3032,6 +3036,22 @@ app.patch("/api/admin/orders/:reference/delivered", auth.requireAdmin, auth.requ
   } catch (err) {
     console.error("Erro ao marcar pedido como entregue:", err);
     res.status(500).json({ error: "Não foi possível marcar o pedido como entregue agora." });
+  }
+});
+
+/* =========================================================================
+   GET /api/instagram/feed — perfil + posts recentes do Instagram para a
+   seção "nossa história" (js/instagram-feed.js). Rota pública, sem PII,
+   sem rate limiter dedicado (mesmo tier de /api/products) — o próprio
+   lib/instagram.js já cacheia e nunca deixa vazar o token de acesso.
+========================================================================= */
+app.get("/api/instagram/feed", async (req, res) => {
+  try {
+    const feed = await instagram.getInstagramFeed();
+    res.json(feed);
+  } catch (err) {
+    console.error("[instagram] erro inesperado na rota /api/instagram/feed:", err);
+    res.json({ available: false });
   }
 });
 

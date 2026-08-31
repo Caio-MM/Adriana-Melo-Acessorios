@@ -135,7 +135,118 @@
       else el.classList.add("is-visible"); 
     });
   }
-  observeReveal(); 
+  observeReveal();
+
+  /* ============ GARANTIAS — deck de cartões preso na tela ============
+     A seção fica presa (wrapper alta + miolo sticky, ver .scrolly-pin-wrap no
+     CSS) e os cartões sobem em bloco conforme a pessoa rola. Aqui NÃO dá para
+     usar IntersectionObserver como no revealObserver acima: enquanto a seção
+     está presa os passos não se movem na tela, então não há interseção nova
+     para observar. O índice vem do PROGRESSO da rolagem dentro da wrapper.
+     Só o desktop tem o deck (no celular a lista é empilhada e estes elementos
+     nem existem), por isso tudo aqui é opcional. */
+  const scrollyPin = document.getElementById("scrollyPin");
+  const scrollyDeck = document.getElementById("scrollyDeck");
+  if(scrollyPin && scrollyDeck){
+    const scrollySteps = Array.from(scrollyPin.querySelectorAll(".scrolly-step"));
+    const scrollyCards = Array.from(scrollyDeck.querySelectorAll(".scrolly-card"));
+    let passoDestacado = -1;
+    let scrollyTicking = false;
+
+    /* Dá ritmo ao trecho entre dois cartões: o primeiro e o último quinto do
+       percurso ficam parados (o cartão "assenta" e dá tempo de ler) e o meio
+       faz o movimento, com smoothstep para entrar e sair sem solavanco.
+       Puramente linear o deck ficava mole, sem começo nem fim definidos. */
+    function comRitmo(fracao){
+      const PARADA = 0.2;
+      const t = Math.min(1, Math.max(0, (fracao - PARADA) / (1 - 2 * PARADA)));
+      return t * t * (3 - 2 * t);
+    }
+
+    // O deck acompanha a rolagem de forma CONTÍNUA: --active é fracionário
+    // (1.37, por exemplo), então os cartões deslizam junto com o dedo em vez de
+    // saltar de posição em posição — era isso que dava a sensação de travado.
+    // Só o destaque do passo à esquerda é discreto (arredondado).
+    function posicionarDeck(indiceBruto){
+      const base = Math.floor(indiceBruto);
+      const suave = Math.min(scrollySteps.length - 1, base + comRitmo(indiceBruto - base));
+      scrollyDeck.style.setProperty("--active", suave.toFixed(3));
+
+      // Profundidade: quem não está no centro recua um pouco e esmaece, então
+      // o cartão em foco fica claramente na frente durante a troca.
+      scrollyCards.forEach((card, i) => {
+        const dist = Math.min(1, Math.abs(i - suave));
+        card.style.setProperty("--recuo", (1 - dist * 0.07).toFixed(3));
+        card.style.setProperty("--esmaece", (1 - dist * 0.45).toFixed(3));
+      });
+
+      const arredondado = Math.round(suave);
+      if(arredondado === passoDestacado) return;
+      passoDestacado = arredondado;
+      scrollySteps.forEach((el, i) => el.classList.toggle("is-active", i === arredondado));
+    }
+
+    // No celular a seção não prende nem desliza (ver o media query do CSS): a
+    // lista é empilhada e o índice ativo não significa nada ali.
+    const deckAtivo = window.matchMedia("(min-width: 992px)");
+
+    /* Os painéis são páginas desenhadas em tamanho real e reduzidas por
+       transform:scale(--esc). Se --esc for fixo, a altura ÚTIL da página
+       (moldura ÷ esc) muda junto com a janela — e numa tela baixa o painel
+       mais alto (o do Pix) ficava cortado. Amarrando --esc à altura da
+       moldura, a página tem sempre esta altura útil, caiba a janela que for. */
+    const ALTURA_PAGINA = 960;
+    const deckViewport = scrollyPin.querySelector(".scrolly-deck-viewport");
+    const escalaveis = scrollyCards
+      .map(card => card.querySelector(".mock-escala-inner"))
+      .filter(Boolean);
+
+    function ajustarEscalaDosPaineis(){
+      if(!deckAtivo.matches || !deckViewport) return;
+      const altura = deckViewport.clientHeight;
+      if(!altura) return;
+      const esc = (altura / ALTURA_PAGINA).toFixed(4);
+      escalaveis.forEach(el => el.style.setProperty("--esc", esc));
+    }
+
+    function updateScrolly(){
+      scrollyTicking = false;
+      if(!deckAtivo.matches) return;
+      const rect = scrollyPin.getBoundingClientRect();
+      // Quanto já rolou da wrapper, de 0 a 1. O trecho útil é a altura dela
+      // menos uma tela (a parte em que o miolo fica realmente grudado).
+      const rolavel = rect.height - window.innerHeight;
+      const progresso = rolavel > 0 ? (-rect.top) / rolavel : 0;
+      const limitado = Math.min(1, Math.max(0, progresso));
+      // 0 → primeiro cartão centrado; 1 → último centrado. Por isso (n-1) e
+      // não n: o percurso vai de um extremo ao outro, sem sobra nas pontas.
+      posicionarDeck(limitado * (scrollySteps.length - 1));
+    }
+
+    function agendarScrolly(){
+      if(scrollyTicking) return;
+      scrollyTicking = true;
+      requestAnimationFrame(updateScrolly);
+    }
+
+    window.addEventListener("scroll", agendarScrolly, { passive: true });
+    window.addEventListener("resize", () => { ajustarEscalaDosPaineis(); agendarScrolly(); });
+    deckAtivo.addEventListener("change", ajustarEscalaDosPaineis);
+    ajustarEscalaDosPaineis();
+    updateScrolly();
+
+    // Clicar num passo leva até o trecho de rolagem dele — os passos parecem
+    // clicáveis (são <button>), então precisam de fato levar a algum lugar.
+    scrollySteps.forEach((el, i) => {
+      el.querySelector(".scrolly-step-btn")?.addEventListener("click", () => {
+        const rolavel = scrollyPin.offsetHeight - window.innerHeight;
+        // mesmo mapeamento do posicionarDeck: o passo i fica centrado em
+        // i/(n-1) do percurso.
+        const alvo = scrollyPin.offsetTop + rolavel * (i / (scrollySteps.length - 1));
+        window.scrollTo({ top: alvo, behavior: "smooth" });
+      });
+    });
+  }
 
   /* ============ ANIMAÇÃO "ADICIONAR AO CARRINHO" — três efeitos combinados, disparados ============ */
   function bumpCartIcon(){

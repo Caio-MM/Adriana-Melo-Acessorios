@@ -183,6 +183,13 @@ test("rotas protegidas exigem sessão (401 sem cookie)", async () => {
   assert.equal((await fetch(ORIGIN + "/api/admin/orders")).status, 401);
 });
 
+test("GET /api/instagram/feed sem token configurado devolve available:false (nunca 500)", async () => {
+  const res = await fetch(ORIGIN + "/api/instagram/feed");
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.available, false);
+});
+
 test("CSRF: POST sem Origin correto é bloqueado", async () => {
   const res = await fetch(ORIGIN + "/api/newsletter", {
     method: "POST",

@@ -875,18 +875,61 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .pay-method .pm-price{ margin-left:auto; font-weight:700; color:var(--blush-700); white-space:nowrap; font-size:.92rem; }
 #cartInstallmentNote:empty{ display:none; }
 
-/* ============ NOSSA HISTÓRIA ============ */
-.historia-frame{
-  position:relative; aspect-ratio:1/1; max-width:420px; margin:0 auto;
+/* ============ NOSSA HISTÓRIA / INSTAGRAM (js/instagram-feed.js) ============
+   Card com 3 estados alternados via classe d-none pelo JS: loading (skeleton
+   com shimmer), live (avatar + grid de posts reais) e fallback (quando a
+   API não está configurada/disponível — ver server/lib/instagram.js). */
+.instagram-feed-card{
+  position:relative; max-width:420px; margin:0 auto; padding:1.4rem;
   border-radius:var(--radius-lg); overflow:hidden;
   background:
     radial-gradient(circle at 20% 20%, var(--blush-100) 0%, transparent 55%),
     radial-gradient(circle at 80% 80%, var(--blush-50) 0%, transparent 55%),
     var(--white);
   border:1px solid var(--blush-100); box-shadow:var(--shadow-soft);
-  display:flex; align-items:center; justify-content:center;
 }
-.historia-frame .bow-icon{ color:var(--blush-300); }
+.instagram-feed-header{ display:flex; align-items:center; gap:.85rem; margin-bottom:1.1rem; text-decoration:none; color:inherit; }
+.instagram-feed-avatar{
+  width:52px; height:52px; border-radius:50%; object-fit:cover; flex-shrink:0;
+  background:linear-gradient(135deg, var(--blush-500), var(--blush-700));
+  border:2px solid var(--white); box-shadow:0 6px 14px -6px rgba(192,84,128,.5);
+}
+.instagram-feed-avatar.is-loading,
+.instagram-feed-skeleton-line,
+.instagram-feed-thumb.is-loading{
+  background:linear-gradient(100deg, var(--blush-50) 30%, var(--blush-100) 50%, var(--blush-50) 70%);
+  background-size:200% 100%; animation:shimmer 1.4s ease-in-out infinite;
+}
+.instagram-feed-headline{ display:flex; flex-direction:column; min-width:0; }
+.instagram-feed-username{ font-family:var(--font-display); font-weight:600; font-size:1.05rem; color:var(--ink); }
+.instagram-feed-cta{ font-size:.78rem; color:var(--blush-600); font-weight:600; }
+.instagram-feed-profile-link:hover .instagram-feed-cta{ text-decoration:underline; }
+.instagram-feed-skeleton-line{ height:.75rem; border-radius:999px; margin:.3rem 0; }
+
+.instagram-feed-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:.6rem; }
+.instagram-feed-thumb{ position:relative; aspect-ratio:1/1; border-radius:var(--radius-md); overflow:hidden; display:block; background:var(--blush-50); }
+.instagram-feed-thumb img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transition:transform .3s var(--ease-out); }
+.instagram-feed-thumb:hover img{ transform:scale(1.06); }
+.instagram-feed-thumb-overlay{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  background:rgba(84,41,60,.35); color:#fff; opacity:0; transition:opacity .2s ease;
+}
+.instagram-feed-thumb:hover .instagram-feed-thumb-overlay,
+.instagram-feed-thumb:focus-visible .instagram-feed-thumb-overlay{ opacity:1; }
+@media (hover:none){ .instagram-feed-thumb-overlay{ opacity:1; background:rgba(84,41,60,.15); } }
+
+.instagram-feed-fallback{ text-align:center; padding:1.5rem .5rem; }
+.instagram-feed-fallback-icon{
+  width:64px; height:64px; margin:0 auto .9rem; border-radius:50%;
+  background:linear-gradient(135deg, var(--blush-500), var(--blush-700));
+  color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.6rem;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .instagram-feed-avatar.is-loading, .instagram-feed-skeleton-line, .instagram-feed-thumb.is-loading{ animation:none; }
+  .instagram-feed-thumb img{ transition:none; }
+  .instagram-feed-thumb:hover img{ transform:none; }
+}
 
 /* ============ PROCESS ============ */
 .process-wrap{ position:relative; }
@@ -926,40 +969,315 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   background-size:14px 2px; background-repeat:repeat-x; z-index:0;
 }
 
-/* ============ TESTIMONIALS ============ */
-.testi-card{
-  position:relative; overflow:hidden;
-  background:var(--white); border-radius:var(--radius-lg); padding:2.6rem 2.2rem 2.4rem;
-  border:1px solid var(--blush-100); max-width:680px; margin:0 auto; text-align:center;
+/* ============ GARANTIAS — deck de cartões preso na tela ============
+   No computador a seção fica presa (wrapper alta + miolo sticky) e os cartões
+   sobem em bloco, um empurrando o outro, em vez de trocarem por fade. O texto
+   de cada passo abre só quando ele fica ativo. Quem calcula o índice ativo é
+   js/main.js, pelo progresso da rolagem dentro da wrapper; o CSS só reage à
+   variável --active.
+   O bloco global de prefers-reduced-motion (topo do arquivo) já anula todas as
+   transições daqui — a troca vira um corte seco, que é o certo nesse caso.
+   No celular nada disso vale: ver o media query no fim deste bloco, onde a
+   mesma marcação vira uma lista empilhada. */
+.scrolly-section{ padding-top:5rem; padding-bottom:5rem; }
+.scrolly-head{ max-width:600px; margin-bottom:2.5rem; }
+/* No computador o miolo preso já tem folga sobrando dentro dos 100vh dele; com
+   o padding da seção por cima disso, sobrava um vão grande até a oferta de
+   boas-vindas. O respiro fica por conta do padding-top da seção seguinte. */
+@media (min-width: 992px){
+  .scrolly-section{ padding-bottom:0; }
 }
 
-.testi-card::before{
-  content:"\201C";
-  position:absolute; top:-.4rem; left:50%; transform:translateX(-50%);
-  font-family:var(--font-display); font-size:7rem; line-height:1;
-  color:var(--blush-100); z-index:0; pointer-events:none;
+/* A tela presa (100vh) + o percurso do deck. O percurso é (altura − 100vh) e
+   cobre os 3 intervalos entre os 4 cartões, ou seja ~50vh de rolagem por
+   cartão. Mudar isto muda o ritmo: maior = precisa rolar mais para trocar. */
+.scrolly-pin-wrap{ position:relative; height:280vh; }
+.scrolly-pin{
+  position:sticky; top:0; height:100vh;
+  display:flex; align-items:center; overflow:hidden;
 }
-.testi-stars{
-  position:relative; z-index:1;
-  display:flex; align-items:center; justify-content:center; gap:.2rem;
-  color:var(--gold-500); font-size:.8rem; margin-bottom:.9rem;
+/* z-index acima dos lacinhos: eles são absolutos (z-index:0) e, sem isto,
+   pintavam por cima do texto, que é conteúdo estático. */
+.scrolly-layout{ display:flex; align-items:center; gap:5rem; position:relative; z-index:1; }
+
+/* ---- coluna dos passos (só no computador) ---- */
+.scrolly-steps{ flex:0 0 340px; list-style:none; margin:0; padding:0; }
+.scrolly-step + .scrolly-step{ margin-top:.9rem; }
+.scrolly-step-btn{
+  display:block; width:100%; text-align:left; background:none; border:0;
+  border-left:2px solid var(--blush-100); padding:.55rem 0 .55rem 1.6rem;
+  cursor:pointer; transition:border-color .45s var(--ease-out);
 }
-.testi-quote{
-  position:relative; z-index:1;
-  font-family:var(--font-display); font-style:italic; font-size:1.25rem; color:var(--ink); line-height:1.6;
+.scrolly-step.is-active .scrolly-step-btn{ border-left-color:var(--blush-700); }
+.scrolly-step-btn:focus-visible{ outline:3px solid var(--blush-600); outline-offset:3px; border-radius:4px; }
+
+.scrolly-num{
+  display:block; font-family:var(--font-display); font-size:.72rem; font-weight:700;
+  letter-spacing:.1em; color:var(--ink-soft); opacity:.5; margin-bottom:.25rem;
+  transition:color .45s ease, opacity .45s ease;
 }
-.testi-avatar{
-  position:relative; z-index:1;
-  width:52px; height:52px; border-radius:50%; color:#fff; font-weight:700;
-  background:linear-gradient(135deg, var(--blush-500), var(--blush-700));
-  box-shadow:0 0 0 4px var(--blush-50);
-  display:flex; align-items:center; justify-content:center; margin:1.4rem auto .7rem;
+.scrolly-step.is-active .scrolly-num{ color:var(--blush-700); opacity:1; }
+.scrolly-title{
+  display:block; font-size:1.2rem; font-weight:600; line-height:1.3;
+  color:var(--ink-soft); transition:color .45s ease;
 }
-.carousel-indicators [data-bs-target]{
-  background:var(--blush-300); width:8px; height:8px; border-radius:50%;
-  transition:background .25s ease, width .25s ease;
+.scrolly-step.is-active .scrolly-title{ color:var(--ink); }
+
+/* Sanfona: a descrição só existe visualmente no passo ativo. grid-template-rows
+   0fr→1fr anima a altura sem precisar chutar um max-height fixo (que cortaria
+   o texto de quem usa fonte grande). */
+.scrolly-desc{
+  display:grid; grid-template-rows:0fr; opacity:0;
+  transition:grid-template-rows .5s var(--ease-out), opacity .35s ease, margin-top .5s var(--ease-out);
 }
-.carousel-indicators [data-bs-target].active{ background:var(--blush-700); width:22px; border-radius:999px; }
+.scrolly-desc-inner{ overflow:hidden; display:block; font-size:.9rem; line-height:1.6; color:var(--ink-soft); }
+.scrolly-step.is-active .scrolly-desc{ grid-template-rows:1fr; opacity:1; margin-top:.4rem; }
+
+/* ---- deck de cartões ---- */
+/* 4/3: os painéis são páginas inteiras (~870px de altura em unidades de
+   página) e precisam desta altura para caber sem cortar o rodapé. */
+.scrolly-deck-viewport{
+  flex:1 1 auto; min-width:0; position:relative;
+  aspect-ratio:4/3; max-height:76vh; overflow:hidden;
+}
+.scrolly-deck{ position:absolute; inset:0; }
+/* Cada cartão ocupa a janela inteira e fica deslocado (índice − ativo) vezes a
+   própria altura MAIS o respiro entre eles; mudar --active desliza todos
+   juntos. Os 32% de respiro são o que aparece de fundo entre um cartão e o
+   outro no meio da troca — quanto maior, mais "ar" entre os painéis.
+   --active é FRACIONÁRIO e acompanha a rolagem (js/main.js), então o movimento
+   já é contínuo — a transição aqui é curta só para amaciar o "degrau" do
+   scroll de roda do mouse. Uma transição longa faria o deck correr atrás da
+   rolagem e é o que dava sensação de travado. */
+.scrolly-card{
+  position:absolute; inset:0; margin:0;
+  /* --recuo e --esmaece vêm do js/main.js e dão profundidade: o cartão fora do
+     centro recua e esmaece, então o que está em foco fica claramente à frente. */
+  transform:translateY(calc((var(--i) - var(--active, 0)) * 132%)) scale(var(--recuo, 1));
+  opacity:var(--esmaece, 1);
+  transition:transform .18s linear, opacity .18s linear;
+}
+.scrolly-card-head{ display:none; }
+.scrolly-card .scrolly-frame{ height:100%; }
+
+/* ---- moldura de navegador ---- */
+.scrolly-frame{
+  display:flex; flex-direction:column;
+  border-radius:var(--radius-lg); overflow:hidden; background:var(--white);
+  box-shadow:0 26px 60px -28px rgba(84,41,60,.45); border:1px solid var(--blush-100);
+}
+.scrolly-frame-bar{
+  display:flex; align-items:center; gap:.4rem; padding:.6rem .9rem; flex-shrink:0;
+  background:var(--blush-50); border-bottom:1px solid var(--blush-100);
+}
+.scrolly-frame-dot{ width:8px; height:8px; border-radius:50%; background:var(--blush-200); }
+.scrolly-frame-dot:nth-child(2){ background:var(--gold-500); }
+.scrolly-frame-dot:nth-child(3){ background:var(--blush-500); }
+.scrolly-frame-url{
+  margin-left:.5rem; font-size:.72rem; color:var(--ink-soft); background:var(--white);
+  border-radius:999px; padding:.2rem .85rem; border:1px solid var(--blush-100);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* ============ GARANTIAS — os painéis de dentro da moldura ============
+   Cada painel é uma PÁGINA REAL da loja remontada com as MESMAS classes do
+   site (.account-card, .pix-*, .order-card, .policy-highlight, .contact-*) e
+   desenhada em escala reduzida, como se fosse a página vista de longe. Não é
+   captura de tela: encaixa exato na moldura em qualquer tamanho, fica nítido
+   em retina e permite esconder por design o QR e o código do Pix.
+   O truque da escala: o miolo é largo como uma página de verdade
+   (100% ÷ --esc) e leva um scale(--esc), então volta a caber na moldura
+   exatamente, sem número mágico em px. */
+.mock{
+  flex:1 1 auto; min-height:0; position:relative; overflow:hidden;
+  background:var(--cream);
+}
+.mock-escala{ position:absolute; inset:0; overflow:hidden; }
+.mock-escala-inner{
+  /* Valor inicial só para o primeiro quadro: js/main.js recalcula --esc a
+     partir da altura da moldura (ver ajustarEscalaDosPaineis) para que a
+     página tenha SEMPRE a mesma altura útil em unidades de página. Com um
+     valor fixo aqui, em janela baixa a moldura encolhia mas o conteúdo não,
+     e o painel do Pix acabava cortado. */
+  --esc:.68;
+  width:calc(100% / var(--esc));
+  /* min-height junto do flex abaixo: o miolo passa a ocupar a moldura inteira
+     (em unidades não-escaladas), e aí o conteúdo da página pode se centralizar
+     verticalmente em vez de ficar grudado no topo com um vazio embaixo. */
+  min-height:calc(100% / var(--esc));
+  transform:scale(var(--esc));
+  transform-origin:top left;
+  display:flex; flex-direction:column;
+}
+.mock-muted{ color:var(--ink-soft); font-size:.86rem; display:block; }
+.mock-link{ color:var(--blush-600); font-size:.95rem; }
+
+/* barra de navegação da "página" */
+.mock-nav{
+  display:flex; align-items:center; gap:1.2rem;
+  padding:.8rem 2rem; background:rgba(255,255,255,.94);
+  border-bottom:1px solid var(--blush-100);
+}
+.mock-nav > img{ height:34px; width:auto; }
+/* As páginas internas de verdade (pagamento-pix, acompanhar-pedido, politica)
+   usam .simple-header — só a logo e a conta, sem menu. */
+.mock-nav.is-simples{ justify-content:space-between; }
+.mock-nav-conta{
+  width:34px; height:34px; border-radius:50%; background:var(--blush-100); color:var(--blush-700);
+  display:flex; align-items:center; justify-content:center; font-size:1rem;
+}
+
+/* miolo da "página" */
+.mock-pagina{
+  padding:2rem 2.5rem 2.5rem;
+  flex:1 1 auto; display:flex; flex-direction:column; justify-content:center;
+}
+.mock-cartao{ max-width:440px; margin:0 auto; width:100%; }
+.mock-largura{ max-width:640px; margin:0 auto; width:100%; }
+.mock-duas{ display:grid; grid-template-columns:1fr 1.05fr; gap:2.5rem; align-items:center; }
+.mock-duas.is-pagamento{ grid-template-columns:1fr .82fr; gap:2rem; }
+
+.mock-resumo{ margin:0 0 1rem; display:flex; flex-direction:column; gap:.4rem; font-size:.95rem; }
+.mock-resumo > div{ display:flex; justify-content:space-between; gap:1rem; }
+.mock-resumo dt{ color:var(--ink-soft); font-weight:400; }
+.mock-resumo dd{ margin:0; font-weight:700; }
+.mock-resumo .is-desconto dt, .mock-resumo .is-desconto dd{ color:var(--color-success, #2F7D4F); }
+.mock-total{
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  background:var(--white); border:1.5px solid var(--blush-200);
+  border-radius:var(--radius-md); padding:.9rem 1.1rem;
+}
+.mock-total strong{ display:block; font-family:var(--font-display); font-size:1.5rem; color:var(--blush-700); }
+.mock-economia{
+  font-size:.85rem; font-weight:700; white-space:nowrap;
+  background:var(--color-success-soft, #E8F5EC); color:var(--color-success, #2F7D4F);
+  border-radius:999px; padding:.3rem .8rem;
+}
+
+/* Pix: o QR e o código vão ilegíveis de propósito — é uma ilustração da tela,
+   não um código que leve a algum lugar. */
+.mock-qr-frame{ position:relative; }
+/* Precisa da dupla classe: .pix-qr (definida bem depois neste arquivo) usa o
+   atalho `background:#fff`, que zeraria o background-image do padrão abaixo. */
+.pix-qr.mock-qr-art{
+  filter:blur(5px); border-radius:8px;
+  background-color:#fff;
+  background-image:
+    linear-gradient(45deg, var(--ink) 25%, transparent 25%, transparent 75%, var(--ink) 75%),
+    linear-gradient(45deg, var(--ink) 25%, transparent 25%, transparent 75%, var(--ink) 75%);
+  background-size:26px 26px; background-position:0 0, 13px 13px;
+}
+.mock-oculto{
+  position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
+  display:inline-flex; align-items:center; gap:.35rem; white-space:nowrap;
+  font-size:.78rem; font-weight:700; color:var(--ink-soft);
+  background:rgba(255,255,255,.94); border-radius:999px; padding:.25rem .7rem;
+}
+.mock-borrado{
+  filter:blur(3.5px); user-select:none; display:flex; align-items:center;
+  font-family:monospace; overflow:hidden; white-space:nowrap;
+}
+.pix-copy-row .mock-borrado{ flex:1 1 auto; min-width:0; }
+.pix-copy-row .pix-copy-btn{ display:inline-flex; align-items:center; gap:.4rem; white-space:nowrap; }
+
+/* produto dentro dos painéis */
+.mock-produto{ display:flex; align-items:center; gap:.9rem; }
+.mock-produto img{ width:52px; height:52px; border-radius:12px; object-fit:cover; flex-shrink:0; }
+.mock-produto.is-grande img{ width:68px; height:68px; }
+.mock-produto strong{ display:block; font-size:1rem; }
+.mock-preco{ margin-left:auto; font-weight:700; color:var(--blush-700); white-space:nowrap; }
+
+/* linha do tempo do pedido */
+.mock-timeline{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1rem; }
+.mock-timeline li{ display:flex; gap:.9rem; align-items:flex-start; }
+.mock-timeline li > span{
+  width:15px; height:15px; border-radius:50%; flex-shrink:0; margin-top:.25rem;
+  background:var(--white); border:2px solid var(--blush-200);
+}
+.mock-timeline li.is-done > span{ background:var(--color-success, #2F7D4F); border-color:var(--color-success, #2F7D4F); }
+.mock-timeline li.is-now > span{ background:var(--blush-600); border-color:var(--blush-600); box-shadow:0 0 0 5px rgba(221,110,155,.18); }
+.mock-timeline strong{ display:block; font-size:.98rem; }
+.mock-timeline em{ font-style:normal; font-size:.86rem; color:var(--ink-soft); }
+
+/* políticas */
+.mock-abas{ display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1.5rem; }
+.mock-abas span{
+  font-size:.85rem; color:var(--blush-700); background:var(--blush-50);
+  border:1px solid var(--blush-100); border-radius:999px; padding:.35rem .9rem;
+}
+.mock-abas .is-ativa{ background:var(--blush-600); border-color:var(--blush-600); color:#fff; font-weight:600; }
+.mock-policy h5{ font-family:var(--font-display); font-size:1.15rem; margin:0 0 .9rem; padding-bottom:.5rem; border-bottom:1px solid var(--blush-100); }
+.mock-policy p{ font-size:.95rem; }
+.mock-policy ul{ font-size:.95rem; color:var(--ink-soft); padding-left:1.1rem; }
+.mock-policy li{ margin-bottom:.35rem; }
+
+/* formulário de contato (só a aparência dos campos) */
+.mock-campos{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+.mock-rotulo{ display:block; font-size:.85rem; font-weight:600; margin:.9rem 0 .35rem; }
+.mock-campos .mock-rotulo{ margin-top:0; }
+.mock-input{
+  display:block; background:var(--white); border:1px solid var(--blush-200);
+  border-radius:var(--radius-md); padding:.6rem .9rem; min-height:44px;
+  font-size:.92rem; color:var(--ink-soft);
+}
+.mock-input.is-area{ min-height:92px; }
+.mock-enviar{ display:inline-flex; align-items:center; gap:.5rem; margin-top:1.2rem; }
+
+
+
+/* ---- lacinhos da marca (mesmo padrão do hero: .floaty + @keyframes floaty) ---- */
+.scrolly-bow{
+  position:absolute; z-index:0; pointer-events:none;
+  animation:floaty 6s ease-in-out infinite;
+}
+.scrolly-bow.sb1{ top:8%;  left:2%;   width:74px;  color:var(--blush-200); animation-delay:0s; }
+.scrolly-bow.sb2{ top:66%; left:24%;  width:44px;  color:var(--blush-300); animation-delay:1.1s; }
+.scrolly-bow.sb3{ bottom:8%; left:4%; width:96px;  color:var(--blush-150); animation-delay:2.2s; }
+.scrolly-bow.sb4{ top:12%; right:2%;  width:56px;  color:var(--blush-200); animation-delay:.7s; }
+.scrolly-bow.sb5{ bottom:14%; right:4%; width:78px; color:var(--blush-150); animation-delay:1.7s; }
+
+/* ============ GARANTIAS — celular ============
+   Prender a tela e coreografar rolagem não funciona bem em tela pequena: a
+   MESMA marcação vira uma lista empilhada, e o título de cada painel passa a
+   sair do .scrolly-card-head (a coluna de passos some). */
+@media (max-width: 991.98px){
+  .scrolly-pin-wrap{ height:auto; }
+  .scrolly-pin{ position:static; height:auto; display:block; overflow:visible; }
+  .scrolly-layout{ display:block; }
+  .scrolly-steps{ display:none; }
+  .scrolly-deck-viewport{ position:static; aspect-ratio:auto; max-height:none; overflow:visible; }
+  .scrolly-deck{ position:static; display:flex; flex-direction:column; gap:2.5rem; }
+  .scrolly-card{ position:static; transform:none; transition:none; }
+  .scrolly-card-head{ display:block; margin-bottom:1rem; }
+  .scrolly-card-head .scrolly-num{ opacity:1; color:var(--blush-700); margin-bottom:.15rem; }
+  .scrolly-card .scrolly-frame{ height:auto; }
+  /* Nada de escala aqui: encolher uma página inteira para 343px de largura
+     deixaria o texto ilegível. No celular o painel abre em tamanho normal e
+     em coluna única — vira a versão mobile da mesma página. */
+  .mock{ position:static; overflow:visible; }
+  .mock-escala{ position:static; overflow:visible; }
+  .mock-escala-inner{ --esc:1; width:100%; min-height:0; transform:none; }
+  .mock-pagina{ padding:1.25rem 1.1rem 1.5rem; display:block; }
+  .mock-duas,
+  .mock-duas.is-pagamento,
+  .mock-campos{ grid-template-columns:1fr; gap:1.25rem; }
+  .mock-largura, .mock-cartao{ max-width:none; }
+  .mock-nav{ padding:.7rem 1.1rem; }
+  .pix-qr.mock-qr-art{ width:170px; height:170px; }
+  .mock-duas > div + div{ margin-top:1.25rem; }
+  /* lado a lado o total e o selo de economia se espremem em 375px */
+  .mock-total{ flex-direction:column; align-items:flex-start; gap:.5rem; }
+  /* Deixar encolher e quebrar palavra longa: só faz sentido na largura do
+     celular. No computador isso fazia o texto quebrar em mais linhas e o
+     conteúdo estourar a moldura, por isso fica restrito a este bloco. */
+  .mock-produto, .mock-produto > div,
+  .mock-duas > *, .mock-campos > *{ min-width:0; }
+  .mock-produto strong, .mock-link{ overflow-wrap:anywhere; }
+  .scrolly-bow.sb2, .scrolly-bow.sb3, .scrolly-bow.sb5{ display:none; }
+  .scrolly-bow.sb1{ top:1%; left:-2%; width:56px; }
+  .scrolly-bow.sb4{ top:auto; bottom:2%; right:-2%; width:46px; }
+}
+
 
 /* ============ CONTATO ============ */
 .contact-form-card{

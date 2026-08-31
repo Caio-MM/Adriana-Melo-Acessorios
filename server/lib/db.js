@@ -367,6 +367,20 @@ db.exec(`
   );
 `);
 
+// Token de acesso do Instagram (Instagram API with Instagram Login,
+// graph.instagram.com) usado pelo feed automático da seção "nossa
+// história" (GET /api/instagram/feed, server/lib/instagram.js). Linha
+// única (id sempre 1, CHECK garante isso): só existe UM token vigente da
+// loja; refreshed_at diz quando foi renovado pela última vez, pra saber
+// quando pedir um novo antes dos 60 dias de validade vencerem.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS instagram_tokens (
+    id           INTEGER PRIMARY KEY CHECK (id = 1),
+    access_token TEXT    NOT NULL,
+    refreshed_at INTEGER NOT NULL
+  );
+`);
+
 // Retorno por e-mail do 2FA: colunas extras na PRÓPRIA linha do desafio
 // (não uma tabela nova) — o código emailado só pode valer para ESTE
 // desafio específico, e como token_hash já é a chave desse desafio, essas
@@ -1162,6 +1176,21 @@ function deleteCoupon(code) {
   stmtDeleteCoupon.run(code);
 }
 
+/* -------------------------- INSTAGRAM -------------------------- */
+const stmtGetInstagramToken = db.prepare(`SELECT access_token, refreshed_at FROM instagram_tokens WHERE id = 1`);
+const stmtUpsertInstagramToken = db.prepare(`
+  INSERT INTO instagram_tokens (id, access_token, refreshed_at) VALUES (1, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET access_token = excluded.access_token, refreshed_at = excluded.refreshed_at
+`);
+
+function getInstagramToken() {
+  const row = stmtGetInstagramToken.get();
+  return row ? { accessToken: row.access_token, refreshedAt: row.refreshed_at } : null;
+}
+function saveInstagramToken({ accessToken, refreshedAt }) {
+  stmtUpsertInstagramToken.run(accessToken, refreshedAt);
+}
+
 module.exports = {
   createUser,
   getUserByEmail,
@@ -1234,4 +1263,6 @@ module.exports = {
   createCoupon,
   updateCoupon,
   deleteCoupon,
+  getInstagramToken,
+  saveInstagramToken,
 };
