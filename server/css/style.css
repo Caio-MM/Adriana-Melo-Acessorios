@@ -697,9 +697,14 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
    deixa o modal bem mais largo aqui) a foto vai numa coluna e as
    informações — descrição, cor, quantidade e PREÇO — na outra, lado a
    lado. Só isso já resolve o preço ficar espremido embaixo da foto; no
-   celular continua empilhado do jeito que sempre foi. */
+   celular continua empilhado do jeito que sempre foi.
+   align-items:center (não flex-start): a coluna de texto é bem mais baixa
+   que a foto — centralizar reparte essa sobra entre topo e base em vez de
+   deixar tudo vazio só embaixo. (Testado: usar CSS Grid pra colocar o
+   preço/botão dentro da coluna de texto quebrava a centralização do
+   modal do Bootstrap — não compensa o risco por um ganho pequeno.) */
 @media (min-width: 992px){
-  .qv-body{ display:flex; align-items:flex-start; gap:1.75rem; }
+  .qv-body{ display:flex; align-items:center; gap:1.75rem; }
   .qv-media{ flex:0 0 300px; }
   .qv-info{ flex:1 1 auto; min-width:0; padding-top:.2rem; }
 }
@@ -716,16 +721,21 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
      em vez de empurrar preço/pagamento pra fora da área visível — a
      largura já vem de graça pelo aspect-ratio. */
   position:relative; aspect-ratio:2/3;
-  /* O `calc(100vh - 26rem)` é o que faz a foto ceder espaço para quem usa
+  /* O `calc(100vh - 32rem)` é o que faz a foto ceder espaço para quem usa
      letra grande no celular. vh NÃO acompanha o tamanho da fonte: sem esse
-     termo, o texto crescia, a foto continuava com os mesmos 46vh, e
+     termo, o texto crescia, a foto continuava com os mesmos 36vh, e
      preço/cor/quantidade saíam da área visível — dava para tocar em
      "Adicionar ao carrinho" sem nunca ter visto o preço.
-     Como rem cresce junto com a letra da pessoa, 26rem é uma RESERVA para
-     o que vem abaixo da foto (descrição, cores, quantidade e preço): quanto
-     maior a fonte, maior a reserva, menor a foto. O max(140px) impede que
-     ela suma de vez numa combinação extrema de fonte enorme e tela baixa. */
-  height:max(140px, min(46vh, 480px, calc(100vh - 26rem)));
+     Como rem cresce junto com a letra da pessoa, 32rem é uma RESERVA para
+     o que vem abaixo da foto (cabeçalho do modal, descrição, cores,
+     quantidade E o rodapé de preço/botão inteiro — medido de verdade: com
+     36vh a foto sozinha já dava a volta certa nisso, então o valor aqui
+     casa com 36vh no tamanho de fonte padrão). Quanto maior a fonte, maior
+     a reserva, menor a foto. O max(140px) impede que ela suma de vez numa
+     combinação extrema de fonte enorme e tela baixa — nesse ponto extremo
+     o corpo do modal volta a rolar (ver .modal-body), então nada some de
+     vez, só passa a exigir um scroll pequeno dentro do modal. */
+  height:max(140px, min(36vh, 480px, calc(100vh - 32rem)));
   width:auto; max-width:100%; margin-inline:auto;
   border-radius:var(--radius-md); overflow:hidden;
   display:flex; align-items:center; justify-content:center; background:var(--blush-50);
