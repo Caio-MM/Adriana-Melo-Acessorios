@@ -14,6 +14,8 @@
 (() => {
   "use strict";
 
+  const PERFIL_INSTAGRAM = "https://www.instagram.com/adriana_melo_acessorios/";
+
   const card = document.getElementById("instagramFeedCard");
   if (!card) return;
 
@@ -37,7 +39,14 @@
     feed.posts.forEach((post) => {
       const a = document.createElement("a");
       a.className = "instagram-feed-thumb";
-      a.href = post.permalink;
+      // Só http/https. O permalink vem da Graph API por HTTPS e não é
+      // controlável por terceiros — não é uma falha hoje —, mas href sem
+      // validação de esquema é o tipo de coisa que vira XSS se um dia a
+      // origem do dado mudar. Link estranho cai no perfil da loja, e aí a
+      // miniatura continua útil em vez de virar link morto.
+      a.href = /^https?:\/\//i.test(String(post.permalink || ""))
+        ? post.permalink
+        : PERFIL_INSTAGRAM;
       a.target = "_blank";
       a.rel = "noopener noreferrer";
       a.setAttribute("aria-label", "Ver publicação no Instagram");
