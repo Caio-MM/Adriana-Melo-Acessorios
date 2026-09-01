@@ -365,9 +365,16 @@
         <h2 class="section-title">Um laço para cada momento</h2>
         <p class="section-sub mt-2">Escolha por ocasião e monte o pedido — cada peça é confeccionada especialmente para você.</p>
       </div>
+
+      <div class="vitrine-busca reveal">
+        <label class="visually-hidden" for="buscaProduto">Buscar produto pelo nome</label>
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input type="search" id="buscaProduto" class="form-control" placeholder="Buscar pelo nome…" autocomplete="off">
+        <button type="button" id="buscaLimpar" class="vitrine-busca-limpar d-none" aria-label="Limpar busca"><i class="bi bi-x-lg"></i></button>
+      </div>
     </div>
 
-    <div class="chip-group mb-5" id="filterGroup">
+    <div class="chip-group mb-3" id="filterGroup">
       <button class="chip active" data-cat="todos">Todos</button>
       <button class="chip" data-cat="maternidade">Maternidade</button>
       <button class="chip" data-cat="festa">Festa</button>
@@ -376,7 +383,21 @@
       <button class="chip" data-cat="presente">Presente</button>
     </div>
 
+    <!-- A vitrine não anunciava nada ao mudar de filtro; com busca e "Ver
+         mais" isso passa a importar de verdade para quem usa leitor de tela. -->
+    <p class="vitrine-contagem mb-4" id="vitrineContagem" role="status" aria-live="polite"></p>
+
     <div class="row g-4" id="productsGrid"></div>
+
+    <div class="vitrine-vazio d-none" id="vitrineVazio">
+      <svg class="bow-icon" aria-hidden="true"><use href="#bow-shape"/></svg>
+      <p class="mb-1">Nenhum laço encontrado para <strong id="vitrineVazioTermo"></strong>.</p>
+      <p class="section-sub mb-0">Tente outro nome ou veja todas as ocasiões.</p>
+    </div>
+
+    <div class="text-center mt-5 d-none" id="vitrineMaisWrap">
+      <button type="button" class="btn-outline-blush" id="vitrineMais">Ver mais produtos</button>
+    </div>
   </div>
 </section>
 
@@ -1025,20 +1046,18 @@
           <div class="qv-gallery-thumbs d-none" id="qvGalleryThumbs" role="group" aria-label="Fotos do produto"></div>
         </div>
         <div class="qv-info">
-          <p class="section-sub" id="qvDesc">Descrição do produto.</p>
+          <!-- Categoria e selos vêm do próprio produto (dado real). Preenchem
+               o topo da coluna, que antes começava direto na descrição e
+               deixava a direita visivelmente vazia. -->
+          <div class="qv-tags" id="qvTags"></div>
 
-          <div class="qv-colors mb-2">
-            <span class="section-sub mb-0 d-block">Cor do laço</span>
-            <div class="qv-color-options" id="qvColorOptions" role="radiogroup" aria-label="Escolha a cor do laço"></div>
-            <div class="qv-soldout-msg d-none" id="qvSoldOutMsg">Esgotado em todas as cores no momento.</div>
+          <p class="section-sub qv-desc" id="qvDesc">Descrição do produto.</p>
+
+          <div class="qv-soldout-msg d-none" id="qvSoldOutMsg">
+            <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i> Esgotado no momento.
           </div>
 
-          <div class="qv-colors mb-2 d-none" id="qvSecondColorSection">
-            <span class="section-sub mb-0 d-block">Cor secundária (opcional)</span>
-            <div class="qv-color-options" id="qvSecondColorOptions" role="radiogroup" aria-label="Escolha uma segunda cor (opcional)"></div>
-          </div>
-
-          <div class="qv-qty-row d-flex justify-content-between align-items-center mt-2">
+          <div class="qv-qty-row d-flex justify-content-between align-items-center">
             <span class="section-sub mb-0">Quantidade</span>
             <div class="d-flex align-items-center gap-2">
               <button class="btn btn-sm btn-outline-blush" id="qvMinus" aria-label="Diminuir quantidade">−</button>
@@ -1047,6 +1066,16 @@
             </div>
           </div>
 
+          <!-- Garantias reais da loja, as mesmas já afirmadas na faixa da home
+               e na seção de garantias. É o que preenche a coluna sem inventar
+               dado que o produto não tem (a maioria não tem nem descrição
+               própria nem segunda foto). -->
+          <ul class="qv-garantias">
+            <li><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Troca grátis em até 7 dias</li>
+            <li><i class="bi bi-scissors" aria-hidden="true"></i> Feito à mão, sob encomenda</li>
+            <li><i class="bi bi-truck" aria-hidden="true"></i> Enviamos para todo o Brasil</li>
+            <li><i class="bi bi-gift" aria-hidden="true"></i> Vai embalado para presente</li>
+          </ul>
         </div>
       </div>
       <!-- O preço fica no RODAPÉ, junto do botão, e não no corpo que rola:
@@ -1120,7 +1149,6 @@
 
 <script src="js/auth.js" defer></script>
 <script src="js/pricing.js" defer></script>
-<script src="js/colors.js" defer></script>
 <script src="js/main.js" defer></script>
 <script src="js/instagram-feed.js" defer></script>
 <script src="js/cupom-toast.js" defer></script>

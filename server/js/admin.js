@@ -48,15 +48,6 @@
     CATEGORY_LABELS = Object.fromEntries(categories.map(c => [c.slug, c.label]));
   }
 
-  // Paleta ATUAL de cores — fixa (window.PLCColors.RIBBON_COLORS) + criada
-  // pelo painel ("+ Nova cor"). Mesmo papel de currentCategories/
-  // applyCategories, populada a partir de /api/admin/products (data.colors).
-  let currentColors = window.PLCColors.RIBBON_COLORS.slice();
-  function applyColors(colorsList){
-    if(!Array.isArray(colorsList) || colorsList.length === 0) return;
-    currentColors = colorsList;
-  }
-
   function renderCategoryOptions(selectEl, selectedSlug){
     selectEl.innerHTML = currentCategories
       .map(c => `<option value="${escapeHTML(c.slug)}">${escapeHTML(c.label)}</option>`).join("");
@@ -537,9 +528,7 @@
   const epCategory = document.getElementById("epCategory");
   const epBadgeBestseller = document.getElementById("epBadgeBestseller");
   const epBadgeNew = document.getElementById("epBadgeNew");
-  const epColorOptionsEl = document.getElementById("epColorOptions");
-  const epNewColorBtn = document.getElementById("epNewColorBtn");
-  const epAllowSecondColor = document.getElementById("epAllowSecondColor");
+  const epSoldOut = document.getElementById("epSoldOut");
   const epPreview = document.getElementById("epPreview");
   const epPreviewPlaceholder = document.getElementById("epPreviewPlaceholder");
   const epPreviewName = document.getElementById("epPreviewName");
@@ -563,65 +552,9 @@
   let photoCropTarget = null;
   let photoUploadInFlight = false;
 
-  // Cores criadas com "+ Nova cor" nesta sessão de edição, ainda NÃO
-  // confirmadas no servidor — só viram uma cor de verdade (POST
-  // /api/admin/colors) no "Salvar alterações", e só se continuarem
-  // marcadas para este produto. Sem isso, cancelar a edição (ou desmarcar
-  // a cor antes de salvar) deixaria uma cor "no vácuo" na paleta, sem
-  // nenhum produto de fato com ela em estoque.
-  let pendingNewColors = [];
-
   function selectedBadges(){
     return [epBadgeBestseller, epBadgeNew].filter(cb => cb.checked).map(cb => cb.value);
   }
-
-  // As 6 fixas (window.PLCColors.RIBBON_COLORS) nunca podem ser apagadas —
-  // só cores criadas pelo painel (já salvas em currentColors, ou ainda
-  // pendentes de confirmação em pendingNewColors) ganham o botão de apagar.
-  function renderColorCheckboxes(selectedHexes){
-    const fixedHexes = new Set(window.PLCColors.RIBBON_COLORS.map(c => c.hex));
-    const options = [...currentColors, ...pendingNewColors.map(c => ({ ...c, pending: true }))];
-    epColorOptionsEl.innerHTML = options.map(c => {
-      const deletable = !fixedHexes.has(c.hex);
-      const cor = safeColor(c.hex);
-      return `
-      <span class="ep-color-check-wrap">
-        <label class="ep-color-check">
-          <input type="checkbox" class="ep-color-input" value="${cor}" ${selectedHexes.includes(c.hex) ? "checked" : ""}>
-          <span class="ep-color-swatch" style="background:${cor}"></span>
-          <span class="ep-color-name">${escapeHTML(c.label)}${c.pending ? " (nova)" : ""}</span>
-        </label>
-        ${deletable ? `<button type="button" class="ep-color-delete" data-hex="${cor}" data-pending="${c.pending ? "1" : "0"}" aria-label="Apagar cor ${escapeHTML(c.label)}"><i class="bi bi-x-lg"></i></button>` : ""}
-      </span>
-    `;
-    }).join("");
-  }
-  function selectedColors(){
-    return [...epColorOptionsEl.querySelectorAll(".ep-color-input")].filter(cb => cb.checked).map(cb => cb.value);
-  }
-  epColorOptionsEl.addEventListener("click", async (e) => {
-    const btn = e.target.closest(".ep-color-delete");
-    if(!btn) return;
-    e.preventDefault(); // dentro do mesmo grupo do <label> — não deixa "vazar" pro checkbox
-    const hex = btn.dataset.hex;
-    if(btn.dataset.pending === "1"){
-      // Ainda nem foi criada de verdade (só existe localmente até o
-      // "Salvar") — só precisa sumir da lista, sem chamada nenhuma.
-      pendingNewColors = pendingNewColors.filter(c => c.hex !== hex);
-      renderColorCheckboxes(selectedColors().filter(h => h !== hex));
-      return;
-    }
-    if(!confirm("Apagar esta cor da paleta? Isso não pode ser desfeito.")) return;
-    try{
-      const res = await fetchWithTimeout(`/api/admin/colors/${encodeURIComponent(hex)}`, { method: "DELETE" });
-      const data = await res.json().catch(() => ({}));
-      if(!res.ok) throw new Error(data.error || "Não foi possível apagar a cor.");
-      currentColors = currentColors.filter(c => c.hex !== hex);
-      renderColorCheckboxes(selectedColors().filter(h => h !== hex));
-    }catch(err){
-      alert(err.message || "Não foi possível apagar a cor agora.");
-    }
-  });
 
   function setPreviewPhoto(url){
     const hasPhoto = Boolean(url);
@@ -631,7 +564,7 @@
     epPreviewPlaceholder.classList.toggle("d-none", hasPhoto);
   }
 
-  // Mesmo padrão de renderColorCheckboxes/selectedColors — desenha a lista a
+  // Desenha a lista a
   // partir do estado (pendingPhotos) e cada clique de mover/remover/recortar
   // muda esse mesmo array e re-renderiza. A miniatura do topo (epPreview)
   // segue a capa (índice 0) automaticamente via setPreviewPhoto.
@@ -705,14 +638,7 @@
     renderCategoryOptions(epCategory, product.category || "");
     epBadgeBestseller.checked = (product.badges || []).includes("Mais vendido");
     epBadgeNew.checked = (product.badges || []).includes("Novo");
-    pendingNewColors = [];
-    // O servidor já resolve NULL (nunca customizado) para as 6 cores, então
-    // um array vazio aqui É "esgotado em tudo" de propósito — não pode
-    // cair no fallback de "todas as cores" (isso reverteria o esgotado
-    // silenciosamente da próxima vez que a lojista salvar sem mexer nisso).
-    renderColorCheckboxes(Array.isArray(product.availableColors)
-      ? product.availableColors : currentColors.map(c => c.hex));
-    epAllowSecondColor.checked = Boolean(product.allowsSecondColor);
+    epSoldOut.checked = Boolean(product.soldOut);
 
     // Mesmo cuidado das cores: um array vazio já vindo do servidor é
     // "removeu todas as fotos" de propósito — só cai para a foto única
@@ -736,8 +662,7 @@
       photos: [...pendingPhotos], // ordem importa — NÃO ordenar antes de comparar no submit
       category: product.category || "",
       badges: [...(product.badges || [])].sort(),
-      availableColors: [...(Array.isArray(product.availableColors) ? product.availableColors : currentColors.map(c => c.hex))].sort(),
-      allowsSecondColor: Boolean(product.allowsSecondColor),
+      soldOut: Boolean(product.soldOut),
     };
     editModal.show();
   }
@@ -1176,10 +1101,7 @@
     if(category !== editOriginal.category) patch.category = category;
     const sortedBadges = [...badges].sort();
     if(JSON.stringify(sortedBadges) !== JSON.stringify(editOriginal.badges)) patch.badges = badges;
-    const availableColors = selectedColors();
-    const sortedColors = [...availableColors].sort();
-    if(JSON.stringify(sortedColors) !== JSON.stringify(editOriginal.availableColors)) patch.availableColors = availableColors;
-    if(epAllowSecondColor.checked !== editOriginal.allowsSecondColor) patch.allowSecondColor = epAllowSecondColor.checked;
+    if(epSoldOut.checked !== editOriginal.soldOut) patch.soldOut = epSoldOut.checked;
 
     if(Object.keys(patch).length === 0){
       editModal.hide();
@@ -1192,25 +1114,6 @@
     epSaveBtn.textContent = "Salvando...";
 
     try{
-      // Cores criadas com "+ Nova cor" só viram de verdade agora — e só as
-      // que continuam marcadas para este produto (a lojista pode ter
-      // desmarcado antes de salvar; nesse caso a cor simplesmente nunca é
-      // criada). Precisa vir ANTES do PATCH do produto: o array de hex que
-      // ele vai salvar em availableColors só é válido depois que essas
-      // cores existirem de verdade no servidor.
-      for(const pending of pendingNewColors){
-        if(!availableColors.includes(pending.hex)) continue;
-        const colorRes = await fetch("/api/admin/colors", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ hex: pending.hex, label: pending.label }),
-        });
-        const colorData = await colorRes.json().catch(() => ({}));
-        if(!colorRes.ok) throw new Error(colorData.error || `Não foi possível criar a cor "${pending.label}".`);
-        currentColors = [...currentColors, colorData];
-      }
-      pendingNewColors = [];
-
       const res = await fetch(`/api/admin/products/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -1253,49 +1156,6 @@
   }
   document.getElementById("epNewCategoryBtn").addEventListener("click", () => promptNewCategory(epCategory));
 
-  /* ============================== NOVA COR ============================== */
-  // <input type="color"> nativo, criado em memória (nunca aparece no
-  // layout) só para abrir o seletor de cor do próprio sistema
-  // operacional/navegador — mesma simplicidade do prompt() de categoria,
-  // sem precisar construir um modal novo. Resolve com o hex escolhido, ou
-  // null se a cliente cancelar (o evento "change" simplesmente não dispara).
-  function pickColorHex(){
-    return new Promise((resolve) => {
-      const input = document.createElement("input");
-      input.type = "color";
-      input.style.position = "fixed";
-      input.style.opacity = "0";
-      input.style.pointerEvents = "none";
-      document.body.appendChild(input);
-      input.addEventListener("change", () => {
-        resolve(input.value.toUpperCase());
-        input.remove();
-      }, { once: true });
-      input.click();
-    });
-  }
-  // Escolher a cor e dar um nome NÃO cria a cor no servidor ainda — só
-  // guarda em pendingNewColors, marcada localmente para este produto. A
-  // cor só é criada de verdade (POST /api/admin/colors) no "Salvar
-  // alterações", e só se continuar marcada nesse momento — assim nunca
-  // sobra uma cor "no vácuo" (criada mas sem nenhum produto de fato com
-  // ela em estoque) só por ter aberto o seletor e desistido, ou cancelado
-  // o modal sem salvar.
-  epNewColorBtn.addEventListener("click", async () => {
-    const hex = await pickColorHex();
-    if(!hex) return;
-    const label = prompt(`Nome para esta cor (ex.: Vinho):`);
-    if(!label || !label.trim()) return;
-    if(currentColors.some(c => c.hex === hex) || pendingNewColors.some(c => c.hex === hex)){
-      alert("Essa cor já existe na paleta.");
-      return;
-    }
-    pendingNewColors.push({ hex, label: label.trim() });
-    // Já entra marcada — a lojista acabou de criar esta cor porque o
-    // produto que está editando precisa dela agora, mesmo espírito de uma
-    // categoria nova ficar pré-selecionada no <select>.
-    renderColorCheckboxes([...selectedColors(), hex]);
-  });
 
   /* ============================ ADICIONAR PRODUTO ============================ */
   const addProductModalEl = document.getElementById("addProductModal");
@@ -2107,7 +1967,6 @@
       showOnly(contentEl);
       const products = Array.isArray(productsData.products) ? productsData.products : [];
       applyCategories(productsData.categories);
-      applyColors(productsData.colors);
       renderStats(ordersData.stats || { totalRevenue: 0, totalOrders: 0 });
       renderSalesChart(orders);
       renderCategoryChart(orders, products);

@@ -473,19 +473,10 @@
             </div>
           </div>
 
-          <div class="mb-1">
-            <div class="d-flex align-items-center justify-content-between gap-2">
-              <label class="form-label small fw-semibold d-block mb-0">Cores disponíveis em estoque</label>
-              <button type="button" class="btn-outline-blush btn-sm-blush flex-shrink-0" id="epNewColorBtn" title="Criar uma cor nova">+ Nova cor</button>
-            </div>
-            <div class="ep-color-options" id="epColorOptions"></div>
-            <div class="form-text">Desmarque uma cor quando não houver estoque — a cliente não vai conseguir escolhê-la na loja.</div>
-          </div>
-
           <div class="mb-1 form-check">
-            <input class="form-check-input ep-check-blush" type="checkbox" id="epAllowSecondColor">
-            <label class="form-check-label small" for="epAllowSecondColor">Vender em conjunto — permitir escolher uma 2ª cor</label>
-            <div class="form-text">Para produtos com mais de uma peça (kits) em que a cliente pode querer metade numa cor e metade em outra.</div>
+            <input class="form-check-input ep-check-blush" type="checkbox" id="epSoldOut">
+            <label class="form-check-label small" for="epSoldOut">Esgotado</label>
+            <div class="form-text">O produto continua aparecendo na loja, com o selo "Esgotado", mas ninguém consegue comprar. Para tirar da vitrine de vez, use o botão de ocultar.</div>
           </div>
 
           <div id="epMsg" class="small account-msg" role="alert"></div>
@@ -632,7 +623,6 @@
 <script src="js/vendor/JsBarcode.all.min.js" defer></script>
 <script src="js/auth.js" defer></script>
 <script src="js/pricing.js" defer></script>
-<script src="js/colors.js" defer></script>
 <script src="js/admin.js" defer></script>
 </body>
 </html>

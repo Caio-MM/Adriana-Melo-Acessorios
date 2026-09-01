@@ -176,23 +176,13 @@ function isValidCategorySlug(slug){
   return getAllCategories().some(c => c.slug === slug);
 }
 
-// Mesmo papel de getAllCategories(): soma a paleta fixa (js/colors.js,
-// RIBBON_COLORS) com as cores criadas pelo painel ("+ Nova cor", guardadas
-// em custom_colors). "Cor válida"/"todas as cores em estoque" passam a
-// significar SEMPRE a paleta atual — uma cor criada depois já vale para
-// produto nunca customizado (available_colors NULL), sem precisar editar
-// cada produto um por um.
+// A escolha de cor saiu do site, mas PEDIDOS ANTIGOS têm a cor gravada em
+// items_json — esta paleta (fixa de js/colors.js + as criadas no painel,
+// em custom_colors) continua existindo só para traduzir aquele hex num
+// nome legível no painel, no e-mail e no WhatsApp (colorLabelForItem, em
+// lib/orderFormatting.js). Nada novo grava cor.
 function getAllColors(){
   return [...colors.RIBBON_COLORS, ...db.listCustomColors().map(c => ({ hex: c.hex, label: c.label }))];
-}
-function getAllColorHexes(){
-  return getAllColors().map(c => c.hex);
-}
-function isValidColorHex(hex){
-  return getAllColors().some(c => c.hex === hex);
-}
-function colorLabelForHex(hex){
-  return getAllColors().find(c => c.hex === hex)?.label || colors.labelForColor(hex);
 }
 
 /* =========================================================================
@@ -266,16 +256,15 @@ function effectiveProduct(id, overridesMap){
       badges: custom.badges ? JSON.parse(custom.badges) : [],
       // NULL = nunca customizado -> todas as cores disponíveis (não deixa
       // nada subitamente incomprável para produto que a lojista nunca editou).
-      availableColors: custom.available_colors != null ? JSON.parse(custom.available_colors) : getAllColorHexes(),
-      allowsSecondColor: Boolean(custom.allow_second_color),
       description: custom.description || null,
       hidden: Boolean(custom.hidden),
+      soldOut: Boolean(custom.sold_out),
     };
   }
   const base = PRODUCTS[id];
   if(!base) return null;
   const override = overridesMap.get(id);
-  if(!override) return { ...base, photos: [], photoUrl: null, availableColors: getAllColorHexes(), allowsSecondColor: false, description: null, hidden: false };
+  if(!override) return { ...base, photos: [], photoUrl: null, description: null, hidden: false, soldOut: false };
   const photos = photosFromRow(override);
   return {
     ...base,
@@ -284,10 +273,9 @@ function effectiveProduct(id, overridesMap){
     photos, photoUrl: photos[0] || null,
     category: override.category || base.category,
     badges: override.badges ? JSON.parse(override.badges) : base.badges,
-    allowsSecondColor: Boolean(override.allow_second_color),
-    availableColors: override.available_colors != null ? JSON.parse(override.available_colors) : getAllColorHexes(),
     description: override.description || null,
     hidden: Boolean(override.hidden),
+    soldOut: Boolean(override.sold_out),
   };
 }
 
@@ -1043,35 +1031,11 @@ function deleteOldLocalPhoto(oldPhotoUrl){
    Nunca usa preço/peso vindos do navegador — sempre busca no catálogo do
    servidor (effectiveProduct, que já aplica eventual edição do painel).
 ========================================================================= */
-// Valida UMA cor escolhida contra a paleta e o estoque atual do produto —
-// usada tanto para a cor principal (sempre exigida) quanto, quando o
-// produto permite (`allowsSecondColor`), para a 2ª cor OPCIONAL de um kit.
-// (a) é um hex real da paleta atual (isValidColorHex — fixa + criada pelo
-// painel) e (b) está em estoque PARA ESSE PRODUTO agora
-// (product.availableColors) — a segunda checagem é o que fecha a condição
-// de corrida "a cliente escolheu a cor quando ainda tinha estoque, a
-// lojista marcou como esgotada antes do checkout terminar": nesse caso
-// rejeita com 409 nomeando produto e cor, nunca troca a cor da cliente por
-// outra em silêncio (isso mandaria pra lojista um pedido com cor diferente
-// da que a cliente pensa ter comprado).
-function assertColorAvailable(color, product){
-  if(!isValidColorHex(color)){
-    throw { status:400, message:`Escolha uma cor válida para "${product.name}".` };
-  }
-  if(!product.availableColors.includes(color)){
-    throw {
-      status: 409,
-      message: `A cor "${colorLabelForHex(color)}" de "${product.name}" ficou indisponível. Escolha outra cor para continuar.`,
-    };
-  }
-}
-
-// `requireColor`: só o checkout de verdade (buildCheckoutDraft) exige cor —
-// calculate-shipping e validate-coupon chamam esta função com carrinhos que
-// nunca mandam `color` e não precisam dela, então exigir aqui quebraria as
-// duas.
-function buildValidatedItems(items, opts){
-  const requireColor = opts?.requireColor === true;
+// A escolha de cor saiu do site (a lojista pediu para remover). O controle
+// de disponibilidade que antes era feito por cor virou o booleano
+// `soldOut` por produto — checado abaixo junto de `hidden`, para o produto
+// esgotado ser recusado no servidor e não só escondido na tela.
+function buildValidatedItems(items){
   if(!Array.isArray(items) || items.length === 0){
     throw { status:400, message:"Carrinho vazio ou inválido." };
   }
@@ -1089,24 +1053,16 @@ function buildValidatedItems(items, opts){
     if(product.hidden){
       throw { status:409, message:`"${product.name}" não está mais disponível.` };
     }
+    // Fecha a corrida "a cliente colocou no carrinho quando tinha, a lojista
+    // marcou como esgotado antes de finalizar": recusa aqui em vez de deixar
+    // passar um pedido que a loja não consegue atender.
+    if(product.soldOut){
+      throw { status:409, message:`"${product.name}" está esgotado no momento.` };
+    }
     if(!Number.isInteger(qty) || qty < 1 || qty > 10){
       throw { status:400, message:`Quantidade inválida para o produto ${id}.` };
     }
-    if(!requireColor){
-      return { id, qty, product };
-    }
-    assertColorAvailable(raw?.color, product);
-    // A 2ª cor é opcional MESMO em produto elegível (a cliente pode
-    // continuar escolhendo só 1 cor num kit) — só entra na validação
-    // quando a cliente de fato mandou uma.
-    const secondColor = raw?.secondColor || null;
-    if(secondColor){
-      if(!product.allowsSecondColor){
-        throw { status:400, message:`"${product.name}" não permite escolher uma segunda cor.` };
-      }
-      assertColorAvailable(secondColor, product);
-    }
-    return { id, qty, product, color: raw.color, secondColor };
+    return { id, qty, product };
   });
 }
 
@@ -1400,7 +1356,7 @@ async function buildCheckoutDraft(req){
     }
   }
 
-  const validatedItems = buildValidatedItems(req.body?.items, { requireColor: true });
+  const validatedItems = buildValidatedItems(req.body?.items);
 
   // Cupom opcional: revalidado aqui, nunca confiando no desconto do front.
   const coupon = req.body?.coupon ? findCoupon(req.body.coupon) : null;
@@ -1485,8 +1441,11 @@ function orderRowFrom(draft, orderRef, userId){
     // mesmo se o preço do produto mudar depois. É o preço "de tabela"
     // (sem o desconto do cupom, que já aparece como uma linha separada
     // de "Desconto" no resumo), igual a um item de nota fiscal.
-    items: draft.validatedItems.map(({ id, qty, product, color, secondColor }) => ({
-      id, qty, price: product.price, color, secondColor: secondColor || null,
+    // Sem `color`: a escolha de cor saiu do site. Pedidos ANTIGOS continuam
+    // com a cor gravada e seguem exibindo o rótulo normalmente (ver
+    // colorLabelForItem em lib/orderFormatting.js) — só os novos não têm.
+    items: draft.validatedItems.map(({ id, qty, product }) => ({
+      id, qty, price: product.price,
     })),
     address: { ...draft.address, cep: draft.cep },
     shipping: draft.chosenShipping,
@@ -3066,7 +3025,7 @@ app.get("/api/products", (req, res) => {
   const products = getAllProductIds()
     .map(id => ({ id, p: effectiveProduct(id, overridesMap) }))
     .filter(({ p }) => !p.hidden)
-    .map(({ id, p }) => ({ id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, availableColors: p.availableColors, allowsSecondColor: p.allowsSecondColor, description: p.description }));
+    .map(({ id, p }) => ({ id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, soldOut: p.soldOut, description: p.description }));
   // `paymentRules` viaja junto do catálogo (em vez de numa rota própria) para
   // não gastar mais uma das requisições do rate limit por carregamento de
   // página. A vitrine calcula os preços sozinha com o js/pricing.js que já
@@ -3076,7 +3035,7 @@ app.get("/api/products", (req, res) => {
   // mesmo motivo: é o que permite a vitrine criar um chip de filtro para
   // uma categoria nova sem precisar editar index.html — ver
   // ensureCategoryChips() em js/main.js.
-  res.json({ products, categories: getAllCategories(), colors: getAllColors(), paymentRules: pricing.PAYMENT_RULES });
+  res.json({ products, categories: getAllCategories(), paymentRules: pricing.PAYMENT_RULES });
 });
 
 /* =========================================================================
@@ -3092,9 +3051,9 @@ app.get("/api/admin/products", auth.requireAdmin, auth.requireAdminTwoFactor, (r
   const overridesMap = getProductOverridesMap();
   const products = getAllProductIds().map(id => {
     const p = effectiveProduct(id, overridesMap);
-    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, availableColors: p.availableColors, allowsSecondColor: p.allowsSecondColor, description: p.description, hidden: p.hidden };
+    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, description: p.description, hidden: p.hidden, soldOut: p.soldOut };
   });
-  res.json({ products, categories: getAllCategories(), colors: getAllColors(), availableBadges: PRODUCT_BADGES });
+  res.json({ products, categories: getAllCategories(), availableBadges: PRODUCT_BADGES });
 });
 
 /* =========================================================================
@@ -3166,23 +3125,13 @@ function isValidPhotoUrl(v){
     return false;
   }
 }
-// Zero cores é um estado válido de propósito — "esgotado em todas as
-// cores" é um estoque real, não um erro de entrada. Valida contra a paleta
-// ATUAL (fixa + criada pelo painel), não só as 6 fixas — getAllColors()
-// já soma as duas.
-function isValidColors(v){
-  const allColors = getAllColors();
-  if(!Array.isArray(v)) return false;
-  if(v.length > allColors.length) return false;
-  return v.every(hex => allColors.some(c => c.hex === hex)) && new Set(v).size === v.length;
-}
 function isValidBadges(v){
   if(!Array.isArray(v)) return false;
   if(v.length > PRODUCT_BADGES.length) return false;
   return v.every(b => PRODUCT_BADGES.includes(b)) && new Set(v).size === v.length;
 }
 // Galeria de fotos: array vazio é um estado real ("removeu todas as fotos"),
-// mesmo racional de isValidColors. Teto de 8 fotos por produto — generoso
+// mesmo racional das outras listas. Teto de 8 fotos por produto — generoso
 // para uma loja de acessórios, protege contra payload/lista sem limite.
 // Cada item passa pela MESMA validação de photoUrl (URL http(s) ou caminho
 // de upload local), sem duplicata.
@@ -3327,12 +3276,6 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFact
       }
       fields.badges = body.badges;
     }
-    if("availableColors" in body){
-      if(!isValidColors(body.availableColors)){
-        return res.status(400).json({ error: "Lista de cores em estoque inválida." });
-      }
-      fields.availableColors = body.availableColors;
-    }
     if("photos" in body){
       if(!isValidPhotos(body.photos)){
         return res.status(400).json({ error: `Lista de fotos inválida. Envie até ${MAX_PRODUCT_PHOTOS} fotos, sem repetir.` });
@@ -3348,9 +3291,6 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFact
       }
       fields.photos = body.photos;
     }
-    if("allowSecondColor" in body){
-      fields.allowSecondColor = Boolean(body.allowSecondColor);
-    }
     if("description" in body){
       const description = body.description ? String(body.description).trim() : "";
       if(description.length > 500){
@@ -3361,6 +3301,9 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFact
     if("hidden" in body){
       fields.hidden = Boolean(body.hidden);
     }
+    if("soldOut" in body){
+      fields.soldOut = Boolean(body.soldOut);
+    }
 
     if(Object.keys(fields).length === 0){
       return res.status(400).json({ error: "Nada para salvar." });
@@ -3370,7 +3313,7 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFact
     else db.upsertProductOverride(id, fields);
 
     const updated = effectiveProduct(id, getProductOverridesMap());
-    res.json({ id, name: updated.name, price: updated.price, photoUrl: updated.photoUrl, photos: updated.photos, category: updated.category, badges: updated.badges, availableColors: updated.availableColors, allowsSecondColor: updated.allowsSecondColor, description: updated.description, hidden: updated.hidden });
+    res.json({ id, name: updated.name, price: updated.price, photoUrl: updated.photoUrl, photos: updated.photos, category: updated.category, badges: updated.badges, description: updated.description, hidden: updated.hidden, soldOut: updated.soldOut });
   } catch (err) {
     console.error("Erro ao atualizar produto:", err);
     res.status(500).json({ error: "Não foi possível salvar o produto agora." });
@@ -3528,60 +3471,6 @@ app.post("/api/admin/categories", auth.requireAdmin, auth.requireAdminTwoFactor,
   }
 });
 
-/* =========================================================================
-   POST /api/admin/colors — cria uma cor de laço além das 6 fixas
-   -------------------------------------------------------------------------
-   Mesmo padrão de POST /api/admin/categories, acima. Só grava hex + label
-   (custom_colors); o resto do sistema (estoque por cor, Quick View,
-   validação do checkout) já usa getAllColors()/isValidColorHex(), que
-   somam esta tabela à paleta fixa sem precisar saber a origem de cada cor.
-========================================================================= */
-const CUSTOM_COLOR_HEX_PATTERN = /^#[0-9A-Fa-f]{6}$/;
-app.post("/api/admin/colors", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
-  try {
-    const hex = String(req.body?.hex || "").trim().toUpperCase();
-    if(!CUSTOM_COLOR_HEX_PATTERN.test(hex)){
-      return res.status(400).json({ error: "Cor inválida. Escolha uma cor no seletor." });
-    }
-    const label = String(req.body?.label || "").trim();
-    if(label.length < 2 || label.length > 40){
-      return res.status(400).json({ error: "Nome da cor precisa ter entre 2 e 40 caracteres." });
-    }
-    if(isValidColorHex(hex)){
-      return res.status(409).json({ error: "Essa cor já existe na paleta." });
-    }
-    const created = db.insertCustomColor({ hex, label });
-    res.status(201).json(created);
-  } catch (err) {
-    console.error("Erro ao criar cor:", err);
-    res.status(500).json({ error: "Não foi possível criar a cor agora." });
-  }
-});
-
-/* =========================================================================
-   DELETE /api/admin/colors/:hex — apaga uma cor criada pelo painel
-   -------------------------------------------------------------------------
-   Só apaga cor de custom_colors — as 6 fixas (colors.RIBBON_COLORS) são
-   código-fonte, mesmo racional de DELETE /api/admin/products/:id para os
-   produtos do catálogo fixo. Não limpa available_colors de produto nenhum
-   que já referencie esta cor (ver deleteCustomColor em lib/db.js).
-========================================================================= */
-app.delete("/api/admin/colors/:hex", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
-  try {
-    const hex = String(req.params.hex || "").trim().toUpperCase();
-    if(colors.RIBBON_COLORS.some(c => c.hex === hex)){
-      return res.status(400).json({ error: "Esta cor faz parte da paleta original e não pode ser excluída." });
-    }
-    if(!db.listCustomColors().some(c => c.hex === hex)){
-      return res.status(404).json({ error: "Cor não encontrada." });
-    }
-    db.deleteCustomColor(hex);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("Erro ao apagar cor:", err);
-    res.status(500).json({ error: "Não foi possível apagar a cor agora." });
-  }
-});
 
 /* DELETE /api/admin/orders/:reference — apaga um pedido (carrinho
    abandonado, teste, etc.). NUNCA apaga um pedido "pago": isso é

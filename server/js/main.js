@@ -3,14 +3,14 @@
 
   /* ============ CATÁLOGO (somente para EXIBIÇÃO no front-end) ============ */
   const products = [
-    { id:1, name:"Laço Bailarina", cat:"dia-a-dia", catLabel:"Dia a dia", price:34.90, color:"#F4B4CC", rating:5, badges:[], desc:"Laço em cetim rosa bebê, leve e confortável para o dia a dia." },
-    { id:2, name:"Laço Duquesa", cat:"festa", catLabel:"Festa", price:49.90, color:"#DD6E9B", rating:5, badges:["Mais vendido"], desc:"Cetim duplo com volume extra, perfeito para festas e ensaios." },
-    { id:3, name:"Laço Recém-nascida", cat:"maternidade", catLabel:"Maternidade", price:29.90, color:"#FBEAF0", rating:5, badges:[], desc:"Presilha macia em algodão, indicada para os primeiros meses." },
-    { id:4, name:"Laço Pérola", cat:"batizado", catLabel:"Batizado", price:59.90, color:"#F8ECF1", rating:5, badges:[], desc:"Detalhes em pérolas para o dia especial do batizado." },
-    { id:5, name:"Laço Borboleta", cat:"festa", catLabel:"Festa", price:44.90, color:"#EA8FB4", rating:4, badges:[], desc:"Formato de borboleta com fita de organza, ideal para festas infantis." },
-    { id:6, name:"Kit Presente 3 Laços", cat:"presente", catLabel:"Presente", price:89.90, color:"#C05480", rating:5, badges:["Novo"], desc:"Trio de laços em tons de rosa, embalado em caixa para presente." },
-    { id:7, name:"Laço Tiara Flor", cat:"dia-a-dia", catLabel:"Dia a dia", price:39.90, color:"#F4B4CC", rating:4, badges:[], desc:"Tiara macia com flor de tecido, confortável para uso prolongado." },
-    { id:8, name:"Laço Personalizado", cat:"presente", catLabel:"Presente", price:64.90, color:"#DD6E9B", rating:5, badges:["Novo"], desc:"Bordado com o nome que você escolher, embalagem para presente." },
+    { id:1, name:"Laço Bailarina", cat:"dia-a-dia", catLabel:"Dia a dia", price:34.90, color:"#F4B4CC", badges:[], desc:"Laço em cetim rosa bebê, leve e confortável para o dia a dia." },
+    { id:2, name:"Laço Duquesa", cat:"festa", catLabel:"Festa", price:49.90, color:"#DD6E9B", badges:["Mais vendido"], desc:"Cetim duplo com volume extra, perfeito para festas e ensaios." },
+    { id:3, name:"Laço Recém-nascida", cat:"maternidade", catLabel:"Maternidade", price:29.90, color:"#FBEAF0", badges:[], desc:"Presilha macia em algodão, indicada para os primeiros meses." },
+    { id:4, name:"Laço Pérola", cat:"batizado", catLabel:"Batizado", price:59.90, color:"#F8ECF1", badges:[], desc:"Detalhes em pérolas para o dia especial do batizado." },
+    { id:5, name:"Laço Borboleta", cat:"festa", catLabel:"Festa", price:44.90, color:"#EA8FB4", badges:[], desc:"Formato de borboleta com fita de organza, ideal para festas infantis." },
+    { id:6, name:"Kit Presente 3 Laços", cat:"presente", catLabel:"Presente", price:89.90, color:"#C05480", badges:["Novo"], desc:"Trio de laços em tons de rosa, embalado em caixa para presente." },
+    { id:7, name:"Laço Tiara Flor", cat:"dia-a-dia", catLabel:"Dia a dia", price:39.90, color:"#F4B4CC", badges:[], desc:"Tiara macia com flor de tecido, confortável para uso prolongado." },
+    { id:8, name:"Laço Personalizado", cat:"presente", catLabel:"Presente", price:64.90, color:"#DD6E9B", badges:["Novo"], desc:"Bordado com o nome que você escolher, embalagem para presente." },
   ];
 
   /* ============ SEGURANÇA — SANITIZAÇÃO ============ */
@@ -36,47 +36,11 @@
 
   const productsById = new Map(products.map(p => [p.id, p]));
 
-  const colors = window.PLCColors;
-
-  // Paleta ATUAL de cores — fixa (colors.RIBBON_COLORS) + criada pelo
-  // painel administrativo. Começa só com a fixa e loadProductOverrides()
-  // atualiza a partir de /api/products (mesmo padrão das categorias
-  // dinâmicas, ensureCategoryChips) assim que a resposta chegar.
-  let allColors = colors.RIBBON_COLORS.slice();
-  // Substituem colors.isValidColor/labelForColor (que só conhecem as 6
-  // fixas) em todo lugar do front-end que precisa reconhecer uma cor
-  // criada pelo painel administrativo.
-  function isKnownColor(hex){
-    return allColors.some(c => c.hex === hex);
-  }
-  function labelForKnownColor(hex){
-    return allColors.find(c => c.hex === hex)?.label || colors.labelForColor(hex);
-  }
-  // Só o FORMATO (não se a cor ainda existe na paleta atual) — usado ao
-  // carregar o carrinho salvo, antes de allColors ter chegado do servidor.
-  // A checagem "é uma cor que ainda existe de verdade" acontece depois, no
-  // conserto de cor do loadProductOverrides() (allColors já confiável).
-  const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
-  function isHexShape(v){
-    return typeof v === "string" && HEX_COLOR_PATTERN.test(v);
-  }
-
-  // `p.availableColors` só existe depois que loadProductOverrides() busca
-  // /api/products — até lá (e para produto nunca customizado pela lojista,
-  // que o servidor também trata como "todas as cores"), undefined vira
-  // "todas as cores em estoque", nunca "nenhuma".
-  function inStockColors(p){
-    return Array.isArray(p?.availableColors) ? p.availableColors : (colors ? colors.ALL_COLOR_HEXES : []);
-  }
-  // Cor padrão pra escolher sem abrir o Quick View (botão "+" rápido do
-  // card): a cor decorativa do próprio produto, se estiver em estoque;
-  // senão a primeira cor em estoque; null se esgotado em tudo.
-  function defaultColorFor(p){
-    if(!p) return null;
-    const inStock = inStockColors(p);
-    if(inStock.length === 0) return null;
-    return inStock.includes(p.color) ? p.color : inStock[0];
-  }
+  // Tons só DECORATIVOS: pintam o fundo do card e o laço de contorno quando
+  // o produto ainda não tem foto. Não têm nada a ver com a escolha de cor
+  // (que saiu do site) — é a paleta da marca, para produto novo não nascer
+  // com um fundo cinza.
+  const PALETA_DECORATIVA = ["#F4B4CC", "#DD6E9B", "#FBEAF0", "#F8ECF1", "#EA8FB4", "#C05480"];
 
   const pricing = window.PLCPricing;
   const formatMoney = pricing.formatMoney;
@@ -313,12 +277,6 @@
     bumpCartIcon();
   }
 
-  function stars(n){
-    let s = "";
-    for(let i=1;i<=5;i++){ s += `<i class="bi ${i<=n ? 'bi-star-fill':'bi-star'}"></i>`; }
-    return `<span aria-hidden="true">${s}</span><span class="visually-hidden">Avaliação: ${n} de 5</span>`;
-  }
-
   function wireImage(imgEl){
     imgEl.addEventListener("load", () => {
       imgEl.classList.add("is-loaded");
@@ -330,16 +288,47 @@
     });
   }
 
+  /* ============ VITRINE — categoria + busca + "Ver mais" ============
+     Tudo no cliente: /api/products devolve o catálogo inteiro de uma vez e
+     `products` já está em memória, então filtrar aqui evita uma ida ao
+     servidor a cada tecla. `PAGINA` limita quantos cards existem no DOM —
+     cada card custa ~20 elementos e um IntersectionObserver, então com o
+     catálogo crescendo isso é o que segura a página leve. */
+  const PAGINA = 8;
+  let buscaAtual = "";
+  let visiveis = PAGINA;
+
+  // Sem acento e sem caixa dos dois lados: senão "laco"/"LAÇO" não acham
+  // "Laço", que é exatamente como a cliente digita no celular.
+  function normalizarBusca(texto){
+    return String(texto ?? "")
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .toLowerCase().trim();
+  }
+
+  function produtosFiltrados(){
+    const termo = normalizarBusca(buscaAtual);
+    return products.filter(p => {
+      if(currentFilter !== "todos" && p.cat !== currentFilter) return false;
+      if(!termo) return true;
+      return normalizarBusca(p.name).includes(termo);
+    });
+  }
+
   function renderProducts(){
-    const list = currentFilter === "todos" ? products : products.filter(p => p.cat === currentFilter);
+    const todos = produtosFiltrados();
+    const list = todos.slice(0, visiveis);
+    atualizarResumoVitrine(todos.length, list.length);
     grid.innerHTML = list.map((p, i) => {
       const pay = pricing.paymentSummaryFor(p.price);
       const photo = imageFor(p);
       return `
       <div class="col-6 col-md-4 col-lg-3 reveal reveal-delay-${i % 4}">
-        <div class="product-card${p.badges?.length ? " is-featured" : ""}" data-id="${p.id}" role="button" tabindex="0" aria-label="Ver detalhes de ${escapeHTML(p.name)}">
+        <div class="product-card${p.badges?.length ? " is-featured" : ""}${p.soldOut ? " is-soldout" : ""}" data-id="${p.id}" role="button" tabindex="0" aria-label="Ver detalhes de ${escapeHTML(p.name)}">
           <div class="product-thumb${photo ? " is-loading" : ""}" style="background:${safeColor(p.color)}22">
-            ${p.badges?.length ? `<div class="product-badges">${p.badges.map(b => `<span class="product-badge">${escapeHTML(b)}</span>`).join("")}</div>` : ""}
+            ${p.soldOut || p.badges?.length ? `<div class="product-badges">${
+              p.soldOut ? `<span class="product-badge is-soldout">Esgotado</span>` : ""
+            }${(p.badges || []).map(b => `<span class="product-badge">${escapeHTML(b)}</span>`).join("")}</div>` : ""}
             <button type="button" class="product-quickview" aria-label="Ver detalhes de ${escapeHTML(p.name)}"><i class="bi bi-eye"></i></button>
             ${photo ? `<img
               src="${escapeHTML(photo)}"
@@ -351,14 +340,13 @@
           <div class="product-body">
             <div class="product-cat">${escapeHTML(p.catLabel)}</div>
             <div class="product-name">${escapeHTML(p.name)}</div>
-            <div class="product-stars mb-2">${stars(p.rating)}</div>
             <div class="d-flex align-items-end justify-content-between gap-2">
               <div class="product-pricing">
                 <span class="product-price">${formatMoney(p.price)}</span>
                 <span class="product-pix">${formatMoney(pay.pixPrice)} <small>no Pix</small></span>
                 <span class="product-installment">ou ${escapeHTML(pay.installmentLabel)}</span>
               </div>
-              <button class="btn-add flex-shrink-0" data-id="${p.id}" aria-label="Adicionar ${escapeHTML(p.name)} ao carrinho"><i class="bi bi-plus-lg"></i></button>
+              <button class="btn-add flex-shrink-0" data-id="${p.id}"${p.soldOut ? " disabled" : ""} aria-label="${p.soldOut ? `${escapeHTML(p.name)} está esgotado` : `Adicionar ${escapeHTML(p.name)} ao carrinho`}"><i class="bi bi-plus-lg"></i></button>
             </div>
           </div>
         </div>
@@ -368,6 +356,65 @@
     grid.querySelectorAll(".product-thumb img").forEach(wireImage);
     observeReveal(grid);
   }
+
+  const vitrineContagemEl = document.getElementById("vitrineContagem");
+  const vitrineVazioEl = document.getElementById("vitrineVazio");
+  const vitrineVazioTermoEl = document.getElementById("vitrineVazioTermo");
+  const vitrineMaisWrapEl = document.getElementById("vitrineMaisWrap");
+  const vitrineMaisBtn = document.getElementById("vitrineMais");
+  const buscaInput = document.getElementById("buscaProduto");
+  const buscaLimparBtn = document.getElementById("buscaLimpar");
+
+  // Contagem, estado vazio e o botão "Ver mais" andam juntos com o render —
+  // por isso numa função só, chamada de dentro de renderProducts().
+  function atualizarResumoVitrine(total, mostrando){
+    if(vitrineContagemEl){
+      vitrineContagemEl.textContent = total === 0
+        ? "Nenhum produto encontrado"
+        : (total === 1 ? "1 produto" : `${total} produtos`) +
+          (mostrando < total ? ` · mostrando ${mostrando}` : "");
+    }
+    if(vitrineVazioEl){
+      vitrineVazioEl.classList.toggle("d-none", total > 0);
+      if(vitrineVazioTermoEl) vitrineVazioTermoEl.textContent = buscaAtual.trim();
+    }
+    if(vitrineMaisWrapEl) vitrineMaisWrapEl.classList.toggle("d-none", mostrando >= total);
+    if(buscaLimparBtn) buscaLimparBtn.classList.toggle("d-none", !buscaAtual);
+  }
+
+  // Qualquer mudança de recorte volta pra primeira "página": senão, quem
+  // clicou em "Ver mais" e depois trocou de categoria continuaria vendo
+  // uma lista longa de outra coisa.
+  function aplicarRecorte(){
+    visiveis = PAGINA;
+    renderProducts();
+  }
+
+  if(buscaInput){
+    let debounce;
+    buscaInput.addEventListener("input", () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => { buscaAtual = buscaInput.value; aplicarRecorte(); }, 180);
+    });
+    // Esc limpa: atalho esperado num campo de busca.
+    buscaInput.addEventListener("keydown", (e) => {
+      if(e.key === "Escape" && buscaInput.value){
+        e.preventDefault();
+        buscaInput.value = ""; buscaAtual = ""; aplicarRecorte();
+      }
+    });
+  }
+  buscaLimparBtn?.addEventListener("click", () => {
+    if(buscaInput) buscaInput.value = "";
+    buscaAtual = "";
+    aplicarRecorte();
+    buscaInput?.focus();
+  });
+  vitrineMaisBtn?.addEventListener("click", () => {
+    visiveis += PAGINA;
+    renderProducts();
+  });
+
   renderProducts();
 
 
@@ -398,7 +445,6 @@
       if(!res.ok) return;
       const data = await res.json();
       ensureCategoryChips(data.categories);
-      if(Array.isArray(data.colors) && data.colors.length) allColors = data.colors;
       let changed = false;
       (Array.isArray(data.products) ? data.products : []).forEach(o => {
         const p = productsById.get(o.id);
@@ -407,13 +453,12 @@
           const fresh = {
             id: o.id, name: o.name, price: o.price,
             cat: o.category || "", catLabel: o.category ? categoryLabelFor(o.category) : "",
-            color: allColors[o.id % allColors.length].hex,
-            rating: 5, badges: Array.isArray(o.badges) ? o.badges : [],
-            availableColors: Array.isArray(o.availableColors) ? o.availableColors : allColors.map(c => c.hex),
+            color: PALETA_DECORATIVA[o.id % PALETA_DECORATIVA.length],
+            badges: Array.isArray(o.badges) ? o.badges : [],
+            soldOut: Boolean(o.soldOut),
             desc: o.description || "Peça exclusiva, feita à mão pela Adriana Melo Acessórios.",
             image: o.photoUrl || null,
             photos: Array.isArray(o.photos) ? o.photos : (o.photoUrl ? [o.photoUrl] : []),
-            allowsSecondColor: Boolean(o.allowsSecondColor),
           };
           products.push(fresh);
           productsById.set(o.id, fresh);
@@ -434,33 +479,9 @@
           p.badges = o.badges;
           changed = true;
         }
-        if(Array.isArray(o.availableColors) && !sameBadges(o.availableColors, inStockColors(p))){
-          p.availableColors = o.availableColors;
+        if(Boolean(o.soldOut) !== Boolean(p.soldOut)){
+          p.soldOut = Boolean(o.soldOut);
           changed = true;
-        }
-        if(Boolean(o.allowsSecondColor) !== Boolean(p.allowsSecondColor)){
-          p.allowsSecondColor = Boolean(o.allowsSecondColor);
-          changed = true;
-        }
-      });
-      // Conserto de carrinho salvo antes da escolha de cor existir (linha
-      // sem `color`) OU com uma cor que não existe mais na paleta atual
-      // (ex.: a lojista tirou uma cor personalizada) — resolve uma vez
-      // aqui, com allColors já sincronizado (linha acima), pra
-      // goToCheckout() nunca precisar tratar isso como caso especial.
-      let cartColorsFixed = false;
-      cart.forEach(item => {
-        if(!(item.color && isKnownColor(item.color))){
-          const fallback = defaultColorFor(findProduct(item.id));
-          if(fallback){ item.color = fallback; cartColorsFixed = true; }
-        }
-        // 2ª cor é opcional — perder a validade dela (cor apagada, ou a
-        // lojista desligou "vender em conjunto" nesse produto depois que a
-        // cliente já tinha escolhido) só limpa de volta pra "sem 2ª cor",
-        // nunca precisa de um substituto como a cor principal precisa.
-        if(item.secondColor && !(isKnownColor(item.secondColor) && findProduct(item.id)?.allowsSecondColor)){
-          item.secondColor = null;
-          cartColorsFixed = true;
         }
       });
       // O laço acima só ATUALIZA campos dos produtos já conhecidos — nunca
@@ -484,8 +505,7 @@
           changed = true;
         }
       }
-      if(cartColorsFixed) saveCart();
-      if(changed || cartColorsFixed){ renderProducts(); renderCart(); }
+      if(changed){ renderProducts(); renderCart(); }
       verifyPaymentRules(data.paymentRules);
     }catch(err){
       console.warn("Não foi possível verificar atualizações do catálogo:", err);
@@ -514,7 +534,7 @@
     document.querySelectorAll("#filterGroup .chip").forEach(c => c.classList.remove("active"));
     btn.classList.add("active");
     currentFilter = btn.dataset.cat;
-    renderProducts();
+    aplicarRecorte();
   });
 
   /* ============ CARRINHO ============ */
@@ -527,15 +547,17 @@
       if(!Array.isArray(parsed)) return [];
       return parsed
         .filter(i => i && Number.isInteger(i.id) && Number.isInteger(i.qty))
-        .map(i => ({
-          id:i.id, qty: Math.min(10, Math.max(1, i.qty)),
-          // Carrinho salvo antes da escolha de cor existir (ou com uma cor
-          // que não é mais válida) não tem esta chave — fica null e quem
-          // consome resolve o fallback na hora (mesmo racional de sempre
-          // ter existido pra cor decorativa do produto).
-          color: isHexShape(i.color) ? i.color : null,
-          secondColor: isHexShape(i.secondColor) ? i.secondColor : null,
-        }));
+        // Carrinho salvo ANTES da escolha de cor sair do site pode ter
+        // `color`/`secondColor` — descartados aqui de propósito: uma linha
+        // por produto agora. Se sobrarem duas linhas do mesmo id (era o
+        // mesmo laço em duas cores), soma as quantidades em vez de mostrar
+        // o produto repetido.
+        .reduce((acc, i) => {
+          const existente = acc.find(x => x.id === i.id);
+          if(existente) existente.qty = Math.min(10, existente.qty + i.qty);
+          else acc.push({ id: i.id, qty: Math.min(10, Math.max(1, i.qty)) });
+          return acc;
+        }, []);
     }catch(err){
       console.warn("Carrinho salvo estava corrompido, começando vazio.", err);
       return [];
@@ -569,10 +591,8 @@
     if(cartCountMobileEl) cartCountMobileEl.textContent = n;
   }
 
-  function patchCartItemQty(id, color, secondColor, qty){
-    const row = cartItemsList.querySelector(
-      `.cart-item[data-id="${id}"][data-color="${CSS.escape(String(color))}"][data-second-color="${CSS.escape(String(secondColor || ""))}"]`
-    );
+  function patchCartItemQty(id, qty){
+    const row = cartItemsList.querySelector(`.cart-item[data-id="${id}"]`);
     if(!row) return false;
     const qtyEl = row.querySelector(".cart-qty span");
     if(qtyEl) qtyEl.textContent = qty;
@@ -581,17 +601,15 @@
 
   const PENDING_ITEM_KEY = "plc_item_pendente";
 
-  function addToCart(id, qty, color, secondColor){
-    const p = findProduct(id);
-    const chosenColor = isKnownColor(color) ? color : defaultColorFor(p);
-    // 2ª cor só se o produto permitir (kits) — mesmo se vier preenchida,
-    // ignora silenciosamente num produto que não permite, em vez de barrar
-    // a compra inteira por um parâmetro que não devia nem ter chegado aqui.
-    const chosenSecondColor = (p?.allowsSecondColor && isKnownColor(secondColor)) ? secondColor : null;
+  function addToCart(id, qty){
+    // Produto esgotado nunca entra no carrinho: o card e o Quick View já
+    // bloqueiam, isto fecha a porta pra qualquer outro caminho (item
+    // pendente restaurado depois do login, por exemplo).
+    if(findProduct(id)?.soldOut) return;
 
     if(!currentUser){
       try{
-        sessionStorage.setItem(PENDING_ITEM_KEY, JSON.stringify({ id, qty, color: chosenColor, secondColor: chosenSecondColor }));
+        sessionStorage.setItem(PENDING_ITEM_KEY, JSON.stringify({ id, qty }));
       }catch(err){
         console.warn("Não foi possível guardar o item pendente:", err);
       }
@@ -606,21 +624,21 @@
       return;
     }
 
-    // Mesclagem por id+cor+2ªcor: duas combinações diferentes têm que virar
-    // duas linhas no carrinho, não uma só (perderia a combinação escolhida).
-    const existing = cart.find(i => i.id === id && i.color === chosenColor && (i.secondColor || null) === chosenSecondColor);
+    // Uma linha por produto: sem escolha de cor, não existe mais mais de
+    // uma variação do mesmo item.
+    const existing = cart.find(i => i.id === id);
     if(existing){
       existing.qty = Math.min(10, existing.qty + qty);
       saveCart();
       updateCartBadges();
-      if(patchCartItemQty(id, chosenColor, chosenSecondColor, existing.qty)){
+      if(patchCartItemQty(id, existing.qty)){
         resetShipping();
         updateTotals();
       } else {
         renderCart();
       }
     } else {
-      cart.push({ id, qty: Math.min(10, Math.max(1, qty)), color: chosenColor, secondColor: chosenSecondColor });
+      cart.push({ id, qty: Math.min(10, Math.max(1, qty)) });
       saveCart();
       updateCartBadges();
       renderCart();
@@ -628,20 +646,20 @@
     cartToast.show();
   }
 
-  function removeFromCart(id, color, secondColor){
-    cart = cart.filter(i => !(i.id === id && i.color === color && (i.secondColor || null) === (secondColor || null)));
+  function removeFromCart(id){
+    cart = cart.filter(i => i.id !== id);
     saveCart();
     updateCartBadges();
     renderCart();
   }
 
-  function setQty(id, color, secondColor, qty){
-    const item = cart.find(i => i.id === id && i.color === color && (i.secondColor || null) === (secondColor || null));
+  function setQty(id, qty){
+    const item = cart.find(i => i.id === id);
     if(!item) return;
     item.qty = Math.min(10, Math.max(1, qty));
     saveCart();
     updateCartBadges();
-    patchCartItemQty(id, color, secondColor, item.qty);
+    patchCartItemQty(id, item.qty);
     resetShipping();
     updateTotals();
   }
@@ -784,7 +802,7 @@
     }
 
     sessionStorage.removeItem(PENDING_ITEM_KEY);
-    if(pendente?.id) addToCart(Number(pendente.id), Number(pendente.qty) || 1, pendente.color, pendente.secondColor);
+    if(pendente?.id) addToCart(Number(pendente.id), Number(pendente.qty) || 1);
   }
   renderAuthGate();
 
@@ -825,83 +843,6 @@
     if(couponMsgEl) couponMsgEl.textContent = "";
   }
 
-  // Sentinela pro chip "Sem 2ª cor" dentro do carrinho — mesmo papel de
-  // QV_NO_SECOND_COLOR no Quick View, mas com nome próprio porque os dois
-  // pontos de escolha de cor (Quick View e carrinho) são independentes.
-  const CART_NO_SECOND_COLOR = "none";
-
-  // Painel de troca de cor de uma linha do carrinho, aberto por um
-  // <details>/<summary> (sem estado JS extra: o navegador já cuida de
-  // abrir/fechar). Reaproveita a MESMA aparência de swatch do Quick View
-  // (.qv-color-option/.qv-color-swatch), só que como <button> em vez de
-  // <label><input>, já que aqui cada linha do carrinho precisa do seu
-  // próprio grupo, independente, sem crescer o `name` do radiogroup toda vez.
-  function cartColorPickerHTML(p, item, displayColor){
-    const inStock = inStockColors(p);
-    const swatchBtn = (hex, selected, label) => {
-      const disabled = !inStock.includes(hex);
-      const cor = safeColor(hex);
-      return `
-        <button type="button" class="qv-color-option cart-color-swatch-btn${selected ? " selected" : ""}${disabled ? " is-disabled" : ""}"
-          data-hex="${cor}" ${disabled ? "disabled" : ""} aria-label="${escapeHTML(label)}${disabled ? " — esgotado" : ""}">
-          <span class="qv-color-swatch" style="background:${cor}"></span>
-        </button>
-      `;
-    };
-    const primarySwatches = allColors.map(c => swatchBtn(c.hex, c.hex === displayColor, c.label)).join("");
-    const secondGroup = p.allowsSecondColor ? `
-      <div class="cart-item-color-group" data-role="second">
-        <span class="cart-item-color-group-label">Cor secundária</span>
-        <div class="qv-color-options cart-item-color-swatches">
-          <button type="button" class="qv-color-option qv-color-option-none cart-color-swatch-btn${!item.secondColor ? " selected" : ""}"
-            data-hex="${CART_NO_SECOND_COLOR}" aria-label="Sem segunda cor">
-            <span class="qv-color-swatch qv-color-swatch-none"><i class="bi bi-x-lg" aria-hidden="true"></i></span>
-          </button>
-          ${allColors.map(c => swatchBtn(c.hex, c.hex === item.secondColor, c.label)).join("")}
-        </div>
-      </div>
-    ` : "";
-    return `
-      <div class="cart-item-color-panel">
-        <div class="cart-item-color-group" data-role="primary">
-          <span class="cart-item-color-group-label">Cor</span>
-          <div class="qv-color-options cart-item-color-swatches">${primarySwatches}</div>
-        </div>
-        ${secondGroup}
-      </div>
-    `;
-  }
-
-  // Troca a cor (papel "primary" ou "second") de UMA linha específica do
-  // carrinho, identificada pela combinação antiga (id+cor+2ªcor) — mesma
-  // identidade composta usada em toda parte do carrinho. Se a combinação
-  // NOVA já existir em outra linha, funde as quantidades nela em vez de
-  // deixar duas linhas iguais (mesmo racional de addToCart).
-  function changeCartItemColor(id, oldColor, oldSecondColor, role, hex){
-    const item = cart.find(i => i.id === id && i.color === oldColor && (i.secondColor || null) === oldSecondColor);
-    if(!item) return;
-    const p = findProduct(id);
-    if(!p) return;
-    const inStock = inStockColors(p);
-    if(role === "primary"){
-      if(!inStock.includes(hex)) return;
-      if(item.color === hex) return;
-      item.color = hex;
-    } else {
-      const resolved = hex === CART_NO_SECOND_COLOR ? null : hex;
-      if(resolved && !inStock.includes(resolved)) return;
-      if((item.secondColor || null) === resolved) return;
-      item.secondColor = resolved;
-    }
-    const dup = cart.find(i => i !== item && i.id === item.id && i.color === item.color && (i.secondColor || null) === (item.secondColor || null));
-    if(dup){
-      dup.qty = Math.min(10, dup.qty + item.qty);
-      cart = cart.filter(i => i !== item);
-    }
-    saveCart();
-    updateCartBadges();
-    renderCart();
-  }
 
   function renderCart(){
 
@@ -917,31 +858,19 @@
       cartItemsList.innerHTML = cart.map(item => {
         const p = findProduct(item.id);
         if(!p) return "";
-        const displayColor = item.color || defaultColorFor(p) || p.color;
+        const tint = safeColor(p.color);
         const photo = imageFor(p);
-        const colorLabel = item.secondColor
-          ? `${labelForKnownColor(displayColor)} + ${labelForKnownColor(item.secondColor)}`
-          : labelForKnownColor(displayColor);
         return `
-          <div class="cart-item" data-id="${p.id}" data-color="${escapeHTML(displayColor)}" data-second-color="${escapeHTML(item.secondColor || "")}">
-            <div class="cart-item-thumb${photo ? " is-loading" : ""}" style="background:${safeColor(displayColor)}22">
+          <div class="cart-item" data-id="${p.id}">
+            <div class="cart-item-thumb${photo ? " is-loading" : ""}" style="background:${tint}22">
               ${photo ? `<img src="${escapeHTML(photo)}" alt="${escapeHTML(p.name)}" width="64" height="64" loading="lazy" decoding="async">` : ""}
-              <svg class="bow-icon" style="color:${safeColor(displayColor)}"><use href="#bow-shape"/></svg>
+              <svg class="bow-icon" style="color:${tint}"><use href="#bow-shape"/></svg>
             </div>
             <div class="cart-item-body">
               <div class="cart-item-head">
                 <span class="cart-item-name">${escapeHTML(p.name)}</span>
                 <span class="cart-item-price">${formatMoney(p.price)}<small>un.</small></span>
               </div>
-              <details class="cart-item-color-edit">
-                <summary class="cart-item-color-summary">
-                  <span class="cart-item-color-dot" style="background:${safeColor(displayColor)}"></span>
-                  ${item.secondColor ? `<span class="cart-item-color-dot" style="background:${safeColor(item.secondColor)}"></span>` : ""}
-                  <span class="cart-item-color-label">${escapeHTML(colorLabel)}</span>
-                  <i class="bi bi-pencil-fill" aria-hidden="true"></i>
-                </summary>
-                ${cartColorPickerHTML(p, item, displayColor)}
-              </details>
               <div class="cart-item-controls">
                 <div class="cart-qty">
                   <button type="button" class="cart-qty-minus" aria-label="Diminuir quantidade">−</button>
@@ -1006,12 +935,11 @@
     const btn = e.target.closest(".cart-rec-add");
     if(!btn) return;
     const id = Number(btn.dataset.id);
-    const color = defaultColorFor(findProduct(id));
-    if(!color){
-      showCheckoutHintToast("Esse produto está esgotado em todas as cores no momento.");
+    if(findProduct(id)?.soldOut){
+      showCheckoutHintToast("Esse produto está esgotado no momento.");
       return;
     }
-    addToCart(id, 1, color);
+    addToCart(id, 1);
     bumpCartIcon();
   });
 
@@ -1019,22 +947,13 @@
     const row = e.target.closest(".cart-item");
     if(!row) return;
     const id = Number(row.dataset.id);
-    const color = row.dataset.color;
-    const secondColor = row.dataset.secondColor || null;
-
-    const item = cart.find(i => i.id === id && i.color === color && (i.secondColor || null) === secondColor);
+    const item = cart.find(i => i.id === id);
     if(e.target.closest(".cart-qty-plus")){
-      if(item) setQty(id, color, secondColor, item.qty + 1);
+      if(item) setQty(id, item.qty + 1);
     } else if(e.target.closest(".cart-qty-minus")){
-      if(!item || item.qty <= 1){ removeFromCart(id, color, secondColor); } else { setQty(id, color, secondColor, item.qty - 1); }
+      if(!item || item.qty <= 1){ removeFromCart(id); } else { setQty(id, item.qty - 1); }
     } else if(e.target.closest(".cart-item-remove")){
-      removeFromCart(id, color, secondColor);
-    } else {
-      const swatchBtn = e.target.closest(".cart-color-swatch-btn");
-      if(swatchBtn){
-        const role = swatchBtn.closest(".cart-item-color-group")?.dataset.role || "primary";
-        changeCartItemColor(id, color, secondColor, role, swatchBtn.dataset.hex);
-      }
+      removeFromCart(id);
     }
   });
 
@@ -1346,7 +1265,7 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: cart.map(i => ({ id: i.id, qty: i.qty, color: i.color, secondColor: i.secondColor || undefined })),
+          items: cart.map(i => ({ id: i.id, qty: i.qty })),
           cep: cepInput.value.replace("-", ""),
           shipping_service_id: shipping.service_id,
           address: getAddress(),
@@ -1391,7 +1310,7 @@
   }
 
   /* ============ QUICK VIEW — tela de detalhes do produto ============ */
-  let qvProductId = null, qvQty = 1, qvSelectedColor = null, qvSelectedSecondColor = null;
+  let qvProductId = null, qvQty = 1;
   const qvModalEl = document.getElementById("quickViewModal");
   const qvModal = new bootstrap.Modal(qvModalEl);
 
@@ -1431,12 +1350,8 @@
   const qvPixPriceEl = document.getElementById("qvPixPrice");
   const qvPixNoteEl = document.getElementById("qvPixNote");
   const qvInstallmentEl = document.getElementById("qvInstallment");
-  const qvColorOptionsEl = document.getElementById("qvColorOptions");
   const qvSoldOutMsgEl = document.getElementById("qvSoldOutMsg");
   const qvAddBtnEl = document.getElementById("qvAddBtn");
-  const qvSecondColorSectionEl = document.getElementById("qvSecondColorSection");
-  const qvSecondColorOptionsEl = document.getElementById("qvSecondColorOptions");
-  const QV_NO_SECOND_COLOR = "none";
 
   /* ============ QUICK VIEW — galeria de fotos ============ */
   let qvPhotos = [], qvPhotoIndex = 0;
@@ -1486,79 +1401,10 @@
   // teclas para mover entre as cores.
   qvModalEl.addEventListener("keydown", (e) => {
     if(qvPhotos.length <= 1) return;
-    if(e.target.closest("#qvColorOptions")) return;
     if(e.key === "ArrowLeft"){ e.preventDefault(); setQvPhoto(qvPhotoIndex - 1); }
     else if(e.key === "ArrowRight"){ e.preventDefault(); setQvPhoto(qvPhotoIndex + 1); }
   });
 
-  function renderQuickViewColors(p){
-    const inStock = new Set(inStockColors(p));
-    qvColorOptionsEl.innerHTML = allColors.map(c => {
-      const disabled = !inStock.has(c.hex);
-      const cor = safeColor(c.hex);
-      return `
-        <label class="qv-color-option${disabled ? " is-disabled" : ""}">
-          <input type="radio" name="qvColor" value="${cor}" ${disabled ? "disabled" : ""}>
-          <span class="qv-color-swatch" style="background:${cor}"></span>
-          <span class="visually-hidden">${escapeHTML(c.label)}${disabled ? " — esgotado" : ""}</span>
-        </label>
-      `;
-    }).join("");
-  }
-  function syncQvColorSelection(){
-    qvColorOptionsEl.querySelectorAll(".qv-color-option").forEach(label => {
-      label.classList.toggle("selected", label.querySelector("input").checked);
-    });
-  }
-  function updateQvThumbTint(){
-    const tint = safeColor(qvSelectedColor);
-    const thumb = document.getElementById("qvThumb");
-    thumb.style.background = tint + "22";
-    thumb.querySelector(".bow-icon").style.color = tint;
-  }
-  qvColorOptionsEl.addEventListener("change", (e) => {
-    const input = e.target.closest("input[name='qvColor']");
-    if(!input) return;
-    qvSelectedColor = input.value;
-    syncQvColorSelection();
-    updateQvThumbTint();
-  });
-
-  // 2ª cor opcional (produtos "vendidos em conjunto") — mesmo componente
-  // visual do seletor principal, com um chip a mais no início ("Sem 2ª
-  // cor") pra o radiogroup sempre ter uma opção marcada mesmo
-  // representando "nenhuma" (rádio nativo não tem como desmarcar sozinho).
-  function renderQuickViewSecondColor(p){
-    const inStock = new Set(inStockColors(p));
-    qvSecondColorOptionsEl.innerHTML = `
-      <label class="qv-color-option qv-color-option-none">
-        <input type="radio" name="qvSecondColor" value="${QV_NO_SECOND_COLOR}" checked>
-        <span class="qv-color-swatch qv-color-swatch-none"><i class="bi bi-x-lg" aria-hidden="true"></i></span>
-        <span class="visually-hidden">Sem segunda cor</span>
-      </label>
-    ` + allColors.map(c => {
-      const disabled = !inStock.has(c.hex);
-      const cor = safeColor(c.hex);
-      return `
-        <label class="qv-color-option${disabled ? " is-disabled" : ""}">
-          <input type="radio" name="qvSecondColor" value="${cor}" ${disabled ? "disabled" : ""}>
-          <span class="qv-color-swatch" style="background:${cor}"></span>
-          <span class="visually-hidden">${escapeHTML(c.label)}${disabled ? " — esgotado" : ""}</span>
-        </label>
-      `;
-    }).join("");
-  }
-  function syncQvSecondColorSelection(){
-    qvSecondColorOptionsEl.querySelectorAll(".qv-color-option").forEach(label => {
-      label.classList.toggle("selected", label.querySelector("input").checked);
-    });
-  }
-  qvSecondColorOptionsEl.addEventListener("change", (e) => {
-    const input = e.target.closest("input[name='qvSecondColor']");
-    if(!input) return;
-    qvSelectedSecondColor = input.value === QV_NO_SECOND_COLOR ? null : input.value;
-    syncQvSecondColorSelection();
-  });
 
   function renderQuickViewPayment(){
     const p = findProduct(qvProductId);
@@ -1583,24 +1429,24 @@
     if(!p) return;
     qvProductId = p.id; qvQty = 1;
 
-    const inStock = inStockColors(p);
-    qvSelectedColor = inStock.includes(p.color) ? p.color : (inStock[0] || null);
-    renderQuickViewColors(p);
-    if(qvSelectedColor){
-      const input = qvColorOptionsEl.querySelector(`input[value="${CSS.escape(qvSelectedColor)}"]`);
-      if(input) input.checked = true;
-    }
-    syncQvColorSelection();
-    updateQvThumbTint();
-    qvSoldOutMsgEl.classList.toggle("d-none", inStock.length > 0);
-    qvAddBtnEl.disabled = inStock.length === 0;
-
-    qvSelectedSecondColor = null;
-    qvSecondColorSectionEl.classList.toggle("d-none", !p.allowsSecondColor);
-    if(p.allowsSecondColor) renderQuickViewSecondColor(p);
+    // Esgotado: mensagem visível e botão travado. Antes isto era derivado de
+    // "nenhuma cor em estoque"; agora é o próprio produto que diz.
+    qvSoldOutMsgEl.classList.toggle("d-none", !p.soldOut);
+    qvAddBtnEl.disabled = Boolean(p.soldOut);
+    qvAddBtnEl.textContent = p.soldOut ? "Esgotado" : "Adicionar ao carrinho";
 
     document.getElementById("qvName").textContent = p.name;
     document.getElementById("qvDesc").textContent = p.desc;
+
+    // Categoria + selos do produto (dado real; selo só aparece se existir).
+    const tagsEl = document.getElementById("qvTags");
+    if(tagsEl){
+      const tags = [];
+      if(p.catLabel) tags.push(`<span class="qv-tag is-cat">${escapeHTML(p.catLabel)}</span>`);
+      (p.badges || []).forEach(b => tags.push(`<span class="qv-tag is-badge">${escapeHTML(b)}</span>`));
+      tagsEl.innerHTML = tags.join("");
+      tagsEl.classList.toggle("d-none", tags.length === 0);
+    }
 
     const thumb = document.getElementById("qvThumb");
     const img = document.getElementById("qvImage");
@@ -1631,13 +1477,12 @@
     if(addBtn){
       const id = Number(addBtn.dataset.id);
       const p = findProduct(id);
-      const color = defaultColorFor(p);
-      if(!color){
-        showCheckoutHintToast(`${p?.name || "Este produto"} está esgotado em todas as cores no momento.`);
+      if(p?.soldOut){
+        showCheckoutHintToast(`${p.name} está esgotado no momento.`);
         return;
       }
-      addToCart(id, 1, color);
-      celebrateAddToCart(addBtn, color);
+      addToCart(id, 1);
+      celebrateAddToCart(addBtn, p?.color);
       pulseAddButton(addBtn);
       return;
     }
@@ -1665,9 +1510,9 @@
     renderQuickViewPayment();
   });
   document.getElementById("qvAddBtn").addEventListener("click", () => {
-    if(qvProductId != null && qvSelectedColor){
-      addToCart(qvProductId, qvQty, qvSelectedColor, qvSelectedSecondColor);
-      celebrateAddToCart(document.getElementById("qvAddBtn"), qvSelectedColor);
+    if(qvProductId != null){
+      addToCart(qvProductId, qvQty);
+      celebrateAddToCart(document.getElementById("qvAddBtn"), findProduct(qvProductId)?.color);
     }
     qvModal.hide();
   });

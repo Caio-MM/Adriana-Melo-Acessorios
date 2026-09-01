@@ -666,7 +666,44 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .product-body{ padding:1.1rem 1.2rem 1.3rem; }
 .product-cat{ font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--blush-600); font-weight:700; }
 .product-name{ font-family:var(--font-display); font-size:1.08rem; font-weight:600; margin:.2rem 0 .35rem; }
-.product-stars{ color:var(--blush-500); font-size:.78rem; }
+/* ---- vitrine: busca, contagem, estado vazio e esgotado ---- */
+.vitrine-busca{ position:relative; flex:0 1 300px; min-width:220px; }
+.vitrine-busca > .bi-search{
+  position:absolute; left:1rem; top:50%; transform:translateY(-50%);
+  color:var(--blush-600); font-size:.9rem; pointer-events:none;
+}
+.vitrine-busca .form-control{
+  border:1.5px solid var(--blush-150); background:var(--cream); border-radius:999px;
+  padding:.62rem 2.6rem; font-size:.92rem; color:var(--ink);
+}
+.vitrine-busca .form-control:focus{
+  border-color:var(--blush-500); background:var(--white);
+  box-shadow:0 0 0 3px var(--blush-100);
+}
+/* o X nativo do type=search some: temos um botão próprio, e dois seria
+   confuso além de desalinhado com o resto do site */
+.vitrine-busca .form-control::-webkit-search-cancel-button{ display:none; }
+.vitrine-busca-limpar{
+  position:absolute; right:.5rem; top:50%; transform:translateY(-50%);
+  width:28px; height:28px; border:0; border-radius:50%; background:var(--blush-100);
+  color:var(--blush-700); display:flex; align-items:center; justify-content:center; font-size:.7rem;
+}
+.vitrine-busca-limpar:hover{ background:var(--blush-200); }
+
+.vitrine-contagem{ font-size:.85rem; color:var(--ink-soft); }
+.vitrine-contagem:empty{ display:none; }
+
+.vitrine-vazio{ text-align:center; padding:3rem 1rem; }
+.vitrine-vazio .bow-icon{ width:56px; height:auto; color:var(--blush-200); margin-bottom:1rem; }
+
+/* Esgotado: o card continua clicável (dá pra ver o produto), só não dá pra
+   comprar. Foto esmaecida sinaliza sem precisar ler o selo. */
+.product-badge.is-soldout{
+  background:var(--stone-600); box-shadow:0 6px 14px -6px rgba(0,0,0,.35);
+}
+.product-card.is-soldout .product-thumb img{ opacity:.55; filter:grayscale(.35); }
+.btn-add:disabled{ opacity:.4; cursor:not-allowed; }
+.btn-add:disabled:hover{ background:var(--blush-100); color:var(--blush-700); }
 .product-price{ font-weight:700; font-size:1.1rem; color:var(--ink); }
 .product-price small{ font-weight:400; color:var(--ink-soft); font-size:.72rem; }
 
@@ -801,35 +838,35 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   border-bottom:1px solid var(--blush-100);
 }
 
-.qv-color-options{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.4rem; }
-.qv-color-option{
-  position:relative; width:34px; height:34px; border-radius:50%; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
+/* ---- Quick View: tags, garantias e estado esgotado ----
+   A coluna da direita só tinha descrição + cores + quantidade (~250px)
+   contra uma foto de até 560px, e sobrava um vazio grande. Com a escolha
+   de cor removida sobraria ainda menos — estes blocos preenchem com dado
+   REAL do produto (categoria, selos) e com as garantias que a loja já
+   afirma no resto do site. */
+.qv-tags{ display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.85rem; }
+.qv-tag{
+  font-size:.68rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase;
+  padding:.3rem .7rem; border-radius:999px;
 }
-.qv-color-swatch{
-  width:28px; height:28px; border-radius:50%; border:2px solid var(--white);
-  box-shadow:0 0 0 1.5px var(--blush-200); transition:box-shadow .15s ease;
-}
-.qv-color-option.selected .qv-color-swatch{ box-shadow:0 0 0 2.5px var(--blush-600); }
-.qv-color-option input{ position:absolute; inset:0; opacity:0; margin:0; cursor:pointer; }
-.qv-color-option:focus-within .qv-color-swatch{ outline:3px solid var(--blush-600); outline-offset:2px; }
-.qv-color-option.is-disabled{ cursor:not-allowed; }
-.qv-color-option.is-disabled .qv-color-swatch{ opacity:.35; box-shadow:0 0 0 1.5px var(--blush-100); }
-.qv-color-option.is-disabled::after{
-  content:""; position:absolute; width:30px; height:2px; background:var(--ink-soft);
-  transform:rotate(45deg); pointer-events:none;
-}
-.qv-color-option input:disabled{ cursor:not-allowed; }
-.qv-soldout-msg{ font-size:.8rem; color:var(--color-danger); margin-top:.4rem; }
+.qv-tag.is-cat{ background:var(--blush-100); color:var(--blush-700); }
+.qv-tag.is-badge{ background:linear-gradient(135deg, var(--blush-600), var(--blush-700)); color:#fff; }
 
-/* Chip "Sem 2ª cor" do seletor de cor secundária (produtos em conjunto) —
-   mesmo tamanho/formato de .qv-color-swatch, sem cor de fundo, com um X
-   no lugar do preenchimento. */
-.qv-color-swatch-none{
-  display:flex; align-items:center; justify-content:center;
-  background:var(--blush-50); color:var(--ink-soft); font-size:.7rem;
+.qv-desc{ margin-bottom:1.1rem; }
+
+.qv-garantias{
+  list-style:none; margin:1.25rem 0 0; padding:1.1rem 0 0;
+  border-top:1px solid var(--blush-100);
+  display:flex; flex-direction:column; gap:.6rem;
 }
-.qv-color-option-none.selected .qv-color-swatch-none{ color:var(--blush-700); }
+.qv-garantias li{ display:flex; align-items:center; gap:.6rem; font-size:.86rem; color:var(--ink-soft); }
+.qv-garantias i{ color:var(--blush-600); font-size:.95rem; flex-shrink:0; }
+
+.qv-soldout-msg{
+  display:flex; align-items:center; gap:.45rem; font-size:.85rem; font-weight:600;
+  color:var(--color-danger); background:#FDECEC; border-radius:var(--radius-md);
+  padding:.6rem .8rem; margin-bottom:1rem;
+}
 
 .qv-pix{
   background:var(--blush-50); border:1.5px solid var(--blush-200);
@@ -1540,34 +1577,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 }
 .cart-item-price{ color:var(--ink); font-size:.86rem; font-weight:600; white-space:nowrap; flex-shrink:0; }
 .cart-item-price small{ color:var(--ink-soft); font-weight:400; font-size:.72rem; margin-left:.2rem; }
-.cart-item-color-dot{ width:12px; height:12px; border-radius:50%; border:1px solid rgba(0,0,0,.08); flex-shrink:0; }
-.cart-item-color-edit{ margin:.15rem 0 .3rem; }
-.cart-item-color-summary{
-  display:flex; align-items:center; gap:.35rem; font-size:.78rem; color:var(--ink-soft);
-  cursor:pointer; list-style:none; width:fit-content;
-}
-.cart-item-color-summary::-webkit-details-marker{ display:none; }
-.cart-item-color-summary .bi-pencil-fill{ font-size:.65rem; color:var(--blush-500); margin-left:.1rem; }
-.cart-item-color-summary:hover .bi-pencil-fill,
-.cart-item-color-summary:focus-visible .bi-pencil-fill{ color:var(--blush-700); }
-.cart-item-color-panel{
-  display:flex; flex-direction:column; gap:.5rem;
-  padding:.6rem .1rem .1rem; animation:auth-pane-slide-back .25s ease;
-}
-.cart-item-color-group-label{ font-size:.68rem; color:var(--ink-soft); display:block; margin-bottom:.25rem; }
-.cart-item-color-swatches{ margin-top:0; }
-.cart-color-swatch-btn{
-  /* .qv-color-option (compartilhada com o Quick View) já define 34x34px,
-     mas dentro do flex-row do carrinho isso não bastava pra um <button>:
-     o container não declara align-items (stretch por padrão) e o navegador
-     aplica um "chrome" nativo de botão que ignora a altura fixa — a
-     bolinha saía oval. appearance:none tira esse chrome; flex:0 0 34px +
-     align-self:center travam o tamanho e cancelam o stretch só aqui,
-     sem tocar em .qv-color-option (usada também pelo Quick View). */
-  border:none; background:none; padding:0;
-  appearance:none; -webkit-appearance:none;
-  flex:0 0 34px; align-self:center;
-}
 .cart-item-controls{ display:flex; align-items:center; justify-content:space-between; gap:.6rem; }
 .cart-qty{ display:flex; align-items:center; gap:.5rem; }
 .cart-qty button{
