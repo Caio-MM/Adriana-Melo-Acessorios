@@ -294,7 +294,7 @@
      servidor a cada tecla. `PAGINA` limita quantos cards existem no DOM —
      cada card custa ~20 elementos e um IntersectionObserver, então com o
      catálogo crescendo isso é o que segura a página leve. */
-  const PAGINA = 8;
+  const PAGINA = 12;
   let buscaAtual = "";
   let visiveis = PAGINA;
 
@@ -1382,6 +1382,8 @@
     const img = document.getElementById("qvImage");
     img.classList.remove("is-loaded", "is-error");
     thumb.classList.add("is-loading");
+    // limpa a proporção da foto anterior — a nova define a dela ao carregar
+    thumb.style.removeProperty("--qv-ratio");
     img.src = qvPhotos[qvPhotoIndex];
     qvGalleryPrevEl.disabled = qvPhotoIndex === 0;
     qvGalleryNextEl.disabled = qvPhotoIndex === qvPhotos.length - 1;
@@ -1471,6 +1473,21 @@
     }
   }
   wireImage(document.getElementById("qvImage"));
+
+  // A moldura assume a proporção da PRÓPRIA foto assim que ela carrega. Com
+  // object-fit:contain a foto já aparece inteira em qualquer moldura, mas se
+  // a moldura fosse sempre 2:3 uma foto deitada ficaria com faixas de fundo
+  // em cima e embaixo. Assim não há corte nem espaço morto — a foto aparece
+  // exatamente como foi enviada.
+  (() => {
+    const qvImg = document.getElementById("qvImage");
+    if(!qvImg) return;
+    qvImg.addEventListener("load", () => {
+      if(!qvImg.naturalWidth || !qvImg.naturalHeight) return;
+      document.getElementById("qvThumb")
+        ?.style.setProperty("--qv-ratio", `${qvImg.naturalWidth} / ${qvImg.naturalHeight}`);
+    });
+  })();
 
   grid.addEventListener("click", function(e){
     const addBtn = e.target.closest(".btn-add");
