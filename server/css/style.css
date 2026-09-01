@@ -1246,11 +1246,75 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .scrolly-layout{ display:block; }
   .scrolly-steps{ display:none; }
   .scrolly-deck-viewport{ position:static; aspect-ratio:auto; max-height:none; overflow:visible; }
-  .scrolly-deck{ position:static; display:flex; flex-direction:column; gap:2.5rem; }
-  .scrolly-card{ position:static; transform:none; transition:none; }
-  .scrolly-card-head{ display:block; margin-bottom:1rem; }
-  .scrolly-card-head .scrolly-num{ opacity:1; color:var(--blush-700); margin-bottom:.15rem; }
+  .scrolly-deck{ position:static; display:flex; flex-direction:column; gap:3rem; }
+
+  /* Entrada em cascata: o cartão sobe e assenta, o texto vem logo atrás e o
+     número dá um pulinho. Sem isto a seção ficava completamente parada no
+     celular, já que aqui não existe o deck deslizando. A classe .is-visible
+     vem do IntersectionObserver em js/main.js. */
+  .scrolly-card{
+    position:static; opacity:0;
+    transform:translateY(38px) scale(.98);
+    transition:opacity .55s ease, transform .75s var(--ease-out);
+  }
+  .scrolly-card.is-visible{ opacity:1; transform:none; }
+
+  .scrolly-card-head{
+    display:block; margin-bottom:1rem;
+    opacity:0; transform:translateY(14px);
+    transition:opacity .5s ease .14s, transform .55s var(--ease-out) .14s;
+  }
+  .scrolly-card.is-visible .scrolly-card-head{ opacity:1; transform:none; }
+
+  .scrolly-card-head .scrolly-num{
+    display:inline-block; opacity:1; color:var(--blush-700); margin-bottom:.15rem;
+    transform:scale(.6);
+    transition:transform .5s cubic-bezier(.34,1.56,.64,1) .22s;
+  }
+  .scrolly-card.is-visible .scrolly-card-head .scrolly-num{ transform:none; }
+
+  /* A moldura "levanta" um pouco ao assentar — dá a sensação de peso. */
+  .scrolly-card .scrolly-frame{
+    box-shadow:0 10px 24px -18px rgba(84,41,60,.35);
+    transition:box-shadow .7s var(--ease-out) .1s;
+  }
+  .scrolly-card.is-visible .scrolly-frame{ box-shadow:0 26px 60px -28px rgba(84,41,60,.45); }
   .scrolly-card .scrolly-frame{ height:auto; }
+  /* ADEQUAÇÃO AO CELULAR — medido em 375x812 antes destes cortes: a seção
+     inteira dava 6,6 telas de rolagem e só o painel do Pix, 1,9 telas (não
+     cabia nem uma vez na tela). Um bloco de confiança não pode custar isso.
+     Abaixo, o painel vira um RESUMO: sai o que existe para dar riqueza no
+     computador (barra de navegação, segundo produto, itens finais da linha
+     do tempo, notas de rodapé) e fica a prova essencial de cada garantia. */
+
+  /* A barra com os 3 pontinhos + URL é cromo de navegador de COMPUTADOR;
+     num celular ela é incongruente além de custar altura. Fica só uma faixa
+     discreta com o cadeado e o domínio, que é o que prova "site real". */
+  .scrolly-frame-dot{ display:none; }
+  .scrolly-frame-bar{ padding:.5rem .9rem; justify-content:center; }
+  .scrolly-frame-url{ margin-left:0; font-size:.8rem; max-width:100%; }
+  .mock-nav{ display:none; }
+
+  /* Cortes por painel, do mais alto para o mais baixo. Tudo com escopo dentro
+     do mock: .section-sub, .pix-status e .cart-hint são classes do site
+     inteiro — soltas aqui, quebrariam a página de pagamento de verdade. */
+  .mock-produto-extra{ display:none; }          /* 2º produto do resumo do Pix */
+  .mock-timeline li:nth-child(n+4){ display:none; } /* últimas etapas do pedido */
+  .mock-bolha:nth-child(n+4){ display:none; }   /* conversa fica em 3 balões */
+  .mock-rodape{ display:none; }
+  /* No cartão do Pix o QR já diz o que fazer; instrução, status e validade
+     são texto de apoio que no celular só custa altura. */
+  .mock-cartao .section-sub,
+  .mock-cartao .pix-or,
+  .mock-cartao .pix-status,
+  .mock-cartao .cart-hint{ display:none; }
+  .mock .pix-qr-frame{ width:150px; height:150px; }
+  .mock .pix-qr.mock-qr-art{ width:118px; height:118px; }
+
+  /* 13,8px era menor que o corpo do próprio site; sobe para o tamanho de
+     leitura confortável no celular. */
+  .mock-muted{ font-size:.9rem; }
+
   /* Nada de escala aqui: encolher uma página inteira para 343px de largura
      deixaria o texto ilegível. No celular o painel abre em tamanho normal e
      em coluna única — vira a versão mobile da mesma página. */
@@ -1263,7 +1327,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .mock-campos{ grid-template-columns:1fr; gap:1.25rem; }
   .mock-largura, .mock-cartao{ max-width:none; }
   .mock-nav{ padding:.7rem 1.1rem; }
-  .pix-qr.mock-qr-art{ width:170px; height:170px; }
   .mock-duas > div + div{ margin-top:1.25rem; }
   /* lado a lado o total e o selo de economia se espremem em 375px */
   .mock-total{ flex-direction:column; align-items:flex-start; gap:.5rem; }

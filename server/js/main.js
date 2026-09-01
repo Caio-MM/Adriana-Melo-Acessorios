@@ -229,6 +229,21 @@
       requestAnimationFrame(updateScrolly);
     }
 
+    /* No celular não existe deck deslizando — sem isto os cartões ficavam
+       totalmente parados. Cada um entra com um leve subir/assentar quando
+       aparece; o efeito é aplicado só dentro do media query do celular (o
+       computador ignora esta classe). Dispara uma vez por cartão. */
+    if("IntersectionObserver" in window){
+      const entradaCartoes = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+          if(!e.isIntersecting) return;
+          e.target.classList.add("is-visible");
+          entradaCartoes.unobserve(e.target);
+        });
+      }, { threshold: 0.15, rootMargin: "0px 0px -8% 0px" });
+      scrollyCards.forEach(c => entradaCartoes.observe(c));
+    }
+
     window.addEventListener("scroll", agendarScrolly, { passive: true });
     window.addEventListener("resize", () => { ajustarEscalaDosPaineis(); agendarScrolly(); });
     deckAtivo.addEventListener("change", ajustarEscalaDosPaineis);
