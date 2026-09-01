@@ -419,7 +419,7 @@
         </div>
         <div class="d-flex flex-wrap align-items-center gap-3 pt-4 border-top" style="border-color:var(--blush-100)!important">
           <div>
-            <span class="section-eyebrow"><i class="bi bi-instagram"></i> Nos siga:</span>
+            <span class="section-eyebrow"><i class="bi bi-instagram"></i> nos siga:</span>
             <div class="fw-semibold font-display" style="font-size:1.05rem">Nos siga @adriana_melo_acessorios</div>
           </div>
           <a href="https://www.instagram.com/adriana_melo_acessorios/" target="_blank" rel="noopener noreferrer" class="btn-outline-blush ms-auto"><i class="bi bi-instagram me-1"></i> Seguir no Instagram</a>
@@ -509,13 +509,6 @@
 
 <!-- ============ GARANTIAS ============ -->
 <section id="depoimentos" class="scrolly-section">
-  <div class="container">
-    <div class="text-center mx-auto scrolly-head reveal">
-      <span class="section-eyebrow"><i class="bi bi-shield-heart"></i> nossa promessa pra você</span>
-      <h2 class="section-title">Sua compra, protegida do início ao fim</h2>
-    </div>
-  </div>
-
   <!-- No computador a seção fica presa na tela enquanto a pessoa rola, e os
        cartões sobem em bloco, um empurrando o outro; o texto de cada passo
        abre só quando ele fica ativo. No celular nada disso se aplica: a
@@ -536,6 +529,14 @@
       <svg class="bow-icon scrolly-bow sb5" aria-hidden="true"><use href="#bow-shape"/></svg>
 
       <div class="container">
+        <!-- O título mora DENTRO da área presa: assim ele continua na tela
+             enquanto os cartões passam, em vez de rolar embora e deixar um
+             vão grande antes do primeiro slide. -->
+        <div class="text-center mx-auto scrolly-head">
+          <span class="section-eyebrow"><i class="bi bi-shield-heart"></i> nossa promessa pra você</span>
+          <h2 class="section-title">Sua compra, protegida do início ao fim</h2>
+        </div>
+
         <div class="scrolly-layout">
 
           <ol class="scrolly-steps">

@@ -1000,7 +1000,10 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
    No celular nada disso vale: ver o media query no fim deste bloco, onde a
    mesma marcação vira uma lista empilhada. */
 .scrolly-section{ padding-top:5rem; padding-bottom:5rem; }
-.scrolly-head{ max-width:600px; margin-bottom:2.5rem; }
+/* Dentro da tela presa (ver index.html): fica no topo enquanto os cartões
+   passam. Margem menor que a de uma seção normal porque aqui ele divide os
+   100vh com o deck. */
+.scrolly-head{ max-width:600px; margin-bottom:1.75rem; }
 /* No computador o miolo preso já tem folga sobrando dentro dos 100vh dele; com
    o padding da seção por cima disso, sobrava um vão grande até a oferta de
    boas-vindas. O respiro fica por conta do padding-top da seção seguinte. */
@@ -1014,8 +1017,9 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .scrolly-pin-wrap{ position:relative; height:280vh; }
 .scrolly-pin{
   position:sticky; top:0; height:100vh;
-  display:flex; align-items:center; overflow:hidden;
+  display:flex; flex-direction:column; justify-content:center; overflow:hidden;
 }
+.scrolly-pin > .container{ position:relative; z-index:1; }
 /* z-index acima dos lacinhos: eles são absolutos (z-index:0) e, sem isto,
    pintavam por cima do texto, que é conteúdo estático. */
 .scrolly-layout{ display:flex; align-items:center; gap:5rem; position:relative; z-index:1; }
@@ -1056,9 +1060,11 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 /* ---- deck de cartões ---- */
 /* 4/3: os painéis são páginas inteiras (~870px de altura em unidades de
    página) e precisam desta altura para caber sem cortar o rodapé. */
+/* max-height menor que antes (76vh): o título agora divide os 100vh da tela
+   presa com o deck, então a moldura precisa ceder essa altura. */
 .scrolly-deck-viewport{
   flex:1 1 auto; min-width:0; position:relative;
-  aspect-ratio:4/3; max-height:76vh; overflow:hidden;
+  aspect-ratio:4/3; max-height:58vh; overflow:hidden;
 }
 .scrolly-deck{ position:absolute; inset:0; }
 /* Cada cartão ocupa a janela inteira e fica deslocado (índice − ativo) vezes a
