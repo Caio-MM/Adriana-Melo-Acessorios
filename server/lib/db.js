@@ -127,6 +127,27 @@ db.exec(`
     created_at INTEGER NOT NULL
   );
 
+  /* Fila de e-mails para a CLIENTE. Aviso para a lojista pode falhar calado
+     (ela vê o pedido no painel de qualquer jeito); recibo de compra não pode.
+     Uma falha de SMTP dentro do try/catch do webhook não deixava rastro
+     nenhum, e o site promete rastreio por e-mail na própria página.
+     Aqui a mensagem é gravada ANTES de tentar enviar: se a tentativa na hora
+     falhar, o cron periódico reenvia. */
+  CREATE TABLE IF NOT EXISTS email_outbox (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind            TEXT NOT NULL,
+    to_email        TEXT NOT NULL,
+    subject         TEXT NOT NULL,
+    text_body       TEXT NOT NULL,
+    html_body       TEXT NOT NULL,
+    order_reference TEXT,
+    attempts        INTEGER NOT NULL DEFAULT 0,
+    next_attempt_at INTEGER NOT NULL,
+    sent_at         INTEGER,
+    last_error      TEXT,
+    created_at      INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS coupons (
     code         TEXT PRIMARY KEY,
     percent_off  REAL NOT NULL,
@@ -204,6 +225,13 @@ db.exec(`
   -- Histórico do cliente e listagens sem filtro, do mais recente ao mais antigo.
   CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
   -- Limpeza de sessões/tokens vencidos (WHERE expires_at < agora).
+  -- O webhook do Mercado Pago reenvia notificação: sem esta trava a cliente
+  -- receberia o mesmo recibo duas vezes.
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_outbox_unico
+    ON email_outbox(kind, order_reference) WHERE order_reference IS NOT NULL;
+  -- Varredura do cron: só o que ainda não saiu e já pode ser tentado.
+  CREATE INDEX IF NOT EXISTS idx_outbox_pendentes
+    ON email_outbox(next_attempt_at) WHERE sent_at IS NULL;
   CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
   CREATE INDEX IF NOT EXISTS idx_resets_expires ON password_resets(expires_at);
 `);
@@ -285,6 +313,10 @@ ensureColumn("custom_products", "sold_out", "INTEGER");
 // coluna própria, casar "(61) 98274-9808" com "61982749808" dentro do JSON
 // do endereço seria frágil demais para valer como controle de uso de cupom.
 ensureColumn("orders", "customer_phone", "TEXT");
+/* Cópia do e-mail no momento da compra, em vez de buscar em `users` na hora
+   de enviar: conta apagada não pode quebrar o recibo de um pedido que
+   existiu. Mesma lógica do address_json, que também é uma fotografia. */
+ensureColumn("orders", "customer_email", "TEXT");
 // O índice de customer_phone fica AQUI, e não junto dos demais lá em cima:
 // a coluna é criada por este ensureColumn, então num banco antigo ela ainda
 // não existiria no momento em que o bloco CREATE TABLE roda.
@@ -658,8 +690,8 @@ const stmtInsertOrder = db.prepare(`
   INSERT INTO orders (
     external_reference, user_id, status, items_json, address_json, shipping_json,
     coupon_code, subtotal, discount, pix_discount, payment_method,
-    shipping_price, total, customer_phone, created_at, updated_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    shipping_price, total, customer_phone, customer_email, created_at, updated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const stmtGetOrderByRef = db.prepare(`SELECT * FROM orders WHERE external_reference = ?`);
 const stmtUpdateOrderStatus = db.prepare(
@@ -718,6 +750,7 @@ function createOrder(order) {
     order.shippingPrice,
     order.total,
     order.customerPhone ?? null,
+    order.customerEmail ?? null,
     now,
     now
   );
@@ -1201,7 +1234,99 @@ function saveInstagramToken({ accessToken, refreshedAt }) {
   stmtUpsertInstagramToken.run(accessToken, refreshedAt);
 }
 
+/* -------------------- FILA DE E-MAIL PARA A CLIENTE --------------------
+   Enfileirar antes de enviar é o que separa "o e-mail não saiu" de "ninguém
+   nunca vai saber que não saiu". A tentativa imediata cobre o caso normal; o
+   que falhar fica gravado com o erro e é retentado pelo cron. */
+const MAX_TENTATIVAS_EMAIL = 5;
+
+const stmtEnfileiraEmail = db.prepare(`
+  INSERT OR IGNORE INTO email_outbox
+    (kind, to_email, subject, text_body, html_body, order_reference, next_attempt_at, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`);
+/* Devolve o id da linha criada, ou null quando o índice único barrou —
+   barrar aqui é o comportamento certo, não um erro: significa que este
+   e-mail já foi enfileirado para este pedido (webhook reenviado). */
+function enqueueEmail({ kind, toEmail, subject, textBody, htmlBody, orderReference }){
+  const agora = Date.now();
+  const r = stmtEnfileiraEmail.run(
+    kind, toEmail, subject, textBody, htmlBody, orderReference ?? null, agora, agora
+  );
+  return r.changes > 0 ? Number(r.lastInsertRowid) : null;
+}
+
+const stmtApagaEmailDoPedido = db.prepare(
+  `DELETE FROM email_outbox WHERE kind = ? AND order_reference = ?`
+);
+/* Só para quando o CONTEÚDO do aviso mudou (a lojista corrigiu um código de
+   rastreio digitado errado). Sem isto o índice único barraria o reenvio e a
+   cliente ficaria para sempre com o código errado. */
+function deleteOutboxEntry(kind, orderReference){
+  if(!orderReference) return 0;
+  return stmtApagaEmailDoPedido.run(kind, orderReference).changes;
+}
+
+const stmtEmailsPendentes = db.prepare(`
+  SELECT * FROM email_outbox
+   WHERE sent_at IS NULL AND attempts < ? AND next_attempt_at <= ?
+   ORDER BY id
+   LIMIT ?
+`);
+function pendingEmails(limite = 20){
+  return stmtEmailsPendentes.all(MAX_TENTATIVAS_EMAIL, Date.now(), limite);
+}
+
+const stmtEmailPorId = db.prepare(`SELECT * FROM email_outbox WHERE id = ?`);
+function getOutboxEmail(id){ return stmtEmailPorId.get(id) || null; }
+
+const stmtEmailEnviado = db.prepare(
+  `UPDATE email_outbox SET sent_at = ?, last_error = NULL WHERE id = ?`
+);
+function markEmailSent(id){ stmtEmailEnviado.run(Date.now(), id); }
+
+const stmtEmailFalhou = db.prepare(
+  `UPDATE email_outbox
+      SET attempts = attempts + 1, next_attempt_at = ?, last_error = ?
+    WHERE id = ?`
+);
+/* Espera crescente entre tentativas (5min, 15, 45, 2h15, 6h45): provedor de
+   SMTP fora do ar costuma voltar sozinho, e insistir de minuto em minuto só
+   ajuda a ser marcado como spam. */
+function markEmailFailed(id, erro){
+  const linha = getOutboxEmail(id);
+  const tentativas = (linha ? linha.attempts : 0) + 1;
+  const espera = 5 * 60 * 1000 * Math.pow(3, tentativas - 1);
+  stmtEmailFalhou.run(Date.now() + espera, String(erro).slice(0, 500), id);
+}
+
+/* Assinatura do catálogo — usada pelo cache de HTML do server.js para saber
+   se o JSON-LD precisa ser refeito. Precisa cobrir TUDO que dadosEstruturados()
+   lê: os dois lados do catálogo e os rótulos de categoria.
+   COUNT junto de MAX(updated_at) porque apagar uma linha não move o MAX; e
+   custom_categories não tem updated_at, então vai o conteúdo mesmo (são poucas
+   linhas) para que renomear uma categoria também conte. */
+function catalogVersion(){
+  const p = db.prepare("SELECT COUNT(*) AS n, IFNULL(MAX(updated_at), 0) AS t FROM product_overrides").get();
+  const c = db.prepare("SELECT COUNT(*) AS n, IFNULL(MAX(updated_at), 0) AS t FROM custom_products").get();
+  const k = db.prepare("SELECT IFNULL(GROUP_CONCAT(slug || ':' || label), '') AS s FROM custom_categories").get();
+  return `${p.n}.${p.t}|${c.n}.${c.t}|${k.s.length}.${hashCurto(k.s)}`;
+}
+
+function hashCurto(texto){
+  let h = 5381;
+  for(let i = 0; i < texto.length; i++) h = ((h * 33) ^ texto.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
 module.exports = {
+  catalogVersion,
+  enqueueEmail,
+  deleteOutboxEntry,
+  pendingEmails,
+  getOutboxEmail,
+  markEmailSent,
+  markEmailFailed,
   createUser,
   getUserByEmail,
   getUserById,

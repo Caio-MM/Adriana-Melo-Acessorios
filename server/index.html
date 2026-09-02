@@ -32,8 +32,11 @@
 
 <!--#DADOS-ESTRUTURADOS#-->
 
-<link rel="preload" href="css/fonts/fraunces-400-latin-ext-796716.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="css/fonts/fraunces-500-latin-ext-80f4a0.woff2" as="font" type="font/woff2" crossorigin>
+<!-- Faixa latin (U+0000-00FF), não latin-ext: ç ã õ á é do português estão
+     todos aqui. São os dois arquivos que o <h1> usa — o romano e o itálico
+     do <em>. Sem hash correto o navegador baixa e não usa. -->
+<link rel="preload" href="css/fonts/fraunces-400-latin-39ce20.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="css/fonts/fraunces-500-latin-ddaaa5.woff2" as="font" type="font/woff2" crossorigin>
 
 <link rel="stylesheet" href="css/vendor/bootstrap.min.css">
 <link rel="stylesheet" href="css/vendor/bootstrap-icons.min.css">
@@ -407,9 +410,9 @@
     <div class="row align-items-center gy-5">
       <div class="col-lg-6 reveal">
         <span class="section-eyebrow"><i class="bi bi-heart-fill"></i> nossa história</span>
-        <h2 class="section-title mb-3">Cada laço carrega um pouco da nossa história</h2>
-        <p class="section-sub mb-3">Há mais de 8 anos transformamos um gesto simples — um laço no cabelo — em um momento especial. Começamos nas feirinhas e nos colégios de Brasília, no Distrito Federal, onde até hoje a gente vê de perto a menina escolher a cor que quer levar.</p>
-        <p class="section-sub mb-4">Cada peça é cortada, costurada e finalizada à mão, uma de cada vez, com o mesmo cuidado que a gente teria ao presentear alguém da família. O site só ampliou o alcance — o laço continua saindo daqui do mesmo jeito que saía no primeiro dia.</p>
+        <h2 class="section-title mb-3">Comecei nas feirinhas e nos colégios de Brasília</h2>
+        <p class="section-sub mb-3">Faz mais de oito anos que eu faço laço à mão. Até hoje, o que eu mais gosto é de ver a menina escolher de perto a cor que ela vai levar.</p>
+        <p class="section-sub mb-4">Corto, costuro e finalizo cada peça uma de cada vez, com o mesmo cuidado de quando o laço é para alguém da minha própria família. O site mudou só o alcance: ele continua saindo daqui do mesmo jeito que saía no primeiro dia.</p>
         <div class="d-flex align-items-center gap-3 mb-4">
           <div class="social-circle" style="background:var(--blush-100); color:var(--blush-700)"><i class="bi bi-scissors"></i></div>
           <div>
@@ -601,14 +604,14 @@
                             <h4 class="section-title mb-3" style="font-size:1.7rem">Escolha como pagar</h4>
                             <div class="order-card mb-2">
                               <div class="mock-produto">
-                                <img src="img/mock-produto-1.jpg" alt="" width="373" height="560">
+                                <img src="img/mock-produto-1.jpg" alt="" width="373" height="560" loading="lazy" decoding="async">
                                 <div><strong>Laço Duquesa</strong><span class="mock-muted">Rosa pink · 1 un.</span></div>
                                 <span class="mock-preco">R$ 49,90</span>
                               </div>
                             </div>
                             <div class="order-card mb-3 mock-produto-extra">
                               <div class="mock-produto">
-                                <img src="img/mock-produto-2.jpg" alt="" width="373" height="560">
+                                <img src="img/mock-produto-2.jpg" alt="" width="373" height="560" loading="lazy" decoding="async">
                                 <div><strong>Laço Borboleta</strong><span class="mock-muted">Rosa bebê · 2 un.</span></div>
                                 <span class="mock-preco">R$ 89,80</span>
                               </div>
@@ -683,7 +686,7 @@
                           </div>
                           <div class="order-card mb-3">
                             <div class="mock-produto is-grande">
-                              <img src="img/mock-produto-2.jpg" alt="" width="373" height="560">
+                              <img src="img/mock-produto-2.jpg" alt="" width="373" height="560" loading="lazy" decoding="async">
                               <div>
                                 <strong>Laço Borboleta</strong>
                                 <span class="mock-muted">Rosa bebê · 2 unidades</span>
@@ -947,43 +950,53 @@
 
 <!-- ============ FOOTER ============ -->
 <footer class="plc-footer">
+  <!-- Borda de cima: o corte de creme para vinho era seco demais. -->
+  <div class="plc-footer-topo" aria-hidden="true"></div>
+
   <div class="container">
-    <div class="row g-4 mb-3">
-      <div class="col-lg-4">
-        <div class="d-flex align-items-center gap-2 mb-3">
-          <svg class="bow-icon"><use href="#bow-shape"/></svg>
-          <span class="font-display fw-semibold plc-footer-brand" style="color:#fff">Adriana Melo Acessórios</span>
+    <div class="plc-footer-grid">
+      <div class="plc-footer-marca">
+        <div class="plc-footer-logo">
+          <svg class="bow-icon" aria-hidden="true"><use href="#bow-shape"/></svg>
+          <span class="font-display plc-footer-brand">Adriana Melo Acessórios</span>
         </div>
-        <p class="small plc-footer-desc" style="max-width:320px">Ateliê artesanal de laços e presilhas para bebês e crianças. Cada peça é feita à mão, com fitas selecionadas e muito carinho.</p>
-        <div class="d-flex gap-2 mt-3">
-          <a href="https://www.instagram.com/adriana_melo_acessorios/" class="social-circle" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
-          <a href="https://wa.me/5561982749808" class="social-circle" aria-label="WhatsApp"><i class="bi bi-whatsapp"></i></a>
-          <a href="#" class="social-circle" aria-label="Pinterest"><i class="bi bi-pinterest"></i></a>
+        <p class="plc-footer-desc">Ateliê artesanal de laços e presilhas para bebês e crianças. Cada peça é feita à mão, com fitas selecionadas e muito carinho.</p>
+        <div class="plc-footer-social">
+          <a href="https://www.instagram.com/adriana_melo_acessorios/" target="_blank" rel="noopener" class="social-circle" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+          <a href="https://wa.me/5561982749808" target="_blank" rel="noopener" class="social-circle" aria-label="WhatsApp"><i class="bi bi-whatsapp"></i></a>
         </div>
       </div>
-      <div class="col-lg-2 col-6">
+
+      <nav class="plc-footer-col" aria-label="Coleções">
         <h3 class="plc-footer-heading">Coleções</h3>
-        <div class="d-flex flex-column gap-2">
-          <a href="#colecoes">Maternidade</a>
-          <a href="#colecoes">Festa</a>
-          <a href="#colecoes">Batizado</a>
-          <a href="#colecoes">Presente</a>
-        </div>
-      </div>
-      <div class="col-lg-2 col-6">
+        <a href="#colecoes">Maternidade</a>
+        <a href="#colecoes">Festa</a>
+        <a href="#colecoes">Batizado</a>
+        <a href="#colecoes">Presente</a>
+      </nav>
+
+      <nav class="plc-footer-col" aria-label="Ateliê">
         <h3 class="plc-footer-heading">Ateliê</h3>
-        <div class="d-flex flex-column gap-2">
-          <a href="#historia">Nossa história</a>
-          <a href="#sobre">Como funciona</a>
-          <a href="#depoimentos">Garantias</a>
-          <a href="#contato">Contato</a>
-          <a href="politica.html">Trocas e devoluções</a>
-          <a href="politica.html#privacidade">Privacidade</a>
-        </div>
-      </div>
-      <div class="col-lg-4" id="formasPagamento">
-        <h3 class="plc-footer-heading">Formas de pagamento</h3>
-                <div class="d-flex flex-wrap gap-2">
+        <a href="#historia">Nossa história</a>
+        <a href="#sobre">Como funciona</a>
+        <a href="#depoimentos">Garantias</a>
+        <a href="#contato">Contato</a>
+      </nav>
+
+      <nav class="plc-footer-col" aria-label="Ajuda">
+        <h3 class="plc-footer-heading">Ajuda</h3>
+        <a href="acompanhar-pedido.html">Acompanhar pedido</a>
+        <a href="politica.html">Trocas e devoluções</a>
+        <a href="politica.html#privacidade">Privacidade</a>
+      </nav>
+    </div>
+
+    <!-- Faixa própria: antes o pagamento dividia a linha com os links e sobrava
+         um vão enorme à direita. Em linha, os selos preenchem a largura. -->
+    <div class="plc-footer-pagamento" id="formasPagamento">
+      <h3 class="plc-footer-heading">Formas de pagamento</h3>
+      <div class="pay-row">
+        <div class="pay-badges">
           <span class="pay-badge" id="payBadgePix">Pix</span>
           <span class="pay-badge" id="payBadgeInstallments">Parcelamento no cartão</span>
         </div>
@@ -999,11 +1012,10 @@
         </div>
       </div>
     </div>
-    <hr style="border-color:rgba(255,255,255,.12); margin:0 0 .9rem">
+
     <div class="footer-bottom">
-      <span>© 2026 Adriana Melo Acessórios — CNPJ 54.732.065/0001-50. Todos os direitos reservados.</span>
-      <span class="footer-bottom-sep" aria-hidden="true">•</span>
-      <span>Feito com <i class="bi bi-heart-fill" style="color:var(--blush-500)"></i> em Brasília</span>
+      <span>© 2026 Adriana Melo Acessórios — CNPJ 54.732.065/0001-50</span>
+      <span>Feito com <i class="bi bi-heart-fill" aria-hidden="true"></i> em Brasília</span>
     </div>
   </div>
 </footer>

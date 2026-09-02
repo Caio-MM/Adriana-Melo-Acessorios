@@ -1464,55 +1464,144 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 }
 .plc-cta .btn-blush:active{ transform:translateY(0); box-shadow:none; }
 
-/* ============ FOOTER ============ */
+/* ============ FOOTER ============
+   Reorganizado: antes eram 4 colunas 4/2/2/4, e a última (pagamento) tinha
+   conteúdo estreito num espaço largo — sobrava um vão enorme à direita, que
+   era o que mais dava aparência de inacabado. Agora os links ocupam a linha de
+   cima em quatro colunas do tamanho certo, e o pagamento ganha uma faixa
+   própria, de largura inteira, onde as bandeiras finalmente respiram. */
+.plc-footer{
+  position:relative;
+  background:var(--ink);
+  color:var(--blush-100);
+  padding:2.4rem 0 1rem;
+}
+/* O encontro do creme com o vinho era um corte seco. */
+.plc-footer-topo{
+  position:absolute; inset:0 0 auto 0; height:3px;
+  background:linear-gradient(90deg,
+    var(--blush-700) 0%, var(--blush-500) 22%, var(--gold-500) 50%,
+    var(--blush-500) 78%, var(--blush-700) 100%);
+  opacity:.55;
+}
 
-.plc-footer{ background:var(--ink); color:var(--blush-100); padding:2.75rem 0 1.1rem; }
+.plc-footer-grid{
+  display:grid;
+  grid-template-columns:minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+  gap:1.75rem 2rem;
+  padding-bottom:1.5rem;
+}
+
+.plc-footer-logo{ display:flex; align-items:center; gap:.55rem; margin-bottom:.7rem; }
+.plc-footer .bow-icon{ color:var(--blush-500); width:26px; height:19px; flex:none; }
+.plc-footer-brand{ font-size:1.05rem; letter-spacing:.01em; font-weight:600; color:#fff; }
+.plc-footer-desc{
+  color:var(--blush-150); line-height:1.65; letter-spacing:.005em;
+  font-size:.84rem; max-width:34ch; margin:0 0 1rem;
+}
+
 .plc-footer-heading{
-  color:#fff; font-weight:600; margin-bottom:.9rem;
+  color:#fff; font-weight:600; margin:0 0 .75rem;
   font-family:var(--font-body); font-size:.72rem;
   text-transform:uppercase; letter-spacing:.11em;
 }
-.plc-footer a{ color:var(--blush-150); font-size:.88rem; letter-spacing:.01em; transition:color .2s ease; }
-.plc-footer a:hover{ color:#fff; }
-.plc-footer .bow-icon{ color:var(--blush-500); width:26px; height:19px; }
-.plc-footer-brand{ font-size:1.05rem; letter-spacing:.01em; }
-.plc-footer-desc{ color:var(--blush-150); line-height:1.6; letter-spacing:.005em; }
-.social-circle{
-  width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,.08); color:#fff;
-  border:1px solid rgba(255,255,255,.14);
-  display:flex; align-items:center; justify-content:center; transition:background .2s ease, border-color .2s ease;
-}
-.social-circle:hover{ background:var(--blush-600); border-color:var(--blush-600); }
 
+.plc-footer-col{ display:flex; flex-direction:column; align-items:flex-start; gap:.5rem; }
+
+/* Link com um traço que cresce da esquerda no hover, em vez de só trocar de
+   cor. Custa nada e é o que dá vida a uma lista de links parada. */
+.plc-footer a{
+  position:relative;
+  color:var(--blush-150); font-size:.88rem; letter-spacing:.01em;
+  transition:color var(--animation-short) var(--ease-out),
+             transform var(--animation-short) var(--ease-out);
+}
+.plc-footer-col a::before{
+  content:""; position:absolute; left:0; bottom:-3px; height:1px; width:100%;
+  background:var(--blush-500);
+  transform:scaleX(0); transform-origin:left center;
+  transition:transform var(--animation-normal) var(--ease-out);
+}
+.plc-footer-col a:hover{ color:#fff; transform:translateX(3px); }
+.plc-footer-col a:hover::before{ transform:scaleX(1); }
+
+.plc-footer-social{ display:flex; gap:.55rem; }
+.social-circle{
+  width:34px; height:34px; border-radius:50%;
+  background:rgba(255,255,255,.08); color:#fff;
+  border:1px solid rgba(255,255,255,.14);
+  display:flex; align-items:center; justify-content:center;
+  transition:background var(--animation-short) var(--ease-out),
+             border-color var(--animation-short) var(--ease-out),
+             transform var(--animation-short) var(--ease-out);
+}
+.social-circle:hover{
+  background:var(--blush-600); border-color:var(--blush-600);
+  transform:translateY(-3px);
+}
+
+/* ---- faixa de pagamento ---- */
+.plc-footer-pagamento{
+  border-top:1px solid rgba(255,255,255,.1);
+  padding:1.15rem 0 1.1rem;
+}
+.pay-row{
+  display:flex; flex-wrap:wrap; align-items:center;
+  gap:.75rem 1.5rem; justify-content:space-between;
+}
+.pay-badges{ display:flex; flex-wrap:wrap; gap:.5rem; }
 .pay-badge{
   background:transparent; border:1px solid rgba(255,255,255,.22); border-radius:999px;
-  padding:.32rem .75rem; font-size:.7rem; letter-spacing:.02em; color:var(--blush-100);
-  transition:border-color .2s ease, color .2s ease;
+  padding:.34rem .8rem; font-size:.7rem; letter-spacing:.02em; color:var(--blush-100);
+  transition:border-color var(--animation-short) var(--ease-out),
+             color var(--animation-short) var(--ease-out);
 }
 .pay-badge:hover{ border-color:var(--blush-500); color:#fff; }
 
-.pay-logos{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.7rem; }
+.pay-logos{ display:flex; flex-wrap:wrap; gap:.5rem; }
 .pay-logo-badge{
   display:flex; align-items:center; justify-content:center;
   height:34px; padding:.3rem .65rem;
   background:#fff; border-radius:8px;
-  opacity:.92; transition:opacity .2s ease, transform .2s ease;
+  opacity:.92;
+  transition:opacity var(--animation-short) var(--ease-out),
+             transform var(--animation-short) var(--ease-out);
 }
-.pay-logo-badge:hover{ opacity:1; transform:translateY(-1px); }
+.pay-logo-badge:hover{ opacity:1; transform:translateY(-3px); }
 .pay-logo-badge img{ height:100%; width:auto; max-width:50px; object-fit:contain; display:block; }
-
 .pay-logo-badge.is-icon{ gap:.35rem; color:var(--ink); font-size:.72rem; font-weight:700; }
 .pay-logo-badge.is-icon i{ font-size:1rem; color:var(--blush-700); }
 
+/* ---- linha final: às pontas, não centralizada ----
+   Centralizado brigava com todo o resto do rodapé, que é alinhado à esquerda. */
 .footer-bottom{
-  display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
-  gap:.35rem .65rem; font-size:.78rem; letter-spacing:.01em; color:var(--blush-150);
-  text-align:center;
+  border-top:1px solid rgba(255,255,255,.1);
+  padding-top:.85rem;
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:.35rem 1rem; font-size:.78rem; letter-spacing:.01em; color:var(--blush-150);
 }
-.footer-bottom-sep{ opacity:.4; }
-@media (max-width: 480px){
-  .footer-bottom{ flex-direction:column; gap:.3rem; }
-  .footer-bottom-sep{ display:none; }
+.footer-bottom .bi-heart-fill{ color:var(--blush-500); }
+
+@media (max-width: 991.98px){
+  .plc-footer-grid{ grid-template-columns:repeat(3, minmax(0, 1fr)); gap:1.5rem 1.25rem; }
+  .plc-footer-marca{ grid-column:1 / -1; }
+}
+/* No celular o rodapé chegava a 1,15x a altura da tela — uma tela inteira só
+   de rodapé. As três listas passam a dividir a mesma linha (rótulos curtos
+   cabem), e tudo encolhe junto. */
+@media (max-width: 575.98px){
+  .plc-footer{ padding:1.9rem 0 .9rem; }
+  .plc-footer-grid{ gap:1.25rem .9rem; padding-bottom:1.1rem; }
+  .plc-footer-desc{ font-size:.8rem; margin-bottom:.85rem; }
+  .plc-footer-heading{ font-size:.66rem; margin-bottom:.55rem; }
+  .plc-footer-col{ gap:.45rem; }
+  .plc-footer a{ font-size:.8rem; }
+  .plc-footer-pagamento{ padding:.95rem 0 .9rem; }
+  .pay-row{ justify-content:flex-start; gap:.6rem .9rem; }
+  .pay-logo-badge{ height:28px; padding:.25rem .5rem; border-radius:6px; }
+  .pay-logo-badge img{ max-width:40px; }
+  .pay-logo-badge.is-icon{ font-size:.66rem; }
+  .footer-bottom{ justify-content:flex-start; flex-direction:column; align-items:flex-start; gap:.3rem; font-size:.72rem; }
 }
 
 .shipping-option{

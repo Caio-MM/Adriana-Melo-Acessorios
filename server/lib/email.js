@@ -402,6 +402,182 @@ async function sendTwoFactorEmailCode({ to, name, code, expiresInMinutes }) {
  * Propaga erro — quem chama (server.js) trata como melhor esforço, porque a
  * inscrição em si já foi gravada e o código também volta na resposta HTTP.
  */
+/* =========================================================================
+   E-MAILS PARA A CLIENTE
+   -------------------------------------------------------------------------
+   Até aqui todo e-mail de pedido ia para a LOJISTA. Quem comprava não recebia
+   nada — nem confirmação, nem rastreio, apesar de a home prometer "código de
+   rastreio por e-mail".
+
+   As duas funções abaixo são puras (montam assunto/texto/HTML e devolvem):
+   quem envia é a fila em lib/db.js, para que uma falha de SMTP fique gravada
+   em vez de sumir dentro de um try/catch.
+   ========================================================================= */
+
+function linhasDeItens(items){
+  return {
+    texto: items.map(i => `${i.qty}x ${i.name}`).join("\n"),
+    html: items.map(i => `
+      <tr>
+        <td style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; padding:7px 0; border-bottom:1px solid #FBDCE8;">
+          ${escapeHTML(String(i.qty))}x ${escapeHTML(i.name)}
+        </td>
+        <td align="right" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:14px; padding:7px 0; border-bottom:1px solid #FBDCE8; white-space:nowrap;">
+          ${escapeHTML(formatCurrency((i.price || 0) * i.qty))}
+        </td>
+      </tr>
+    `).join(""),
+  };
+}
+
+function linhaResumo(rotulo, valor, forte){
+  const cor = forte ? "#C05480" : "#8C6577";
+  const peso = forte ? "bold" : "normal";
+  const tamanho = forte ? "16px" : "14px";
+  return `
+    <tr>
+      <td style="font-family:${FONT_CORPO}; color:${cor}; font-size:${tamanho}; font-weight:${peso}; padding:4px 0;">${escapeHTML(rotulo)}</td>
+      <td align="right" style="font-family:${FONT_CORPO}; color:${cor}; font-size:${tamanho}; font-weight:${peso}; padding:4px 0; white-space:nowrap;">${escapeHTML(valor)}</td>
+    </tr>
+  `;
+}
+
+/** Recibo da compra, enviado quando o pagamento é aprovado. */
+function formatOrderConfirmationEmail({
+  externalReference, items, subtotal, discount, pixDiscount, shippingPrice,
+  total, couponCode, address, paidAt, trackUrl,
+}){
+  const subject = `Pedido confirmado — ${externalReference}`;
+  const itens = linhasDeItens(items);
+  const entrega = deliveryLineFor(address);
+  const nome = (address && address.nome) ? String(address.nome).split(" ")[0] : "";
+
+  const text = [
+    nome ? `Oi, ${nome}!` : "Oi!",
+    "",
+    "Recebemos o seu pagamento — seu pedido já entrou na fila de produção.",
+    "",
+    `Pedido: ${externalReference}`,
+    `Data: ${formatOrderDateTime(paidAt)}`,
+    "",
+    "Itens:",
+    itens.texto,
+    "",
+    `Subtotal: ${formatCurrency(subtotal)}`,
+    ...(discount > 0 ? [`Desconto${couponCode ? ` (${couponCode})` : ""}: -${formatCurrency(discount)}`] : []),
+    ...(pixDiscount > 0 ? [`Desconto Pix: -${formatCurrency(pixDiscount)}`] : []),
+    `Frete: ${shippingPrice > 0 ? formatCurrency(shippingPrice) : "grátis"}`,
+    `Total: ${formatCurrency(total)}`,
+    "",
+    `Entrega: ${entrega || "-"}`,
+    "",
+    "Cada laço é feito à mão, um de cada vez. Assim que despacharmos, você",
+    "recebe outro e-mail com o código de rastreio.",
+    "",
+    `Acompanhar o pedido: ${trackUrl}`,
+    "",
+    "Adriana Melo Acessórios — ateliê artesanal de laços, Brasília/DF",
+    "adrianameloacessorios@gmail.com",
+  ].join("\n");
+
+  const html = emailShell({
+    titulo: subject,
+    preheader: `Pagamento confirmado — ${formatCurrency(total)}. Seu pedido entrou na fila de produção.`,
+    eyebrow: "pagamento confirmado",
+    tituloCartao: nome ? `Obrigada, ${nome}! 🎀` : "Pedido confirmado 🎀",
+    corpoHtml: `
+      <tr>
+        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:15px; line-height:1.6; padding-bottom:24px;">
+          Recebemos o seu pagamento. Seu pedido <strong style="color:#54293C;">${escapeHTML(externalReference)}</strong> já entrou na fila de produção.
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom:8px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${itens.html}
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding-bottom:22px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${linhaResumo("Subtotal", formatCurrency(subtotal))}
+            ${discount > 0 ? linhaResumo(`Desconto${couponCode ? ` (${couponCode})` : ""}`, `-${formatCurrency(discount)}`) : ""}
+            ${pixDiscount > 0 ? linhaResumo("Desconto Pix", `-${formatCurrency(pixDiscount)}`) : ""}
+            ${linhaResumo("Frete", shippingPrice > 0 ? formatCurrency(shippingPrice) : "grátis")}
+            ${linhaResumo("Total", formatCurrency(total), true)}
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td align="left" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6; background:#FFF5F9; border-radius:14px; padding:14px 16px;">
+          ${linhaDado("Entrega", entrega || "-")}
+        </td>
+      </tr>
+      <tr><td style="height:22px;"></td></tr>
+      <tr>
+        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:14px; line-height:1.6; padding-bottom:22px;">
+          Cada laço é feito à mão, um de cada vez. Assim que despacharmos, você recebe outro e-mail com o código de rastreio.
+        </td>
+      </tr>
+      ${botaoEmail(trackUrl, "Acompanhar meu pedido")}
+    `,
+  });
+
+  return { subject, text, html };
+}
+
+/** Aviso de postagem, enviado quando a lojista grava o código de rastreio. */
+function formatTrackingEmail({ externalReference, trackingCode, address, trackUrl }){
+  const subject = `Seu pedido está a caminho — ${externalReference}`;
+  const nome = (address && address.nome) ? String(address.nome).split(" ")[0] : "";
+
+  const text = [
+    nome ? `Oi, ${nome}!` : "Oi!",
+    "",
+    "Seu pedido saiu do ateliê e já está a caminho.",
+    "",
+    `Pedido: ${externalReference}`,
+    `Código de rastreio: ${trackingCode}`,
+    "",
+    `Acompanhar a entrega: ${trackUrl}`,
+    "",
+    "Adriana Melo Acessórios — ateliê artesanal de laços, Brasília/DF",
+    "adrianameloacessorios@gmail.com",
+  ].join("\n");
+
+  const html = emailShell({
+    titulo: subject,
+    preheader: `Código de rastreio: ${trackingCode}`,
+    eyebrow: "pedido postado",
+    tituloCartao: "Seu laço está a caminho 💌",
+    corpoHtml: `
+      <tr>
+        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:15px; line-height:1.6; padding-bottom:26px;">
+          ${nome ? `Oi, ${escapeHTML(nome)}! ` : ""}Seu pedido <strong style="color:#54293C;">${escapeHTML(externalReference)}</strong> saiu do ateliê e já está a caminho.
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding-bottom:26px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center" style="background:#FFF5F9; border:2px dashed #EA8FB4; border-radius:16px; padding:16px 30px;">
+                <div style="font-family:${FONT_CORPO}; font-size:12px; color:#8C6577; padding-bottom:6px;">código de rastreio</div>
+                <span style="font-family:${FONT_CORPO}; font-size:20px; font-weight:bold; letter-spacing:2px; color:#C05480;">
+                  ${escapeHTML(trackingCode)}
+                </span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      ${botaoEmail(trackUrl, "Acompanhar a entrega")}
+    `,
+  });
+
+  return { subject, text, html };
+}
+
 async function sendWelcomeCouponEmail({ to, couponCode, percentOff, shopUrl, unsubscribeUrl }) {
   const subject = `🎀 Seu cupom de ${percentOff}% — Adriana Melo Acessórios`;
 
@@ -582,6 +758,8 @@ async function sendAdminLoginAlert({ email: contaAlvo, ip, failures }) {
 
 module.exports = {
   formatOrderEmail,
+  formatOrderConfirmationEmail,
+  formatTrackingEmail,
   sendEmail,
   notifyOwnerOfPaidOrder,
   notifyOwnerOfContactMessage,

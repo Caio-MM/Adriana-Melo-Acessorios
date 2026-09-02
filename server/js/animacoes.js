@@ -52,7 +52,12 @@
       if (window.SplitText && titulo) {
         gsap.registerPlugin(SplitText);
         try {
-          split = new SplitText(titulo, { type: "lines", mask: "lines" });
+          /* SEM mask: a máscara recorta exatamente a caixa da linha, e o
+             line-height do título é 1.08 — a descida do ç, do q e do p pinta
+             fora dela. O resultado era a letra emergindo por último e parecendo
+             cortada, como se estivesse demorando a carregar. Sem máscara não
+             existe recorte nenhum: a linha simplesmente sobe e aparece. */
+          split = new SplitText(titulo, { type: "lines" });
         } catch (e) {
           split = null;
         }
@@ -60,7 +65,7 @@
 
       if (split && split.lines.length) {
         gsap.set(titulo, { opacity: 1 });
-        tl.from(split.lines, { yPercent: 115, duration: 0.9, stagger: 0.11 });
+        tl.from(split.lines, { y: 26, opacity: 0, duration: 0.7, stagger: 0.09 });
         // Reverter para não deixar o título picado em <div>s no DOM, que um
         // leitor de tela anunciaria linha a linha.
         tl.add(() => split.revert());
@@ -82,27 +87,61 @@
   function linhaDoProcesso() {
     const linha = document.querySelector(".process-line");
     if (!linha) return;
-    gsap.from(linha, {
-      scaleX: 0,
-      transformOrigin: "left center",
-      ease: "power2.inOut",
-      duration: 1.1,
-      scrollTrigger: { trigger: ".process-wrap", start: "top 75%", refreshPriority: -2 },
-    });
+    // Mesmo motivo do rodapé: from() + refresh() podem gravar 0 como destino.
+    // Aqui escapou por ordem de refresh, o que é sorte, não desenho.
+    gsap.fromTo(linha,
+      { scaleX: 0 },
+      {
+        scaleX: 1,
+        transformOrigin: "left center",
+        ease: "power2.inOut",
+        duration: 1.1,
+        scrollTrigger: { trigger: ".process-wrap", start: "top 75%", refreshPriority: -2 },
+      }
+    );
   }
 
-  /* ---- RODAPÉ: selos de pagamento ---- */
-  function selosDePagamento() {
+  /* ---- RODAPÉ ----
+     ⚠️ fromTo, NUNCA from. Um from() guarda o valor ATUAL como destino, e o
+     ScrollTrigger.refresh() lá embaixo o recalcula DEPOIS de o próprio from já
+     ter zerado o elemento — o destino vira 0 e o tween anima de zero para zero.
+     Foi exatamente isso que fez os selos de pagamento sumirem do rodapé,
+     deixando a coluna inteira vazia. Com fromTo o destino é escrito à mão e
+     nenhum refresh o reescreve. */
+  function entradaDoRodape() {
+    const rodape = document.querySelector(".plc-footer");
+    if (!rodape) return;
+
+    const colunas = gsap.utils.toArray(
+      ".plc-footer-marca, .plc-footer-col, .plc-footer-pagamento"
+    );
+    if (colunas.length) {
+      gsap.fromTo(colunas,
+        { opacity: 0, y: 22 },
+        {
+          opacity: 1, y: 0, duration: 0.6, stagger: 0.08, ease: "power2.out",
+          onComplete() { gsap.set(this.targets(), { clearProps: "opacity,transform" }); },
+          scrollTrigger: { trigger: rodape, start: "top 88%" },
+        }
+      );
+    }
+
+    // As bandeiras entram depois das colunas, uma a uma — é o detalhe que faz
+    // o rodapé parecer montado e não apenas revelado em bloco.
     const selos = gsap.utils.toArray(".pay-logo-badge");
-    if (!selos.length) return;
-    gsap.from(selos, {
-      opacity: 0,
-      y: 12,
-      duration: 0.5,
-      stagger: 0.05,
-      ease: "power2.out",
-      scrollTrigger: { trigger: selos[0].parentNode, start: "top 90%" },
-    });
+    if (selos.length) {
+      gsap.fromTo(selos,
+        { opacity: 0, y: 10, scale: 0.94 },
+        {
+          opacity: 1, y: 0, scale: 1, duration: 0.45, stagger: 0.045,
+          ease: "back.out(1.6)", delay: 0.15,
+          // Devolve o controle ao CSS: o :hover dos selos mexe em opacity e
+          // transform, e o estilo inline do GSAP ganharia dele para sempre.
+          onComplete() { gsap.set(this.targets(), { clearProps: "opacity,transform" }); },
+          scrollTrigger: { trigger: ".plc-footer-pagamento", start: "top 92%" },
+        }
+      );
+    }
   }
 
   /* ---- VITRINE ----
@@ -172,7 +211,7 @@
   mm.add("(prefers-reduced-motion: no-preference)", () => {
     entradaDoHero();
     linhaDoProcesso();
-    selosDePagamento();
+    entradaDoRodape();
     animarVitrine();
     document.addEventListener("vitrine:render", animarVitrine);
     return () => document.removeEventListener("vitrine:render", animarVitrine);

@@ -912,19 +912,70 @@ const REF_ASSET = /\b(href|src)="((?:css|js|img)\/[^"?#]+\.(?:css|js|jpg|jpeg|pn
 // Marcadores no <head>/<body> do index.html, trocados na hora de servir.
 const MARCA_JSONLD = "<!--#DADOS-ESTRUTURADOS#-->";
 const MARCA_CUPOM = "<!--#CUPOM-BOAS-VINDAS#-->";
-// O HTML é relido a cada pedido de propósito: são poucos KB que o sistema
-// já mantém em cache, e guardar o resultado exigiria invalidar por página
-// E por asset — complexidade que não se paga no volume desta loja.
+/* O resultado fica guardado por página. Sem isto, TODA visita pagava um
+   readFileSync bloqueante de 68 KB + a regex por cima dele + a reconstrução
+   do JSON-LD inteiro a partir do SQLite — e como o HTML sai com "no-cache",
+   toda navegação pagava de novo.
+
+   Invalidar exige três chaves, e é por isso que o cache não existia antes:
+   1. o arquivo em si (mtime + tamanho);
+   2. a versão de CADA asset citado — trocar o style.css tem de mudar o
+      ?v= dentro do HTML, senão o cache serviria o endereço antigo. Os
+      caminhos achados na primeira passada ficam guardados para as
+      seguintes só conferirem a assinatura, sem reler o arquivo;
+   3. a versão do catálogo, para o JSON-LD — vinda do banco (db.catalogVersion),
+      NUNCA de um contador em memória: o Passenger pode subir mais de um
+      worker e os contadores divergiriam entre eles.
+
+   O cupom fica de fora do cache de propósito: é uma leitura por chave
+   primária, barata, e assim o código promovido no site nunca sai defasado
+   do que o checkout aceita. */
+const CACHE_HTML = new Map();
+
+function assinaturaDosAssets(refs){
+  let assinatura = "";
+  for(const rel of refs) assinatura += rel + "=" + versaoDoAsset(rel) + ";";
+  return assinatura;
+}
+
 function htmlVersionado(absoluto){
+  const st = fs.statSync(absoluto);
+  const assinatura = `${st.mtimeMs}:${st.size}`;
+  const cacheado = CACHE_HTML.get(absoluto);
+
+  const valido = cacheado
+    && cacheado.assinatura === assinatura
+    && cacheado.assets === assinaturaDosAssets(cacheado.refs)
+    // Só o index.html tem JSON-LD; as outras 12 páginas nem consultam o banco.
+    && (!cacheado.temJsonld || cacheado.catalogo === db.catalogVersion());
+
+  if(valido) return comCupom(cacheado.html);
+
+  const refs = [];
   let html = fs.readFileSync(absoluto, "utf8").replace(REF_ASSET, (inteiro, attr, rel) => {
+    refs.push(rel);
     const v = versaoDoAsset(rel);
     return v ? `${attr}="${rel}?v=${v}"` : inteiro;
   });
-  // Só o index.html traz os marcadores; nas demais páginas o replace não
-  // acha nada e o custo de gerar o bloco nem é pago.
-  if(html.includes(MARCA_JSONLD)) html = html.replace(MARCA_JSONLD, blocoDadosEstruturados());
-  if(html.includes(MARCA_CUPOM)) html = html.replace(MARCA_CUPOM, atributoCupomBoasVindas());
-  return html;
+
+  const temJsonld = html.includes(MARCA_JSONLD);
+  if(temJsonld) html = html.replace(MARCA_JSONLD, blocoDadosEstruturados());
+
+  CACHE_HTML.set(absoluto, {
+    assinatura,
+    refs,
+    assets: assinaturaDosAssets(refs),
+    temJsonld,
+    catalogo: temJsonld ? db.catalogVersion() : "",
+    html,
+  });
+  return comCupom(html);
+}
+
+function comCupom(html){
+  return html.includes(MARCA_CUPOM)
+    ? html.replace(MARCA_CUPOM, atributoCupomBoasVindas())
+    : html;
 }
 
 app.use((req, res, next) => {
@@ -949,7 +1000,21 @@ app.use(express.static(SITE_ROOT, {
   dotfiles: "ignore",
   maxAge: "365d",
   setHeaders(res, filePath){
-    if(REVALIDATE_ALWAYS.test(filePath) || ICONES_RAIZ.has(path.basename(filePath))){
+    // Ícone da raiz é buscado sem query (o Safari vai direto em /favicon.ico),
+    // então nunca pode virar immutable — ficaria preso por um ano.
+    if(ICONES_RAIZ.has(path.basename(filePath))){
+      res.setHeader("Cache-Control", "no-cache");
+      return;
+    }
+    if(!REVALIDATE_ALWAYS.test(filePath)) return;
+    /* Com ?v= o endereço é o próprio conteúdo: arquivo diferente é endereço
+       diferente, então pode ficar guardado para sempre e a navegação deixa de
+       pagar uma ida à rede só para ouvir 304. Seguro porque o .html nunca é
+       versionado e continua "no-cache" — todo deploy publica ?v= novo.
+       Sem a query (link escrito à mão, acesso direto) volta a revalidar. */
+    if(res.req && res.req.query && res.req.query.v){
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    } else {
       res.setHeader("Cache-Control", "no-cache");
     }
   },
@@ -1111,25 +1176,79 @@ function buildPackage(validatedItems){
 const MELHOR_ENVIO_BASE_URL = process.env.MELHOR_ENVIO_BASE_URL || "https://melhorenvio.com.br";
 const MELHOR_ENVIO_USER_AGENT = process.env.MELHOR_ENVIO_USER_AGENT || "PetitLaco (defina MELHOR_ENVIO_USER_AGENT no .env com seu e-mail)";
 
-async function meFetch(path, { method = "GET", body } = {}){
-  const res = await fetch(`${MELHOR_ENVIO_BASE_URL}${path}`, {
-    method,
-    headers: {
-      "Authorization": `Bearer ${process.env.MELHOR_ENVIO_TOKEN}`,
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-      "User-Agent": MELHOR_ENVIO_USER_AGENT,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => null);
-  if(!res.ok){
+/* ⚠️ TIMEOUT É OBRIGATÓRIO AQUI. O fetch do Node não tem timeout padrão: se o
+   Melhor Envio aceitar a conexão e não responder, a promessa fica pendurada
+   para sempre — e como esta função roda DENTRO do checkout, a cliente ficaria
+   com o botão de pagar girando sem fim, sem erro e sem pedido.
+
+   `retries` é explícito por chamada, nunca padrão, porque as duas famílias de
+   chamada são opostas: cotar frete é leitura pura e pode ser repetida à
+   vontade; comprar etiqueta GASTA SALDO REAL e não pode ser repetida sozinha
+   nunca — uma repetição automática ali compraria duas etiquetas. */
+async function meFetch(path, { method = "GET", body, timeoutMs = 12000, retries = 0 } = {}){
+  let ultimoErro = null;
+
+  for(let tentativa = 0; tentativa <= retries; tentativa++){
+    if(tentativa > 0) await new Promise(r => setTimeout(r, 700 * tentativa));
+
+    let res;
+    try{
+      res = await fetch(`${MELHOR_ENVIO_BASE_URL}${path}`, {
+        method,
+        headers: {
+          "Authorization": `Bearer ${process.env.MELHOR_ENVIO_TOKEN}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "User-Agent": MELHOR_ENVIO_USER_AGENT,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    }catch(erroDeRede){
+      const estourouOTempo = erroDeRede?.name === "TimeoutError";
+      ultimoErro = new Error(
+        estourouOTempo
+          ? `Melhor Envio não respondeu em ${timeoutMs / 1000}s.`
+          : `Falha de rede ao falar com o Melhor Envio: ${erroDeRede?.message || erroDeRede}`
+      );
+      ultimoErro.cause = erroDeRede;
+      /* Timeout NÃO é repetido, mesmo com retries liberado: quem não respondeu
+         em N segundos está sobrecarregado, e insistir só dobra a espera da
+         cliente (que está olhando o carrinho) enquanto piora a fila deles.
+         Conexão recusada/derrubada falha na hora — essa vale repetir. */
+      if(estourouOTempo) throw ultimoErro;
+      continue;
+    }
+
+    const data = await res.json().catch(() => null);
+
+    if(res.ok) return data;
+
     const err = new Error(data?.message || `Melhor Envio respondeu ${res.status}`);
     err.status = res.status;
     err.data = data;
+
+    /* Credencial recusada é a falha mais cara que existe aqui: TODA cotação
+       para de funcionar e ninguém consegue fechar compra. Diferente do
+       Instagram (lib/instagram.js), este token não se renova sozinho — só
+       trocando no .env. Por isso o log grita, em vez de virar mais uma linha
+       genérica de "não foi possível calcular o frete". */
+    if(res.status === 401 || res.status === 403){
+      console.error(
+        `⚠️  MELHOR ENVIO RECUSOU AS CREDENCIAIS (HTTP ${res.status}). ` +
+        "Enquanto isso, NENHUMA cliente consegue calcular frete nem finalizar compra. " +
+        "O MELHOR_ENVIO_TOKEN provavelmente venceu: gere um novo no painel do Melhor Envio " +
+        "e atualize o .env de produção."
+      );
+      throw err;
+    }
+
+    // 5xx é problema do lado deles e costuma passar; 4xx não melhora repetindo.
+    if(res.status >= 500){ ultimoErro = err; continue; }
     throw err;
   }
-  return data;
+
+  throw ultimoErro;
 }
 
 /* Transportadoras que a loja oferece. O Melhor Envio cota TODAS as que
@@ -1173,8 +1292,14 @@ function isOfferedCarrier(companyName, serviceName){
 async function quoteShipping(cepDestino, validatedItems){
   const pkg = buildPackage(validatedItems);
 
+  /* Leitura pura (não cria etiqueta, não gasta saldo): uma repetição cobre a
+     instabilidade momentânea que hoje derrubaria a cotação inteira.
+     8 segundos porque a cliente está parada olhando o carrinho — e como
+     timeout não é repetido (ver meFetch), o pior caso continua sendo 8s. */
   const quotes = await meFetch("/api/v2/me/shipment/calculate", {
     method: "POST",
+    timeoutMs: 8000,
+    retries: 1,
     body: {
       from: { postal_code: process.env.ORIGIN_CEP },
       to: { postal_code: cepDestino },
@@ -1192,6 +1317,14 @@ async function quoteShipping(cepDestino, validatedItems){
       },
     },
   });
+
+  /* A API devolve uma lista. Se um dia devolver outra coisa (mudança de
+     contrato, página de erro com HTTP 200), sem esta guarda o .filter abaixo
+     estouraria um TypeError e a cliente veria erro 500 no meio da compra. */
+  if(!Array.isArray(quotes)){
+    console.error("Melhor Envio devolveu um formato inesperado na cotação:", quotes);
+    return [];
+  }
 
   return quotes
     .filter(q => !q.error && (q.custom_price || q.price))
@@ -1431,10 +1564,13 @@ async function buildCheckoutDraft(req){
    buildCheckoutDraft porque as duas formas de cobrar gravam o pedido em
    momentos diferentes: o Checkout Pro só depois que o Mercado Pago aceita a
    preferência, o Pix só depois que o QR existe. */
-function orderRowFrom(draft, orderRef, userId){
+function orderRowFrom(draft, orderRef, user){
   return {
     externalReference: orderRef,
-    userId: userId ?? null,
+    userId: user?.id ?? null,
+    // Cópia do e-mail no momento da compra: é para cá que vão o recibo e o
+    // aviso de rastreio, e conta apagada depois não pode quebrar isso.
+    customerEmail: user?.email ?? null,
     status: "pendente",
     // Guarda o preço de CATÁLOGO no momento da compra (não só id/qty) —
     // o histórico de pedidos precisa continuar exibindo o valor correto
@@ -1506,7 +1642,7 @@ app.post("/api/create-preference", strictLimiter, auth.requireAuth, async (req, 
       },
     });
 
-    db.createOrder(orderRowFrom(draft, orderRef, req.user?.id));
+    db.createOrder(orderRowFrom(draft, orderRef, req.user));
 
     // init_point = link de pagamento (Checkout Pro) para redirecionar o cliente
     res.json({ id: result.id, init_point: result.init_point });
@@ -1570,7 +1706,7 @@ app.post("/api/create-pix-payment", strictLimiter, auth.requireAuth, async (req,
       return res.status(502).json({ error: "Não foi possível gerar o código Pix agora. Tente novamente em instantes." });
     }
 
-    db.createOrder(orderRowFrom(draft, orderRef, req.user.id));
+    db.createOrder(orderRowFrom(draft, orderRef, req.user));
     db.updateOrderStatus(orderRef, "pendente", String(result.id));
 
     res.json({
@@ -1827,8 +1963,13 @@ async function purchaseShippingLabel(order, externalReference){
   }));
   const pkg = buildPackage(labelItems);
 
+  /* As três chamadas abaixo GASTAM SALDO REAL. Timeout maior porque gerar
+     etiqueta é bem mais lento que cotar, e retries fica no padrão ZERO de
+     propósito: repetir automaticamente compraria etiqueta duplicada. Se
+     falhar, a lojista repete pelo botão do painel, vendo o que aconteceu. */
   const cartItem = await meFetch("/api/v2/me/cart", {
     method: "POST",
+    timeoutMs: 30000,
     body: {
       service: order.shipping.service_id,
       from: seller,
@@ -1864,11 +2005,13 @@ async function purchaseShippingLabel(order, externalReference){
 
   await meFetch("/api/v2/me/shipment/checkout", {
     method: "POST",
+    timeoutMs: 30000,
     body: { orders: [cartItem.id] },
   });
 
   const generated = await meFetch("/api/v2/me/shipment/generate", {
     method: "POST",
+    timeoutMs: 30000,
     body: { orders: [cartItem.id] },
   });
 
@@ -1894,6 +2037,9 @@ async function fetchLiveTracking(shipmentId){
   try{
     const data = await meFetch("/api/v2/me/shipment/tracking", {
       method: "POST",
+      // A cliente está olhando a página esperando: melhor cair no rastreio
+      // manual em 6s do que deixar a tela pendurada.
+      timeoutMs: 6000,
       body: { orders: [shipmentId] },
     });
     return normalizeTrackingResponse(data, shipmentId);
@@ -1969,6 +2115,71 @@ const PAYMENT_STATUS_MAP = {
    próprio catch) — chamadas de rede a terceiros (WhatsApp/SMTP) podem
    demorar alguns segundos, e nunca podem atrasar/arriscar o timeout da
    confirmação do webhook. */
+/* Tira uma mensagem da fila e tenta entregar. Chamado logo depois de
+   enfileirar (o caso normal, em que o e-mail sai na hora) e pelo cron, para
+   o que falhou. Nunca lança: a falha vira estado gravado, não exceção. */
+async function entregarEmailDaFila(id){
+  if(!id) return;
+  const linha = db.getOutboxEmail(id);
+  if(!linha || linha.sent_at) return;
+  try{
+    await email.sendEmail({
+      to: linha.to_email,
+      subject: linha.subject,
+      text: linha.text_body,
+      html: linha.html_body,
+    });
+    db.markEmailSent(id);
+    console.log(`E-mail "${linha.kind}" entregue à cliente (pedido ${linha.order_reference || "-"}).`);
+  }catch(err){
+    db.markEmailFailed(id, err.message || err);
+    console.error(`Falha ao entregar e-mail "${linha.kind}" — segue na fila para nova tentativa:`, err.message || err);
+  }
+}
+
+/* ÚNICO lugar que grava código de rastreio. Existem três caminhos que geram
+   um código — a lojista digitando no painel, o botão "gerar etiqueta" e a
+   compra automática ao aprovar o pagamento — e antes cada um gravava por
+   conta própria: dois deles não avisavam a cliente de jeito nenhum, e a home
+   promete rastreio por e-mail. Passando os três por aqui, o aviso sai igual
+   em qualquer um.
+   Devolve o id na fila (ou null quando não há o que enviar: pedido sem
+   e-mail, ou aviso já enfileirado antes para este pedido). */
+function salvarRastreioEAvisar(reference, trackingCode){
+  if(!reference || !trackingCode) return null;
+
+  const anterior = db.getOrderByExternalReference(reference);
+  const mudou = !anterior || anterior.tracking_code !== trackingCode;
+  db.updateOrderTracking(reference, trackingCode);
+
+  // Regravar o MESMO código (salvar duas vezes no painel, webhook reenviado)
+  // não avisa de novo. Um código DIFERENTE avisa: significa que a lojista
+  // corrigiu um erro de digitação, e a cliente precisa saber do certo.
+  if(!mudou) return null;
+  db.deleteOutboxEntry("pedido_postado", reference);
+
+  const pedido = db.getOrderByExternalReference(reference);
+  if(!pedido || !pedido.customer_email) return null;
+
+  let endereco = null;
+  try { endereco = JSON.parse(pedido.address_json); } catch { endereco = null; }
+
+  const conteudo = email.formatTrackingEmail({
+    externalReference: reference,
+    trackingCode,
+    address: endereco,
+    trackUrl: `${CLIENT_ORIGIN}/acompanhar-pedido.html?pedido=${encodeURIComponent(reference)}`,
+  });
+  return db.enqueueEmail({
+    kind: "pedido_postado",
+    toEmail: pedido.customer_email,
+    orderReference: reference,
+    subject: conteudo.subject,
+    textBody: conteudo.text,
+    htmlBody: conteudo.html,
+  });
+}
+
 async function runApprovedOrderSideEffects(orderRow, info){
   const order = {
     items: JSON.parse(orderRow.items_json),
@@ -1976,12 +2187,17 @@ async function runApprovedOrderSideEffects(orderRow, info){
     shipping: JSON.parse(orderRow.shipping_json),
   };
 
+  // Preenchido quando a etiqueta é comprada automaticamente logo abaixo.
+  let rastreioDaEtiqueta = null;
+
   if(process.env.AUTO_PURCHASE_SHIPPING_LABEL === "true"){
     try{
       const label = await purchaseShippingLabel(order, info.external_reference);
       console.log("Etiqueta de envio comprada:", label);
-      // TODO: salvar o código de rastreio automaticamente (hoje a
-      // lojista preenche à mão no painel /admin.html).
+      // O código vinha sendo descartado aqui: a etiqueta era comprada e a
+      // lojista ainda tinha de digitar o rastreio à mão no painel. Guardado
+      // para ser avisado à cliente logo depois do recibo, mais abaixo.
+      rastreioDaEtiqueta = label?.[0]?.tracking || label?.tracking || null;
     }catch(labelErr){
       console.error("Falha ao comprar etiqueta automaticamente (pedido ficou pago, mas sem etiqueta — gere manualmente no painel do Melhor Envio):", labelErr);
     }
@@ -2025,6 +2241,50 @@ async function runApprovedOrderSideEffects(orderRow, info){
     console.log(`E-mail de aviso enviado à lojista para o pedido ${info.external_reference}.`);
   }catch(mailErr){
     console.error(`Falha ao enviar e-mail de aviso (pedido ${info.external_reference} segue pago normalmente):`, mailErr.message || mailErr);
+  }
+
+  /* Recibo para a CLIENTE. Diferente dos dois avisos acima, este NÃO pode
+     falhar em silêncio: quem comprou não tem painel para conferir. Por isso
+     vai para a fila antes de ser tentado — o índice único (tipo, pedido)
+     ainda garante que um webhook reenviado não gere recibo repetido. */
+  if(orderRow.customer_email){
+    const conteudo = email.formatOrderConfirmationEmail({
+      externalReference: info.external_reference,
+      items: order.items.map(item => ({
+        qty: item.qty,
+        price: item.price,
+        name: effectiveProduct(item.id, notifyOverridesMap)?.name || `Produto #${item.id}`,
+      })),
+      subtotal: orderRow.subtotal,
+      discount: orderRow.discount,
+      pixDiscount: orderRow.pix_discount,
+      shippingPrice: orderRow.shipping_price,
+      total: orderRow.total,
+      couponCode: orderRow.coupon_code,
+      address: order.address,
+      paidAt: info.date_approved || info.date_created || Date.now(),
+      trackUrl: `${CLIENT_ORIGIN}/acompanhar-pedido.html?pedido=${encodeURIComponent(info.external_reference)}`,
+    });
+    const id = db.enqueueEmail({
+      kind: "pedido_confirmado",
+      toEmail: orderRow.customer_email,
+      orderReference: info.external_reference,
+      subject: conteudo.subject,
+      textBody: conteudo.text,
+      htmlBody: conteudo.html,
+    });
+    await entregarEmailDaFila(id);
+  } else {
+    console.warn(`Pedido ${info.external_reference} sem e-mail da cliente gravado — recibo não enviado.`);
+  }
+
+  /* Se a etiqueta foi comprada automaticamente, o rastreio já existe neste
+     instante e a cliente recebe os dois e-mails na sequência certa: primeiro
+     o recibo, depois o "está a caminho". Com a compra automática desligada
+     (o padrão), não há código nenhum ainda — o aviso sai quando a lojista
+     gravar o rastreio no painel. */
+  if(rastreioDaEtiqueta){
+    await entregarEmailDaFila(salvarRastreioEAvisar(info.external_reference, rastreioDaEtiqueta));
   }
 }
 
@@ -2968,6 +3228,10 @@ app.patch("/api/admin/orders/:reference/tracking", auth.requireAdmin, auth.requi
     }
     db.updateOrderTracking(reference, trackingCode);
     res.json({ ok: true, trackingCode });
+
+    /* Depois de responder, para a lojista não ficar esperando o SMTP. Regravar
+       o MESMO pedido não reenvia — o índice único da fila barra. */
+    entregarEmailDaFila(salvarRastreioEAvisar(reference, trackingCode)).catch(() => {});
   } catch (err) {
     console.error("Erro ao salvar código de rastreio:", err);
     res.status(500).json({ error: "Não foi possível salvar o código de rastreio agora." });
@@ -3611,7 +3875,8 @@ app.post("/api/admin/orders/:reference/generate-label", auth.requireAdmin, auth.
     const generated = await purchaseShippingLabel(order, reference);
     const trackingCode = generated?.[0]?.tracking || generated?.tracking || null;
     if(trackingCode){
-      db.updateOrderTracking(reference, trackingCode);
+      // Antes gravava direto no banco e a cliente não ficava sabendo.
+      entregarEmailDaFila(salvarRastreioEAvisar(reference, trackingCode)).catch(() => {});
     }
     res.json({ ok: true, trackingCode, raw: generated });
   } catch (err) {
