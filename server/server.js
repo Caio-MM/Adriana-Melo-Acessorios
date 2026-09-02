@@ -47,6 +47,7 @@ const auth = require("./lib/auth");
 const whatsapp = require("./lib/whatsapp");
 const instagram = require("./lib/instagram");
 const email = require("./lib/email");
+const emailPhotos = require("./lib/emailPhotos.js");
 const { colorLabelForItem } = require("./lib/orderFormatting");
 // Mesmo arquivo que a vitrine e o carrinho carregam no navegador (js/pricing.js,
 // em formato UMD) — é o que garante que o "5% no Pix" e o "3x sem juros"
@@ -2123,7 +2124,10 @@ async function entregarEmailDaFila(id){
   const linha = db.getOutboxEmail(id);
   if(!linha || linha.sent_at) return;
   try{
-    await email.sendEmail({
+    // enviarComMiniaturas e não sendEmail: a fila guarda só o HTML, então os
+    // anexos das miniaturas são derivados dele na hora de entregar — e assim
+    // a retentativa do cron os remonta sozinha.
+    await emailPhotos.enviarComMiniaturas({
       to: linha.to_email,
       subject: linha.subject,
       text: linha.text_body,
@@ -2213,6 +2217,7 @@ async function runApprovedOrderSideEffects(orderRow, info){
     items: order.items.map(({ id, qty, color, secondColor }) => ({
       id, qty, color: color || null, secondColor: secondColor || null,
       name: effectiveProduct(id, notifyOverridesMap)?.name || `Produto #${id}`,
+      photoUrl: effectiveProduct(id, notifyOverridesMap)?.photoUrl || null,
     })),
     address: order.address,
     total: orderRow.total,
@@ -2254,6 +2259,7 @@ async function runApprovedOrderSideEffects(orderRow, info){
         qty: item.qty,
         price: item.price,
         name: effectiveProduct(item.id, notifyOverridesMap)?.name || `Produto #${item.id}`,
+        photoUrl: effectiveProduct(item.id, notifyOverridesMap)?.photoUrl || null,
       })),
       subtotal: orderRow.subtotal,
       discount: orderRow.discount,

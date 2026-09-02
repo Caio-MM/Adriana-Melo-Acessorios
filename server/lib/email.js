@@ -157,6 +157,51 @@ function botaoEmail(href, rotulo){
   `;
 }
 
+/* Miniatura do produto ao lado do nome, nos dois e-mails de pedido.
+   `photoUrl` tem TRÊS formas possíveis (ver effectiveProduct em server.js):
+
+     /api/products/photos/<uuid>  -> anexo cid:, sempre visível
+     https://... (colado à mão)   -> <img> remoto; o Gmail mostra, o Outlook
+                                     bloqueia e sobra o quadrado rosa
+     null                          -> laço 🎀 sobre o quadrado rosa
+
+   O caso null é o COMUM, não a exceção: todo produto do catálogo de exemplo
+   vem sem foto. <use href="#bow-shape"> não funciona em e-mail e o Outlook
+   nem renderiza SVG embutido, por isso o laço entra como caractere — a mesma
+   Segoe UI Emoji que já desenha o 🎀 do assunto deste arquivo.
+
+   width/height como ATRIBUTO, não só CSS: sem isso o motor do Word, que o
+   Outlook usa, colapsa a célula. E o bgcolor fica na própria <td>, então
+   imagem bloqueada deixa um quadrado rosa com o nome no alt, nunca um vão. */
+const ROTA_FOTO_LOCAL =
+  /^\/api\/products\/photos\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+const ESTILO_IMG =
+  'width="56" height="56" style="display:block; width:56px; height:56px; border:0; border-radius:10px;"';
+
+function celulaMiniatura(photoUrl, nome){
+  const alt = escapeHTML(nome || "produto");
+  const local = typeof photoUrl === "string" ? photoUrl.match(ROTA_FOTO_LOCAL) : null;
+
+  let interior;
+  if(local){
+    interior = `<img src="cid:produto-${local[1]}" alt="${alt}" ${ESTILO_IMG}>`;
+  } else if(/^https?:\/\//i.test(photoUrl || "")){
+    interior = `<img src="${escapeHTML(photoUrl)}" alt="${alt}" ${ESTILO_IMG}>`;
+  } else {
+    interior = "&#127872;";
+  }
+
+  return `<td width="56" bgcolor="#FBDCE8" align="center" valign="middle" style="width:56px; height:56px; background:#FBDCE8; border-radius:10px; font-size:26px; line-height:56px; mso-line-height-rule:exactly; border-bottom:1px solid #FBDCE8;">${interior}</td>`;
+}
+
+const CELULA_ESPACO =
+  '<td width="12" style="width:12px; font-size:0; line-height:0; border-bottom:1px solid #FBDCE8;">&nbsp;</td>';
+
+/* Do 9º item em diante entra o laço, sem foto. O corte é aplicado AQUI, na
+   marcação — nunca na hora de montar os anexos: cortar lá deixaria cid sem
+   anexo, que é justamente o ícone de imagem quebrada. */
+const MAX_MINIATURAS = 8;
+
 // Linha "rótulo: valor" — usada nos e-mails internos (pedido pago, contato).
 function linhaDado(rotulo, valor){
   return `<strong style="color:#54293C;">${escapeHTML(rotulo)}:</strong> ${escapeHTML(valor)}<br>`;
@@ -197,9 +242,11 @@ function formatOrderEmail({ externalReference, items, address, total, paidAt, ad
   ].join("\n");
 
   const itemRowsHtml = items
-    .map(item => `
+    .map((item, i) => `
       <tr>
-        <td style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; padding:6px 0; border-bottom:1px solid #FBDCE8;">
+        ${celulaMiniatura(i < MAX_MINIATURAS ? item.photoUrl : null, item.name)}
+        ${CELULA_ESPACO}
+        <td valign="middle" style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; padding:8px 0; border-bottom:1px solid #FBDCE8;">
           ${escapeHTML(item.qty)}x ${escapeHTML(item.name)} — cor: ${escapeHTML(colorLabelForItem(item, allColors))}
         </td>
       </tr>
@@ -249,7 +296,7 @@ function formatOrderEmail({ externalReference, items, address, total, paidAt, ad
  * estiverem configuradas ou se o envio falhar — quem chama decide o que
  * fazer com isso (server.js sempre envolve em try/catch).
  */
-async function sendEmail({ to, subject, text, html, headers }) {
+async function sendEmail({ to, subject, text, html, headers, attachments = [] }) {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
   if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
     throw new Error("SMTP não configurado (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS ausentes no .env).");
@@ -272,8 +319,11 @@ async function sendEmail({ to, subject, text, html, headers }) {
     // Todos os 4 e-mails usam o mesmo molde (emailShell) com a logo no
     // cabeçalho, referenciada como cid:LOGO_CID no HTML — por isso o anexo
     // entra aqui, incondicional, em vez de cada função de e-mail repetir.
+    // A logo vem primeiro e os extras são espalhados depois, para que um
+    // chamador nunca consiga deslocá-la sem querer.
     attachments: [
       { filename: "adriana-melo-acessorios.png", path: LOGO_PATH, cid: LOGO_CID },
+      ...attachments,
     ],
   });
 }
@@ -290,7 +340,14 @@ async function notifyOwnerOfPaidOrder(order) {
     throw new Error("OWNER_EMAIL não configurado no .env — e-mail não enviado.");
   }
   const { subject, text, html } = formatOrderEmail(order);
-  await sendEmail({ to: ownerEmail, subject, text, html });
+  // require aqui dentro, não no topo: emailPhotos carrega este arquivo de
+  // volta, e a dependência circular só é segura porque os dois lados exigem
+  // o outro na hora de usar, nunca na hora de carregar.
+  const { anexosDeMiniaturas } = require("./emailPhotos.js");
+  await sendEmail({
+    to: ownerEmail, subject, text, html,
+    attachments: await anexosDeMiniaturas(html),
+  });
 }
 
 /**
@@ -417,12 +474,14 @@ async function sendTwoFactorEmailCode({ to, name, code, expiresInMinutes }) {
 function linhasDeItens(items){
   return {
     texto: items.map(i => `${i.qty}x ${i.name}`).join("\n"),
-    html: items.map(i => `
+    html: items.map((i, indice) => `
       <tr>
-        <td style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; padding:7px 0; border-bottom:1px solid #FBDCE8;">
+        ${celulaMiniatura(indice < MAX_MINIATURAS ? i.photoUrl : null, i.name)}
+        ${CELULA_ESPACO}
+        <td valign="middle" style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; padding:8px 0; border-bottom:1px solid #FBDCE8;">
           ${escapeHTML(String(i.qty))}x ${escapeHTML(i.name)}
         </td>
-        <td align="right" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:14px; padding:7px 0; border-bottom:1px solid #FBDCE8; white-space:nowrap;">
+        <td align="right" valign="middle" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:14px; padding:8px 0; border-bottom:1px solid #FBDCE8; white-space:nowrap;">
           ${escapeHTML(formatCurrency((i.price || 0) * i.qty))}
         </td>
       </tr>

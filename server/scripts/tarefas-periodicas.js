@@ -29,7 +29,7 @@ const path = require("node:path");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env"), quiet: true });
 
 const db = require("../lib/db.js");
-const email = require("../lib/email.js");
+const emailPhotos = require("../lib/emailPhotos.js");
 
 const LOTE = 20;
 
@@ -44,7 +44,8 @@ async function reenviarFilaDeEmail(){
   let falhas = 0;
   for(const linha of pendentes){
     try{
-      await email.sendEmail({
+      // Deriva as miniaturas do HTML guardado, igual ao envio original.
+      await emailPhotos.enviarComMiniaturas({
         to: linha.to_email,
         subject: linha.subject,
         text: linha.text_body,

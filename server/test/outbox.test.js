@@ -19,6 +19,8 @@ const TMP_DB = path.join(os.tmpdir(), `plc-outbox-${process.pid}-${Date.now()}.d
 process.env.DB_PATH = TMP_DB;
 const db = require("../lib/db.js");
 const email = require("../lib/email.js");
+const emailPhotos = require("../lib/emailPhotos.js");
+const sharp = require("sharp");
 
 function limpar(){
   for(const s of ["", "-wal", "-shm"]) { try { fs.unlinkSync(TMP_DB + s); } catch {} }
@@ -178,4 +180,91 @@ test("descartar aviso não mexe no recibo do mesmo pedido", () => {
   db.enqueueEmail(mensagem({ kind: "pedido_postado", orderReference: ref }));
   db.deleteOutboxEntry("pedido_postado", ref);
   assert.ok(db.getOutboxEmail(recibo), "o recibo tem de continuar lá");
+});
+
+/* ============ MINIATURAS DE PRODUTO NOS E-MAILS ============
+   Os anexos são derivados do HTML na hora de enviar, porque a fila guarda só
+   o texto da mensagem. O risco desse desenho é o HTML e a derivação saírem de
+   sincronia: sobra um cid: sem anexo, que o Outlook desenha como ícone de
+   imagem quebrada. Os testes abaixo existem para pegar exatamente isso. */
+
+const UUID_A = "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa";
+const UUID_B = "bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb";
+const rota = (id) => `/api/products/photos/${id}`;
+
+function cidsNoHtml(html){
+  return [...new Set(Array.from(html.matchAll(/cid:produto-([0-9a-f-]{36})/g), m => m[1]))];
+}
+
+async function plantarFoto(id){
+  const jpeg = await sharp({ create: { width: 60, height: 60, channels: 3, background: "#EA8FB4" } })
+    .jpeg().toBuffer();
+  db.insertProductPhoto(id, "image/jpeg", jpeg);
+}
+
+function reciboCom(items){
+  return email.formatOrderConfirmationEmail({
+    externalReference: "AMK-FOTO", items,
+    subtotal: 100, discount: 0, pixDiscount: 0, shippingPrice: 0, total: 100,
+    couponCode: null, address: { nome: "Cliente" }, paidAt: Date.now(),
+    trackUrl: "https://exemplo/a",
+  });
+}
+function avisoDaLojistaCom(items){
+  return email.formatOrderEmail({
+    externalReference: "AMK-FOTO", items, address: { nome: "Cliente" },
+    total: 100, paidAt: Date.now(), adminUrl: "https://exemplo/admin.html", allColors: [],
+  });
+}
+
+test("todo cid de produto no HTML tem anexo correspondente", async () => {
+  await plantarFoto(UUID_A);
+  const itens = [
+    { qty: 1, name: "Com foto", price: 50, photoUrl: rota(UUID_A) },
+    { qty: 1, name: "Sem foto", price: 50, photoUrl: null },
+  ];
+  for(const [rotulo, msg] of [["recibo", reciboCom(itens)], ["aviso", avisoDaLojistaCom(itens)]]){
+    const anexos = await emailPhotos.anexosDeMiniaturas(msg.html);
+    assert.equal(anexos.length, cidsNoHtml(msg.html).length,
+      `${rotulo}: sobrou cid sem anexo — vira ícone quebrado no Outlook`);
+    assert.ok(anexos.every(a => msg.html.includes(`cid:${a.cid}`)),
+      `${rotulo}: anexo sem cid correspondente no HTML`);
+  }
+});
+
+test("produto sem foto não gera anexo, e mostra o laço", async () => {
+  const msg = reciboCom([{ qty: 1, name: "Sem foto", price: 50, photoUrl: null }]);
+  assert.deepEqual(await emailPhotos.anexosDeMiniaturas(msg.html), []);
+  assert.match(msg.html, /&#127872;/, "o laço substitui a foto que não existe");
+});
+
+test("o mesmo produto repetido custa um anexo só", async () => {
+  await plantarFoto(UUID_B);
+  const msg = reciboCom([
+    { qty: 1, name: "Igual", price: 50, photoUrl: rota(UUID_B) },
+    { qty: 2, name: "Igual de novo", price: 50, photoUrl: rota(UUID_B) },
+  ]);
+  assert.equal((await emailPhotos.anexosDeMiniaturas(msg.html)).length, 1);
+});
+
+/* A lojista trocar a foto de um produto APAGA o blob antigo. Um e-mail pode
+   ficar na fila até ~9h esperando retentativa, então essa corrida é real. */
+test("foto apagada depois de enfileirar ainda rende um anexo", async () => {
+  const id = "cccccccc-3333-4333-8333-cccccccccccc";
+  await plantarFoto(id);
+  const msg = reciboCom([{ qty: 1, name: "Trocada", price: 50, photoUrl: rota(id) }]);
+
+  const antes = await emailPhotos.anexosDeMiniaturas(msg.html);
+  db.deleteProductPhoto(id);
+  const depois = await emailPhotos.anexosDeMiniaturas(msg.html);
+
+  assert.equal(depois.length, antes.length,
+    "sem anexo, o cid vira ícone de imagem quebrada — pior que não ter miniatura");
+  assert.ok(depois[0].content.length > 0, "o bloco liso precisa ter conteúdo");
+});
+
+test("URL externa não vira anexo, entra como imagem remota", async () => {
+  const msg = reciboCom([{ qty: 1, name: "Externa", price: 50, photoUrl: "https://exemplo.com/f.jpg" }]);
+  assert.deepEqual(await emailPhotos.anexosDeMiniaturas(msg.html), []);
+  assert.match(msg.html, /src="https:\/\/exemplo\.com\/f\.jpg"/);
 });
