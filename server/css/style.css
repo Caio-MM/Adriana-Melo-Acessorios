@@ -78,7 +78,7 @@
 
 *{ box-sizing:border-box; }
 
-html{ scroll-behavior:smooth; overflow-x:clip; }
+html{ overflow-x:clip; }
 body{
   font-family:var(--font-body);
   color:var(--ink);
@@ -1072,16 +1072,15 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
    juntos. Os 32% de respiro são o que aparece de fundo entre um cartão e o
    outro no meio da troca — quanto maior, mais "ar" entre os painéis.
    --active é FRACIONÁRIO e acompanha a rolagem (js/main.js), então o movimento
-   já é contínuo — a transição aqui é curta só para amaciar o "degrau" do
-   scroll de roda do mouse. Uma transição longa faria o deck correr atrás da
-   rolagem e é o que dava sensação de travado. */
+   já é contínuo. Aqui NÃO existe transition de propósito: quem amacia o
+   "degrau" da roda do mouse é o scrub do ScrollTrigger. Uma transição por cima
+   atrasaria o deck e brigaria com o snap. */
 .scrolly-card{
   position:absolute; inset:0; margin:0;
   /* --recuo e --esmaece vêm do js/main.js e dão profundidade: o cartão fora do
      centro recua e esmaece, então o que está em foco fica claramente à frente. */
   transform:translateY(calc((var(--i) - var(--active, 0)) * 132%)) scale(var(--recuo, 1));
   opacity:var(--esmaece, 1);
-  transition:transform .18s linear, opacity .18s linear;
 }
 .scrolly-card-head{ display:none; }
 .scrolly-card .scrolly-frame{ height:100%; }

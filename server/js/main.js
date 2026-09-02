@@ -115,7 +115,6 @@
     const scrollySteps = Array.from(scrollyPin.querySelectorAll(".scrolly-step"));
     const scrollyCards = Array.from(scrollyDeck.querySelectorAll(".scrolly-card"));
     let passoDestacado = -1;
-    let scrollyTicking = false;
 
     /* Dá ritmo ao trecho entre dois cartões: o primeiro e o último quinto do
        percurso ficam parados (o cartão "assenta" e dá tempo de ler) e o meio
@@ -173,26 +172,6 @@
       escalaveis.forEach(el => el.style.setProperty("--esc", esc));
     }
 
-    function updateScrolly(){
-      scrollyTicking = false;
-      if(!deckAtivo.matches) return;
-      const rect = scrollyPin.getBoundingClientRect();
-      // Quanto já rolou da wrapper, de 0 a 1. O trecho útil é a altura dela
-      // menos uma tela (a parte em que o miolo fica realmente grudado).
-      const rolavel = rect.height - window.innerHeight;
-      const progresso = rolavel > 0 ? (-rect.top) / rolavel : 0;
-      const limitado = Math.min(1, Math.max(0, progresso));
-      // 0 → primeiro cartão centrado; 1 → último centrado. Por isso (n-1) e
-      // não n: o percurso vai de um extremo ao outro, sem sobra nas pontas.
-      posicionarDeck(limitado * (scrollySteps.length - 1));
-    }
-
-    function agendarScrolly(){
-      if(scrollyTicking) return;
-      scrollyTicking = true;
-      requestAnimationFrame(updateScrolly);
-    }
-
     /* No celular não existe deck deslizando — sem isto os cartões ficavam
        totalmente parados. Cada um entra com um leve subir/assentar quando
        aparece; o efeito é aplicado só dentro do media query do celular (o
@@ -208,11 +187,65 @@
       scrollyCards.forEach(c => entradaCartoes.observe(c));
     }
 
-    window.addEventListener("scroll", agendarScrolly, { passive: true });
-    window.addEventListener("resize", () => { ajustarEscalaDosPaineis(); agendarScrolly(); });
+    /* Quem dá o progresso da rolagem é o ScrollTrigger. A seção continua presa
+       pelo position:sticky do CSS — de propósito: o pin do ScrollTrigger
+       trocaria o sticky por position:fixed, e o overflow-x:clip do html/body
+       (topo do CSS) vira bloco de contenção para fixed, que é o jeito clássico
+       de quebrar pin. A geometria (wrapper de 280vh + miolo de 100vh) já está
+       no CSS; só faltava o motor.
+       O tween corre sobre um objeto solto, não sobre --active: assim o scrub
+       amacia o progresso e posicionarDeck segue o único dono das variáveis. */
+    const passosTotal = scrollySteps.length - 1;
+    posicionarDeck(0);
+
+    if(window.gsap && window.ScrollTrigger && passosTotal > 0){
+      gsap.registerPlugin(ScrollTrigger);
+      const trilho = { p: 0 };
+
+      gsap.matchMedia().add("(min-width: 992px) and (prefers-reduced-motion: no-preference)", () => {
+        ajustarEscalaDosPaineis();
+        const tween = gsap.to(trilho, {
+          p: 1,
+          ease: "none",
+          onUpdate: () => posicionarDeck(trilho.p * passosTotal),
+          scrollTrigger: {
+            trigger: scrollyPin,
+            start: "top top",
+            end: "bottom bottom",
+            scrub: 0.4,
+            invalidateOnRefresh: true,
+            // O refresh roda na ordem de CRIAÇÃO, e este gatilho nasce antes
+            // dos de js/animacoes.js, que estão acima dele na página.
+            refreshPriority: -1,
+            onRefresh: ajustarEscalaDosPaineis,
+            // inertia:false porque o snap com inércia adivinha o destino pela
+            // velocidade do gesto — é o que dava sensação de brigar com o dedo.
+            snap: {
+              snapTo: 1 / passosTotal,
+              duration: { min: .18, max: .5 },
+              delay: .12,
+              ease: "power1.inOut",
+              inertia: false,
+            },
+          },
+        });
+
+        // O matchMedia reverte tweens, mas não as variáveis escritas à mão no
+        // onUpdate. Voltar ao estado inicial (e não apagar as variáveis) deixa
+        // o deck coerente: sem isto, voltar do celular para o computador
+        // começaria com um --active velho e o primeiro quadro piscaria.
+        return () => {
+          tween.scrollTrigger?.kill();
+          tween.kill();
+          passoDestacado = -1;
+          posicionarDeck(0);
+        };
+      });
+    }
+
+    window.addEventListener("resize", ajustarEscalaDosPaineis);
     deckAtivo.addEventListener("change", ajustarEscalaDosPaineis);
     ajustarEscalaDosPaineis();
-    updateScrolly();
 
     // Clicar num passo leva até o trecho de rolagem dele — os passos parecem
     // clicáveis (são <button>), então precisam de fato levar a algum lugar.
@@ -355,6 +388,7 @@
     }).join("");
     grid.querySelectorAll(".product-thumb img").forEach(wireImage);
     observeReveal(grid);
+    document.dispatchEvent(new CustomEvent("vitrine:render"));
   }
 
   const vitrineContagemEl = document.getElementById("vitrineContagem");
@@ -1557,7 +1591,7 @@
     const target = document.getElementById(id);
     if(!target) return;
     e.preventDefault();
-    target.scrollIntoView({ block: "start" });
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
     history.replaceState(null, "", location.pathname + location.search);
   });
 
