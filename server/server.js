@@ -910,6 +910,12 @@ function atributoCupomBoasVindas(){
 // antiga por até um ano em qualquer aparelho, sem jeito de forçar
 // atualização a não ser limpando o cache manualmente.
 const REF_ASSET = /\b(href|src)="((?:css|js|img)\/[^"?#]+\.(?:css|js|jpg|jpeg|png|svg|webp|gif)|favicon\.ico|apple-touch-icon\.png)"/g;
+// srcset é outro atributo e outra gramática ("arquivo 400w, arquivo 760w"),
+// então não cabe no REF_ASSET acima — mas precisa do MESMO ?v=, senão a foto
+// responsiva do hero seria o único asset da página a cair no "no-cache" e
+// pagar uma revalidação por visita.
+const REF_SRCSET = /\bsrcset="([^"]+)"/g;
+const CAMINHO_NO_SRCSET = /((?:css|js|img)\/[^\s,?#]+\.(?:jpg|jpeg|png|svg|webp|gif))/g;
 // Marcadores no <head>/<body> do index.html, trocados na hora de servir.
 const MARCA_JSONLD = "<!--#DADOS-ESTRUTURADOS#-->";
 const MARCA_CUPOM = "<!--#CUPOM-BOAS-VINDAS#-->";
@@ -953,11 +959,18 @@ function htmlVersionado(absoluto){
   if(valido) return comCupom(cacheado.html);
 
   const refs = [];
-  let html = fs.readFileSync(absoluto, "utf8").replace(REF_ASSET, (inteiro, attr, rel) => {
+  const versionar = (rel) => {
     refs.push(rel);
     const v = versaoDoAsset(rel);
-    return v ? `${attr}="${rel}?v=${v}"` : inteiro;
-  });
+    return v ? `${rel}?v=${v}` : rel;
+  };
+  let html = fs.readFileSync(absoluto, "utf8")
+    .replace(REF_ASSET, (inteiro, attr, rel) => {
+      const versionado = versionar(rel);
+      return versionado === rel ? inteiro : `${attr}="${versionado}"`;
+    })
+    .replace(REF_SRCSET, (inteiro, lista) =>
+      `srcset="${lista.replace(CAMINHO_NO_SRCSET, versionar)}"`);
 
   const temJsonld = html.includes(MARCA_JSONLD);
   if(temJsonld) html = html.replace(MARCA_JSONLD, blocoDadosEstruturados());
@@ -3686,18 +3699,69 @@ app.post("/api/admin/products/:id/photo", auth.requireAdmin, auth.requireAdminTw
    vitrine é pública. Cache-Control "immutable" é seguro aqui porque um id
    nunca é reescrito: um novo upload sempre grava uma linha nova, então o
    conteúdo por trás de uma URL já emitida jamais muda.
+
+   ⚠️ Sem ?w= a resposta é o original byte a byte: é essa URL que fica gravada
+   no banco, que PHOTO_ROUTE_PATTERN valida e que lib/emailPhotos.js procura no
+   HTML dos e-mails.
 ========================================================================= */
-app.get("/api/products/photos/:id", (req, res) => {
+// ⚠️ Lista fixa: largura livre deixaria qualquer visitante encher o banco de
+// variantes. 160 = miniatura do carrinho; 400/600 = card; 900 = Quick View.
+const LARGURAS_DE_FOTO = new Set([160, 400, 600, 900]);
+
+app.get("/api/products/photos/:id", async (req, res) => {
   if(!PHOTO_ROUTE_PATTERN.test(`/api/products/photos/${req.params.id}`)){
     return res.status(404).end();
   }
-  const photo = db.getProductPhoto(req.params.id);
-  if(!photo){
-    return res.status(404).end();
-  }
-  res.setHeader("Content-Type", photo.mime_type);
+
+  const pedida = Number(req.query.w);
+  const largura = LARGURAS_DE_FOTO.has(pedida) ? pedida : null;
+
+  // Só WebP: AVIF pouparia mais uns 8 KB por 275ms de CPU (medido), caro
+  // demais para gerar sob demanda num host compartilhado.
+  const querWebp = /\bimage\/webp\b/.test(req.headers.accept || "");
+  const formato = querWebp ? "webp" : "jpeg";
+
   res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-  res.end(Buffer.from(photo.data));
+
+  if(!largura){
+    const photo = db.getProductPhoto(req.params.id);
+    if(!photo) return res.status(404).end();
+    res.setHeader("Content-Type", photo.mime_type);
+    return res.end(Buffer.from(photo.data));
+  }
+
+  // res.vary() e não setHeader("Vary"): o compression() já pode ter escrito
+  // "Accept-Encoding" aí, e sobrescrever quebraria o cache dele.
+  res.vary("Accept");
+
+  const emCache = db.getProductPhotoVariant(req.params.id, largura, formato);
+  if(emCache){
+    res.setHeader("Content-Type", emCache.mime_type);
+    return res.end(Buffer.from(emCache.data));
+  }
+
+  const photo = db.getProductPhoto(req.params.id);
+  if(!photo) return res.status(404).end();
+
+  try{
+    const mime = formato === "webp" ? "image/webp" : "image/jpeg";
+    let pipeline = sharp(Buffer.from(photo.data))
+      .resize({ width: largura, withoutEnlargement: true });
+    pipeline = formato === "webp"
+      ? pipeline.webp({ quality: 72 })
+      : pipeline.jpeg({ quality: 78, mozjpeg: true });
+    const reduzida = await pipeline.toBuffer();
+
+    db.saveProductPhotoVariant(req.params.id, largura, formato, mime, reduzida);
+    res.setHeader("Content-Type", mime);
+    res.end(reduzida);
+  }catch(err){
+    // Reduzir é otimização, não requisito: servir o original é melhor do que
+    // deixar a vitrine com buraco no lugar da imagem.
+    console.error(`Falha ao reduzir a foto ${req.params.id} para ${largura}px:`, err.message || err);
+    res.setHeader("Content-Type", photo.mime_type);
+    res.end(Buffer.from(photo.data));
+  }
 });
 
 /* Slug curto e sem acento a partir do texto digitado — o mesmo formato dos

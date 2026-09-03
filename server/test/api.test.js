@@ -393,6 +393,77 @@ test("galeria de fotos: upload real grava no banco (product_photos) e remover a 
 });
 
 
+test("?w= na foto: reduz, negocia WebP pelo Accept, ignora largura fora da lista e some junto com a foto", async () => {
+  const adminCookie = sharedAdminCookie;
+  assert.ok(adminCookie, "precisa de um cookie de admin já autenticado");
+
+  // 1200px de largura para que reduzir para 400 seja mesmo uma redução — com
+  // uma imagem de 4px, withoutEnlargement devolveria os 4px e o teste passaria
+  // sem provar nada.
+  const grande = await sharp({
+    create: { width: 1200, height: 1600, channels: 3, background: { r: 210, g: 140, b: 175 } },
+  }).jpeg().toBuffer();
+
+  const form = new FormData();
+  form.append("photo", new Blob([grande], { type: "image/jpeg" }), "grande.jpg");
+  const up = await fetch(`${ORIGIN}/api/admin/products/5/photo`, {
+    method: "POST",
+    headers: { Origin: ORIGIN, Cookie: adminCookie },
+    body: form,
+  });
+  assert.equal(up.status, 201);
+  const { photoUrl } = await up.json();
+  await patch("/api/admin/products/5", { photos: [photoUrl] }, adminCookie);
+
+  const bytesDe = async (url, accept) => {
+    const r = await fetch(ORIGIN + url, accept ? { headers: { Accept: accept } } : undefined);
+    assert.equal(r.status, 200, `${url} devia responder 200`);
+    return { r, buf: Buffer.from(await r.arrayBuffer()) };
+  };
+
+  // Sem ?w=: original intacto. É a URL gravada no banco e a que
+  // lib/emailPhotos.js procura no HTML dos e-mails.
+  const original = await bytesDe(photoUrl);
+  const metaOriginal = await sharp(original.buf).metadata();
+  assert.equal(metaOriginal.width, 1200, "sem ?w= a foto sai no tamanho gravado");
+  assert.equal(original.r.headers.get("content-type"), "image/jpeg");
+
+  // ?w=400 sem Accept de WebP: JPEG reduzido.
+  const jpeg400 = await bytesDe(photoUrl + "?w=400", "image/jpeg,*/*");
+  const metaJpeg = await sharp(jpeg400.buf).metadata();
+  assert.equal(metaJpeg.format, "jpeg");
+  assert.equal(metaJpeg.width, 400);
+  assert.ok(jpeg400.buf.length < original.buf.length, "reduzida precisa pesar menos que o original");
+
+  // Mesmo URL, Accept com WebP: outro formato, mesma largura.
+  const webp400 = await bytesDe(photoUrl + "?w=400", "image/webp,image/jpeg,*/*");
+  const metaWebp = await sharp(webp400.buf).metadata();
+  assert.equal(metaWebp.format, "webp", "com image/webp no Accept a resposta devia ser WebP");
+  assert.equal(metaWebp.width, 400);
+  assert.equal(webp400.r.headers.get("content-type"), "image/webp");
+  assert.match(webp400.r.headers.get("vary") || "", /Accept/i, "resposta que varia por Accept precisa dizer isso");
+
+  // Segunda chamada vem do cache (product_photo_variants) — precisa ser
+  // byte a byte o mesmo, senão o "immutable" do Cache-Control seria mentira.
+  const webpDeNovo = await bytesDe(photoUrl + "?w=400", "image/webp,*/*");
+  assert.ok(webp400.buf.equals(webpDeNovo.buf), "variante cacheada devia devolver exatamente os mesmos bytes");
+
+  // ⚠️ Largura fora da lista é IGNORADA, não gera variante nova: é o que
+  // impede alguém de encher o banco pedindo ?w=1,2,3...
+  const forcada = await bytesDe(photoUrl + "?w=137", "image/webp,*/*");
+  const metaForcada = await sharp(forcada.buf).metadata();
+  assert.equal(metaForcada.width, 1200, "largura fora da lista devia cair no original");
+  assert.equal(metaForcada.format, "jpeg", "sem largura válida não há negociação de formato");
+
+  // Apagar a foto leva as variantes junto (ON DELETE CASCADE) — senão uma
+  // foto trocada no painel continuaria aparecendo pelo ?w=.
+  const removido = await patch("/api/admin/products/5", { photos: [] }, adminCookie);
+  assert.equal(removido.status, 200);
+  assert.equal((await fetch(ORIGIN + photoUrl + "?w=400")).status, 404,
+    "variante não pode sobreviver à foto que a originou");
+});
+
+
 test("descrição do produto: PATCH edita, GET /api/products reflete, POST /api/admin/products aceita na criação", async () => {
   const adminCookie = sharedAdminCookie;
   assert.ok(adminCookie);

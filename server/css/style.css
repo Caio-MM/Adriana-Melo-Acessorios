@@ -472,6 +472,8 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   background:var(--blush-200); border-radius:var(--radius-lg);
   transform:rotate(-5deg); z-index:-1;
 }
+/* <picture> nasce inline: sem isto sobra uma faixa branca sob a foto. */
+.hero-photo-wrap picture{ display:block; }
 .hero-photo{
   display:block; width:100%; height:auto;
   border-radius:calc(var(--radius-lg) - 10px);
@@ -989,101 +991,149 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   background-size:14px 2px; background-repeat:repeat-x; z-index:0;
 }
 
-/* ============ GARANTIAS — deck de cartões preso na tela ============
-   No computador a seção fica presa (wrapper alta + miolo sticky) e os cartões
-   sobem em bloco, um empurrando o outro, em vez de trocarem por fade. O texto
-   de cada passo abre só quando ele fica ativo. Quem calcula o índice ativo é
-   js/main.js, pelo progresso da rolagem dentro da wrapper; o CSS só reage à
-   variável --active.
-   O bloco global de prefers-reduced-motion (topo do arquivo) já anula todas as
-   transições daqui — a troca vira um corte seco, que é o certo nesse caso.
-   No celular nada disso vale: ver o media query no fim deste bloco, onde a
-   mesma marcação vira uma lista empilhada. */
-.scrolly-section{ padding-top:5rem; padding-bottom:5rem; }
-/* Dentro da tela presa (ver index.html): fica no topo enquanto os cartões
-   passam. Margem menor que a de uma seção normal porque aqui ele divide os
-   100vh com o deck. */
+/* ============ GARANTIAS — player no formato de stories ============
+   Antes esta seção prendia a rolagem da página e deslizava os cartões conforme
+   se rolava. Travava em parte dos aparelhos — é o consenso da literatura de
+   usabilidade, e era exatamente a queixa — e custava quase três telas no
+   computador e quase seis no celular para mostrar quatro frases.
+   Agora: barrinhas de progresso, avanço automático e toque para navegar, no
+   gesto que as clientes já conhecem do Instagram. A rolagem da página nunca é
+   tocada, e o mesmo componente serve computador e celular. */
+/* A seção era transparente e o palco não tinha fundo nem sombra: o painel
+   ficava boiando no creme, sem estar apoiado em nada. Daí a sensação de morno. */
+.stories-section{
+  padding:5rem 0; position:relative; overflow:hidden;
+  background:linear-gradient(180deg, var(--blush-50) 0%, var(--cream) 70%);
+}
 .scrolly-head{ max-width:600px; margin-bottom:1.75rem; }
-/* No computador o miolo preso já tem folga sobrando dentro dos 100vh dele; com
-   o padding da seção por cima disso, sobrava um vão grande até a oferta de
-   boas-vindas. O respiro fica por conta do padding-top da seção seguinte. */
-@media (min-width: 992px){
-  .scrolly-section{ padding-bottom:0; }
+
+/* Uma variável dita a altura do palco, e a largura do bloco inteiro sai dela.
+   Sem isso as barrinhas ficavam mais largas que o painel — num stories elas
+   têm de ter exatamente a largura da mídia. */
+.stories{
+  --palco-altura:clamp(420px, 62vh, 640px);
+  position:relative; margin:0 auto;
+  max-width:min(940px, calc(var(--palco-altura) * 4 / 3));
 }
 
-/* A tela presa (100vh) + o percurso do deck. O percurso é (altura − 100vh) e
-   cobre os 3 intervalos entre os 4 cartões, ou seja ~50vh de rolagem por
-   cartão. Mudar isto muda o ritmo: maior = precisa rolar mais para trocar. */
-.scrolly-pin-wrap{ position:relative; height:280vh; }
-.scrolly-pin{
-  position:sticky; top:0; height:100vh;
-  display:flex; flex-direction:column; justify-content:center; overflow:hidden;
+/* ---- barrinhas de progresso ---- */
+.stories-bars{ display:flex; gap:6px; margin:0 0 .9rem; position:relative; z-index:2; }
+/* O botão tem 18px de altura para ser um alvo de toque decente, mas o trilho
+   visível é só a faixa de 5px no meio — pintada por ::before. Antes o botão
+   inteiro tinha 4px, o que é impossível de acertar com o dedo. */
+.stories-bar{
+  flex:1 1 0; height:18px; padding:0; border:0; background:transparent;
+  position:relative; cursor:pointer; appearance:none;
 }
-.scrolly-pin > .container{ position:relative; z-index:1; }
-/* z-index acima dos lacinhos: eles são absolutos (z-index:0) e, sem isto,
-   pintavam por cima do texto, que é conteúdo estático. */
-.scrolly-layout{ display:flex; align-items:center; gap:5rem; position:relative; z-index:1; }
+.stories-bar::before{
+  content:""; position:absolute; left:0; right:0; top:calc(50% - 2.5px);
+  height:5px; border-radius:999px;
+  /* --blush-300 e não --blush-150: sobre o creme do fundo, o tom mais claro
+     dava contraste de praticamente 1:1 e o trilho sumia da tela. */
+  background:var(--blush-300);
+}
+.stories-bar:focus-visible{ outline:3px solid var(--blush-600); outline-offset:2px; border-radius:6px; }
+.stories-bar-fill{
+  position:absolute; left:0; right:0; top:calc(50% - 2.5px);
+  height:5px; border-radius:999px;
+  background:var(--blush-700);
+  transform:scaleX(0); transform-origin:left center;
+}
+.stories-bar.is-vista .stories-bar-fill{ transform:scaleX(1); }
+/* O preenchimento É o relógio: quando a animação termina, o player avança.
+   Pausar é só trocar --play, e o tempo já decorrido fica preservado — não há
+   cronômetro paralelo para manter em sincronia. */
+.stories-bar.is-ativa .stories-bar-fill{
+  animation:stories-encher var(--dur, 5.5s) linear forwards;
+  animation-play-state:var(--play, running);
+}
+@keyframes stories-encher{ from{ transform:scaleX(0); } to{ transform:scaleX(1); } }
 
-/* ---- coluna dos passos (só no computador) ---- */
-.scrolly-steps{ flex:0 0 340px; list-style:none; margin:0; padding:0; }
-.scrolly-step + .scrolly-step{ margin-top:.9rem; }
-.scrolly-step-btn{
-  display:block; width:100%; text-align:left; background:none; border:0;
-  border-left:2px solid var(--blush-100); padding:.55rem 0 .55rem 1.6rem;
-  cursor:pointer; transition:border-color .45s var(--ease-out);
+/* ---- palco ---- */
+/* Altura estável, vinda da variável acima: antes dependia de min(58vh, ...)
+   dentro de um miolo preso e precisava ser recalculada pelo ScrollTrigger. */
+.stories-palco{
+  position:relative; width:100%; height:var(--palco-altura);
+  overflow:hidden; border-radius:var(--radius-lg);
+  touch-action:pan-y;
+  background:var(--white); z-index:1;
+  box-shadow:0 18px 44px -26px rgba(84,41,60,.38), 0 0 0 1px var(--blush-100);
 }
-.scrolly-step.is-active .scrolly-step-btn{ border-left-color:var(--blush-700); }
-.scrolly-step-btn:focus-visible{ outline:3px solid var(--blush-600); outline-offset:3px; border-radius:4px; }
-
-.scrolly-num{
-  display:block; font-family:var(--font-display); font-size:.72rem; font-weight:700;
-  letter-spacing:.1em; color:var(--ink-soft); opacity:.5; margin-bottom:.25rem;
-  transition:color .45s ease, opacity .45s ease;
-}
-.scrolly-step.is-active .scrolly-num{ color:var(--blush-700); opacity:1; }
-.scrolly-title{
-  display:block; font-size:1.2rem; font-weight:600; line-height:1.3;
-  color:var(--ink-soft); transition:color .45s ease;
-}
-.scrolly-step.is-active .scrolly-title{ color:var(--ink); }
-
-/* Sanfona: a descrição só existe visualmente no passo ativo. grid-template-rows
-   0fr→1fr anima a altura sem precisar chutar um max-height fixo (que cortaria
-   o texto de quem usa fonte grande). */
-.scrolly-desc{
-  display:grid; grid-template-rows:0fr; opacity:0;
-  transition:grid-template-rows .5s var(--ease-out), opacity .35s ease, margin-top .5s var(--ease-out);
-}
-.scrolly-desc-inner{ overflow:hidden; display:block; font-size:.9rem; line-height:1.6; color:var(--ink-soft); }
-.scrolly-step.is-active .scrolly-desc{ grid-template-rows:1fr; opacity:1; margin-top:.4rem; }
-
-/* ---- deck de cartões ---- */
-/* 4/3: os painéis são páginas inteiras (~870px de altura em unidades de
-   página) e precisam desta altura para caber sem cortar o rodapé. */
-/* max-height menor que antes (76vh): o título agora divide os 100vh da tela
-   presa com o deck, então a moldura precisa ceder essa altura. */
-.scrolly-deck-viewport{
-  flex:1 1 auto; min-width:0; position:relative;
-  aspect-ratio:4/3; max-height:58vh; overflow:hidden;
-}
-.scrolly-deck{ position:absolute; inset:0; }
-/* Cada cartão ocupa a janela inteira e fica deslocado (índice − ativo) vezes a
-   própria altura MAIS o respiro entre eles; mudar --active desliza todos
-   juntos. Os 32% de respiro são o que aparece de fundo entre um cartão e o
-   outro no meio da troca — quanto maior, mais "ar" entre os painéis.
-   --active é FRACIONÁRIO e acompanha a rolagem (js/main.js), então o movimento
-   já é contínuo. Aqui NÃO existe transition de propósito: quem amacia o
-   "degrau" da roda do mouse é o scrub do ScrollTrigger. Uma transição por cima
-   atrasaria o deck e brigaria com o snap. */
+/* Os cartões ficam LADO A LADO e o conjunto desliza, em vez de um sumir e o
+   outro aparecer. Com 88% da largura do palco, sobra uma faixa do próximo
+   espiando à direita — o sinal de que existe mais coisa ali. É também o que
+   dá à troca a leitura de gesto, e não de corte. */
 .scrolly-card{
-  position:absolute; inset:0; margin:0;
-  /* --recuo e --esmaece vêm do js/main.js e dão profundidade: o cartão fora do
-     centro recua e esmaece, então o que está em foco fica claramente à frente. */
-  transform:translateY(calc((var(--i) - var(--active, 0)) * 132%)) scale(var(--recuo, 1));
-  opacity:var(--esmaece, 1);
+  position:absolute; top:0; bottom:0; left:0; width:88%; margin:0;
+  transform:translateX(calc((var(--i) - var(--atual, 0)) * 104%));
+  transition:transform .55s var(--ease-out), opacity .4s var(--ease-out);
 }
-.scrolly-card-head{ display:none; }
+.scrolly-card:not(.is-atual){ opacity:.4; }
 .scrolly-card .scrolly-frame{ height:100%; }
+/* Véu sobre o que está espiando: deixa claro que é prévia, não conteúdo ativo,
+   e evita que o texto do vizinho compita com o do painel em foco. */
+.scrolly-card:not(.is-atual) .scrolly-frame::after{
+  content:""; position:absolute; inset:0; z-index:5;
+  background:linear-gradient(90deg, rgba(255,253,252,.55), rgba(255,253,252,.15));
+  border-radius:inherit; pointer-events:none;
+}
+.scrolly-frame{ position:relative; }
+
+/* Zonas de toque invisíveis, no gesto de stories. São <button> de verdade, então
+   teclado e leitor de tela ganham anterior/próximo de graça. */
+.stories-zona{
+  position:absolute; top:0; bottom:0; z-index:3;
+  border:0; background:transparent; padding:0; cursor:pointer; appearance:none;
+}
+.stories-zona.is-anterior{ left:0; width:32%; }
+.stories-zona.is-proxima{ right:0; width:68%; }
+.stories-zona:focus-visible{ outline:3px solid var(--blush-600); outline-offset:-6px; border-radius:var(--radius-lg); }
+
+/* ---- legenda do slide atual ---- */
+.stories-legenda{ margin-top:1.5rem; min-height:6.5rem; }
+.stories-legenda-item[hidden]{ display:none; }
+/* Sair de display:none reinicia a animação sozinho — a legenda entra junto
+   com o painel, em vez de simplesmente aparecer trocada. */
+.stories-legenda-item{
+  display:flex; align-items:flex-start; gap:1.1rem;
+  animation:stories-legenda-entra .5s var(--ease-out) both .08s;
+}
+@keyframes stories-legenda-entra{
+  from{ opacity:0; transform:translateY(10px); }
+  to{ opacity:1; transform:none; }
+}
+/* O numeral era 15px e sumia. Grande, ele vira a âncora visual que marca o
+   ritmo a cada troca. */
+.stories-numero{
+  font-family:var(--font-display); font-size:clamp(2.4rem, 5vw, 3.4rem);
+  line-height:.85; color:var(--blush-300); flex:none;
+  letter-spacing:-.02em;
+}
+.stories-titulo{
+  font-size:1.25rem; margin:0 0 .35rem; display:flex; align-items:center; gap:.55rem;
+}
+.stories-titulo i{ color:var(--blush-600); font-size:1.05rem; }
+.stories-desc{
+  margin:0; max-width:58ch; color:var(--ink-soft);
+  font-size:.95rem; line-height:1.6;
+}
+
+.stories-repetir{
+  display:inline-flex; align-items:center; gap:.45rem; margin-top:.6rem;
+  background:transparent; border:1px solid var(--blush-300); border-radius:999px;
+  padding:.42rem 1rem; font-size:.85rem; color:var(--blush-700); cursor:pointer;
+  transition:background var(--animation-short) var(--ease-out),
+             border-color var(--animation-short) var(--ease-out);
+}
+.stories-repetir:hover{ background:var(--blush-50); border-color:var(--blush-600); }
+
+/* ⚠️ O bloco global *{animation:none!important} (topo do arquivo) mataria o
+   preenchimento e a barra ativa ficaria vazia para sempre. Aqui ela é fixada
+   cheia, para continuar indicando "você está aqui". O avanço automático não
+   começa nesse modo — quem decide isso é o JS. */
+@media (prefers-reduced-motion: reduce){
+  .stories-bar.is-ativa .stories-bar-fill{ transform:scaleX(1); }
+}
 
 /* ---- moldura de navegador ---- */
 .scrolly-frame{
@@ -1157,8 +1207,12 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   padding:2rem 2.5rem 2.5rem;
   flex:1 1 auto; display:flex; flex-direction:column; justify-content:center;
 }
-.mock-cartao{ max-width:440px; margin:0 auto; width:100%; }
-.mock-largura{ max-width:640px; margin:0 auto; width:100%; }
+/* ⚠️ Larguras generosas de propósito. Estes painéis são páginas reais
+   reduzidas por transform, e a largura NÃO escalada passa de 1400px: com o
+   max-width de 640px da página de verdade, 55% do painel virava margem vazia
+   e a peça parecia um recorte perdido no meio do branco. */
+.mock-cartao{ max-width:760px; margin:0 auto; width:100%; }
+.mock-largura{ max-width:1080px; margin:0 auto; width:100%; }
 .mock-duas{ display:grid; grid-template-columns:1fr 1.05fr; gap:2.5rem; align-items:center; }
 .mock-duas.is-pagamento{ grid-template-columns:1fr .82fr; gap:2rem; }
 
@@ -1250,67 +1304,66 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 
 
 
-/* ---- lacinhos da marca (mesmo padrão do hero: .floaty + @keyframes floaty) ---- */
+/* ---- laços em volta do palco ----
+   Posições recalculadas: as antigas foram desenhadas para a área de tela cheia
+   do deck e ficavam perdidas agora que o bloco tem ~620px. Aqui eles abraçam
+   as bordas do palco, metade para fora, flutuando em tempos diferentes. */
 .scrolly-bow{
   position:absolute; z-index:0; pointer-events:none;
   animation:floaty 6s ease-in-out infinite;
 }
-.scrolly-bow.sb1{ top:8%;  left:2%;   width:74px;  color:var(--blush-200); animation-delay:0s; }
-.scrolly-bow.sb2{ top:66%; left:24%;  width:44px;  color:var(--blush-300); animation-delay:1.1s; }
-.scrolly-bow.sb3{ bottom:8%; left:4%; width:96px;  color:var(--blush-150); animation-delay:2.2s; }
-.scrolly-bow.sb4{ top:12%; right:2%;  width:56px;  color:var(--blush-200); animation-delay:.7s; }
-.scrolly-bow.sb5{ bottom:14%; right:4%; width:78px; color:var(--blush-150); animation-delay:1.7s; }
+/* Nos quatro cantos da SEÇÃO. Presos ao bloco central (~620px) eles ficavam
+   colados na moldura e abafavam o painel; aqui ocupam o vazio das laterais,
+   que no computador é largo. */
+.scrolly-bow.sb1{ top:12%;    left:3.5%;  width:74px; color:var(--blush-200); animation-delay:0s;   animation-duration:7s; }
+.scrolly-bow.sb2{ top:18%;    right:4%;   width:56px; color:var(--blush-150); animation-delay:1.6s; animation-duration:8.5s; }
+.scrolly-bow.sb3{ bottom:14%; left:6%;    width:58px; color:var(--blush-150); animation-delay:3.1s; animation-duration:7.8s; }
+.scrolly-bow.sb4{ bottom:9%;  right:3%;   width:68px; color:var(--blush-200); animation-delay:2.2s; animation-duration:6.4s; }
 
 /* ============ GARANTIAS — celular ============
-   Prender a tela e coreografar rolagem não funciona bem em tela pequena: a
-   MESMA marcação vira uma lista empilhada, e o título de cada painel passa a
-   sair do .scrolly-card-head (a coluna de passos some). */
+   O componente é o MESMO nos dois tamanhos agora (antes o celular caía numa
+   lista empilhada, com ~100 linhas próprias e 5,8 telas de rolagem). O que
+   muda aqui é só o painel: encolher uma página inteira para 343px de largura
+   deixaria o texto ilegível, então no celular ele abre em tamanho normal, em
+   coluna única, e o palco vira retrato — o que aliás é mais fiel a stories. */
 @media (max-width: 991.98px){
-  .scrolly-pin-wrap{ height:auto; }
-  .scrolly-pin{ position:static; height:auto; display:block; overflow:visible; }
-  .scrolly-layout{ display:block; }
-  .scrolly-steps{ display:none; }
-  .scrolly-deck-viewport{ position:static; aspect-ratio:auto; max-height:none; overflow:visible; }
-  .scrolly-deck{ position:static; display:flex; flex-direction:column; gap:3rem; }
+  .stories-section{ padding:3.25rem 0; }
+  .stories{ --palco-altura:min(70vh, 560px); max-width:100%; }
+  .stories-palco{ border-radius:var(--radius-md); }
+  .scrolly-card .scrolly-frame{ height:100%; }
+  /* ⚠️ CORTE DE CONTEÚDO NO CELULAR — medido: os painéis têm de 722 a 999px
+     e o palco oferece ~510. Sem os cortes abaixo, metade de cada painel
+     desaparecia atrás do degradê (o de "Atendimento direto" perdia 53%).
+     Reduzir a escala não resolve: a 0,47 o texto ficaria com ~7px.
+     A regra é mostrar só a metade que PROVA a garantia. */
 
-  /* Entrada em cascata: o cartão sobe e assenta, o texto vem logo atrás e o
-     número dá um pulinho. Sem isto a seção ficava completamente parada no
-     celular, já que aqui não existe o deck deslizando. A classe .is-visible
-     vem do IntersectionObserver em js/main.js. */
-  .scrolly-card{
-    position:static; opacity:0;
-    transform:translateY(38px) scale(.98);
-    transition:opacity .55s ease, transform .75s var(--ease-out);
-  }
-  .scrolly-card.is-visible{ opacity:1; transform:none; }
+  /* Painéis de duas colunas: fica a primeira, que é a prova.
+     Pagamento -> o resumo com "Desconto Pix (5%)".
+     Atendimento -> os contatos reais, não o formulário em branco. */
+  .mock-duas > div + div{ display:none; }
 
-  .scrolly-card-head{
-    display:block; margin-bottom:1rem;
-    opacity:0; transform:translateY(14px);
-    transition:opacity .5s ease .14s, transform .55s var(--ease-out) .14s;
-  }
-  .scrolly-card.is-visible .scrolly-card-head{ opacity:1; transform:none; }
+  /* Política: a tarja destacada É a garantia; a lista de condições e a barra
+     de abas são contexto que cabe no site de verdade. */
+  .mock-abas{ display:none; }
+  .mock-policy ul{ display:none; }
 
-  .scrolly-card-head .scrolly-num{
-    display:inline-block; opacity:1; color:var(--blush-700); margin-bottom:.15rem;
-    transform:scale(.6);
-    transition:transform .5s cubic-bezier(.34,1.56,.64,1) .22s;
-  }
-  .scrolly-card.is-visible .scrolly-card-head .scrolly-num{ transform:none; }
+  /* Rastreio: a prova de "vai para a fila de produção" é a LINHA DO TEMPO.
+     O cartão do produto custava 142px e não prova nada disso; e bastam as duas
+     primeiras etapas (pagamento confirmado -> na fila), que são exatamente o
+     que a garantia promete. */
+  .is-rastreio .order-card:has(.mock-produto){ display:none; }
+  .is-rastreio .policy-back{ display:none; }
+  .is-rastreio .mock-timeline li:nth-child(n+3){ display:none; }
 
-  /* A moldura "levanta" um pouco ao assentar — dá a sensação de peso. */
-  .scrolly-card .scrolly-frame{
-    box-shadow:0 10px 24px -18px rgba(84,41,60,.35);
-    transition:box-shadow .7s var(--ease-out) .1s;
+  /* O painel ainda pode sobrar um pouco; o fim some num degradê em vez de
+     cortar seco, sinalizando que a leitura continua no site. */
+  .scrolly-card .mock::after{
+    content:""; position:absolute; left:0; right:0; bottom:0; height:64px;
+    background:linear-gradient(transparent, var(--white));
+    pointer-events:none; z-index:2;
   }
-  .scrolly-card.is-visible .scrolly-frame{ box-shadow:0 26px 60px -28px rgba(84,41,60,.45); }
-  .scrolly-card .scrolly-frame{ height:auto; }
-  /* ADEQUAÇÃO AO CELULAR — medido em 375x812 antes destes cortes: a seção
-     inteira dava 6,6 telas de rolagem e só o painel do Pix, 1,9 telas (não
-     cabia nem uma vez na tela). Um bloco de confiança não pode custar isso.
-     Abaixo, o painel vira um RESUMO: sai o que existe para dar riqueza no
-     computador (barra de navegação, segundo produto, itens finais da linha
-     do tempo, notas de rodapé) e fica a prova essencial de cada garantia. */
+  .stories-legenda{ margin-top:1.1rem; min-height:6.5rem; }
+  .stories-bars{ gap:4px; }
 
   /* A barra com os 3 pontinhos + URL é cromo de navegador de COMPUTADOR;
      num celular ela é incongruente além de custar altura. Fica só uma faixa
@@ -1361,9 +1414,9 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .mock-produto, .mock-produto > div,
   .mock-duas > *, .mock-campos > *{ min-width:0; }
   .mock-produto strong, .mock-link{ overflow-wrap:anywhere; }
-  .scrolly-bow.sb2, .scrolly-bow.sb3, .scrolly-bow.sb5{ display:none; }
-  .scrolly-bow.sb1{ top:1%; left:-2%; width:56px; }
-  .scrolly-bow.sb4{ top:auto; bottom:2%; right:-2%; width:46px; }
+  /* Nenhum laço: em 375px não sobra folga lateral, e todos apareciam
+     cortados pela borda — viravam mancha rosa, não laço. */
+  .scrolly-bow{ display:none; }
 }
 
 

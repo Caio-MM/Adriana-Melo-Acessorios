@@ -89,6 +89,20 @@ db.exec(`
     created_at  INTEGER NOT NULL
   );
 
+  -- Versões reduzidas de product_photos, gravadas no primeiro acesso àquela
+  -- largura/formato. É cache, não fonte: apagar a tabela só custa ~35ms de
+  -- sharp no próximo acesso. O CASCADE impede a variante de sobreviver à foto
+  -- que a originou quando o painel troca a imagem de um produto.
+  CREATE TABLE IF NOT EXISTS product_photo_variants (
+    photo_id    TEXT NOT NULL REFERENCES product_photos(id) ON DELETE CASCADE,
+    width       INTEGER NOT NULL,
+    format      TEXT NOT NULL,
+    mime_type   TEXT NOT NULL,
+    data        BLOB NOT NULL,
+    created_at  INTEGER NOT NULL,
+    PRIMARY KEY (photo_id, width, format)
+  );
+
   -- Edições feitas no painel administrativo (nome/preço/foto) por cima do
   -- catálogo estático em PRODUCTS (server.js). Uma linha por produto só
   -- quando ele foi editado; sem edição, o servidor usa o valor de PRODUCTS
@@ -887,6 +901,26 @@ function deleteProductPhoto(id) {
   stmtDeleteProductPhoto.run(id);
 }
 
+/* ---- Variantes reduzidas (cache preenchido pela rota, sob demanda) ---- */
+const stmtGetProductPhotoVariant = db.prepare(
+  `SELECT mime_type, data FROM product_photo_variants
+    WHERE photo_id = ? AND width = ? AND format = ?`
+);
+const stmtInsertProductPhotoVariant = db.prepare(
+  `INSERT OR REPLACE INTO product_photo_variants
+     (photo_id, width, format, mime_type, data, created_at)
+   VALUES (?, ?, ?, ?, ?, ?)`
+);
+
+function getProductPhotoVariant(photoId, width, format) {
+  return stmtGetProductPhotoVariant.get(photoId, width, format) || null;
+}
+// INSERT OR REPLACE, e não INSERT: dois pedidos simultâneos da mesma variante
+// geram os mesmos bytes, e perder a corrida não pode virar erro 500.
+function saveProductPhotoVariant(photoId, width, format, mimeType, buffer) {
+  stmtInsertProductPhotoVariant.run(photoId, width, format, mimeType, buffer, Date.now());
+}
+
 /* ------------------------- PRODUCT OVERRIDES ------------------------- */
 const stmtGetProductOverride = db.prepare(`SELECT * FROM product_overrides WHERE product_id = ?`);
 const stmtListProductOverrides = db.prepare(`SELECT * FROM product_overrides`);
@@ -1369,6 +1403,8 @@ module.exports = {
   insertProductPhoto,
   getProductPhoto,
   deleteProductPhoto,
+  getProductPhotoVariant,
+  saveProductPhotoVariant,
   // getProductOverride não é exportada de propósito: ninguém fora daqui lê
   // um override isolado — quem consome sempre quer o mapa inteiro
   // (listProductOverrides) para montar o catálogo de uma vez.

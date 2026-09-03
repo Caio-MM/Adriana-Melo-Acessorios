@@ -48,6 +48,37 @@
   function imageFor(p){
     return p.image || "";
   }
+
+  /* ⚠️ Só as fotos em /api/products/photos/<uuid> respondem ?w=. Uma URL
+     externa colada no painel, ou um caminho antigo em /img/products/, tem que
+     sair sem srcset. Larguras precisam existir em LARGURAS_DE_FOTO
+     (server.js): fora da lista, volta o original de 1600px. */
+  const ROTA_FOTO_REDIMENSIONAVEL =
+    /^\/api\/products\/photos\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+  function redimensionavel(url){
+    return ROTA_FOTO_REDIMENSIONAVEL.test(url || "");
+  }
+
+  function urlDaFoto(url, largura){
+    return redimensionavel(url) ? `${url}?w=${largura}` : url;
+  }
+
+  function srcsetDe(url, larguras){
+    if(!redimensionavel(url)) return "";
+    return larguras.map(w => `${escapeHTML(url)}?w=${w} ${w}w`).join(", ");
+  }
+
+  // Acompanha col-6 col-md-4 col-lg-3, com o container de 1140px no fim.
+  const SIZES_DO_CARD = "(max-width: 767.98px) 50vw, (max-width: 991.98px) 33vw, 285px";
+
+  function atributosDeFoto(url, larguras, sizes){
+    const src = redimensionavel(url)
+      ? `${escapeHTML(url)}?w=${larguras[larguras.length - 1]}`
+      : escapeHTML(url);
+    const set = srcsetDe(url, larguras);
+    return `src="${src}"${set ? ` srcset="${set}" sizes="${sizes}"` : ""}`;
+  }
   // Galeria completa do produto — usada só no Quick View (o card da grade
   // continua mostrando uma imagem só, via imageFor). Cai para [imageFor(p)]
   // quando `photos` ainda não chegou de /api/products (mesma ponte do
@@ -101,163 +132,206 @@
   }
   observeReveal();
 
-  /* ============ GARANTIAS — deck de cartões preso na tela ============
-     A seção fica presa (wrapper alta + miolo sticky, ver .scrolly-pin-wrap no
-     CSS) e os cartões sobem em bloco conforme a pessoa rola. Aqui NÃO dá para
-     usar IntersectionObserver como no revealObserver acima: enquanto a seção
-     está presa os passos não se movem na tela, então não há interseção nova
-     para observar. O índice vem do PROGRESSO da rolagem dentro da wrapper.
-     Só o desktop tem o deck (no celular a lista é empilhada e estes elementos
-     nem existem), por isso tudo aqui é opcional. */
-  const scrollyPin = document.getElementById("scrollyPin");
-  const scrollyDeck = document.getElementById("scrollyDeck");
-  if(scrollyPin && scrollyDeck){
-    const scrollySteps = Array.from(scrollyPin.querySelectorAll(".scrolly-step"));
-    const scrollyCards = Array.from(scrollyDeck.querySelectorAll(".scrolly-card"));
-    let passoDestacado = -1;
+  /* ============ GARANTIAS — player no formato de stories ============
+     Substituiu um deck que prendia a rolagem da página. Aquilo travava em
+     parte dos aparelhos (é característica da técnica, não ajuste fino) e
+     custava quase três telas no computador e quase seis no celular.
 
-    /* Dá ritmo ao trecho entre dois cartões: o primeiro e o último quinto do
-       percurso ficam parados (o cartão "assenta" e dá tempo de ler) e o meio
-       faz o movimento, com smoothstep para entrar e sair sem solavanco.
-       Puramente linear o deck ficava mole, sem começo nem fim definidos. */
-    function comRitmo(fracao){
-      const PARADA = 0.2;
-      const t = Math.min(1, Math.max(0, (fracao - PARADA) / (1 - 2 * PARADA)));
-      return t * t * (3 - 2 * t);
+     O RELÓGIO É A PRÓPRIA BARRINHA: cada uma é uma animação CSS, e o evento
+     animationend dela é o que avança o slide. Assim pausar é trocar uma
+     variável (--play) e o tempo já decorrido fica preservado exatamente —
+     com um setTimeout paralelo seria preciso manter dois estados em sincronia.
+     O setTimeout que existe aqui é só rede de segurança, para o caso de o
+     evento não chegar (troca de display cancela animação sem avisar). */
+  const stories = document.getElementById("garantiasStories");
+  if(stories){
+    const barras   = Array.from(stories.querySelectorAll(".stories-bar"));
+    const paineis  = Array.from(stories.querySelectorAll(".scrolly-card"));
+    const legendas = Array.from(stories.querySelectorAll(".stories-legenda-item"));
+    const palco    = stories.querySelector(".stories-palco");
+    const repetir  = document.getElementById("storiesRepetir");
+    const menosMovimento = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    /* Cada painel precisa saber a própria posição na fila — é --i que o CSS usa
+       para deslocá-lo. Definido aqui, e não no HTML, para não haver como a
+       marcação e a ordem real saírem de sincronia. */
+    paineis.forEach((el, n) => el.style.setProperty("--i", n));
+
+    let atual = 0;
+    let terminou = false;
+    let salvaVidas = null;
+    const pausas = new Set();
+
+    function aplicarPausa(){
+      stories.style.setProperty("--play", pausas.size ? "paused" : "running");
     }
 
-    // O deck acompanha a rolagem de forma CONTÍNUA: --active é fracionário
-    // (1.37, por exemplo), então os cartões deslizam junto com o dedo em vez de
-    // saltar de posição em posição — era isso que dava a sensação de travado.
-    // Só o destaque do passo à esquerda é discreto (arredondado).
-    function posicionarDeck(indiceBruto){
-      const base = Math.floor(indiceBruto);
-      const suave = Math.min(scrollySteps.length - 1, base + comRitmo(indiceBruto - base));
-      scrollyDeck.style.setProperty("--active", suave.toFixed(3));
+    function duracaoDe(i){ return Number(paineis[i]?.dataset.dur) || 5500; }
 
-      // Profundidade: quem não está no centro recua um pouco e esmaece, então
-      // o cartão em foco fica claramente na frente durante a troca.
-      scrollyCards.forEach((card, i) => {
-        const dist = Math.min(1, Math.abs(i - suave));
-        card.style.setProperty("--recuo", (1 - dist * 0.07).toFixed(3));
-        card.style.setProperty("--esmaece", (1 - dist * 0.45).toFixed(3));
+    function irPara(indice, direcao){
+      const i = (indice + paineis.length) % paineis.length;
+
+      /* Todos os painéis ficam no DOM e o conjunto desliza; quem não é o atual
+         some do leitor de tela por aria-hidden, não por hidden — precisa
+         continuar renderizado para o próximo poder espiar na borda.
+         O hidden do HTML existe para quem está sem JS (aí só o primeiro
+         aparece); com JS ligado ele sai logo na primeira troca. */
+      palco.style.setProperty("--atual", i);
+      paineis.forEach((el, n) => {
+        el.hidden = false;
+        el.classList.toggle("is-atual", n === i);
+        el.setAttribute("aria-hidden", n === i ? "false" : "true");
       });
+      legendas.forEach((el, n) => { el.hidden = n !== i; });
 
-      const arredondado = Math.round(suave);
-      if(arredondado === passoDestacado) return;
-      passoDestacado = arredondado;
-      scrollySteps.forEach((el, i) => el.classList.toggle("is-active", i === arredondado));
+      /* ⚠️ Reiniciar animação de CSS é tirar a classe, forçar um reflow e só
+         então repor. Chamar getAnimations().cancel() NÃO serve: cancelar
+         remove a animação de vez, e ela só volta quando o animation-name muda
+         de novo. Feito assim a barra nunca enchia — ficava em scaleX(0) — e o
+         avanço acontecia só pela rede de segurança lá embaixo. */
+      barras.forEach((b, n) => {
+        b.classList.remove("is-ativa");
+        b.classList.toggle("is-vista", n < i);
+        b.setAttribute("aria-selected", n === i ? "true" : "false");
+        b.tabIndex = n === i ? 0 : -1;
+      });
+      const barraAtiva = barras[i];
+      barraAtiva.style.setProperty("--dur", duracaoDe(i) + "ms");
+      void barraAtiva.offsetWidth;
+      barraAtiva.classList.add("is-ativa");
+
+      atual = i;
+      terminou = false;
+      if(repetir) repetir.hidden = true;
+      armarSalvaVidas();
     }
 
-    // No celular a seção não prende nem desliza (ver o media query do CSS): a
-    // lista é empilhada e o índice ativo não significa nada ali.
-    const deckAtivo = window.matchMedia("(min-width: 992px)");
+    /* Se o animationend não chegar (troca de display cancela a animação sem
+       disparar evento), o player travaria no slide 01 para sempre. */
+    function armarSalvaVidas(){
+      clearTimeout(salvaVidas);
+      if(menosMovimento.matches) return;
+      salvaVidas = setTimeout(() => {
+        if(!pausas.size && !terminou) avancar();
+      }, duracaoDe(atual) * 1.6);
+    }
 
-    /* Os painéis são páginas desenhadas em tamanho real e reduzidas por
-       transform:scale(--esc). Se --esc for fixo, a altura ÚTIL da página
-       (moldura ÷ esc) muda junto com a janela — e numa tela baixa o painel
-       mais alto (o do Pix) ficava cortado. Amarrando --esc à altura da
-       moldura, a página tem sempre esta altura útil, caiba a janela que for. */
+    function avancar(){
+      if(atual < paineis.length - 1){ irPara(atual + 1, 1); return; }
+      // No fim PARA, não repete em laço: isto é um bloco de confiança, não um
+      // feed. Um laço deixaria animação rodando para sempre no fim da página.
+      terminou = true;
+      clearTimeout(salvaVidas);
+      barras.forEach(b => { b.classList.remove("is-ativa"); b.classList.add("is-vista"); });
+      if(repetir) repetir.hidden = false;
+    }
+
+    barras.forEach((b, i) => {
+      b.addEventListener("click", () => irPara(i));
+      b.querySelector(".stories-bar-fill").addEventListener("animationend", () => {
+        if(b.classList.contains("is-ativa")) avancar();
+      });
+    });
+
+    stories.querySelectorAll(".stories-zona").forEach(zona => {
+      zona.addEventListener("click", () => {
+        const d = Number(zona.dataset.dir);
+        irPara(atual + d, d);
+      });
+    });
+
+    if(repetir) repetir.addEventListener("click", () => irPara(0, 1));
+
+    // Setas navegam; Home/End vão aos extremos (padrão de abas do APG).
+    stories.querySelector(".stories-bars").addEventListener("keydown", (e) => {
+      const mapa = { ArrowRight: atual + 1, ArrowLeft: atual - 1, Home: 0, End: barras.length - 1 };
+      if(!(e.key in mapa)) return;
+      e.preventDefault();
+      irPara(mapa[e.key], e.key === "ArrowLeft" ? -1 : 1);
+      barras[atual].focus();
+    });
+
+    /* Deslizar com o dedo: a premissa do formato é o gesto do Instagram, e
+       quem desliza sem resposta conclui que está quebrado. O touch-action
+       pan-y no palco (CSS) preserva a rolagem vertical da página. */
+    let xInicial = null;
+    palco.addEventListener("pointerdown", (e) => {
+      xInicial = e.clientX;
+      pausas.add("segurando");   // toque e segure, como nos stories de verdade
+      aplicarPausa();
+    });
+    const soltar = () => { pausas.delete("segurando"); aplicarPausa(); };
+    palco.addEventListener("pointerup", soltar);
+    palco.addEventListener("pointerleave", soltar);
+    palco.addEventListener("pointerup", (e) => {
+      if(xInicial === null) return;
+      const d = e.clientX - xInicial;
+      xInicial = null;
+      if(Math.abs(d) > 40) irPara(atual + (d < 0 ? 1 : -1), d < 0 ? 1 : -1);
+    });
+    palco.addEventListener("pointercancel", () => { xInicial = null; });
+
+    /* ⚠️ Passar o mouse NÃO pausa. Parece detalhe, mas era o que fazia a seção
+       parecer parada: quem chegava com o cursor em cima dela congelava tudo na
+       hora e nunca via passar. Stories de verdade pausam no toque-e-segure, e
+       é isso que está abaixo. Foco pausa porque quem navega por teclado precisa
+       de tempo para ler. */
+    stories.addEventListener("focusin",  () => { pausas.add("foco"); aplicarPausa(); });
+    stories.addEventListener("focusout", () => { pausas.delete("foco"); aplicarPausa(); });
+    document.addEventListener("visibilitychange", () => {
+      document.hidden ? pausas.add("aba") : pausas.delete("aba");
+      aplicarPausa();
+    });
+
+    // Começa pausado: nada é consumido antes de a pessoa chegar na seção.
+    pausas.add("fora");
+    aplicarPausa();
+    if("IntersectionObserver" in window){
+      new IntersectionObserver(([entrada]) => {
+        if(entrada.isIntersecting) pausas.delete("fora"); else pausas.add("fora");
+        aplicarPausa();
+        if(entrada.isIntersecting) armarSalvaVidas();
+      }, { threshold: 0.4 }).observe(stories);
+    } else {
+      pausas.delete("fora");
+      aplicarPausa();
+    }
+
+    /* Os painéis são desenhados em tamanho de página real e reduzidos por
+       transform:scale(--esc). Amarrando --esc à altura do palco, a página tem
+       sempre a mesma altura útil, caiba a janela que for. Só no computador:
+       abaixo de 992px o CSS repõe --esc:1 e o painel abre em tamanho normal. */
     const ALTURA_PAGINA = 960;
-    const deckViewport = scrollyPin.querySelector(".scrolly-deck-viewport");
-    const escalaveis = scrollyCards
-      .map(card => card.querySelector(".mock-escala-inner"))
+    const noComputador = window.matchMedia("(min-width: 992px)");
+    const escalaveis = paineis
+      .map(c => c.querySelector(".mock-escala-inner"))
       .filter(Boolean);
 
     function ajustarEscalaDosPaineis(){
-      if(!deckAtivo.matches || !deckViewport) return;
-      const altura = deckViewport.clientHeight;
-      if(!altura) return;
+      if(!noComputador.matches || !palco) return;
+      /* Mede o .mock do painel VISÍVEL, não o palco: a moldura tem uma barra
+         de título (os pontinhos + endereço) que come ~48px. Usando a altura do
+         palco, o conteúdo estourava a moldura por essa diferença e o rodapé do
+         painel saía cortado. Os painéis escondidos medem zero, por isso o
+         fallback subtrai a barra da altura do palco. */
+      const visivel = paineis.find(c => c.classList.contains("is-atual")) || paineis[0];
+      const mock = visivel && visivel.querySelector(".mock");
+      const barraMoldura = visivel && visivel.querySelector(".scrolly-frame-bar");
+      const altura = (mock && mock.clientHeight)
+        || (palco.clientHeight - (barraMoldura ? barraMoldura.offsetHeight : 0));
+      if(altura <= 0) return;
       const esc = (altura / ALTURA_PAGINA).toFixed(4);
       escalaveis.forEach(el => el.style.setProperty("--esc", esc));
     }
 
-    /* No celular não existe deck deslizando — sem isto os cartões ficavam
-       totalmente parados. Cada um entra com um leve subir/assentar quando
-       aparece; o efeito é aplicado só dentro do media query do celular (o
-       computador ignora esta classe). Dispara uma vez por cartão. */
-    if("IntersectionObserver" in window){
-      const entradaCartoes = new IntersectionObserver((entries) => {
-        entries.forEach(e => {
-          if(!e.isIntersecting) return;
-          e.target.classList.add("is-visible");
-          entradaCartoes.unobserve(e.target);
-        });
-      }, { threshold: 0.15, rootMargin: "0px 0px -8% 0px" });
-      scrollyCards.forEach(c => entradaCartoes.observe(c));
-    }
-
-    /* Quem dá o progresso da rolagem é o ScrollTrigger. A seção continua presa
-       pelo position:sticky do CSS — de propósito: o pin do ScrollTrigger
-       trocaria o sticky por position:fixed, e o overflow-x:clip do html/body
-       (topo do CSS) vira bloco de contenção para fixed, que é o jeito clássico
-       de quebrar pin. A geometria (wrapper de 280vh + miolo de 100vh) já está
-       no CSS; só faltava o motor.
-       O tween corre sobre um objeto solto, não sobre --active: assim o scrub
-       amacia o progresso e posicionarDeck segue o único dono das variáveis. */
-    const passosTotal = scrollySteps.length - 1;
-    posicionarDeck(0);
-
-    if(window.gsap && window.ScrollTrigger && passosTotal > 0){
-      gsap.registerPlugin(ScrollTrigger);
-      const trilho = { p: 0 };
-
-      gsap.matchMedia().add("(min-width: 992px) and (prefers-reduced-motion: no-preference)", () => {
-        ajustarEscalaDosPaineis();
-        const tween = gsap.to(trilho, {
-          p: 1,
-          ease: "none",
-          onUpdate: () => posicionarDeck(trilho.p * passosTotal),
-          scrollTrigger: {
-            trigger: scrollyPin,
-            start: "top top",
-            end: "bottom bottom",
-            scrub: 0.4,
-            invalidateOnRefresh: true,
-            // O refresh roda na ordem de CRIAÇÃO, e este gatilho nasce antes
-            // dos de js/animacoes.js, que estão acima dele na página.
-            refreshPriority: -1,
-            onRefresh: ajustarEscalaDosPaineis,
-            // inertia:false porque o snap com inércia adivinha o destino pela
-            // velocidade do gesto — é o que dava sensação de brigar com o dedo.
-            snap: {
-              snapTo: 1 / passosTotal,
-              duration: { min: .18, max: .5 },
-              delay: .12,
-              ease: "power1.inOut",
-              inertia: false,
-            },
-          },
-        });
-
-        // O matchMedia reverte tweens, mas não as variáveis escritas à mão no
-        // onUpdate. Voltar ao estado inicial (e não apagar as variáveis) deixa
-        // o deck coerente: sem isto, voltar do celular para o computador
-        // começaria com um --active velho e o primeiro quadro piscaria.
-        return () => {
-          tween.scrollTrigger?.kill();
-          tween.kill();
-          passoDestacado = -1;
-          posicionarDeck(0);
-        };
-      });
-    }
-
     window.addEventListener("resize", ajustarEscalaDosPaineis);
-    deckAtivo.addEventListener("change", ajustarEscalaDosPaineis);
+    noComputador.addEventListener("change", ajustarEscalaDosPaineis);
+    // Fonte que chega atrasada muda a altura do conteúdo dentro do painel.
+    if(document.fonts && document.fonts.ready){
+      document.fonts.ready.then(ajustarEscalaDosPaineis);
+    }
     ajustarEscalaDosPaineis();
-
-    // Clicar num passo leva até o trecho de rolagem dele — os passos parecem
-    // clicáveis (são <button>), então precisam de fato levar a algum lugar.
-    scrollySteps.forEach((el, i) => {
-      el.querySelector(".scrolly-step-btn")?.addEventListener("click", () => {
-        const rolavel = scrollyPin.offsetHeight - window.innerHeight;
-        // mesmo mapeamento do posicionarDeck: o passo i fica centrado em
-        // i/(n-1) do percurso.
-        const alvo = scrollyPin.offsetTop + rolavel * (i / (scrollySteps.length - 1));
-        window.scrollTo({ top: alvo, behavior: "smooth" });
-      });
-    });
+    irPara(0, 1);
   }
 
   /* ============ ANIMAÇÃO "ADICIONAR AO CARRINHO" — três efeitos combinados, disparados ============ */
@@ -364,7 +438,7 @@
             }${(p.badges || []).map(b => `<span class="product-badge">${escapeHTML(b)}</span>`).join("")}</div>` : ""}
             <button type="button" class="product-quickview" aria-label="Ver detalhes de ${escapeHTML(p.name)}"><i class="bi bi-eye"></i></button>
             ${photo ? `<img
-              src="${escapeHTML(photo)}"
+              ${atributosDeFoto(photo, [400, 600], SIZES_DO_CARD)}
               alt="${escapeHTML(p.name)} — ${escapeHTML(p.catLabel)}"
               width="600" height="600"
               loading="lazy" decoding="async">` : ""}
@@ -897,7 +971,7 @@
         return `
           <div class="cart-item" data-id="${p.id}">
             <div class="cart-item-thumb${photo ? " is-loading" : ""}" style="background:${tint}22">
-              ${photo ? `<img src="${escapeHTML(photo)}" alt="${escapeHTML(p.name)}" width="64" height="64" loading="lazy" decoding="async">` : ""}
+              ${photo ? `<img src="${escapeHTML(urlDaFoto(photo, 160))}" alt="${escapeHTML(p.name)}" width="64" height="64" loading="lazy" decoding="async">` : ""}
               <svg class="bow-icon" style="color:${tint}"><use href="#bow-shape"/></svg>
             </div>
             <div class="cart-item-body">
@@ -951,7 +1025,7 @@
       return `
       <div class="cart-rec-item" data-id="${p.id}">
         <div class="cart-rec-thumb" style="background:${safeColor(p.color)}22">
-          ${photo ? `<img src="${escapeHTML(photo)}" alt="${escapeHTML(p.name)}" width="44" height="44" loading="lazy" decoding="async">` : ""}
+          ${photo ? `<img src="${escapeHTML(urlDaFoto(photo, 160))}" alt="${escapeHTML(p.name)}" width="44" height="44" loading="lazy" decoding="async">` : ""}
           <svg class="bow-icon" style="color:${safeColor(p.color)}"><use href="#bow-shape"/></svg>
         </div>
         <div class="flex-grow-1">
@@ -1404,7 +1478,7 @@
     if(!hasGallery){ qvGalleryThumbsEl.innerHTML = ""; return; }
     qvGalleryThumbsEl.innerHTML = qvPhotos.map((url, i) => `
       <button type="button" class="qv-gallery-thumb${i === qvPhotoIndex ? " is-active" : ""}" data-index="${i}" aria-label="Foto ${i + 1} de ${qvPhotos.length}">
-        <img src="${escapeHTML(url)}" alt="" width="56" height="56" loading="lazy">
+        <img src="${escapeHTML(urlDaFoto(url, 160))}" alt="" width="56" height="56" loading="lazy">
       </button>
     `).join("");
   }
@@ -1418,7 +1492,7 @@
     thumb.classList.add("is-loading");
     // limpa a proporção da foto anterior — a nova define a dela ao carregar
     thumb.style.removeProperty("--qv-ratio");
-    img.src = qvPhotos[qvPhotoIndex];
+    img.src = urlDaFoto(qvPhotos[qvPhotoIndex], 900);
     qvGalleryPrevEl.disabled = qvPhotoIndex === 0;
     qvGalleryNextEl.disabled = qvPhotoIndex === qvPhotos.length - 1;
     qvGalleryThumbsEl.querySelectorAll(".qv-gallery-thumb").forEach(btn => {
