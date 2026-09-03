@@ -753,12 +753,17 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
      altura fixa. Antes era o contrário — altura fixa + max-width:100% — e
      quando a coluna era mais estreita do que a altura pedia, o max-width
      quebrava a proporção e o object-fit:cover comia as laterais da foto.
-     O max-height é só uma trava para tela baixa (celular deitado), e como a
-     imagem usa object-fit:contain, mesmo aí ela encolhe inteira em vez de
-     ser cortada. */
+     ⚠️ O max-height NÃO é só uma trava de tela deitada: com 70vh a foto
+     dominava o modal inteiro no celular em pé e empurrava quantidade e
+     "Adicionar ao carrinho" para fora da área visível — que por sua vez não
+     era o rodapé fixo (viraram um rodapé fixo depois, junto com a
+     quantidade, mas o valor aqui continuou generoso demais). 48vh deixa a
+     foto grande sem sufocar a coluna de informações. Ainda assim, como a
+     imagem usa object-fit:contain, uma tela baixa que force o clamp encolhe
+     a foto inteira em vez de cortar. */
   position:relative; aspect-ratio:var(--qv-ratio, 2/3);
   width:100%; height:auto;
-  max-height:min(70vh, 560px);
+  max-height:min(48vh, 480px);
   min-height:180px;
   margin-inline:auto;
   border-radius:var(--radius-md); overflow:hidden;
@@ -802,25 +807,47 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .qv-gallery-thumb.is-active{ box-shadow:0 0 0 2.5px var(--blush-600); }
 .qv-gallery-thumb:focus-visible{ outline:3px solid var(--blush-600); outline-offset:2px; }
 
-/* ============ QUICK VIEW — escolha de cor ============ */
-/* "Quantidade" + os botões −/+ na mesma linha. Com a letra grande do
-   sistema o rótulo empurrava o botão "+" pra fora da tela (a linha não
-   quebrava). Quebrar é melhor do que cortar um controle. */
-.qv-qty-row{ flex-wrap:wrap; gap:.5rem 1rem; }
-
 /* O preço gruda no rodapé da área que rola. Com letra grande o conteúdo
    passa a ser mais alto que o modal, e sem isto o preço ficava abaixo da
    dobra enquanto "Adicionar ao carrinho" — que fica no rodapé fixo —
    continuava clicável: dava pra comprar sem nunca ter visto o valor.
    Só no celular: no computador a coluna da direita já mostra tudo junto.
    Fundo opaco porque o resto do conteúdo passa por baixo ao rolar. */
-/* Rodapé do Quick View: preço em cima, botão embaixo, os dois ocupando a
-   largura toda. O .modal-footer do Bootstrap é uma linha com os itens à
-   direita — sem isto o preço e o botão brigariam pela mesma linha. */
+/* Rodapé do Quick View: preço em cima, quantidade+botão embaixo, os dois
+   ocupando a largura toda. O .modal-footer do Bootstrap é uma linha com os
+   itens à direita — sem isto tudo brigaria pela mesma linha. */
 .qv-footer{ display:block; padding-top:.75rem; }
 .qv-footer .qv-payment{
   padding-bottom:.75rem; margin-bottom:.75rem;
   border-bottom:1px solid var(--blush-100);
+}
+
+/* ============ QUICK VIEW — quantidade + adicionar ao carrinho ============
+   As duas ações do rodapé, lado a lado: é aqui, na hora de decidir, que faz
+   sentido ajustar quanto levar — não lá em cima, perto da descrição. */
+.qv-order-row{ display:flex; align-items:stretch; gap:.6rem; }
+/* Padding menor que o .btn-blush padrão: ao lado do seletor de quantidade, o
+   texto "Adicionar ao carrinho" só cabe numa linha com a folga reduzida —
+   medido em 375px, faltavam ~2px com o padding padrão. */
+.qv-order-row .btn-blush{
+  flex:1 1 auto; padding-left:.9rem; padding-right:.9rem; white-space:nowrap;
+}
+
+.qv-stepper{
+  display:flex; align-items:center; flex-shrink:0; gap:.1rem;
+  border:1.5px solid var(--blush-200); border-radius:999px;
+  background:var(--blush-50); padding:0 .1rem;
+}
+.qv-stepper button{
+  width:40px; height:40px; flex-shrink:0; border:none; background:transparent;
+  color:var(--blush-700); font-size:1.2rem; font-weight:700; line-height:1;
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  transition:background .15s ease;
+}
+.qv-stepper button:hover{ background:var(--blush-100); }
+.qv-stepper button:active{ transform:scale(.9); }
+.qv-stepper span{
+  min-width:1.6rem; text-align:center; font-weight:700; color:var(--ink); font-size:1rem;
 }
 
 /* ---- Quick View: tags, garantias e estado esgotado ----
