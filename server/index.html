@@ -618,6 +618,18 @@
                           <div><span class="mock-muted">Total no Pix</span><strong>R$ 132,71</strong></div>
                           <span class="mock-economia">você economiza R$ 6,99</span>
                         </div>
+                        <!-- No celular o 2º produto (.mock-produto-extra) some, então este
+                             resumo soma só o 1º item — sem isso o subtotal ficava maior que
+                             o único produto visível, como se faltasse um produto. -->
+                        <dl class="mock-resumo is-resumo-mobile">
+                          <div><dt>Subtotal</dt><dd>R$ 49,90</dd></div>
+                          <div class="is-desconto"><dt>Desconto Pix (5%)</dt><dd>−R$ 2,50</dd></div>
+                          <div><dt>Frete</dt><dd>Grátis</dd></div>
+                        </dl>
+                        <div class="mock-total is-resumo-mobile">
+                          <div><span class="mock-muted">Total no Pix</span><strong>R$ 47,40</strong></div>
+                          <span class="mock-economia">você economiza R$ 2,50</span>
+                        </div>
                       </div>
                       <div class="account-card text-center mock-cartao">
                         <span class="pix-badge"><i class="bi bi-qr-code"></i> Pix</span>

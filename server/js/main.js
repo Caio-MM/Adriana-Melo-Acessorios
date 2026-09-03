@@ -291,6 +291,10 @@
         if(entrada.isIntersecting) pausas.delete("fora"); else pausas.add("fora");
         aplicarPausa();
         if(entrada.isIntersecting) armarSalvaVidas();
+        // O WhatsApp e o "voltar ao topo" são fixed no canto inferior direito,
+        // exatamente onde a moldura do celular termina — sem isto eles ficavam
+        // por cima da legenda e cortavam palavra no meio, parecendo bug.
+        document.body.classList.toggle("tem-secao-fab-oculta", entrada.isIntersecting);
       }, { threshold: 0.4 }).observe(stories);
     } else {
       pausas.delete("fora");
