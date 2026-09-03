@@ -38,7 +38,7 @@
 <link rel="preload" href="css/fonts/fraunces-400-latin-39ce20.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="css/fonts/fraunces-500-latin-ddaaa5.woff2" as="font" type="font/woff2" crossorigin>
 
-<link rel="stylesheet" href="css/vendor/bootstrap.min.css">
+<link rel="stylesheet" href="css/vendor/bootstrap.purged.css">
 <link rel="stylesheet" href="css/vendor/bootstrap-icons.subset.css">
 <link rel="stylesheet" href="css/fonts.css">
 
@@ -1168,14 +1168,18 @@
 <script src="js/error-boundary.js" defer></script>
 <script src="js/loading.js" defer></script>
 <script src="js/vendor/bootstrap.bundle.min.js" defer></script>
-<script src="js/vendor/gsap.min.js" defer></script>
-<script src="js/vendor/ScrollTrigger.min.js" defer></script>
-<script src="js/vendor/SplitText.min.js" defer></script>
+<!-- fetchpriority="low": só animacoes.js usa essas três, e o site é
+     inteiramente legível sem elas (ver o comentário no topo de animacoes.js).
+     Sem a prioridade baixa, 50 KB decorativos disputam a mesma conexão com o
+     CSS que o <h1> precisa para pintar. -->
+<script src="js/vendor/gsap.min.js" defer fetchpriority="low"></script>
+<script src="js/vendor/ScrollTrigger.min.js" defer fetchpriority="low"></script>
+<script src="js/vendor/SplitText.min.js" defer fetchpriority="low"></script>
 
 <script src="js/auth.js" defer></script>
 <script src="js/pricing.js" defer></script>
 <script src="js/main.js" defer></script>
-<script src="js/animacoes.js" defer></script>
+<script src="js/animacoes.js" defer fetchpriority="low"></script>
 <script src="js/instagram-feed.js" defer></script>
 <script src="js/cupom-toast.js" defer></script>
 <script src="js/cookie-consent.js" defer></script>
