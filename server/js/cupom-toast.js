@@ -142,19 +142,27 @@
     }, 2000);
   });
 
-  const cartOffcanvasEl = document.getElementById("cartOffcanvas");
-  function cartIsOpen(){
-    return !!cartOffcanvasEl?.classList.contains("show");
+  /* A notificação é só da tela principal — atrapalha quando some atrás do
+     Quick View de um produto, do carrinho ou do menu do celular. Os três se
+     escondem atrás do MESMO seletor (Bootstrap adiciona a classe "show" a
+     qualquer modal/offcanvas aberto), então um seletor genérico cobre os
+     três sem precisar ficar de olho em cada um por id — inclusive um
+     overlay novo que apareça no futuro. */
+  function algumOverlayAberto(){
+    return !!document.querySelector(".modal.show, .offcanvas.show");
   }
 
-  cartOffcanvasEl?.addEventListener("show.bs.offcanvas", () => {
+  document.addEventListener("show.bs.modal", () => {
+    if(toastEl.classList.contains("show")) toast.hide();
+  });
+  document.addEventListener("show.bs.offcanvas", () => {
     if(toastEl.classList.contains("show")) toast.hide();
   });
 
   document.addEventListener("plc:auth", (e) => {
     if(e.detail.user) return;
     setTimeout(() => {
-      if(cartIsOpen()) return;
+      if(algumOverlayAberto()) return;
       toast.show();
     }, 1200);
   });

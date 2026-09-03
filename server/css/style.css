@@ -749,21 +749,16 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 }
 
 .qv-thumb{
-  /* A moldura segue a LARGURA da coluna (width:100% + aspect-ratio), não uma
-     altura fixa. Antes era o contrário — altura fixa + max-width:100% — e
-     quando a coluna era mais estreita do que a altura pedia, o max-width
-     quebrava a proporção e o object-fit:cover comia as laterais da foto.
-     ⚠️ O max-height NÃO é só uma trava de tela deitada: com 70vh a foto
-     dominava o modal inteiro no celular em pé e empurrava quantidade e
-     "Adicionar ao carrinho" para fora da área visível — que por sua vez não
-     era o rodapé fixo (viraram um rodapé fixo depois, junto com a
-     quantidade, mas o valor aqui continuou generoso demais). 48vh deixa a
-     foto grande sem sufocar a coluna de informações. Ainda assim, como a
-     imagem usa object-fit:contain, uma tela baixa que force o clamp encolhe
-     a foto inteira em vez de cortar. */
+  /* ⚠️ width:auto/height:auto, NÃO width:100%/height:auto. Com width:100% fixo,
+     quando max-height precisa cortar (foto 2:3 — a proporção real do
+     catálogo — é mais alta do que a caixa em telas comuns), a LARGURA não
+     acompanhava: sobrava fundo --blush-50 nas laterais, como se a foto
+     estivesse com moldura errada. Com os dois eixos livres e max-width +
+     max-height juntos, o navegador encolhe largura E altura respeitando a
+     proporção — o mesmo que um <img> normal faria, sem barra nenhuma. */
   position:relative; aspect-ratio:var(--qv-ratio, 2/3);
-  width:100%; height:auto;
-  max-height:min(48vh, 480px);
+  width:auto; height:auto;
+  max-width:100%; max-height:min(65vh, 520px);
   min-height:180px;
   margin-inline:auto;
   border-radius:var(--radius-md); overflow:hidden;
