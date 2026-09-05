@@ -132,20 +132,78 @@
   }
   observeReveal();
 
-  /* ============ COMO FUNCIONA — vanzinha de entrega em loop ============
-     CSS puro (@keyframes em style.css): a viagem, o balanço da lataria e o
-     giro das rodas ligam juntos com esta única classe, e repetem sozinhos
-     (animation infinite) enquanto a seção está na tela. A linha pontilhada
-     por baixo é fixa — não depende de nada disto, nem do GSAP. */
+  /* ============ COMO FUNCIONA — entrega em loop (van no computador, pacote no celular) ============
+     CSS puro (@keyframes em style.css): a viagem, o balanço e o giro das
+     rodas (ou os 2 pulos do pacote) ligam juntos com esta única classe, e
+     repetem sozinhos (animation infinite) enquanto a seção está na tela. A
+     linha pontilhada por baixo (só no computador) é fixa — não depende de
+     nada disto, nem do GSAP.
+
+     No celular os 3 passos empilham, então uma van de lado girada 90° não
+     faz sentido (ficaria com as rodas na lateral). Duas ideias descartadas
+     antes desta: uma linha vertical contínua ligando o ícone 1 ao 3 passava
+     por trás do título/parágrafo de cada passo (atrapalhava a leitura); e
+     uma que só viajava nos vãos em branco entre os blocos quebrava porque
+     esses vãos variam com o tamanho do texto de cada passo — em alguns
+     casos ficam menores que o próprio pacote. Esta versão não depende do
+     texto: o pacote só visita a ALTURA de cada ícone (--y1/--y2/--y3, o
+     centro vertical de cada .process-icon-wrap — sempre estável, não muda
+     com o texto) deslocado para o lado (em style.css), numa faixa que nunca
+     tem texto nem é coberta pelo próprio ícone. Medido de verdade (não um
+     valor cravado no CSS) e recalculado no resize, mesmo padrão de
+     ajustarEscalaDosPaineis (mais abaixo, nas garantias). */
   const processTruckEl = document.getElementById("processTruck");
-  if(processTruckEl && "IntersectionObserver" in window){
+  const processPackageEl = document.getElementById("processPackage");
+  const processWrapEl = processTruckEl?.closest(".process-wrap");
+
+  function posicionarParadasMobile(){
+    if(!processWrapEl) return;
+    const icones = processWrapEl.querySelectorAll(".process-icon-wrap");
+    if(icones.length < 3) return;
+    const wrapRect = processWrapEl.getBoundingClientRect();
+    const centroVertical = el => {
+      const r = el.getBoundingClientRect();
+      return r.top - wrapRect.top + r.height / 2;
+    };
+    /* Deslocamento horizontal em px, não em % do próprio elemento: metade
+       do ícone (92px de diâmetro ⇒ 46px de raio) mais uma folga de 8px, para
+       o pacote nunca tocar o círculo do ícone. */
+    const posX = el => {
+      const r = el.getBoundingClientRect();
+      const centroX = r.left - wrapRect.left + r.width / 2;
+      return centroX + r.width / 2 + 8;
+    };
+    processWrapEl.style.setProperty("--x1", `${posX(icones[0])}px`);
+    processWrapEl.style.setProperty("--x2", `${posX(icones[1])}px`);
+    processWrapEl.style.setProperty("--x3", `${posX(icones[2])}px`);
+    processWrapEl.style.setProperty("--y1", `${centroVertical(icones[0])}px`);
+    processWrapEl.style.setProperty("--y2", `${centroVertical(icones[1])}px`);
+    processWrapEl.style.setProperty("--y3", `${centroVertical(icones[2])}px`);
+  }
+  posicionarParadasMobile();
+  window.addEventListener("resize", posicionarParadasMobile);
+  window.addEventListener("load", posicionarParadasMobile);
+  if(document.fonts?.ready) document.fonts.ready.then(posicionarParadasMobile);
+
+  /* Remedir de novo a cada volta do loop (o CSS repete a cada 7s) — não só
+     no load/resize/fonts.ready/interseção. Os passos entram com a reveal
+     (translateY, em .reveal no style.css) e, dependendo de QUANDO exatamente
+     a seção cruza o gatilho, essa transição pode não ter terminado ainda no
+     instante em que a animação liga — medir de novo a cada iteração
+     autocorrige isso sozinho em até 7s, sem precisar adivinhar um atraso
+     fixo que funcione sempre. */
+  processPackageEl?.addEventListener("animationiteration", posicionarParadasMobile);
+
+  if(processWrapEl && "IntersectionObserver" in window){
     new IntersectionObserver((entries, obs) => {
       entries.forEach(entry => {
         if(!entry.isIntersecting) return;
-        processTruckEl.classList.add("is-dirigindo");
+        posicionarParadasMobile();
+        processTruckEl?.classList.add("is-dirigindo");
+        processPackageEl?.classList.add("is-dirigindo");
         obs.unobserve(entry.target);
       });
-    }, { threshold: 0, rootMargin: "0px 0px -25% 0px" }).observe(processTruckEl.closest(".process-wrap") || processTruckEl);
+    }, { threshold: 0, rootMargin: "0px 0px -25% 0px" }).observe(processWrapEl);
   }
 
   /* ============ GARANTIAS — player no formato de stories ============

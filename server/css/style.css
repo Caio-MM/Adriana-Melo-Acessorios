@@ -988,7 +988,12 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .process-wrap{ position:relative; }
 .process-step{ text-align:center; padding:0 1.1rem; }
 .process-icon-wrap{
-  position:relative; width:92px; height:92px; margin:0 auto 1.3rem;
+  /* z-index:2 explícito — não é decoração, é ordem de empilhamento: precisa
+     ficar ACIMA da van (z-index:1) para o número do passo nunca ser coberto
+     quando ela passa perto, mas isso não depende de onde cada um está no
+     HTML (frágil); com os três valores explícitos (linha:0 < van:1 <
+     ícone:2) a ordem é garantida em qualquer navegador. */
+  position:relative; z-index:2; width:92px; height:92px; margin:0 auto 1.3rem;
 }
 .process-icon{
   width:100%; height:100%; border-radius:50%;
@@ -1020,29 +1025,51 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .process-line{
   position:absolute; top:44px; left:16%; right:16%; height:3px;
   width:auto; max-width:none; padding:0; margin-top:0;
-  background-image:linear-gradient(to right, var(--blush-400) 60%, transparent 0%);
+  background-image:linear-gradient(to right, var(--blush-500) 60%, transparent 0%);
   background-size:14px 3px; background-repeat:repeat-x; z-index:0;
 }
 
-/* Vanzinha de entrega que percorre a linha pontilhada — mesma coordenada Y
-   da linha (top:44px). Fica FORA de .process-line de propósito: se fosse
-   filha dela, o scaleX que desenha a linha (js/animacoes.js) espremeria a
-   van junto, porque transform não muda a régua de porcentagem dos filhos,
-   só distorce o que já foi desenhado.
-   transform:translate(-50%,-95%) — bem mais que -50%: sobe a van quase
-   inteira para CIMA da linha, com só a base da sombra tocando nela, em vez
-   da linha cortar a van no meio do corpo.
-   z-index bem acima do resto do .process-wrap (os círculos numerados têm
-   position:relative e ficam no mesmo nível de empilhamento por ordem do
-   DOM) — sem isso a van desaparecia atrás do ícone ao passar por cima dele.
+/* Vanzinha de entrega que percorre a linha pontilhada — âncora vertical
+   PRÓPRIA (top:26px), não a mesma da linha (top:44px). Fica FORA de
+   .process-line de propósito: se fosse filha dela, o scaleX que desenha a
+   linha (js/animacoes.js) espremeria a van junto, porque transform não muda
+   a régua de porcentagem dos filhos, só distorce o que já foi desenhado.
+   ⚠️ Medi em pixel: com a sombra encostando na linha (top:44px, como era
+   antes) sobrava só ~5px até o topo do círculo do ícone — e o balanço
+   vertical do keyframe (translateY oscilando) já é o suficiente pra
+   mergulhar nesses 5px, fazendo a van parecer passar POR DENTRO do ícone.
+   top:26px (18px a menos) tira a van do contato com a linha de propósito —
+   fica visivelmente flutuando por cima dela — e abre uma folga de verdade
+   (~24px) até o ícone, folga essa que sobra até depois do balanço.
+   transform:translate(-50%,-95%) segue valendo sobre essa nova âncora.
+   ⚠️ z-index:1 é EXPLÍCITO de propósito, não um acidente de ordem no DOM:
+   a van tem que ficar ACIMA da linha (z-index:0, .process-line) — pedido
+   direto — e ABAIXO do círculo numerado (z-index:2, .process-icon-wrap),
+   senão ela tampa o número ao passar perto. Testei com z-index alto demais:
+   a van passava por cima do número. Com z-index:1 ela some por um instante
+   atrás de cada ícone ao se cruzarem — like um carro atrás de um poste, bem
+   menos estranho que cobrir o número — mas nunca fica atrás da própria
+   linha, que é sempre a camada mais baixa das três.
    display:none por padrão (e não d-none do Bootstrap): as classes
    responsivas do Bootstrap saem com !important no recorte
    (bootstrap.purged.css) e brigariam com o display:block daqui. Parada (sem
    .is-dirigindo) fica invisível — só aparece dirigindo, disparada por
    IntersectionObserver em js/main.js. */
 .process-truck{
-  display:none; position:absolute; top:44px; left:14%; z-index:5;
-  width:78px; height:48px; transform:translate(-50%, -95%);
+  /* margin:0 — ACHADO O VERDADEIRO CULPADO do "van passando por dentro do
+     ícone": filho direto de .process-wrap (um .row.g-5 do Bootstrap), esta
+     div herdava ".row > *{ margin-top: var(--bs-gutter-y) }" = +48px
+     (--bs-gutter-y do g-5 é 3rem) — um top:24px virava, de fato, 72px, bem
+     dentro do círculo do ícone (que começa a ~52px). .process-line já tinha
+     esse reset (margin-top:0) de uma correção anterior; a van nunca tinha
+     ganhado o mesmo.
+     top:36px (medido contra a posição REAL do ícone, sem o offset fantasma):
+     deixa a base da van a ~6px da linha (visivelmente por cima, mas perto —
+     não flutuando longe) e ~9px do ícone mesmo no pico do balanço do
+     keyframe — testado com a folga mínima medida ao vivo ao longo do ciclo
+     inteiro, não só na posição de repouso. */
+  display:none; position:absolute; top:36px; left:14%; z-index:1;
+  width:78px; height:48px; margin:0; transform:translate(-50%, -95%);
   opacity:0; pointer-events:none;
 }
 @media (min-width: 768px){
@@ -1102,6 +1129,72 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   0%, 4%{ opacity:0; }
   10%, 44%{ opacity:.8; }
   56%, 100%{ opacity:0; }
+}
+
+/* ---- versão do celular: pacotinho "batendo" ao lado de cada ícone ----
+   Duas tentativas antes desta: uma linha vertical contínua ligando o ícone 1
+   ao 3 passava POR TRÁS do título/parágrafo de cada passo (a queixa
+   original); a segunda tentava viajar só nos vãos em branco entre os
+   blocos, mas esses vãos variam MUITO com o tamanho do texto de cada
+   passo — em alguns casos ficam menores que o próprio pacote, que acabava
+   preso atrás do ícone seguinte a viagem inteira.
+   Esta versão não depende do texto: o pacote só visita a ALTURA de cada
+   ícone (--y1/--y2/--y3, o centro vertical de cada .process-icon-wrap,
+   sempre estável) e fica deslocado para a DIREITA dele (68px), numa faixa
+   que nunca tem texto (o parágrafo fica numa linha bem abaixo do ícone) e
+   nunca é coberta pelo próprio ícone (92px de diâmetro, centralizado — o
+   pacote de 28px começa a folga a partir de +46px do centro). */
+.process-package-mobile{
+  /* left usa um valor em px calculado em JS (--x1), não 50%+transform: este
+     div é filho direto de .process-wrap, que é um .row do Bootstrap, e o
+     reset de grid ".row > *{width:100%}" do bootstrap.purged.css empata em
+     especificidade com a largura daqui — mesmo com !important, a largura
+     usada para resolver um translateX em % ficava incorreta. Em px, a
+     posição não depende da largura calculada do elemento, só da altura
+     (para centralizar verticalmente) — e altura não tem esse problema.
+     margin:0 pelo MESMO motivo, mas para "top": ".row > *{ margin-top:
+     var(--bs-gutter-y) }" (48px no g-5) somava ao top:var(--y1) calculado —
+     era por isso que o pacote aparecia ao lado do TÍTULO do passo, não do
+     ÍCONE: 48px é quase exatamente a distância entre os dois. */
+  display:none; position:absolute; left:var(--x1, 0px); top:var(--y1, 0px); z-index:0;
+  width:28px; height:28px; margin:0; border-radius:50%;
+  background:var(--blush-700); color:#fff; font-size:.72rem;
+  align-items:center; justify-content:center;
+  box-shadow:0 6px 14px -7px rgba(192,84,128,.65);
+  transform:translateY(-50%);
+  opacity:0; pointer-events:none;
+}
+@media (max-width: 767.98px){
+  .process-package-mobile{ display:flex; }
+}
+@media (prefers-reduced-motion: reduce){
+  .process-package-mobile{ display:none; }
+}
+
+.process-package-mobile.is-dirigindo{
+  animation:process-package-pula 7s cubic-bezier(.4,0,.15,1) infinite;
+}
+/* Três paradas, uma por ícone, com um salto invisível (opacity:0) entre
+   elas — a posição só muda enquanto opacity:0, nunca à vista. "top"/"left"
+   são repetidos em toda parada (mesmo sem mudar, como 18%→22%) de
+   propósito: um keyframe que não os redeclara faz o navegador interpolar em
+   linha reta até o PRÓXIMO que declarar, e sem repetir o pacote "arrastava"
+   de um ícone a outro por baixo do fade. */
+@keyframes process-package-pula{
+  0%   { top:var(--y1, 0px); left:var(--x1, 0px); opacity:0; transform:translateY(-50%) rotate(0deg) scale(.8); }
+  4%   { opacity:1; transform:translateY(-50%) rotate(-12deg) scale(1); }
+  12%  { transform:translateY(-50%) rotate(10deg) scale(1); }
+  18%  { top:var(--y1, 0px); left:var(--x1, 0px); opacity:1; }
+  22%  { top:var(--y1, 0px); left:var(--x1, 0px); opacity:0; transform:translateY(-50%) rotate(0deg) scale(.8); }
+  23%  { top:var(--y2, 0px); left:var(--x2, 0px); opacity:0; }
+  27%  { top:var(--y2, 0px); left:var(--x2, 0px); opacity:1; transform:translateY(-50%) rotate(-12deg) scale(1); }
+  35%  { transform:translateY(-50%) rotate(10deg) scale(1); }
+  41%  { top:var(--y2, 0px); left:var(--x2, 0px); opacity:1; }
+  45%  { top:var(--y2, 0px); left:var(--x2, 0px); opacity:0; transform:translateY(-50%) rotate(0deg) scale(.8); }
+  46%  { top:var(--y3, 0px); left:var(--x3, 0px); opacity:0; }
+  50%  { top:var(--y3, 0px); left:var(--x3, 0px); opacity:1; transform:translateY(-50%) rotate(-12deg) scale(1); }
+  58%  { transform:translateY(-50%) rotate(10deg) scale(1); }
+  64%, 100%{ top:var(--y3, 0px); left:var(--x3, 0px); opacity:0; transform:translateY(-50%) rotate(0deg) scale(.8); }
 }
 
 /* ============ GARANTIAS — player no formato de stories ============

@@ -493,6 +493,15 @@
 
     <div class="process-wrap row g-5">
       <div class="process-line d-none d-md-block"></div>
+      <!-- Versão do celular: a van de lado não faz sentido girada na
+           vertical, então aqui quem "entrega" é um pacotinho pulando pelos
+           2 espaços em branco entre os 3 passos empilhados — nunca por cima
+           do texto (era o problema da versão anterior, com uma linha
+           contínua atrás dos parágrafos). Também CSS puro, disparado pelo
+           mesmo IntersectionObserver do carro (js/main.js). -->
+      <div class="process-package-mobile" id="processPackage" aria-hidden="true">
+        <i class="bi bi-box-seam"></i>
+      </div>
       <!-- Vanzinha de entrega que percorre a linha pontilhada — CSS puro
            (@keyframes em style.css), disparada por IntersectionObserver em
            js/main.js quando a seção entra na tela. Sem classes d-none/d-md-*
