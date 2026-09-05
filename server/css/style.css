@@ -923,6 +923,15 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
    Card com 3 estados alternados via classe d-none pelo JS: loading (skeleton
    com shimmer), live (avatar + grid de posts reais) e fallback (quando a
    API não está configurada/disponível — ver server/lib/instagram.js). */
+/* Header do card, fora dele: mesma largura e centralização do
+   .instagram-feed-card logo abaixo, para os dois lerem como um bloco só em
+   vez do texto ficar mais estreito ou desalinhado por cima do card. */
+.instagram-follow-head{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:.85rem; max-width:420px; margin:0 auto 1.1rem;
+}
+.instagram-follow-handle{ font-size:1.05rem; }
+
 .instagram-feed-card{
   position:relative; max-width:420px; margin:0 auto; padding:1.4rem;
   border-radius:var(--radius-lg); overflow:hidden;
@@ -1006,11 +1015,93 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .process-step:hover .process-num{ border-color:var(--blush-500); color:var(--blush-600); }
 .process-step h3{ transition:color .25s ease; }
 .process-step:hover h3{ color:var(--blush-700); }
+/* Fixa — sem GSAP, sem scaleX de entrada. Só a van (abaixo) se move; a
+   estrada em si fica parada, como pedido depois de testar a versão animada. */
 .process-line{
-  position:absolute; top:44px; left:16%; right:16%; height:2px;
+  position:absolute; top:44px; left:16%; right:16%; height:3px;
   width:auto; max-width:none; padding:0; margin-top:0;
-  background-image:linear-gradient(to right, var(--blush-300) 60%, transparent 0%);
-  background-size:14px 2px; background-repeat:repeat-x; z-index:0;
+  background-image:linear-gradient(to right, var(--blush-400) 60%, transparent 0%);
+  background-size:14px 3px; background-repeat:repeat-x; z-index:0;
+}
+
+/* Vanzinha de entrega que percorre a linha pontilhada — mesma coordenada Y
+   da linha (top:44px). Fica FORA de .process-line de propósito: se fosse
+   filha dela, o scaleX que desenha a linha (js/animacoes.js) espremeria a
+   van junto, porque transform não muda a régua de porcentagem dos filhos,
+   só distorce o que já foi desenhado.
+   transform:translate(-50%,-95%) — bem mais que -50%: sobe a van quase
+   inteira para CIMA da linha, com só a base da sombra tocando nela, em vez
+   da linha cortar a van no meio do corpo.
+   z-index bem acima do resto do .process-wrap (os círculos numerados têm
+   position:relative e ficam no mesmo nível de empilhamento por ordem do
+   DOM) — sem isso a van desaparecia atrás do ícone ao passar por cima dele.
+   display:none por padrão (e não d-none do Bootstrap): as classes
+   responsivas do Bootstrap saem com !important no recorte
+   (bootstrap.purged.css) e brigariam com o display:block daqui. Parada (sem
+   .is-dirigindo) fica invisível — só aparece dirigindo, disparada por
+   IntersectionObserver em js/main.js. */
+.process-truck{
+  display:none; position:absolute; top:44px; left:14%; z-index:5;
+  width:78px; height:48px; transform:translate(-50%, -95%);
+  opacity:0; pointer-events:none;
+}
+@media (min-width: 768px){
+  .process-truck{ display:block; }
+}
+@media (prefers-reduced-motion: reduce){
+  .process-truck{ display:none; }
+}
+
+.process-truck-svg{ position:relative; z-index:1; overflow:visible; }
+.process-truck-shadow{ fill:rgba(84,41,60,.28); }
+.process-truck-body{ fill:var(--blush-700); }
+.process-truck-cab{ fill:var(--blush-600); }
+.process-truck-window{ fill:var(--blush-50); }
+.process-truck-bow{ color:var(--gold-500); }
+.process-truck-wheel{ transform-box:fill-box; transform-origin:center; }
+.process-truck-wheel circle:not(.process-truck-hub){ fill:var(--ink); }
+.process-truck-wheel .process-truck-hub{ fill:var(--blush-50); }
+
+/* Risquinhos de velocidade, à esquerda da van (atrás dela, já que anda para
+   a direita) — o que faz ela ler como "em movimento" e não só "flutuando". */
+.process-truck-lines{ position:absolute; left:-16px; top:4px; overflow:visible; }
+.process-truck-lines line{ stroke:var(--blush-300); stroke-width:2.5; stroke-linecap:round; opacity:0; }
+
+/* Loop, não uma passada só: a entrega se repete enquanto a seção está na
+   tela. A viagem em si cabe nos primeiros ~56% do ciclo de 4s (os mesmos
+   ~2,2s de antes) — o resto é pausa invisível (opacity:0 dos dois lados),
+   para não parecer um desenho reiniciando de repente no meio da tela. */
+.process-truck.is-dirigindo{
+  animation:process-truck-drive 4s cubic-bezier(.4,0,.15,1) infinite;
+}
+.process-truck.is-dirigindo .process-truck-wheel{
+  animation:process-truck-spin .35s linear infinite;
+}
+.process-truck.is-dirigindo .process-truck-lines line{
+  animation:process-truck-lines-fade 4s ease-out infinite;
+}
+.process-truck.is-dirigindo .process-truck-lines line:nth-child(2){ animation-delay:.05s; }
+.process-truck.is-dirigindo .process-truck-lines line:nth-child(3){ animation-delay:.09s; }
+
+/* left anda 14%->86% (a rota inteira); o balanço fica só no transform, que
+   não mexe em layout a cada quadro — só a posição horizontal (left) precisa
+   recalcular layout, e isso já é barato para um elemento de 78px. */
+@keyframes process-truck-drive{
+  0%   { left:14%; opacity:0; transform:translate(-50%,-95%) translateY(0) rotate(0deg); }
+  3%   { opacity:1; }
+  9%   { transform:translate(-50%,-95%) translateY(-4px) rotate(-1.5deg); }
+  18%  { transform:translate(-50%,-95%) translateY(0) rotate(1deg); }
+  27%  { transform:translate(-50%,-95%) translateY(-3px) rotate(-1deg); }
+  36%  { transform:translate(-50%,-95%) translateY(0) rotate(1.5deg); }
+  45%  { transform:translate(-50%,-95%) translateY(-3px) rotate(-1deg); }
+  52%  { opacity:1; transform:translate(-50%,-95%) translateY(0) rotate(0deg); }
+  56%, 100% { left:86%; opacity:0; transform:translate(-50%,-95%) translateY(0) rotate(0deg); }
+}
+@keyframes process-truck-spin{ to{ transform:rotate(360deg); } }
+@keyframes process-truck-lines-fade{
+  0%, 4%{ opacity:0; }
+  10%, 44%{ opacity:.8; }
+  56%, 100%{ opacity:0; }
 }
 
 /* ============ GARANTIAS — player no formato de stories ============

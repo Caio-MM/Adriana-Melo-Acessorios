@@ -422,22 +422,25 @@
         <h2 class="section-title mb-3">Comecei nas feirinhas e nos colégios de Brasília</h2>
         <p class="section-sub mb-3">Faz mais de oito anos que eu faço laço à mão. Até hoje, o que eu mais gosto é de ver a menina escolher de perto a cor que ela vai levar.</p>
         <p class="section-sub mb-4">Corto, costuro e finalizo cada peça uma de cada vez, com o mesmo cuidado de quando o laço é para alguém da minha própria família. O site mudou só o alcance: ele continua saindo daqui do mesmo jeito que saía no primeiro dia.</p>
-        <div class="d-flex align-items-center gap-3 mb-4">
+        <div class="d-flex align-items-center gap-3">
           <div class="social-circle" style="background:var(--blush-100); color:var(--blush-700)"><i class="bi bi-scissors"></i></div>
           <div>
             <div class="fw-semibold font-display" style="font-size:1.05rem">Adriana Melo</div>
             <div class="small" style="color:var(--ink-soft)">Idealizadora e artesã</div>
           </div>
         </div>
-        <div class="d-flex flex-wrap align-items-center gap-3 pt-4 border-top" style="border-color:var(--blush-100)!important">
-          <div>
-            <span class="section-eyebrow"><i class="bi bi-instagram"></i> nos siga:</span>
-            <div class="fw-semibold font-display" style="font-size:1.05rem">Nos siga @adriana_melo_acessorios</div>
-          </div>
-          <a href="https://www.instagram.com/adriana_melo_acessorios/" target="_blank" rel="noopener noreferrer" class="btn-outline-blush ms-auto"><i class="bi bi-instagram me-1"></i> Seguir no Instagram</a>
-        </div>
       </div>
       <div class="col-lg-6 reveal reveal-delay-1">
+        <!-- Anuncia o card logo abaixo em vez de ficar solto no fim da coluna
+             da história (era o que acontecia antes) — mesma largura e
+             centralização do card, para os dois lerem como um bloco só. -->
+        <div class="instagram-follow-head">
+          <div>
+            <span class="section-eyebrow"><i class="bi bi-instagram"></i> nos siga</span>
+            <div class="fw-semibold font-display instagram-follow-handle">@adriana_melo_acessorios</div>
+          </div>
+          <a href="https://www.instagram.com/adriana_melo_acessorios/" target="_blank" rel="noopener noreferrer" class="btn-outline-blush"><i class="bi bi-instagram me-1"></i> Seguir no Instagram</a>
+        </div>
         <div class="instagram-feed-card" id="instagramFeedCard" data-state="loading">
           <div class="instagram-feed-loading">
             <div class="instagram-feed-header">
@@ -471,8 +474,7 @@
           <div class="instagram-feed-fallback d-none">
             <div class="instagram-feed-fallback-icon"><i class="bi bi-instagram"></i></div>
             <div class="fw-semibold font-display" style="font-size:1.15rem">@adriana_melo_acessorios</div>
-            <p class="section-sub mb-3" style="font-size:.9rem">Acompanhe as novidades e bastidores no nosso perfil.</p>
-            <a href="https://www.instagram.com/adriana_melo_acessorios/" target="_blank" rel="noopener noreferrer" class="btn-outline-blush"><i class="bi bi-instagram me-1"></i> Seguir no Instagram</a>
+            <p class="section-sub mb-0" style="font-size:.9rem">Acompanhe as novidades e bastidores no nosso perfil.</p>
           </div>
         </div>
       </div>
@@ -491,6 +493,35 @@
 
     <div class="process-wrap row g-5">
       <div class="process-line d-none d-md-block"></div>
+      <!-- Vanzinha de entrega que percorre a linha pontilhada — CSS puro
+           (@keyframes em style.css), disparada por IntersectionObserver em
+           js/main.js quando a seção entra na tela. Sem classes d-none/d-md-*
+           do Bootstrap: elas saem com !important no recorte
+           (bootstrap.purged.css) e brigariam com o display:block daqui. -->
+      <div class="process-truck" id="processTruck" aria-hidden="true">
+        <svg class="process-truck-lines" viewBox="0 0 20 40" width="20" height="40">
+          <line x1="18" y1="12" x2="6" y2="12"/>
+          <line x1="18" y1="20" x2="3" y2="20"/>
+          <line x1="18" y1="28" x2="6" y2="28"/>
+        </svg>
+        <svg class="process-truck-svg" viewBox="0 0 64 40" width="100%" height="100%">
+          <!-- Sombra sob as rodas: é o que faz a van ler como pousada NA
+               linha, em vez de flutuando solta perto dela. -->
+          <ellipse class="process-truck-shadow" cx="27" cy="35" rx="21" ry="2.6"/>
+          <rect class="process-truck-body" x="4" y="10" width="34" height="17" rx="4"/>
+          <path class="process-truck-cab" d="M38 15 h10 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-10 z"/>
+          <rect class="process-truck-window" x="42" y="17" width="7" height="6" rx="1.4"/>
+          <use class="process-truck-bow" href="#bow-shape" x="10" y="14" width="14" height="10"/>
+          <g class="process-truck-wheel">
+            <circle cx="14" cy="29" r="5"/>
+            <circle class="process-truck-hub" cx="14" cy="29" r="2"/>
+          </g>
+          <g class="process-truck-wheel">
+            <circle cx="40" cy="29" r="5"/>
+            <circle class="process-truck-hub" cx="40" cy="29" r="2"/>
+          </g>
+        </svg>
+      </div>
       <div class="col-md-4 process-step reveal">
         <div class="process-icon-wrap">
           <div class="process-icon" aria-hidden="true"><i class="bi bi-search-heart"></i></div>

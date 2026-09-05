@@ -127,10 +127,26 @@
   function observeReveal(root){
     (root || document).querySelectorAll(".reveal:not(.is-visible)").forEach(el => {
       if(revealObserver) revealObserver.observe(el);
-      else el.classList.add("is-visible"); 
+      else el.classList.add("is-visible");
     });
   }
   observeReveal();
+
+  /* ============ COMO FUNCIONA — vanzinha de entrega em loop ============
+     CSS puro (@keyframes em style.css): a viagem, o balanço da lataria e o
+     giro das rodas ligam juntos com esta única classe, e repetem sozinhos
+     (animation infinite) enquanto a seção está na tela. A linha pontilhada
+     por baixo é fixa — não depende de nada disto, nem do GSAP. */
+  const processTruckEl = document.getElementById("processTruck");
+  if(processTruckEl && "IntersectionObserver" in window){
+    new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if(!entry.isIntersecting) return;
+        processTruckEl.classList.add("is-dirigindo");
+        obs.unobserve(entry.target);
+      });
+    }, { threshold: 0, rootMargin: "0px 0px -25% 0px" }).observe(processTruckEl.closest(".process-wrap") || processTruckEl);
+  }
 
   /* ============ GARANTIAS — player no formato de stories ============
      Substituiu um deck que prendia a rolagem da página. Aquilo travava em

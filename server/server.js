@@ -134,15 +134,20 @@ const mpClient = new MercadoPagoConfig({
    weight em kg. width/height/length em cm (medidas da embalagem individual
    de 1 unidade do produto).
 ========================================================================= */
+// Peso/dimensões de todo o catálogo fixo padronizados pela caixa real que a
+// lojista usa para postar (16x7x20cm, 200g) — antes cada linha tinha um
+// palpite diferente (2 a 6cm de altura), que não correspondia à embalagem
+// verdadeira e distorcia o frete calculado.
+const CAIXA_PADRAO = { weight:0.2, width:16, height:7, length:20 };
 const PRODUCTS = {
-  1: { name:"Laço Bailarina",        price:34.90, weight:0.05, width:16, height:2, length:11, category:"dia-a-dia",   badges:[] },
-  2: { name:"Laço Duquesa",          price:49.90, weight:0.08, width:16, height:3, length:11, category:"festa",       badges:["Mais vendido"] },
-  3: { name:"Laço Recém-nascida",    price:29.90, weight:0.04, width:16, height:2, length:11, category:"maternidade", badges:[] },
-  4: { name:"Laço Pérola",           price:59.90, weight:0.08, width:16, height:3, length:11, category:"batizado",    badges:[] },
-  5: { name:"Laço Borboleta",        price:44.90, weight:0.06, width:16, height:2, length:11, category:"festa",       badges:[] },
-  6: { name:"Kit Presente 3 Laços",  price:89.90, weight:0.20, width:20, height:6, length:15, category:"presente",    badges:["Novo"] },
-  7: { name:"Laço Tiara Flor",       price:39.90, weight:0.07, width:16, height:3, length:11, category:"dia-a-dia",   badges:[] },
-  8: { name:"Laço Personalizado",    price:64.90, weight:0.08, width:16, height:3, length:11, category:"presente",    badges:["Novo"] },
+  1: { name:"Laço Bailarina",        price:34.90, ...CAIXA_PADRAO, category:"dia-a-dia",   badges:[] },
+  2: { name:"Laço Duquesa",          price:49.90, ...CAIXA_PADRAO, category:"festa",       badges:["Mais vendido"] },
+  3: { name:"Laço Recém-nascida",    price:29.90, ...CAIXA_PADRAO, category:"maternidade", badges:[] },
+  4: { name:"Laço Pérola",           price:59.90, ...CAIXA_PADRAO, category:"batizado",    badges:[] },
+  5: { name:"Laço Borboleta",        price:44.90, ...CAIXA_PADRAO, category:"festa",       badges:[] },
+  6: { name:"Kit Presente 3 Laços",  price:89.90, ...CAIXA_PADRAO, category:"presente",    badges:["Novo"] },
+  7: { name:"Laço Tiara Flor",       price:39.90, ...CAIXA_PADRAO, category:"dia-a-dia",   badges:[] },
+  8: { name:"Laço Personalizado",    price:64.90, ...CAIXA_PADRAO, category:"presente",    badges:["Novo"] },
 };
 
 /* Categorias fixas — precisam ficar em sincronia com os chips de filtro em
@@ -166,9 +171,13 @@ const PRODUCT_BADGES = ["Mais vendido", "Novo"];
    possível mesmo que o catálogo fixo cresça um pouco no futuro. */
 const CUSTOM_PRODUCT_ID_START = 1000;
 
-/* Dimensões mínimas aceitas pelos Correios/transportadoras — nunca cotar
-   abaixo disso, mesmo que o produto seja minúsculo. */
-const MIN_PACKAGE = { weight:0.1, width:16, height:2, length:11 };
+/* A lojista posta TUDO junto, numa caixa só — o TAMANHO dela (16x7x20cm,
+   CAIXA_PADRAO acima) nunca muda com a quantidade, mas o PESO nunca é fixo:
+   é a embalagem em si (caixa + papel) mais ~20g por laço, do primeiro em
+   diante. Calibrado com o dado dela — 8 laços pesam uns 200g — então a
+   embalagem sozinha é 200g − 8×20g = 40g. Ver buildPackage, abaixo. */
+const PESO_EMBALAGEM_KG = 0.04;
+const PESO_LACO_KG = 0.02;
 
 function getAllCategories(){
   return [...BUILTIN_CATEGORIES, ...db.listCustomCategories().map(c => ({ slug: c.slug, label: c.label }))];
@@ -1145,27 +1154,45 @@ function buildValidatedItems(items){
   });
 }
 
-/* Empacotamento simplificado: soma o peso de tudo, e cresce a altura da
-   caixa proporcionalmente à quantidade (aproximação de "empilhar" os
-   laços), respeitando o mínimo aceito pelas transportadoras. Isso é uma
-   simplificação razoável para produtos pequenos e leves como laços — para
-   um catálogo com produtos de tamanhos muito diferentes, o ideal é
-   integrar com o cálculo "por produtos" do próprio Melhor Envio
-   (https://docs.melhorenvio.com.br/reference/calculo-de-fretes-por-produtos). */
+/* Empacotamento: os laços do catálogo fixo (id < 1000) vão TODOS na MESMA
+   caixa — o TAMANHO dela (CAIXA_PADRAO) nunca muda com a quantidade, 1 laço
+   ou 20. O PESO nunca é fixo: soma PESO_EMBALAGEM_KG (a caixa+papel em si)
+   com PESO_LACO_KG por laço, do primeiro em diante — não é "grátis até 8",
+   é sempre proporcional; 8 laços só é o ponto que a lojista usou para
+   calibrar o peso da embalagem sozinha (200g − 8×20g = 40g).
+   Um produto do painel (id >= 1000, ex.: uma bolsa) ainda não compartilha
+   essa caixa — não é um laço, pode não caber nela — então continua somando
+   peso e altura por unidade, do jeito que já funcionava antes. Se os dois
+   tipos vierem no mesmo pedido, as caixas se empilham: altura soma, peso
+   soma, e a largura/comprimento ficam com o maior dos dois. */
 function buildPackage(validatedItems){
-  let weight = 0, width = 0, length = 0, height = 0, insurance = 0;
-  for(const { qty, product } of validatedItems){
-    weight += product.weight * qty;
+  let width = 0, length = 0, insurance = 0;
+  let lacosQty = 0;
+  let pesoOutros = 0, alturaOutros = 0;
+
+  for(const { id, qty, product } of validatedItems){
     width = Math.max(width, product.width);
     length = Math.max(length, product.length);
-    height += product.height * qty;
     insurance += product.price * qty;
+
+    if(id < CUSTOM_PRODUCT_ID_START){
+      lacosQty += qty;
+    } else {
+      pesoOutros += product.weight * qty;
+      alturaOutros += product.height * qty;
+    }
   }
+
+  const pesoDaCaixaDeLacos = lacosQty > 0
+    ? PESO_EMBALAGEM_KG + lacosQty * PESO_LACO_KG
+    : 0;
+  const alturaComLacos = (lacosQty > 0 ? CAIXA_PADRAO.height : 0) + alturaOutros;
+
   return {
-    weight: Math.max(weight, MIN_PACKAGE.weight),
-    width: Math.max(width, MIN_PACKAGE.width),
-    length: Math.max(length, MIN_PACKAGE.length),
-    height: Math.max(height, MIN_PACKAGE.height),
+    weight: pesoDaCaixaDeLacos + pesoOutros,
+    width: Math.max(width, CAIXA_PADRAO.width),
+    length: Math.max(length, CAIXA_PADRAO.length),
+    height: Math.max(alturaComLacos, CAIXA_PADRAO.height),
     insurance_value: Math.round(insurance * 100) / 100,
   };
 }

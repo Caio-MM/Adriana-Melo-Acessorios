@@ -83,24 +83,6 @@
     });
   }
 
-  /* ---- COMO FUNCIONA: a linha pontilhada se desenha ---- */
-  function linhaDoProcesso() {
-    const linha = document.querySelector(".process-line");
-    if (!linha) return;
-    // Mesmo motivo do rodapé: from() + refresh() podem gravar 0 como destino.
-    // Aqui escapou por ordem de refresh, o que é sorte, não desenho.
-    gsap.fromTo(linha,
-      { scaleX: 0 },
-      {
-        scaleX: 1,
-        transformOrigin: "left center",
-        ease: "power2.inOut",
-        duration: 1.1,
-        scrollTrigger: { trigger: ".process-wrap", start: "top 75%", refreshPriority: -2 },
-      }
-    );
-  }
-
   /* ---- RODAPÉ ----
      ⚠️ fromTo, NUNCA from. Um from() guarda o valor ATUAL como destino, e o
      ScrollTrigger.refresh() lá embaixo o recalcula DEPOIS de o próprio from já
@@ -210,7 +192,6 @@
 
   mm.add("(prefers-reduced-motion: no-preference)", () => {
     entradaDoHero();
-    linhaDoProcesso();
     entradaDoRodape();
     animarVitrine();
     document.addEventListener("vitrine:render", animarVitrine);
