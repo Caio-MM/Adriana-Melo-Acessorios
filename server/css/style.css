@@ -925,12 +925,14 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
    API não está configurada/disponível — ver server/lib/instagram.js). */
 /* Header do card, fora dele: mesma largura e centralização do
    .instagram-feed-card logo abaixo, para os dois lerem como um bloco só em
-   vez do texto ficar mais estreito ou desalinhado por cima do card. */
+   vez do texto ficar mais estreito ou desalinhado por cima do card.
+   justify-content:center (não space-between) — só sobrou o botão aqui, sem
+   o texto "nos siga"/@handle que tinha antes; space-between jogaria um
+   único item para a esquerda em vez de centralizado. */
 .instagram-follow-head{
-  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
   gap:.85rem; max-width:420px; margin:0 auto 1.1rem;
 }
-.instagram-follow-handle{ font-size:1.05rem; }
 
 .instagram-feed-card{
   position:relative; max-width:420px; margin:0 auto; padding:1.4rem;
@@ -994,6 +996,23 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
      HTML (frágil); com os três valores explícitos (linha:0 < van:1 <
      ícone:2) a ordem é garantida em qualquer navegador. */
   position:relative; z-index:2; width:92px; height:92px; margin:0 auto 1.3rem;
+  /* Flutua sozinho, contínuo — mesmo espírito do .floaty dos laços no hero
+     (translateY + infinite), só que mais discreto (5px, não 16px, sem
+     rotate) porque aqui é um ícone com número, não um enfeite — e também
+     porque a van do computador (.process-truck) já tem uma folga apertada
+     de propósito até este círculo (perto da linha, como pedido); testei ao
+     vivo com 8px de balanço e a folga caía a menos de 1px no pico. 5px
+     mantém uns 3-4px de sobra mesmo no pior instante dos dois balanços
+     juntos. O atraso por passo (.reveal-delay-1/2, já usados no fade de
+     entrada) tira os três de sincronia, pro efeito não ficar "batendo"
+     junto. */
+  animation:process-icon-float 4.2s ease-in-out infinite;
+}
+.reveal-delay-1 .process-icon-wrap{ animation-delay:.35s; }
+.reveal-delay-2 .process-icon-wrap{ animation-delay:.7s; }
+@keyframes process-icon-float{
+  0%, 100%{ transform:translateY(0); }
+  50%{ transform:translateY(-5px); }
 }
 .process-icon{
   width:100%; height:100%; border-radius:50%;

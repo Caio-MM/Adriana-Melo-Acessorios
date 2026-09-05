@@ -199,8 +199,14 @@
       entries.forEach(entry => {
         if(!entry.isIntersecting) return;
         posicionarParadasMobile();
-        processTruckEl?.classList.add("is-dirigindo");
-        processPackageEl?.classList.add("is-dirigindo");
+        /* Meio segundo de atraso antes de ligar — chegar na seção e a
+           entrega já sair andando no mesmo instante fica abrupto demais;
+           essa pausa dá tempo da pessoa primeiro ler "como funciona" antes
+           da animação começar. */
+        setTimeout(() => {
+          processTruckEl?.classList.add("is-dirigindo");
+          processPackageEl?.classList.add("is-dirigindo");
+        }, 500);
         obs.unobserve(entry.target);
       });
     }, { threshold: 0, rootMargin: "0px 0px -25% 0px" }).observe(processWrapEl);
