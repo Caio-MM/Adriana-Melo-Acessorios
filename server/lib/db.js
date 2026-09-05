@@ -1259,6 +1259,7 @@ const stmtUpsertInstagramToken = db.prepare(`
   INSERT INTO instagram_tokens (id, access_token, refreshed_at) VALUES (1, ?, ?)
   ON CONFLICT(id) DO UPDATE SET access_token = excluded.access_token, refreshed_at = excluded.refreshed_at
 `);
+const stmtDeleteInstagramToken = db.prepare(`DELETE FROM instagram_tokens WHERE id = 1`);
 
 function getInstagramToken() {
   const row = stmtGetInstagramToken.get();
@@ -1266,6 +1267,12 @@ function getInstagramToken() {
 }
 function saveInstagramToken({ accessToken, refreshedAt }) {
   stmtUpsertInstagramToken.run(accessToken, refreshedAt);
+}
+// Usada pelo botão "Reconectar" do painel: sem isto, trocar o token no .env
+// não tem efeito nenhum depois da primeira vez — ensureFreshToken() só volta
+// a olhar o .env quando não encontra nada salvo aqui.
+function deleteInstagramToken() {
+  stmtDeleteInstagramToken.run();
 }
 
 /* -------------------- FILA DE E-MAIL PARA A CLIENTE --------------------
@@ -1436,4 +1443,5 @@ module.exports = {
   deleteCoupon,
   getInstagramToken,
   saveInstagramToken,
+  deleteInstagramToken,
 };

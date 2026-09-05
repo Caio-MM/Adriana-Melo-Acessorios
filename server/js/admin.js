@@ -2027,6 +2027,29 @@
     }
   });
 
+  const instagramReconnectBtn = document.getElementById("instagramReconnectBtn");
+  const instagramReconnectResult = document.getElementById("instagramReconnectResult");
+  instagramReconnectBtn?.addEventListener("click", async () => {
+    const original = instagramReconnectBtn.innerHTML;
+    instagramReconnectBtn.disabled = true;
+    instagramReconnectBtn.innerHTML = `<i class="bi bi-hourglass-split me-1"></i>Testando...`;
+    instagramReconnectResult.textContent = "";
+    instagramReconnectResult.classList.remove("is-success", "is-error");
+    try{
+      const res = await fetchWithTimeout("/api/admin/instagram/reconnect", { method: "POST" }, 15000);
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok || !data.ok) throw new Error(data.error || "Não foi possível conectar.");
+      instagramReconnectResult.textContent = `Conectado como @${data.username} — o feed já deve aparecer na home.`;
+      instagramReconnectResult.classList.add("is-success");
+    }catch(err){
+      instagramReconnectResult.textContent = err.message || "Não foi possível conectar.";
+      instagramReconnectResult.classList.add("is-error");
+    }finally{
+      instagramReconnectBtn.disabled = false;
+      instagramReconnectBtn.innerHTML = original;
+    }
+  });
+
   let authEventReceived = false;
   document.addEventListener("plc:auth", (e) => {
     authEventReceived = true;

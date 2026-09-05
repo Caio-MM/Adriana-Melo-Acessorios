@@ -195,4 +195,37 @@ async function getInstagramFeed() {
   }
 }
 
-module.exports = { getInstagramFeed, mapMediaItem };
+/**
+ * Apaga o token salvo no banco e o cache em memória — usada pelo botão
+ * "Reconectar" do painel. Sem isto, trocar INSTAGRAM_ACCESS_TOKEN no .env
+ * (ou nas variáveis de ambiente do painel de hospedagem) não tem efeito
+ * nenhum depois da primeira vez que o servidor rodou com um valor
+ * preenchido: ensureFreshToken() só volta a ler o .env quando não encontra
+ * nada salvo no banco.
+ */
+function resetToken() {
+  db.deleteInstagramToken();
+  cache = { data: null, expiresAt: 0 };
+}
+
+/**
+ * Testa a conexão agora, sem cache — usada pelo botão "Reconectar" do
+ * painel para dar um retorno imediato e específico, em vez do genérico
+ * { available: false } que a rota pública devolve. Nunca lança: a mensagem
+ * de erro devolvida é a mesma da Graph API que hoje só aparecia no log do
+ * servidor (ex.: "Cannot parse access token").
+ */
+async function testConnection() {
+  try {
+    const token = await ensureFreshToken();
+    if (!token) {
+      return { ok: false, error: "INSTAGRAM_ACCESS_TOKEN não está definido (nem no .env, nem salvo no banco)." };
+    }
+    const profile = await fetchProfile(token);
+    return { ok: true, username: profile.username };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+module.exports = { getInstagramFeed, mapMediaItem, resetToken, testConnection };

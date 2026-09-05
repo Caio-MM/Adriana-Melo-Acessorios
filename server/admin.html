@@ -203,6 +203,19 @@
                 <i class="bi bi-file-earmark-spreadsheet me-1"></i>Baixar planilha (Excel)
               </button>
             </div>
+
+            <!-- Botão de autoatendimento para o problema mais comum do feed do
+                 Instagram: trocar o token no .env não basta depois da primeira
+                 vez (ver comentário da rota /api/admin/instagram/reconnect em
+                 server.js) — sem isto, a única forma de destravar era acesso a
+                 terminal para apagar a linha do banco na mão. -->
+            <div class="admin-export-row">
+              <p class="admin-hint">Se o feed do Instagram parou de aparecer na home depois de trocar o token: clique aqui para o site esquecer o token antigo e testar o novo agora.</p>
+              <button type="button" class="btn-outline-blush btn-sm-blush" id="instagramReconnectBtn">
+                <i class="bi bi-instagram me-1"></i>Reconectar Instagram
+              </button>
+              <span id="instagramReconnectResult" class="admin-hint tracking-feedback" role="status"></span>
+            </div>
           </section>
 
           <!-- ============ PRODUTOS ============ -->

@@ -3298,6 +3298,24 @@ app.get("/api/instagram/feed", async (req, res) => {
 });
 
 /* =========================================================================
+   POST /api/admin/instagram/reconnect
+   -------------------------------------------------------------------------
+   Botão "Reconectar" do painel. Existe porque trocar INSTAGRAM_ACCESS_TOKEN
+   no .env (ou nas variáveis de ambiente do painel de hospedagem) sozinho
+   NÃO tem efeito depois da primeira vez que o servidor rodou com um valor
+   preenchido — o token vivo fica salvo no banco, e reescrever o .env não
+   é olhado de novo até esse registro ser apagado. Esta rota apaga o
+   registro e testa a conexão na hora, devolvendo a mensagem exata da
+   Graph API (ex.: "Cannot parse access token") em vez de exigir acesso ao
+   log do servidor para descobrir o motivo.
+========================================================================= */
+app.post("/api/admin/instagram/reconnect", auth.requireAdmin, async (req, res) => {
+  instagram.resetToken();
+  const resultado = await instagram.testConnection();
+  res.json(resultado);
+});
+
+/* =========================================================================
    GET /api/products — catálogo público (nome/preço/foto já mesclando
    eventuais edições do painel administrativo). O front-end (js/main.js)
    busca isso para atualizar a vitrine sem precisar recarregar a página
