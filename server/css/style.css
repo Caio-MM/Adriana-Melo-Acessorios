@@ -3665,35 +3665,41 @@ body.admin-gate-active .admin-state-area{
   filter:drop-shadow(0 4px 8px rgba(192,84,128,.45));
 }
 
-/* A fita vertical só cabe onde existe margem de verdade. As margens do
-   container do Bootstrap encolhem junto com a tela (~40px a 1400px, ~30px a
-   1200px, quase nada abaixo disso), e a 1440px a fita já encostava 17px por
-   cima do texto. Então abaixo de 1400px ela vira um fio horizontal fino sob a
-   navbar, que não disputa espaço com nada. */
+/* Abaixo de 1400px a fita continua VERTICAL, só que fina e encostada na borda.
+
+   Medi a 375px quanto sobra entre a borda e o conteúdo de cada seção: 12px na
+   maioria, 6px no "como funciona" e 0px na vitrine (os filtros deslizantes
+   sangram até a borda de propósito). Não cabem os 46px do computador, então a
+   faixa vira 16px — o suficiente para o fio e o laço, sem deslocar nada do
+   conteúdo.
+
+   ⚠️ Fica na ESQUERDA porque a direita tem os botões flutuantes (WhatsApp de
+   56px e voltar-ao-topo de 44px) a 24px da borda.
+
+   A ondulação encolhe sozinha, sem desenhar outro caminho: o viewBox é
+   "0 0 60 1000" com preserveAspectRatio="none", então num contêiner de 16px o
+   eixo horizontal é comprimido para 16/60 ≈ 27% e a onda de ~18px vira ~5px.
+   A espessura do traço NÃO encolhe junto por causa do
+   vector-effect:non-scaling-stroke lá em cima. */
 @media (max-width: 1399.98px){
   .fita-guia{
-    /* No topo absoluto, ACIMA da navbar: ela muda de altura ao rolar (91px no
-       topo, 65px depois), então qualquer deslocamento fixo esconderia a fita
-       atrás dela em um dos dois estados. */
-    left:0; top:0; width:100%; height:10px; z-index:1035;
-    /* No fio horizontal a recuada vertical não faz sentido — ele é uma barra
-       no topo, não um caminho que percorre a altura da tela. */
-    padding:0;
+    /* ⚠️ 10px. Medi a caixa REAL das letras (Range, não a caixa do elemento):
+       o texto começa exatamente em x=12. E o laço não fica parado no meio da
+       faixa — ele CAVALGA a onda, então sua borda direita é
+       (0,695 × largura) + metade dele. Com faixa de 16 ele chegava a 17 e com
+       12 ainda chegava a 14, cobrindo o "L" de "Laços". Com 10 o ponto mais à
+       direita do percurso dá 11,95 — encosta nos 12 sem tocar em letra. */
+    left:0; width:10px;
+    /* Mesmo recuo de 12px do computador: é ele que faz o laço caber inteiro
+       nas duas pontas. Sem isso, no fim da página ele ficava pendurado na
+       borda de baixo com só 9px visíveis. */
+    top:12px; height:calc(100vh - 24px);
+    z-index:1035;
   }
-  .fita-guia-svg{ display:none; }
-  .fita-guia::before{
-    content:""; position:absolute; left:0; top:0; height:3px; width:100%;
-    background:var(--blush-150); opacity:.5;
-  }
-  .fita-guia::after{
-    content:""; position:absolute; left:0; top:0; height:3px;
-    width:calc(var(--progresso, 0) * 100%);
-    background:linear-gradient(90deg, var(--blush-300), var(--blush-600));
-  }
-  .fita-guia-laco{
-    left:calc(var(--progresso, 0) * 100%); top:1px;
-    width:18px; height:13px;
-  }
+  /* O laço acompanha a faixa: 12px de largura mantém a ponta dele dentro dos
+     12px livres. É pequeno, mas num aparelho de verdade (2x ou 3x de
+     densidade) a silhueta continua legível. */
+  .fita-guia-laco{ width:10px; height:7px; }
 }
 
 /* Decoração pura: sem ela a página não perde informação nenhuma. */
@@ -4054,4 +4060,16 @@ body.admin-gate-active .admin-state-area{
   .scrolly-card .mock-input.is-area{ min-height:30px; }
   .scrolly-card .social-circle{ width:30px; height:30px; }
   .scrolly-card .mock-duas > div > .d-flex{ gap:.5rem !important; margin-bottom:.4rem !important; }
+}
+
+/* No celular os 3 passos empilham em coluna cheia, então a calha horizontal
+   do .row não serve para nada — e ela estava desalinhando a seção: a margem
+   negativa da linha (−24px) é maior que o padding das colunas (17,6px), o que
+   puxava o texto para 6px da borda enquanto todas as outras seções começam em
+   12px. Zerar as duas na horizontal alinha o "como funciona" com o resto (e
+   tira a única sobreposição que restava com a fita-guia). A calha VERTICAL
+   continua, que é o que separa um passo do outro. */
+@media (max-width: 767.98px){
+  .process-wrap{ margin-inline:0; }
+  .process-wrap > .process-step{ padding-inline:0; }
 }
