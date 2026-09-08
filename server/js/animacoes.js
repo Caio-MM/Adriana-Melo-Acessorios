@@ -31,54 +31,83 @@
     }
   }
 
-  function criarCursorDeLaco(titulo) {
-    const NS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(NS, "svg");
-    svg.setAttribute("class", "hero-cursor bow-icon");
-    svg.setAttribute("aria-hidden", "true");
-    svg.setAttribute("focusable", "false");
-    const use = document.createElementNS(NS, "use");
-    use.setAttribute("href", "#bow-shape");
-    svg.appendChild(use);
-    titulo.appendChild(svg);
-    return svg;
+  function criarBlocoDeDigitacao(titulo) {
+    const bloco = document.createElement("span");
+    bloco.className = "hero-bloco";
+    bloco.setAttribute("aria-hidden", "true");
+    titulo.insertBefore(bloco, titulo.firstChild);
+    return bloco;
   }
 
   function digitacaoDoTitulo(titulo, split) {
     const letras = split.chars;
-    const cursor = criarCursorDeLaco(titulo);
+    const bloco = criarBlocoDeDigitacao(titulo);
+    const destaque = titulo.querySelector("em");
     const inicioDoDestaque = letras.findIndex((letra) => letra.closest("em"));
     const linha = gsap.timeline();
 
     gsap.set(titulo, { opacity: 1 });
     gsap.set(letras, { opacity: 0 });
-    gsap.set(cursor, { opacity: 0 });
+    gsap.set(bloco, { opacity: 0 });
 
-    function levarCursorPara(letra) {
-      const l = letra.getBoundingClientRect();
+    const FOLGA_X = 3;
+    const FOLGA_Y = 2;
+    let linhaAnterior = null;
+
+    function caixaRelativa(alvo) {
+      const a = alvo.getBoundingClientRect();
       const t = titulo.getBoundingClientRect();
-      cursor.style.left = l.right - t.left + "px";
-      cursor.style.top = l.top - t.top + l.height * 0.6 + "px";
+      return {
+        left: a.left - t.left - FOLGA_X,
+        top: a.top - t.top - FOLGA_Y,
+        width: a.width + FOLGA_X * 2,
+        height: a.height + FOLGA_Y * 2,
+      };
     }
+
+    function levarBlocoPara(letra, cor) {
+      const caixa = caixaRelativa(letra);
+      const mudouDeLinha = linhaAnterior === null || Math.abs(caixa.top - linhaAnterior) > 4;
+      linhaAnterior = caixa.top;
+      gsap.to(bloco, {
+        ...caixa,
+        backgroundColor: cor,
+        opacity: 1,
+        duration: mudouDeLinha ? 0 : 0.07,
+        ease: "power2.out",
+        overwrite: true,
+      });
+    }
+
+    const corComum = "var(--blush-500)";
+    const corDestaque = "var(--blush-150)";
 
     let quando = 0;
     letras.forEach((letra, i) => {
+      const noDestaque = inicioDoDestaque >= 0 && i >= inicioDoDestaque;
       if (i === inicioDoDestaque) quando += 0.2;
-      quando += inicioDoDestaque >= 0 && i >= inicioDoDestaque ? 0.036 : 0.018;
+      quando += noDestaque ? 0.036 : 0.018;
       linha.call(() => {
         gsap.set(letra, { opacity: 1 });
-        gsap.set(cursor, { opacity: 1 });
-        levarCursorPara(letra);
+        levarBlocoPara(letra, noDestaque ? corDestaque : corComum);
       }, null, quando);
     });
 
-    linha.to(cursor, { opacity: 0, duration: 0.13, repeat: 3, yoyo: true }, quando + 0.15);
-    linha.to(cursor, { opacity: 0, duration: 0.25 }, quando + 0.7);
+    const podeMarcarTexto = destaque && destaque.getClientRects().length === 1;
+    if (podeMarcarTexto) {
+      linha.call(() => {
+        gsap.to(bloco, { ...caixaRelativa(destaque), duration: 0.34, ease: "power2.inOut", overwrite: true });
+      }, null, quando + 0.16);
+      linha.to(bloco, { opacity: 0, duration: 0.4, ease: "power1.in" }, quando + 0.85);
+    } else {
+      linha.to(bloco, { opacity: 0, duration: 0.3 }, quando + 0.2);
+    }
+
     linha.call(() => {
-      cursor.remove();
+      bloco.remove();
       split.revert();
       marcarQueDigitou();
-    }, null, quando + 1);
+    }, null, quando + 1.35);
 
     return linha;
   }

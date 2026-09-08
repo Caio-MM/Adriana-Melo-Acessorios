@@ -415,16 +415,23 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   font-weight:600; font-size:clamp(2.4rem, 5vw, 3.6rem); line-height:1.08; letter-spacing:-0.02em;
   position:relative;
 }
-/* ⚠️ Altura explícita: este <svg> não tem viewBox próprio (quem tem é o
-   <symbol> do <use>), então height:auto cai nos 150px do padrão. */
-.hero-cursor{
-  position:absolute; left:0; top:0; width:24px; height:17px;
-  color:var(--blush-500); pointer-events:none;
-  transform:translateY(-50%);
-  filter:drop-shadow(0 4px 10px rgba(192,84,128,.4));
+.hero-bloco{
+  position:absolute; left:0; top:0; width:0; height:0;
+  background:var(--blush-500); border-radius:6px;
+  pointer-events:none;
 }
 .hero-title em{ font-style:italic; color:var(--blush-700); font-weight:500; }
-.hero-lead{ color:var(--ink-soft); font-size:1.08rem; max-width:480px; margin:1.25rem 0 2rem; }
+.hero-lead{
+  color:var(--ink-soft); font-size:1.15rem; line-height:1.6;
+  max-width:480px; margin:1.35rem 0 2.4rem;
+  position:relative; padding-left:1.1rem;
+}
+.hero-lead::before{
+  content:""; position:absolute; left:0; top:.3em; bottom:.3em; width:3px;
+  border-radius:999px;
+  background:linear-gradient(180deg, var(--blush-500), var(--blush-200));
+}
+.hero-lead strong{ color:var(--blush-700); font-weight:600; }
 .hero-stats{ display:flex; gap:2.2rem; margin-top:2.5rem; }
 .hero-stats .num{ font-family:var(--font-display); font-size:1.6rem; font-weight:600; color:var(--blush-700); display:block; }
 .hero-stats .lbl{ font-size:.78rem; color:var(--ink-soft); }
