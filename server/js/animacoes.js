@@ -61,7 +61,7 @@
 
     const CORPO = parseFloat(getComputedStyle(titulo).fontSize) || 16;
     const FOLGA_X = 0.09 * CORPO;
-    const RECUO_TOPO = 0.1 * CORPO;
+    const RECUO_TOPO = 0.2 * CORPO;
     const SOBRA_BASE = 0.04 * CORPO;
     let corAtual = null;
 
