@@ -2831,6 +2831,24 @@ body.tem-secao-fab-oculta .fab-top{
 .order-status-paid{ background:var(--color-success-soft); color:var(--color-success); }
 .order-status-failed{ background:#FBE1E1; color:var(--color-danger); }
 
+/* ---- CONTAGEM NOS FILTROS DO PAINEL ----
+   O número vem de um atributo, e não do texto do botão, porque no site a
+   vitrine lê chip.textContent para saber o nome da categoria — um número
+   dentro do botão viraria parte do rótulo. Aqui não há esse leitor hoje,
+   mas o padrão vale para não criar o mesmo problema depois. */
+#ordersFilter .chip[data-contagem]::after,
+#customersFilter .chip[data-contagem]::after{
+  content:attr(data-contagem);
+  display:inline-block; margin-left:.45rem; padding:0 .4rem;
+  min-width:1.25em; border-radius:999px;
+  background:var(--blush-100); color:var(--blush-700);
+  font-size:.75em; font-weight:700; line-height:1.5;
+}
+#ordersFilter .chip.active[data-contagem]::after,
+#customersFilter .chip.active[data-contagem]::after{
+  background:rgba(255,255,255,.28); color:#fff;
+}
+
 /* ============ ACOMPANHAMENTO DE PEDIDO (acompanhar-pedido.html) ============ */
 /* Linha do tempo Confirmado -> Em produção -> Postado -> Entregue. Cada
    passo tem uma "linha" (::before) ligando ao anterior, colorida conforme

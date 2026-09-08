@@ -3275,7 +3275,23 @@ app.get("/api/admin/customers", auth.requireAdmin, auth.requireAdminTwoFactor, (
       .map(c => ({ ...c, totalSpent: Math.round(c.totalSpent * 100) / 100 }))
       .sort((a, b) => b.totalSpent - a.totalSpent);
 
-    res.json({ customers });
+    /* As CONTAS viajam junto porque `customers` é montado a partir dos
+       PEDIDOS: quem criou conta e nunca chegou ao checkout não existia em
+       lugar nenhum do painel, e é justamente quem a lojista quer alcançar.
+
+       O cruzamento é por e-mail, então quem já comprou não aparece duas
+       vezes. `telefone` vem do endereço salvo — único lugar onde existe
+       telefone de quem nunca fez pedido; sem ele o painel esconde o botão de
+       WhatsApp em vez de gerar um link quebrado. */
+    const emailsQueCompraram = new Set(
+      customers.filter(c => c.email).map(c => String(c.email).toLowerCase())
+    );
+    const contas = db.listAccountsForAdmin().map(a => ({
+      ...a,
+      jaComprou: emailsQueCompraram.has(String(a.email || "").toLowerCase()),
+    }));
+
+    res.json({ customers, contas });
   } catch (err) {
     console.error("Erro ao listar clientes (admin):", err);
     res.status(500).json({ error: "Não foi possível carregar os clientes agora." });
@@ -3287,9 +3303,13 @@ app.get("/api/admin/customers", auth.requireAdmin, auth.requireAdminTwoFactor, (
 app.get("/api/admin/leads", auth.requireAdmin, auth.requireAdminTwoFactor, (req, res) => {
   try {
     res.json({
+      /* unsubscribedAt viaja porque o painel agora oferece falar com quem não
+         comprou: mandar mensagem para quem pediu descadastro seria errado, e
+         sem esse campo não havia como o painel saber. */
       subscribers: db.listNewsletterSubscribers().map(s => ({
         email: s.email,
         createdAt: s.created_at,
+        unsubscribedAt: s.unsubscribed_at || null,
       })),
       messages: db.listContactMessages().map(m => ({
         id: m.id,

@@ -508,6 +508,30 @@ function listUsersForExport() {
   return stmtListUsersForExport.all();
 }
 
+/* Contas para o painel saber quem CRIOU CONTA e nunca comprou — o
+   /api/admin/customers monta a lista a partir dos pedidos, então quem nunca
+   chegou ao checkout não aparecia em lugar nenhum.
+
+   saved_address_json entra junto só pelo telefone: é o único lugar onde existe
+   telefone de quem nunca fez pedido, e é o que permite o botão de WhatsApp.
+   Nada de password_hash, totp_secret nem totp_recovery_json — mesma regra do
+   stmtListUsersForExport acima. */
+const stmtListAccountsForAdmin = db.prepare(
+  `SELECT id, name, email, created_at, saved_address_json
+     FROM users ORDER BY created_at DESC`
+);
+function listAccountsForAdmin() {
+  return stmtListAccountsForAdmin.all().map((u) => {
+    let telefone = null;
+    try {
+      telefone = u.saved_address_json ? JSON.parse(u.saved_address_json)?.telefone || null : null;
+    } catch {
+      telefone = null;
+    }
+    return { id: u.id, name: u.name, email: u.email, createdAt: u.created_at, telefone };
+  });
+}
+
 /* --------------------------- SESSIONS --------------------------- */
 const stmtInsertSession = db.prepare(
   `INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)`
@@ -1397,6 +1421,7 @@ module.exports = {
   getSavedAddress,
   saveAddress,
   listUsersForExport,
+  listAccountsForAdmin,
   createSession,
   getSessionByTokenHash,
   deleteSession,

@@ -1888,7 +1888,61 @@
     setTimeout(() => card.classList.remove("is-highlighted"), 4000);
   }
 
+  /* ---- SITUAÇÃO DO PEDIDO ----
+     São SETE status possíveis (STATUS_LABELS, mais acima), e a lojista pediu
+     três grupos. O agrupamento não é inventado aqui: é o mesmo que o CSS já
+     usa nos selos (.order-status-pending / -paid / -failed), para o selo de
+     cada card nunca discordar do grupo em que ele está. */
+  const GRUPOS_DE_SITUACAO = {
+    pago:      ["pago"],
+    pendente:  ["pendente", "em análise"],
+    cancelado: ["recusado", "cancelado", "reembolsado", "estornado"],
+  };
+  const VAZIO_POR_SITUACAO = {
+    todos:     "Nenhum pedido registrado ainda.",
+    pago:      "Nenhum pedido pago ainda.",
+    pendente:  "Nenhum pedido aguardando pagamento.",
+    cancelado: "Nenhum pedido cancelado ou recusado.",
+  };
+
+  let situacaoDePedidos = "todos";
+  let todosOsPedidos = [];
+
+  function pedidosDaSituacao(situacao){
+    if(situacao === "todos") return todosOsPedidos;
+    const aceitos = GRUPOS_DE_SITUACAO[situacao] || [];
+    return todosOsPedidos.filter(o => aceitos.includes(o.status));
+  }
+
+  function atualizarContagemDeSituacoes(){
+    const grupo = document.getElementById("ordersFilter");
+    if(!grupo) return;
+    grupo.querySelectorAll(".chip").forEach(chip => {
+      const n = pedidosDaSituacao(chip.dataset.situacao).length;
+      /* Contagem em atributo, não dentro do texto do botão: foi a armadilha
+         da vitrine, onde o rótulo da categoria é lido de chip.textContent. */
+      chip.dataset.contagem = String(n);
+      chip.setAttribute("aria-label", `${chip.textContent.trim()}: ${n}`);
+    });
+  }
+
+  document.getElementById("ordersFilter")?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".chip");
+    if(!btn) return;
+    document.querySelectorAll("#ordersFilter .chip").forEach(c => {
+      c.classList.remove("active");
+      c.setAttribute("aria-pressed", "false");
+    });
+    btn.classList.add("active");
+    btn.setAttribute("aria-pressed", "true");
+    situacaoDePedidos = btn.dataset.situacao;
+    btn.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+    renderOrders(pedidosDaSituacao(situacaoDePedidos));
+  });
+
   function renderOrders(orders){
+    const vazioEl = stateEmpty.querySelector("p");
+    if(vazioEl) vazioEl.textContent = VAZIO_POR_SITUACAO[situacaoDePedidos] || VAZIO_POR_SITUACAO.todos;
     if(!orders.length){
       stateEmpty.classList.remove("d-none");
       listEl.classList.add("d-none");
@@ -2097,6 +2151,110 @@
     el?.classList.toggle("d-none", !show);
   }
 
+  /* ---- RECORTES DA ABA CLIENTES ----
+     Três listas sobre a mesma tabela. As duas primeiras saem do que o painel
+     já recebia; a terceira usa exatamente a mesma regra do renderPendingCarts
+     (status "pendente" entre 1h e 14 dias), para as duas telas nunca
+     discordarem sobre o que é um carrinho pendente. */
+  const WHATSAPP_SEM_COMPRA_MESSAGE =
+    "Oi! Aqui é da Adriana Melo Acessórios. Vi que você se cadastrou na loja e queria saber se posso ajudar a escolher um laço 💗";
+
+  let segmentoDeClientes = "compraram";
+  let dadosDeClientes = { customers: [], contas: [], subscribers: [] };
+
+  function temCarrinhoPendente(c){
+    const agora = Date.now();
+    return (c.orders || []).some(o => {
+      if(o.status !== "pendente") return false;
+      const idade = agora - o.createdAt;
+      return idade >= PENDING_CART_MIN_AGE_MS && idade <= PENDING_CART_MAX_AGE_MS;
+    });
+  }
+
+  /* Normaliza as três origens (pedidos, contas, newsletter) para o mesmo
+     formato de linha, para a tabela não precisar saber de onde cada uma veio. */
+  function linhasDoSegmento(seg){
+    const { customers, contas, subscribers } = dadosDeClientes;
+
+    if(seg === "compraram"){
+      return customers.filter(c => c.paidOrders > 0);
+    }
+    if(seg === "carrinho"){
+      return customers.filter(temCarrinhoPendente);
+    }
+
+    // "não compraram": quem gerou pedido e não pagou + contas que nunca
+    // compraram + e-mails do cupom que não viraram cliente.
+    const semCompra = customers.filter(c => c.paidOrders === 0);
+    const emailsJaListados = new Set(
+      customers.map(c => String(c.email || "").toLowerCase()).filter(Boolean)
+    );
+
+    const deContas = contas
+      .filter(a => !a.jaComprou && !emailsJaListados.has(String(a.email || "").toLowerCase()))
+      .map(a => {
+        emailsJaListados.add(String(a.email || "").toLowerCase());
+        return {
+          identity: `conta:${a.id}`, nome: a.name || "—", email: a.email,
+          telefone: a.telefone, hasAccount: true, origem: "conta criada",
+          totalOrders: 0, paidOrders: 0, totalSpent: 0,
+          lastOrderAt: a.createdAt, orders: [],
+        };
+      });
+
+    /* ⚠️ Quem pediu descadastro fica de fora: esta lista existe para a lojista
+       mandar mensagem, e contatar quem saiu da newsletter seria errado. */
+    const deNewsletter = subscribers
+      .filter(sb => !sb.unsubscribedAt)
+      .filter(sb => !emailsJaListados.has(String(sb.email || "").toLowerCase()))
+      .map(sb => ({
+        identity: `news:${sb.email}`, nome: "—", email: sb.email,
+        telefone: null, hasAccount: false, origem: "pediu cupom",
+        totalOrders: 0, paidOrders: 0, totalSpent: 0,
+        lastOrderAt: sb.createdAt, orders: [],
+      }));
+
+    return [...semCompra, ...deContas, ...deNewsletter]
+      .sort((a, b) => (b.lastOrderAt || 0) - (a.lastOrderAt || 0));
+  }
+
+  const DICAS_DE_SEGMENTO = {
+    "compraram": "Quem já pagou pelo menos um pedido, ordenado por quanto gastou. Clique numa linha para ver os pedidos.",
+    "nao-compraram": "Quem deixou contato e ainda não comprou: conta criada no site ou pedido do cupom. Quem se descadastrou da newsletter não aparece aqui.",
+    "carrinho": "Quem começou o pagamento e não finalizou, entre 1 hora e 14 dias atrás — o mesmo recorte da seção \"Pendentes para recuperar\" na aba de pedidos.",
+  };
+
+  function atualizarContagemDeSegmentos(){
+    const grupo = document.getElementById("customersFilter");
+    if(!grupo) return;
+    grupo.querySelectorAll(".chip").forEach(chip => {
+      const n = linhasDoSegmento(chip.dataset.seg).length;
+      chip.dataset.contagem = String(n);
+      chip.setAttribute("aria-label", `${chip.textContent.trim()}: ${n}`);
+    });
+  }
+
+  function aplicarSegmentoDeClientes(){
+    const dica = document.getElementById("customersHint");
+    if(dica) dica.textContent = DICAS_DE_SEGMENTO[segmentoDeClientes] || "";
+    atualizarContagemDeSegmentos();
+    renderCustomers(linhasDoSegmento(segmentoDeClientes));
+  }
+
+  document.getElementById("customersFilter")?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".chip");
+    if(!btn) return;
+    document.querySelectorAll("#customersFilter .chip").forEach(c => {
+      c.classList.remove("active");
+      c.setAttribute("aria-pressed", "false");
+    });
+    btn.classList.add("active");
+    btn.setAttribute("aria-pressed", "true");
+    segmentoDeClientes = btn.dataset.seg;
+    btn.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+    aplicarSegmentoDeClientes();
+  });
+
   function renderCustomers(customers){
     const body = document.getElementById("customersTableBody");
     const wrap = document.getElementById("customersTableWrap");
@@ -2108,7 +2266,17 @@
     if(!customers.length){ body.innerHTML = ""; return; }
 
     body.innerHTML = customers.map((c, i) => {
-      const contactUrl = whatsappUrl(c.telefone, WHATSAPP_POST_SALE_MESSAGE);
+      /* A mensagem muda com o recorte: quem já comprou recebe pós-venda, quem
+         nunca comprou recebe convite, e quem largou o carrinho recebe a de
+         recuperação que já existia. */
+      const mensagem = segmentoDeClientes === "compraram" ? WHATSAPP_POST_SALE_MESSAGE
+                     : segmentoDeClientes === "carrinho"  ? null
+                     : WHATSAPP_SEM_COMPRA_MESSAGE;
+      const pendente = segmentoDeClientes === "carrinho"
+        ? (c.orders || []).find(o => o.status === "pendente") : null;
+      const contactUrl = mensagem
+        ? whatsappUrl(c.telefone, mensagem)
+        : whatsappUrl(c.telefone, `Olá${c.nome && c.nome !== "—" ? " " + String(c.nome).split(" ")[0] : ""}! Vi que você começou uma compra aqui na Adriana Melo Acessórios e queria saber se posso ajudar a finalizar 💗`);
       const historyRows = c.orders.map(o => `
         <div class="d-flex justify-content-between gap-2 py-1 small">
           <span>${formatDate(o.createdAt)}</span>
@@ -2122,11 +2290,16 @@
         <td>
           <strong>${escapeHTML(c.nome)}</strong>
           ${c.hasAccount ? '<span class="admin-badge-pill ms-1">tem conta</span>' : ""}
+          ${c.origem ? `<span class="admin-badge-pill ms-1">${escapeHTML(c.origem)}</span>` : ""}
         </td>
         <td class="small">
           ${c.email ? escapeHTML(c.email) + "<br>" : ""}
-          ${c.telefone ? escapeHTML(c.telefone) : "—"}
-          ${contactUrl ? ` <a href="${contactUrl}" target="_blank" rel="noopener noreferrer" title="Abrir conversa no WhatsApp"><i class="bi bi-whatsapp"></i></a>` : ""}
+          ${c.telefone ? escapeHTML(c.telefone) : ""}
+          ${contactUrl
+            ? ` <a href="${contactUrl}" target="_blank" rel="noopener noreferrer" title="Abrir conversa no WhatsApp"><i class="bi bi-whatsapp"></i></a>`
+            /* ⚠️ Sem telefone não há link — e isso precisa ser DITO. Um ícone
+               que não faz nada ao toque é pior que ícone nenhum. */
+            : ` <span class="text-ink-soft">${c.telefone ? "" : "sem telefone"}</span>`}
         </td>
         <td class="text-center">${c.paidOrders}<span class="text-ink-soft">/${c.totalOrders}</span></td>
         <td class="text-end"><strong>${formatMoney(c.totalSpent)}</strong></td>
@@ -2306,16 +2479,23 @@
   function wireExports(customers, subscribers){
     const customersBtn = document.getElementById("exportCustomersBtn");
     if(customersBtn){
-      customersBtn.onclick = () => downloadCSV(
-        "clientes.csv",
-        ["Nome", "E-mail", "Telefone", "Pedidos pagos", "Pedidos totais", "Total gasto", "Última compra"],
-        customers.map(c => [
-          c.nome, c.email || "", c.telefone || "",
-          c.paidOrders, c.totalOrders,
-          c.totalSpent.toFixed(2).replace(".", ","),
-          formatDate(c.lastOrderAt),
-        ])
-      );
+      /* ⚠️ Exporta o RECORTE que está na tela, não a lista completa. Baixar
+         "clientes.csv" com todo mundo enquanto o filtro mostra outra coisa
+         seria o tipo de discrepância que só se descobre depois de mandar
+         mensagem para a pessoa errada. */
+      customersBtn.onclick = () => {
+        const visiveis = linhasDoSegmento(segmentoDeClientes);
+        downloadCSV(
+          `clientes-${segmentoDeClientes}.csv`,
+          ["Nome", "E-mail", "Telefone", "Origem", "Pedidos pagos", "Pedidos totais", "Total gasto", "Última compra"],
+          visiveis.map(c => [
+            c.nome, c.email || "", c.telefone || "", c.origem || "fez pedido",
+            c.paidOrders, c.totalOrders,
+            (c.totalSpent || 0).toFixed(2).replace(".", ","),
+            formatDate(c.lastOrderAt),
+          ])
+        );
+      };
     }
     const subsBtn = document.getElementById("exportSubscribersBtn");
     if(subsBtn){
@@ -2370,11 +2550,16 @@
       renderPendingCarts(orders);
       renderProductsTable(products);
       renderCouponsTable(Array.isArray(couponsData.coupons) ? couponsData.coupons : []);
-      renderOrders(orders);
+      todosOsPedidos = orders;
+      atualizarContagemDeSituacoes();
+      renderOrders(pedidosDaSituacao(situacaoDePedidos));
 
       const customers = Array.isArray(customersData.customers) ? customersData.customers : [];
       const subscribers = Array.isArray(leadsData.subscribers) ? leadsData.subscribers : [];
-      renderCustomers(customers);
+      const contas = Array.isArray(customersData.contas) ? customersData.contas : [];
+      // Guardadas para os três recortes poderem ser trocados sem novo fetch.
+      dadosDeClientes = { customers, contas, subscribers };
+      aplicarSegmentoDeClientes();
       renderContactMessages(Array.isArray(leadsData.messages) ? leadsData.messages : []);
       renderSubscribers(subscribers);
       wireExports(customers, subscribers);

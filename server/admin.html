@@ -304,12 +304,19 @@
           <!-- ============ VENDAS E PEDIDOS ============ -->
           <section class="admin-tab-panel d-none" data-tab-panel="pedidos">
             <div class="mb-5 d-none" id="pendingCartsSection">
-              <h2 class="admin-section-title">Carrinhos pendentes</h2>
-              <p class="admin-hint">Pedidos que começaram o pagamento mas não finalizaram — um contato pode recuperar a venda.</p>
+              <h2 class="admin-section-title">Pendentes para recuperar</h2>
+              <p class="admin-hint">Pagamentos começados nas últimas 2 semanas e não finalizados — um contato pode recuperar a venda. O filtro "Pendentes" abaixo mostra <em>todos</em> os pendentes, inclusive os de hoje e os antigos demais.</p>
               <div id="pendingCartsList" class="orders-list"></div>
             </div>
 
             <h2 class="admin-section-title">Pedidos</h2>
+
+            <div class="chip-group mb-3" id="ordersFilter" role="group" aria-label="Filtrar pedidos por situação">
+              <button type="button" class="chip active" data-situacao="todos" aria-pressed="true">Todos</button>
+              <button type="button" class="chip" data-situacao="pago" aria-pressed="false">Pagos</button>
+              <button type="button" class="chip" data-situacao="pendente" aria-pressed="false">Pendentes</button>
+              <button type="button" class="chip" data-situacao="cancelado" aria-pressed="false">Cancelados</button>
+            </div>
 
             <div id="adminEmpty" class="admin-empty d-none">
               <i class="bi bi-bag-heart" style="font-size:2rem; color:var(--blush-300)"></i>
@@ -327,7 +334,13 @@
                 <i class="bi bi-download me-1"></i>Baixar CSV
               </button>
             </div>
-            <p class="admin-hint">Quem já comprou, ordenado por quanto gastou. Clique numa linha para ver os pedidos.</p>
+            <p class="admin-hint" id="customersHint">Quem já comprou, ordenado por quanto gastou. Clique numa linha para ver os pedidos.</p>
+
+            <div class="chip-group mb-3" id="customersFilter" role="group" aria-label="Filtrar clientes">
+              <button type="button" class="chip active" data-seg="compraram" aria-pressed="true">Já compraram</button>
+              <button type="button" class="chip" data-seg="nao-compraram" aria-pressed="false">Não compraram</button>
+              <button type="button" class="chip" data-seg="carrinho" aria-pressed="false">Carrinho pendente</button>
+            </div>
 
             <div id="customersEmpty" class="admin-empty d-none">
               <i class="bi bi-people" style="font-size:2rem; color:var(--blush-300)"></i>
