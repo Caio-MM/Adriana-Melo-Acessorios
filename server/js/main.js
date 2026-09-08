@@ -506,11 +506,7 @@
     });
   }
 
-  function renderProducts(){
-    const todos = produtosFiltrados();
-    const list = todos.slice(0, visiveis);
-    atualizarResumoVitrine(todos.length, list.length);
-    grid.innerHTML = list.map((p, i) => {
+  function cartaoDeProdutoHTML(p, i){
       const pay = pricing.paymentSummaryFor(p.price);
       const photo = imageFor(p);
       return `
@@ -543,8 +539,41 @@
         </div>
       </div>
     `;
-    }).join("");
+  }
+
+  // Remonta a grade inteira. Certo para busca, chips, primeira carga e
+  // atualização vinda da API — nesses casos a lista muda de verdade.
+  function renderProducts(){
+    const todos = produtosFiltrados();
+    const list = todos.slice(0, visiveis);
+    atualizarResumoVitrine(todos.length, list.length);
+    grid.innerHTML = list.map(cartaoDeProdutoHTML).join("");
     grid.querySelectorAll(".product-thumb img").forEach(wireImage);
+    observeReveal(grid);
+    document.dispatchEvent(new CustomEvent("vitrine:render"));
+  }
+
+  /* "Ver mais" NÃO passa por renderProducts(): remontar a grade destruiria os
+     cards que a pessoa já está olhando, e eles voltariam sem `is-visible` —
+     a entrada do .reveal e a do GSAP rodariam de novo em tudo, e cada <img>
+     nova repetiria o shimmer mesmo com os bytes em cache. Aqui só os novos
+     entram no DOM; quem já estava fica intacto. */
+  function acrescentarProdutos(){
+    const todos = produtosFiltrados();
+    const jaNaTela = grid.children.length;
+    visiveis += PAGINA;
+    const novos = todos.slice(jaNaTela, visiveis);
+    if(!novos.length){
+      atualizarResumoVitrine(todos.length, Math.min(visiveis, todos.length));
+      return;
+    }
+    grid.insertAdjacentHTML("beforeend", novos.map(cartaoDeProdutoHTML).join(""));
+    Array.from(grid.children).slice(jaNaTela).forEach(el => {
+      el.querySelectorAll(".product-thumb img").forEach(wireImage);
+    });
+    atualizarResumoVitrine(todos.length, Math.min(visiveis, todos.length));
+    // observeReveal e o GSAP filtram por :not(.is-visible), então os dois
+    // pegam só o lote recém-inserido.
     observeReveal(grid);
     document.dispatchEvent(new CustomEvent("vitrine:render"));
   }
@@ -602,10 +631,7 @@
     aplicarRecorte();
     buscaInput?.focus();
   });
-  vitrineMaisBtn?.addEventListener("click", () => {
-    visiveis += PAGINA;
-    renderProducts();
-  });
+  vitrineMaisBtn?.addEventListener("click", acrescentarProdutos);
 
   renderProducts();
 

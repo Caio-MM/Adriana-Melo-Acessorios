@@ -30,7 +30,7 @@
  */
 const nodemailer = require("nodemailer");
 const path = require("path");
-const { colorLabelForItem, formatCurrency, formatOrderDateTime, deliveryLineFor } = require("./orderFormatting");
+const { formatCurrency, formatOrderDateTime, deliveryLineFor } = require("./orderFormatting");
 
 // Logo embutida como anexo inline (Content-ID) em vez de <img src> apontando
 // pra URL remota: e-mail nenhum carrega imagem remota sozinho — todo cliente
@@ -38,7 +38,92 @@ const { colorLabelForItem, formatCurrency, formatOrderDateTime, deliveryLineFor 
 // imagens", e a logo é a primeira coisa que aparece no e-mail, então não dá
 // pra depender desse clique. CID sempre renderiza de cara, sem esse aviso.
 const LOGO_CID = "logo-adriana-melo";
-const LOGO_PATH = path.join(__dirname, "..", "img", "logo-adriana-melo-6e53bc.png");
+/* Versão com o fundo rosa achatado DENTRO da imagem (scripts/logo-email.js).
+   A logo do site é transparente com tinta marrom escuro; no tema escuro do
+   celular o aplicativo pinta o fundo de preto e sobram 2,28:1 de contraste —
+   foi a parte "quase ilegível" reclamada depois da primeira compra de teste.
+   Cliente de e-mail nunca inverte os pixels de uma imagem, então uma logo com
+   fundo próprio é a única correção que independe do aplicativo (o do Gmail,
+   por exemplo, ignora prefers-color-scheme). */
+const LOGO_PATH = path.join(__dirname, "..", "img", "logo-adriana-melo-email.png");
+
+/* =========================================================================
+   PALETA — clara e escura
+   -------------------------------------------------------------------------
+   As cores viviam soltas em 61 hex espalhados pelo arquivo, o que tornava
+   qualquer ajuste de tema uma caça manual. Agora ficam aqui, e cada trecho
+   colorido carrega uma classe-gancho (e-cartao, e-texto, e-apoio...) que a
+   folha de estilo do <head> usa para reescrever no tema escuro.
+
+   ⚠️ Estilo embutido vence folha de estilo, então TODA regra escura precisa
+   de !important — sem isso o `style=""` de cada <td> continua valendo.
+
+   Contrastes medidos da paleta escura (mínimo exigido: 4,5:1):
+     titulo  #FCEAF1 sobre #331A25 -> 13,82:1
+     texto   #F0DAE4 sobre #331A25 -> 12,05:1
+     apoio   #C9A6B7 sobre #331A25 ->  7,32:1
+     destaque#F4B4CC sobre #331A25 ->  9,31:1
+     botão   #3A1B27 sobre #F4B4CC ->  8,97:1
+   O botão troca de sentido no escuro (rosa claro com tinta escura) porque a
+   versão clara — branco sobre #DD6E9B — dá só 3,10:1 e já reprovava. */
+const CORES = {
+  fundo: "#FFFDFC",
+  cartao: "#FFFFFF",
+  faixa: "#FBDCE8",
+  caixaSuave: "#FFF5F9",
+  titulo: "#54293C",
+  texto: "#54293C",
+  apoio: "#8C6577",
+  destaque: "#C05480",
+  destaqueClaro: "#EA8FB4",
+  tenue: "#B79AA9",
+  botaoFundo: "#DD6E9B",
+  botaoTexto: "#FFFFFF",
+};
+
+const ESCURO = {
+  fundo: "#241019",
+  cartao: "#331A25",
+  faixa: "#331A25",
+  caixaSuave: "#3E1F2C",
+  titulo: "#FCEAF1",
+  texto: "#F0DAE4",
+  apoio: "#C9A6B7",
+  destaque: "#F4B4CC",
+  tenue: "#C9A6B7",
+  botaoFundo: "#F4B4CC",
+  botaoTexto: "#3A1B27",
+};
+
+/* As mesmas regras entram duas vezes: uma na media query (Apple Mail, iOS
+   Mail, Outlook para Mac, Thunderbird) e outra sob [data-ogsc], que é o
+   atributo que o Outlook.com pendura no HTML quando reescreve as cores. */
+function regrasEscuras(prefixo) {
+  return `
+    ${prefixo} .e-fundo{ background:${ESCURO.fundo} !important; }
+    ${prefixo} .e-cartao{ background:${ESCURO.cartao} !important; }
+    ${prefixo} .e-faixa{ background:${ESCURO.faixa} !important; }
+    ${prefixo} .e-caixa{ background:${ESCURO.caixaSuave} !important; }
+    ${prefixo} .e-titulo{ color:${ESCURO.titulo} !important; }
+    ${prefixo} .e-texto{ color:${ESCURO.texto} !important; }
+    ${prefixo} .e-texto strong{ color:${ESCURO.titulo} !important; }
+    ${prefixo} .e-apoio{ color:${ESCURO.apoio} !important; }
+    ${prefixo} .e-destaque{ color:${ESCURO.destaque} !important; }
+    ${prefixo} .e-tenue{ color:${ESCURO.tenue} !important; }
+    ${prefixo} .e-borda{ border-color:${ESCURO.apoio} !important; }
+    ${prefixo} .e-destaqueBorda{ border-color:${ESCURO.destaque} !important; }
+    ${prefixo} .e-botao{ background:${ESCURO.botaoFundo} !important; }
+    ${prefixo} .e-botao-texto{ color:${ESCURO.botaoTexto} !important; }
+    ${prefixo} a.e-destaque{ color:${ESCURO.destaque} !important; }`;
+}
+
+const ESTILO_DO_EMAIL = `
+  :root{ color-scheme: light dark; supported-color-schemes: light dark; }
+  @media (prefers-color-scheme: dark){
+  ${regrasEscuras("")}
+  }
+  ${regrasEscuras("[data-ogsc]")}
+`;
 
 function escapeHTML(str) {
   return String(str).replace(/[&<>"']/g, ch => ({
@@ -81,37 +166,42 @@ function emailShell({ titulo, preheader, eyebrow, tituloCartao, corpoHtml }) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
 <title>${escapeHTML(titulo)}</title>
+<style>${ESTILO_DO_EMAIL}</style>
 </head>
-<body style="margin:0; padding:0; background:#FFFDFC;">
+<body class="e-fundo" style="margin:0; padding:0; background:${CORES.fundo};">
   <!-- Pré-cabeçalho: texto que aparece ao lado do assunto na caixa de entrada, escondido no corpo do e-mail. -->
   <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
     ${escapeHTML(preheader)}
   </div>
 
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFDFC;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="e-fundo" style="background:${CORES.fundo};">
     <tr>
       <td align="center" style="padding:32px 16px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
 
-          <!-- Cabeçalho: logo sobre o rosa mais claro, mesmo tom do topo da home -->
+          <!-- Cabeçalho: logo sobre o rosa mais claro, mesmo tom do topo da home.
+               A imagem já traz o próprio fundo rosa, então continua legível mesmo
+               quando o aplicativo escurece esta faixa por conta própria. -->
           <tr>
-            <td align="center" style="background:#FBDCE8; border-radius:24px 24px 0 0; padding:28px 24px 22px;">
-              <img src="cid:${LOGO_CID}" alt="Adriana Melo Acessórios" width="150" style="display:block; border:0;">
+            <td align="center" class="e-faixa" style="background:${CORES.faixa}; border-radius:24px 24px 0 0; padding:28px 24px 22px;">
+              <img src="cid:${LOGO_CID}" alt="Adriana Melo Acessórios" width="192" style="display:block; border:0;">
             </td>
           </tr>
 
           <!-- Cartão principal -->
           <tr>
-            <td style="background:#FFFFFF; border-radius:0 0 24px 24px; padding:36px 32px 32px;">
+            <td class="e-cartao" style="background:${CORES.cartao}; border-radius:0 0 24px 24px; padding:36px 32px 32px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td align="center" style="font-family:${FONT_TITULO}; font-style:italic; color:#C05480; font-size:15px; padding-bottom:6px;">
+                  <td align="center" class="e-destaque" style="font-family:${FONT_TITULO}; font-style:italic; color:${CORES.destaque}; font-size:15px; padding-bottom:6px;">
                     ${escapeHTML(eyebrow)}
                   </td>
                 </tr>
                 <tr>
-                  <td align="center" style="font-family:${FONT_TITULO}; color:#54293C; font-size:26px; line-height:1.3; font-weight:bold; padding-bottom:14px;">
+                  <td align="center" class="e-titulo" style="font-family:${FONT_TITULO}; color:${CORES.titulo}; font-size:26px; line-height:1.3; font-weight:bold; padding-bottom:14px;">
                     ${tituloCartao}
                   </td>
                 </tr>
@@ -122,10 +212,10 @@ function emailShell({ titulo, preheader, eyebrow, tituloCartao, corpoHtml }) {
 
           <!-- Rodapé -->
           <tr>
-            <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:12px; line-height:1.7; padding:22px 24px 0;">
+            <td align="center" class="e-apoio" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:12px; line-height:1.7; padding:22px 24px 0;">
               Adriana Melo Acessórios — ateliê artesanal de laços, feitos à mão em Brasília/DF.<br>
               Dúvidas? Responda este e-mail ou fale pelo
-              <a href="https://wa.me/5561982749808" style="color:#C05480; text-decoration:none;">WhatsApp</a>.
+              <a href="https://wa.me/5561982749808" class="e-destaque" style="color:${CORES.destaque}; text-decoration:none;">WhatsApp</a>.
             </td>
           </tr>
 
@@ -145,8 +235,8 @@ function botaoEmail(href, rotulo){
       <td align="center" style="padding-bottom:8px;">
         <table role="presentation" cellpadding="0" cellspacing="0">
           <tr>
-            <td align="center" style="background:#DD6E9B; border-radius:999px;">
-              <a href="${escapeHTML(href)}" style="display:inline-block; font-family:${FONT_CORPO}; font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none; padding:13px 32px;">
+            <td align="center" class="e-botao" style="background:${CORES.botaoFundo}; border-radius:999px;">
+              <a href="${escapeHTML(href)}" class="e-botao-texto" style="display:inline-block; font-family:${FONT_CORPO}; font-size:15px; font-weight:600; color:${CORES.botaoTexto}; text-decoration:none; padding:13px 32px;">
                 ${escapeHTML(rotulo)}
               </a>
             </td>
@@ -191,11 +281,11 @@ function celulaMiniatura(photoUrl, nome){
     interior = "&#127872;";
   }
 
-  return `<td width="56" bgcolor="#FBDCE8" align="center" valign="middle" style="width:56px; height:56px; background:#FBDCE8; border-radius:10px; font-size:26px; line-height:56px; mso-line-height-rule:exactly; border-bottom:1px solid #FBDCE8;">${interior}</td>`;
+  return `<td width="56" bgcolor="${CORES.faixa}" align="center" valign="middle" class="e-caixa e-borda" style="width:56px; height:56px; background:${CORES.faixa}; border-radius:10px; font-size:26px; line-height:56px; mso-line-height-rule:exactly; border-bottom:1px solid ${CORES.faixa};">${interior}</td>`;
 }
 
 const CELULA_ESPACO =
-  '<td width="12" style="width:12px; font-size:0; line-height:0; border-bottom:1px solid #FBDCE8;">&nbsp;</td>';
+  `<td width="12" class="e-borda" style="width:12px; font-size:0; line-height:0; border-bottom:1px solid ${CORES.faixa};">&nbsp;</td>`;
 
 /* Do 9º item em diante entra o laço, sem foto. O corte é aplicado AQUI, na
    marcação — nunca na hora de montar os anexos: cortar lá deixaria cid sem
@@ -204,7 +294,7 @@ const MAX_MINIATURAS = 8;
 
 // Linha "rótulo: valor" — usada nos e-mails internos (pedido pago, contato).
 function linhaDado(rotulo, valor){
-  return `<strong style="color:#54293C;">${escapeHTML(rotulo)}:</strong> ${escapeHTML(valor)}<br>`;
+  return `<strong class="e-titulo" style="color:${CORES.titulo};">${escapeHTML(rotulo)}:</strong> ${escapeHTML(valor)}<br>`;
 }
 
 /**
@@ -213,12 +303,12 @@ function linhaDado(rotulo, valor){
  * painel administrativo). Função pura — sem chamada de rede — fácil de
  * ajustar/testar isoladamente.
  */
-function formatOrderEmail({ externalReference, items, address, total, paidAt, adminUrl, allColors }) {
+function formatOrderEmail({ externalReference, items, address, total, paidAt, adminUrl }) {
   const itemLinesText = items
-    .map(item => `${item.qty}x ${item.name} — cor: ${colorLabelForItem(item, allColors)}`)
+    .map(item => `${item.qty}x ${item.name}`)
     .join("\n");
   const itemLinesHtml = items
-    .map(item => `<li>${item.qty}x ${escapeHTML(item.name)} — cor: ${escapeHTML(colorLabelForItem(item, allColors))}</li>`)
+    .map(item => `<li>${item.qty}x ${escapeHTML(item.name)}</li>`)
     .join("");
 
   const subject = `🎀 Novo pedido pago — ${externalReference}`;
@@ -247,8 +337,8 @@ function formatOrderEmail({ externalReference, items, address, total, paidAt, ad
       <tr>
         ${celulaMiniatura(i < MAX_MINIATURAS ? item.photoUrl : null, item.name)}
         ${CELULA_ESPACO}
-        <td valign="middle" style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; padding:8px 0; border-bottom:1px solid #FBDCE8;">
-          ${escapeHTML(item.qty)}x ${escapeHTML(item.name)} — cor: ${escapeHTML(colorLabelForItem(item, allColors))}
+        <td class="e-texto e-borda" valign="middle" style="font-family:${FONT_CORPO}; color:${CORES.texto}; font-size:14px; padding:8px 0; border-bottom:1px solid ${CORES.faixa};">
+          ${escapeHTML(item.qty)}x ${escapeHTML(item.name)}
         </td>
       </tr>
     `).join("");
@@ -260,7 +350,7 @@ function formatOrderEmail({ externalReference, items, address, total, paidAt, ad
     tituloCartao: "Novo pedido! 🎀",
     corpoHtml: `
       <tr>
-        <td align="left" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6; padding-bottom:18px;">
+        <td class="e-apoio" align="left" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:13px; line-height:1.6; padding-bottom:18px;">
           ${linhaDado("Pedido", externalReference)}
           ${linhaDado("Data/hora", formatOrderDateTime(paidAt))}
         </td>
@@ -273,12 +363,12 @@ function formatOrderEmail({ externalReference, items, address, total, paidAt, ad
         </td>
       </tr>
       <tr>
-        <td align="left" style="font-family:${FONT_CORPO}; font-size:16px; font-weight:bold; color:#C05480; padding-bottom:20px;">
+        <td class="e-destaque" align="left" style="font-family:${FONT_CORPO}; font-size:16px; font-weight:bold; color:${CORES.destaque}; padding-bottom:20px;">
           Total: ${escapeHTML(formatCurrency(total))}
         </td>
       </tr>
       <tr>
-        <td align="left" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6; background:#FFF5F9; border-radius:14px; padding:14px 16px; margin-bottom:20px;">
+        <td class="e-apoio e-caixa" align="left" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:13px; line-height:1.6; background:${CORES.caixaSuave}; border-radius:14px; padding:14px 16px; margin-bottom:20px;">
           ${linhaDado("Cliente", address?.nome || "-")}
           ${linhaDado("Telefone", address?.telefone || "-")}
           ${linhaDado("CPF", address?.cpf || "-")}
@@ -384,15 +474,15 @@ async function sendPasswordResetEmail({ to, name, resetUrl, expiresInMinutes }) 
     tituloCartao: "Vamos criar sua nova senha",
     corpoHtml: `
       <tr>
-        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:15px; line-height:1.6; padding-bottom:26px;">
+        <td class="e-apoio" align="center" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:15px; line-height:1.6; padding-bottom:26px;">
           Olá, ${escapeHTML(firstName)}! Recebemos um pedido para redefinir a senha
           da sua conta. Clique no botão abaixo para escolher uma nova — o link
-          vale por <strong style="color:#54293C;">${escapeHTML(String(expiresInMinutes))} minutos</strong>.
+          vale por <strong class="e-texto" style="color:${CORES.texto};">${escapeHTML(String(expiresInMinutes))} minutos</strong>.
         </td>
       </tr>
       ${botaoEmail(resetUrl, "Criar nova senha")}
       <tr>
-        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6; padding-top:22px;">
+        <td class="e-apoio" align="center" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:13px; line-height:1.6; padding-top:22px;">
           Se não foi você que pediu, pode ignorar esta mensagem — sua senha atual continua valendo.
         </td>
       </tr>
@@ -432,17 +522,17 @@ async function sendTwoFactorEmailCode({ to, name, code, expiresInMinutes }) {
     tituloCartao: "Aqui está seu código 🔐",
     corpoHtml: `
       <tr>
-        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:15px; line-height:1.6; padding-bottom:22px;">
+        <td class="e-apoio" align="center" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:15px; line-height:1.6; padding-bottom:22px;">
           Use este código para entrar no painel administrativo — vale por
-          <strong style="color:#54293C;">${escapeHTML(String(expiresInMinutes))} minutos</strong>.
+          <strong class="e-texto" style="color:${CORES.texto};">${escapeHTML(String(expiresInMinutes))} minutos</strong>.
         </td>
       </tr>
       <tr>
         <td align="center" style="padding-bottom:22px;">
           <table role="presentation" cellpadding="0" cellspacing="0">
             <tr>
-              <td align="center" style="background:#FFF5F9; border:2px dashed #EA8FB4; border-radius:16px; padding:16px 36px;">
-                <span style="font-family:${FONT_CORPO}; font-size:28px; font-weight:bold; letter-spacing:6px; color:#C05480;">
+              <td class="e-caixa e-destaqueBorda" align="center" style="background:${CORES.caixaSuave}; border:2px dashed ${CORES.destaqueClaro}; border-radius:16px; padding:16px 36px;">
+                <span class="e-destaque" style="font-family:${FONT_CORPO}; font-size:28px; font-weight:bold; letter-spacing:6px; color:${CORES.destaque};">
                   ${escapeHTML(code)}
                 </span>
               </td>
@@ -451,7 +541,7 @@ async function sendTwoFactorEmailCode({ to, name, code, expiresInMinutes }) {
         </td>
       </tr>
       <tr>
-        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6;">
+        <td class="e-apoio" align="center" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:13px; line-height:1.6;">
           Se não foi você que tentou entrar, troque sua senha assim que possível.
         </td>
       </tr>
@@ -485,10 +575,10 @@ function linhasDeItens(items){
       <tr>
         ${celulaMiniatura(indice < MAX_MINIATURAS ? i.photoUrl : null, i.name)}
         ${CELULA_ESPACO}
-        <td valign="middle" style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; padding:8px 0; border-bottom:1px solid #FBDCE8;">
+        <td class="e-texto e-borda" valign="middle" style="font-family:${FONT_CORPO}; color:${CORES.texto}; font-size:14px; padding:8px 0; border-bottom:1px solid ${CORES.faixa};">
           ${escapeHTML(String(i.qty))}x ${escapeHTML(i.name)}
         </td>
-        <td align="right" valign="middle" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:14px; padding:8px 0; border-bottom:1px solid #FBDCE8; white-space:nowrap;">
+        <td class="e-apoio e-borda" align="right" valign="middle" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:14px; padding:8px 0; border-bottom:1px solid ${CORES.faixa}; white-space:nowrap;">
           ${escapeHTML(formatCurrency((i.price || 0) * i.qty))}
         </td>
       </tr>
@@ -497,13 +587,14 @@ function linhasDeItens(items){
 }
 
 function linhaResumo(rotulo, valor, forte){
-  const cor = forte ? "#C05480" : "#8C6577";
+  const cor = forte ? CORES.destaque : CORES.apoio;
+  const gancho = forte ? "e-destaque" : "e-apoio";
   const peso = forte ? "bold" : "normal";
   const tamanho = forte ? "16px" : "14px";
   return `
     <tr>
-      <td style="font-family:${FONT_CORPO}; color:${cor}; font-size:${tamanho}; font-weight:${peso}; padding:4px 0;">${escapeHTML(rotulo)}</td>
-      <td align="right" style="font-family:${FONT_CORPO}; color:${cor}; font-size:${tamanho}; font-weight:${peso}; padding:4px 0; white-space:nowrap;">${escapeHTML(valor)}</td>
+      <td class="${gancho}" style="font-family:${FONT_CORPO}; color:${cor}; font-size:${tamanho}; font-weight:${peso}; padding:4px 0;">${escapeHTML(rotulo)}</td>
+      <td align="right" class="${gancho}" style="font-family:${FONT_CORPO}; color:${cor}; font-size:${tamanho}; font-weight:${peso}; padding:4px 0; white-space:nowrap;">${escapeHTML(valor)}</td>
     </tr>
   `;
 }
@@ -553,8 +644,8 @@ function formatOrderConfirmationEmail({
     tituloCartao: nome ? `Obrigada, ${nome}! 🎀` : "Pedido confirmado 🎀",
     corpoHtml: `
       <tr>
-        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:15px; line-height:1.6; padding-bottom:24px;">
-          Recebemos o seu pagamento. Seu pedido <strong style="color:#54293C;">${escapeHTML(externalReference)}</strong> já entrou na fila de produção.
+        <td class="e-apoio" align="center" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:15px; line-height:1.6; padding-bottom:24px;">
+          Recebemos o seu pagamento. Seu pedido <strong class="e-texto" style="color:${CORES.texto};">${escapeHTML(externalReference)}</strong> já entrou na fila de produção.
         </td>
       </tr>
       <tr>
@@ -576,13 +667,13 @@ function formatOrderConfirmationEmail({
         </td>
       </tr>
       <tr>
-        <td align="left" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6; background:#FFF5F9; border-radius:14px; padding:14px 16px;">
+        <td class="e-apoio e-caixa" align="left" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:13px; line-height:1.6; background:${CORES.caixaSuave}; border-radius:14px; padding:14px 16px;">
           ${linhaDado("Entrega", entrega || "-")}
         </td>
       </tr>
       <tr><td style="height:22px;"></td></tr>
       <tr>
-        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:14px; line-height:1.6; padding-bottom:22px;">
+        <td class="e-apoio" align="center" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:14px; line-height:1.6; padding-bottom:22px;">
           Cada laço é feito à mão, um de cada vez. Assim que despacharmos, você recebe outro e-mail com o código de rastreio.
         </td>
       </tr>
@@ -619,17 +710,17 @@ function formatTrackingEmail({ externalReference, trackingCode, address, trackUr
     tituloCartao: "Seu laço está a caminho 💌",
     corpoHtml: `
       <tr>
-        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:15px; line-height:1.6; padding-bottom:26px;">
-          ${nome ? `Oi, ${escapeHTML(nome)}! ` : ""}Seu pedido <strong style="color:#54293C;">${escapeHTML(externalReference)}</strong> saiu do ateliê e já está a caminho.
+        <td class="e-apoio" align="center" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:15px; line-height:1.6; padding-bottom:26px;">
+          ${nome ? `Oi, ${escapeHTML(nome)}! ` : ""}Seu pedido <strong class="e-texto" style="color:${CORES.texto};">${escapeHTML(externalReference)}</strong> saiu do ateliê e já está a caminho.
         </td>
       </tr>
       <tr>
         <td align="center" style="padding-bottom:26px;">
           <table role="presentation" cellpadding="0" cellspacing="0">
             <tr>
-              <td align="center" style="background:#FFF5F9; border:2px dashed #EA8FB4; border-radius:16px; padding:16px 30px;">
-                <div style="font-family:${FONT_CORPO}; font-size:12px; color:#8C6577; padding-bottom:6px;">código de rastreio</div>
-                <span style="font-family:${FONT_CORPO}; font-size:20px; font-weight:bold; letter-spacing:2px; color:#C05480;">
+              <td class="e-caixa e-destaqueBorda" align="center" style="background:${CORES.caixaSuave}; border:2px dashed ${CORES.destaqueClaro}; border-radius:16px; padding:16px 30px;">
+                <div class="e-apoio" style="font-family:${FONT_CORPO}; font-size:12px; color:${CORES.apoio}; padding-bottom:6px;">código de rastreio</div>
+                <span class="e-destaque" style="font-family:${FONT_CORPO}; font-size:20px; font-weight:bold; letter-spacing:2px; color:${CORES.destaque};">
                   ${escapeHTML(trackingCode)}
                 </span>
               </td>
@@ -669,8 +760,8 @@ async function sendWelcomeCouponEmail({ to, couponCode, percentOff, shopUrl, uns
     tituloCartao: "Seu laço de boas-vindas chegou 🎀",
     corpoHtml: `
       <tr>
-        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:15px; line-height:1.6; padding-bottom:26px;">
-          Aqui está o seu cupom de <strong style="color:#54293C;">${escapeHTML(String(percentOff))}% de desconto</strong> na primeira compra — vale para qualquer laço da coleção.
+        <td class="e-apoio" align="center" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:15px; line-height:1.6; padding-bottom:26px;">
+          Aqui está o seu cupom de <strong class="e-texto" style="color:${CORES.texto};">${escapeHTML(String(percentOff))}% de desconto</strong> na primeira compra — vale para qualquer laço da coleção.
         </td>
       </tr>
 
@@ -679,8 +770,8 @@ async function sendWelcomeCouponEmail({ to, couponCode, percentOff, shopUrl, uns
         <td align="center" style="padding-bottom:26px;">
           <table role="presentation" cellpadding="0" cellspacing="0">
             <tr>
-              <td align="center" style="background:#FFF5F9; border:2px dashed #EA8FB4; border-radius:16px; padding:16px 36px;">
-                <span style="font-family:${FONT_CORPO}; font-size:24px; font-weight:bold; letter-spacing:3px; color:#C05480;">
+              <td class="e-caixa e-destaqueBorda" align="center" style="background:${CORES.caixaSuave}; border:2px dashed ${CORES.destaqueClaro}; border-radius:16px; padding:16px 36px;">
+                <span class="e-destaque" style="font-family:${FONT_CORPO}; font-size:24px; font-weight:bold; letter-spacing:3px; color:${CORES.destaque};">
                   ${escapeHTML(couponCode)}
                 </span>
               </td>
@@ -690,7 +781,7 @@ async function sendWelcomeCouponEmail({ to, couponCode, percentOff, shopUrl, uns
       </tr>
 
       <tr>
-        <td align="center" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:14px; line-height:1.6; padding-bottom:26px;">
+        <td class="e-apoio" align="center" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:14px; line-height:1.6; padding-bottom:26px;">
           É só colar esse código no campo de cupom, no carrinho, antes de finalizar o pedido.
         </td>
       </tr>
@@ -698,8 +789,8 @@ async function sendWelcomeCouponEmail({ to, couponCode, percentOff, shopUrl, uns
       ${botaoEmail(shopUrl, "Ver a coleção")}
       ${unsubscribeUrl ? `
       <tr>
-        <td align="center" style="font-family:${FONT_CORPO}; color:#B79AA9; font-size:11px; line-height:1.6; padding-top:18px;">
-          <a href="${escapeHTML(unsubscribeUrl)}" style="color:#B79AA9; text-decoration:underline;">Não quero mais receber estes e-mails</a>
+        <td class="e-tenue" align="center" style="font-family:${FONT_CORPO}; color:${CORES.tenue}; font-size:11px; line-height:1.6; padding-top:18px;">
+          <a class="e-tenue" href="${escapeHTML(unsubscribeUrl)}" style="color:${CORES.tenue}; text-decoration:underline;">Não quero mais receber estes e-mails</a>
         </td>
       </tr>
       ` : ""}
@@ -754,14 +845,14 @@ async function notifyOwnerOfContactMessage({ nome, telefone, ocasiao, mensagem }
     tituloCartao: "Nova mensagem pelo site 🎀",
     corpoHtml: `
       <tr>
-        <td align="left" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6; padding-bottom:18px;">
+        <td class="e-apoio" align="left" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:13px; line-height:1.6; padding-bottom:18px;">
           ${linhaDado("Nome", nome)}
           ${linhaDado("WhatsApp", telefone)}
           ${linhaDado("Ocasião", ocasiao || "-")}
         </td>
       </tr>
       <tr>
-        <td align="left" style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; line-height:1.6; background:#FFF5F9; border-radius:14px; padding:16px 18px; white-space:pre-wrap;">
+        <td class="e-texto e-caixa" align="left" style="font-family:${FONT_CORPO}; color:${CORES.texto}; font-size:14px; line-height:1.6; background:${CORES.caixaSuave}; border-radius:14px; padding:16px 18px; white-space:pre-wrap;">
           ${escapeHTML(mensagem)}
         </td>
       </tr>
@@ -802,7 +893,7 @@ async function sendAdminLoginAlert({ email: contaAlvo, ip, failures }) {
     tituloCartao: "Tentativas de login bloqueadas",
     corpoHtml: `
       <tr>
-        <td align="left" style="font-family:${FONT_CORPO}; color:#8C6577; font-size:13px; line-height:1.6; padding-bottom:18px;">
+        <td class="e-apoio" align="left" style="font-family:${FONT_CORPO}; color:${CORES.apoio}; font-size:13px; line-height:1.6; padding-bottom:18px;">
           ${linhaDado("Conta", contaAlvo)}
           ${linhaDado("Tentativas seguidas", String(failures))}
           ${linhaDado("Origem (IP)", ip)}
@@ -810,7 +901,7 @@ async function sendAdminLoginAlert({ email: contaAlvo, ip, failures }) {
         </td>
       </tr>
       <tr>
-        <td align="left" style="font-family:${FONT_CORPO}; color:#54293C; font-size:14px; line-height:1.6; background:#FFF5F9; border-radius:14px; padding:16px 18px;">
+        <td class="e-texto e-caixa" align="left" style="font-family:${FONT_CORPO}; color:${CORES.texto}; font-size:14px; line-height:1.6; background:${CORES.caixaSuave}; border-radius:14px; padding:16px 18px;">
           O acesso desse endereço já foi <strong>bloqueado por 30 minutos</strong>.<br><br>
           Se foi você que errou a senha, é só esperar o prazo.<br>
           Se <strong>não</strong> foi você, troque sua senha assim que conseguir entrar.

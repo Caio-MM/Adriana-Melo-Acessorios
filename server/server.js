@@ -48,15 +48,10 @@ const whatsapp = require("./lib/whatsapp");
 const instagram = require("./lib/instagram");
 const email = require("./lib/email");
 const emailPhotos = require("./lib/emailPhotos.js");
-const { colorLabelForItem } = require("./lib/orderFormatting");
 // Mesmo arquivo que a vitrine e o carrinho carregam no navegador (js/pricing.js,
 // em formato UMD) — é o que garante que o "5% no Pix" e o "3x sem juros"
 // mostrados na tela do produto sejam exatamente os valores cobrados aqui.
 const pricing = require("./js/pricing.js");
-// Mesmo esquema: js/colors.js em UMD, única fonte da paleta de cores de
-// laço — usada tanto para validar a cor escolhida no checkout quanto para
-// o front (vitrine e Quick View) saberem quais cores existem.
-const colors = require("./js/colors.js");
 
 const app = express();
 const PORT = process.env.PORT || 3333;
@@ -187,15 +182,6 @@ function getAllCategories(){
 }
 function isValidCategorySlug(slug){
   return getAllCategories().some(c => c.slug === slug);
-}
-
-// A escolha de cor saiu do site, mas PEDIDOS ANTIGOS têm a cor gravada em
-// items_json — esta paleta (fixa de js/colors.js + as criadas no painel,
-// em custom_colors) continua existindo só para traduzir aquele hex num
-// nome legível no painel, no e-mail e no WhatsApp (colorLabelForItem, em
-// lib/orderFormatting.js). Nada novo grava cor.
-function getAllColors(){
-  return [...colors.RIBBON_COLORS, ...db.listCustomColors().map(c => ({ hex: c.hex, label: c.label }))];
 }
 
 /* =========================================================================
@@ -1621,9 +1607,9 @@ function orderRowFrom(draft, orderRef, user){
     // mesmo se o preço do produto mudar depois. É o preço "de tabela"
     // (sem o desconto do cupom, que já aparece como uma linha separada
     // de "Desconto" no resumo), igual a um item de nota fiscal.
-    // Sem `color`: a escolha de cor saiu do site. Pedidos ANTIGOS continuam
-    // com a cor gravada e seguem exibindo o rótulo normalmente (ver
-    // colorLabelForItem em lib/orderFormatting.js) — só os novos não têm.
+    // Sem `color`: a escolha de cor saiu do site, e nenhuma tela mais exibe
+    // essa informação (nem para pedidos antigos, que ainda têm o campo
+    // gravado em items_json, mas ele simplesmente não é mais lido).
     items: draft.validatedItems.map(({ id, qty, product }) => ({
       id, qty, price: product.price,
     })),
@@ -1932,11 +1918,9 @@ app.get("/api/orders/:reference", statusPollLimiter, auth.requireAuth, async (re
       return res.status(404).json({ error: "Pedido não encontrado." });
     }
     const overridesMap = getProductOverridesMap();
-    const allColors = getAllColors();
     const items = JSON.parse(order.items_json).map(item => ({
       id: item.id, qty: item.qty,
       name: effectiveProduct(item.id, overridesMap)?.name || `Produto #${item.id}`,
-      color: colorLabelForItem(item, allColors),
     }));
     const shipping = JSON.parse(order.shipping_json);
     const trackingCode = order.tracking_code || "";
@@ -2319,17 +2303,14 @@ async function runApprovedOrderSideEffects(orderRow, info){
   const notifyOverridesMap = getProductOverridesMap();
   const notificationOrder = {
     externalReference: info.external_reference,
-    items: order.items.map(({ id, qty, color, secondColor }) => ({
-      id, qty, color: color || null, secondColor: secondColor || null,
+    items: order.items.map(({ id, qty }) => ({
+      id, qty,
       name: effectiveProduct(id, notifyOverridesMap)?.name || `Produto #${id}`,
       photoUrl: effectiveProduct(id, notifyOverridesMap)?.photoUrl || null,
     })),
     address: order.address,
     total: orderRow.total,
     paidAt: info.date_approved || info.date_created || Date.now(),
-    // Paleta atual (fixa + criada pelo painel), para colorLabelForItem
-    // resolver o nome certo de uma cor personalizada no aviso.
-    allColors: getAllColors(),
   };
 
   // Os dois avisos abaixo são best-effort e independentes um do outro:
@@ -2984,7 +2965,6 @@ app.get("/api/orders", auth.requireAuth, (req, res) => {
   try {
     const rows = db.listOrdersByUser(req.user.id);
     const overridesMap = getProductOverridesMap();
-    const allColors = getAllColors();
     const orders = rows.map(row => {
       const items = JSON.parse(row.items_json).map(item => ({
         id: item.id, qty: item.qty,
@@ -2992,9 +2972,6 @@ app.get("/api/orders", auth.requireAuth, (req, res) => {
         // Preço gravado no momento da compra (fallback ao catálogo atual só
         // para pedidos antigos, de antes dessa informação ser salva).
         unitPrice: item.price ?? effectiveProduct(item.id, overridesMap)?.price ?? null,
-        // Cor real escolhida; pedidos antigos (de antes desta escolha
-        // existir) caem no rótulo fixo por produto (colorLabelForItem).
-        color: colorLabelForItem(item, allColors),
       }));
       const shipping = JSON.parse(row.shipping_json);
       return {
@@ -3140,12 +3117,11 @@ app.get("/api/admin/orders", auth.requireAdmin, auth.requireAdminTwoFactor, (req
   try {
     const rows = db.listAllOrders();
     const overridesMap = getProductOverridesMap();
-    const allColors = getAllColors();
     const orders = rows.map(row => {
       const items = JSON.parse(row.items_json).map(item => ({
         id: item.id, qty: item.qty,
         name: effectiveProduct(item.id, overridesMap)?.name || `Produto #${item.id}`,
-        color: colorLabelForItem(item, allColors),
+        photoUrl: effectiveProduct(item.id, overridesMap)?.photoUrl || null,
         unitPrice: item.price ?? effectiveProduct(item.id, overridesMap)?.price ?? null,
       }));
       const address = JSON.parse(row.address_json);

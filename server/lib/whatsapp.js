@@ -48,16 +48,16 @@
  * =============================================================================
  */
 
-const { colorLabelForItem, formatCurrency, formatOrderDateTime, deliveryLineFor } = require("./orderFormatting");
+const { formatCurrency, formatOrderDateTime, deliveryLineFor } = require("./orderFormatting");
 
 /**
  * Monta o texto da notificação a partir de um pedido já resolvido (itens
  * com nome/quantidade, endereço, total, data do pagamento). Função pura —
  * sem chamada de rede — para ser fácil de testar/ajustar isoladamente.
  */
-function formatOrderMessage({ externalReference, items, address, total, paidAt, allColors }) {
+function formatOrderMessage({ externalReference, items, address, total, paidAt }) {
   const itemLines = items
-    .map(item => `• ${item.qty}x ${item.name} — cor: ${colorLabelForItem(item, allColors)}`)
+    .map(item => `• ${item.qty}x ${item.name}`)
     .join("\n");
 
   const deliveryLine = deliveryLineFor(address);

@@ -22,6 +22,36 @@
     return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
   }
 
+  /* navigator.clipboard só existe em contexto seguro: em produção (HTTPS) e em
+     localhost funciona, mas abrir o painel pelo IP da rede local para conferir
+     no celular cai fora dessa regra — daí o modo antigo como reserva, para o
+     botão nunca falhar calado. */
+  function copiarPeloCampo(texto){
+    const campo = document.createElement("textarea");
+    campo.value = texto;
+    campo.setAttribute("readonly", "");
+    campo.style.cssText = "position:fixed; top:0; left:-9999px; opacity:0";
+    document.body.appendChild(campo);
+    try{
+      campo.select();
+      return document.execCommand("copy");
+    }catch{
+      return false;
+    }finally{
+      campo.remove();
+    }
+  }
+
+  async function copiarTexto(texto){
+    try{
+      await navigator.clipboard.writeText(texto);
+      return true;
+    }catch(err){
+      console.warn("Área de transferência indisponível, tentando o modo antigo:", err);
+      return copiarPeloCampo(texto);
+    }
+  }
+
   const formatMoney = window.PLCPricing.formatMoney;
   function formatDate(ts){
     return new Date(ts).toLocaleString("pt-BR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
@@ -92,29 +122,35 @@
   // Só mexe no <select> se a própria pessoa não tiver escolhido uma
   // categoria manualmente antes (selectEl.dataset.categoriaManual) — ver o
   // listener de "change" logo abaixo, que marca essa flag.
+  /* Devolve a categoria com esse rótulo, criando no servidor se ainda não
+     existir. Compartilhada pela detecção enquanto se digita e pelo botão
+     "Organizar categorias", que faz o mesmo em lote. Devolve null se a rede
+     falhar — quem chama decide se para ou segue sem categoria. */
+  async function garantirCategoria(rotulo){
+    const existente = currentCategories.find(c => c.label.toLowerCase() === rotulo.toLowerCase());
+    if(existente) return existente;
+    try{
+      const res = await fetchWithTimeout("/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: rotulo }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) return null;
+      currentCategories = [...currentCategories, data];
+      return data;
+    }catch{
+      return null;
+    }
+  }
+
   async function autoDetectarCategoria(nome, selectEl){
     if(selectEl.dataset.categoriaManual === "true") return;
     const rotulo = detectarCategoriaPorNome(nome);
     if(!rotulo) return;
-    let categoria = currentCategories.find(c => c.label.toLowerCase() === rotulo.toLowerCase());
-    if(!categoria){
-      try{
-        const res = await fetchWithTimeout("/api/admin/categories", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ label: rotulo }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if(res.ok){
-          categoria = data;
-          currentCategories = [...currentCategories, data];
-        }
-      }catch{
-        // Falha de rede: não trava o formulário, só deixa de autodetectar
-        // agora — a lojista sempre pode escolher a categoria à mão.
-        return;
-      }
-    }
+    // Falha de rede não trava o formulário: só deixa de autodetectar agora —
+    // a lojista sempre pode escolher a categoria à mão.
+    const categoria = await garantirCategoria(rotulo);
     if(categoria && selectEl.dataset.categoriaManual !== "true"){
       renderCategoryOptions(selectEl, categoria.slug);
     }
@@ -236,9 +272,11 @@
       list.appendChild(li);
     });
     document.getElementById("tfaCopyCodesBtn").onclick = async () => {
-      await navigator.clipboard.writeText(codes.join("\n"));
+      const copiou = await copiarTexto(codes.join("\n"));
       const btn = document.getElementById("tfaCopyCodesBtn");
-      btn.innerHTML = '<i class="bi bi-check2"></i> Copiado!';
+      btn.innerHTML = copiou
+        ? '<i class="bi bi-check2"></i> Copiado!'
+        : '<i class="bi bi-clipboard"></i> Copie manualmente';
       setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i> Copiar códigos'; }, 2000);
     };
     showOnly(stateRecovery);
@@ -593,6 +631,68 @@
     `;
     }).join("");
   }
+
+  /* O detector por título só rodava enquanto se digita o nome de um produto
+     novo — quem já estava no catálogo nunca foi reclassificado. Este botão
+     passa o mesmo detector por todos os produtos já cadastrados de uma vez.
+     Produto cujo título não casa com nenhum dos tipos conhecidos nunca é
+     mexido, e nada é aplicado antes de ela ver a lista e confirmar. */
+  const organizarCategoriasBtn = document.getElementById("organizarCategoriasBtn");
+  const productsOrderMsgEl = document.getElementById("productsOrderMsg");
+
+  function avisoDeProdutos(texto, ehErro){
+    if(!productsOrderMsgEl) return;
+    productsOrderMsgEl.textContent = texto;
+    productsOrderMsgEl.className = "small mb-2 account-msg" + (ehErro ? " text-danger" : "");
+  }
+
+  organizarCategoriasBtn?.addEventListener("click", async () => {
+    const mudancas = [];
+    for(const p of productsCache){
+      const rotulo = detectarCategoriaPorNome(p.name);
+      if(!rotulo) continue;
+      const atual = CATEGORY_LABELS[p.category] || p.category || "";
+      if(atual.toLowerCase() === rotulo.toLowerCase()) continue;
+      mudancas.push({ produto: p, de: atual || "sem categoria", para: rotulo });
+    }
+
+    if(!mudancas.length){
+      avisoDeProdutos("Nada a mudar: todos os produtos reconhecidos já estão na categoria certa.");
+      return;
+    }
+
+    const exemplos = mudancas.slice(0, 8).map(m => `• ${m.produto.name}: ${m.de} → ${m.para}`).join("\n");
+    const resto = mudancas.length > 8 ? `\n…e mais ${mudancas.length - 8}.` : "";
+    const plural = mudancas.length === 1 ? "produto vai mudar" : "produtos vão mudar";
+    if(!confirm(`${mudancas.length} ${plural} de categoria:\n\n${exemplos}${resto}\n\nAplicar?`)) return;
+
+    organizarCategoriasBtn.disabled = true;
+    let feitos = 0;
+    try{
+      for(const { produto, para } of mudancas){
+        avisoDeProdutos(`Organizando... ${feitos + 1} de ${mudancas.length}`);
+        const categoria = await garantirCategoria(para);
+        if(!categoria) throw new Error(`Não foi possível criar a categoria "${para}".`);
+        const res = await fetchWithTimeout(`/api/admin/products/${produto.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category: categoria.slug }),
+        });
+        if(!res.ok){
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || `Falha ao salvar "${produto.name}".`);
+        }
+        feitos++;
+      }
+      avisoDeProdutos(`Pronto: ${feitos} ${feitos === 1 ? "produto organizado" : "produtos organizados"}.`);
+      await loadDashboard();
+    }catch(err){
+      avisoDeProdutos(`${err.message} ${feitos} de ${mudancas.length} já foram alterados.`, true);
+      await loadDashboard();
+    }finally{
+      organizarCategoriasBtn.disabled = false;
+    }
+  });
 
   const editModalEl = document.getElementById("editProductModal");
   const editModal = new bootstrap.Modal(editModalEl);
@@ -1621,11 +1721,52 @@
   });
 
   /* ================================ PEDIDOS ================================ */
-  function addressLine(address){
-    const street = [address?.rua, address?.numero].filter(Boolean).join(", ");
-    const rest = [address?.bairro, address?.cidade, address?.uf].filter(Boolean).join(" — ");
-    const cep = address?.cep ? `CEP ${address.cep}` : "";
-    return [street, rest, cep].filter(Boolean).join(" · ") || "—";
+
+  /* CPF e CEP são gravados só com dígitos. O botão de copiar entrega EXATAMENTE
+     o texto que está na tela, então a máscara é aplicada aqui e vai junto — o
+     site dos Correios aceita os dois formatos, e copiar algo diferente do que
+     se vê é o tipo de surpresa que faz a pessoa conferir dígito por dígito. */
+  function mascararCpf(valor){
+    const d = String(valor || "").replace(/\D/g, "");
+    return d.length === 11 ? `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9)}` : (valor || "");
+  }
+  function mascararCep(valor){
+    const d = String(valor || "").replace(/\D/g, "");
+    return d.length === 8 ? `${d.slice(0,5)}-${d.slice(5)}` : (valor || "");
+  }
+
+  /* Um campo por linha, na ordem do formulário dos Correios, cada um com o seu
+     botão — é o que ela faz na prática: copia, cola, volta, copia o próximo.
+     `complemento` só aparece quando existe (a maioria dos pedidos não tem). */
+  function camposDoCliente(order){
+    const a = order.address || {};
+    const c = order.customer || {};
+    return [
+      ["Nome", c.nome || a.nome],
+      ["CPF", mascararCpf(c.cpf || a.cpf)],
+      ["Telefone", c.telefone || a.telefone],
+      ["CEP", mascararCep(a.cep)],
+      ["Rua", a.rua],
+      ["Número", a.numero],
+      ["Complemento", a.complemento],
+      ["Bairro", a.bairro],
+      ["Cidade", a.cidade],
+      ["UF", a.uf],
+      ["E-mail da conta", c.email],
+    ].filter(([, valor]) => valor != null && String(valor).trim() !== "");
+  }
+
+  function linhaCopiavel(rotulo, valor){
+    const texto = String(valor);
+    return `
+      <div class="order-field">
+        <span class="order-field-label">${escapeHTML(rotulo)}</span>
+        <span class="order-field-value">${escapeHTML(texto)}</span>
+        <button type="button" class="copy-field-btn" data-copiar="${escapeHTML(texto)}"
+                aria-label="Copiar ${escapeHTML(rotulo.toLowerCase())}" title="Copiar ${escapeHTML(rotulo.toLowerCase())}">
+          <i class="bi bi-clipboard"></i>
+        </button>
+      </div>`;
   }
 
   function orderCardHTML(order){
@@ -1636,9 +1777,14 @@
     const contactUrl = isPaid ? whatsappContactUrl(order) : null;
 
     const itemsHtml = order.items.map(item => `
-      <li class="d-flex justify-content-between gap-3">
-        <span>${item.qty}x ${escapeHTML(item.name)} — cor: ${escapeHTML(item.color)}</span>
-        <span>${item.unitPrice != null ? formatMoney(item.unitPrice * item.qty) : "—"}</span>
+      <li class="d-flex align-items-center justify-content-between gap-3">
+        <span class="d-flex align-items-center gap-2">
+          ${item.photoUrl
+            ? `<img class="admin-product-thumb" src="${escapeHTML(item.photoUrl)}" alt="${escapeHTML(item.name)}" width="44" height="44" loading="lazy">`
+            : BOW_PLACEHOLDER}
+          <span>${item.qty}x ${escapeHTML(item.name)}</span>
+        </span>
+        <span class="flex-shrink-0">${item.unitPrice != null ? formatMoney(item.unitPrice * item.qty) : "—"}</span>
       </li>
     `).join("");
 
@@ -1655,12 +1801,9 @@
           </div>
         </div>
 
-        <div class="small mb-3 text-ink-soft">
-          <div><strong>Cliente:</strong> ${escapeHTML(order.customer?.nome || "—")}</div>
-          <div><strong>Telefone:</strong> ${escapeHTML(order.customer?.telefone || "—")}</div>
-          <div><strong>CPF:</strong> ${escapeHTML(order.customer?.cpf || "—")}</div>
-          ${order.customer?.email ? `<div><strong>E-mail da conta:</strong> ${escapeHTML(order.customer.email)}</div>` : ""}
-          <div><strong>Entrega:</strong> ${escapeHTML(addressLine(order.address))}${order.shipping?.name ? ` — ${escapeHTML(order.shipping.name)}` : ""}</div>
+        <div class="order-fields small mb-3">
+          ${camposDoCliente(order).map(([rotulo, valor]) => linhaCopiavel(rotulo, valor)).join("")}
+          ${order.shipping?.name ? `<div class="order-field"><span class="order-field-label">Envio</span><span class="order-field-value">${escapeHTML(order.shipping.name)}</span></div>` : ""}
         </div>
 
         ${contactUrl ? `
@@ -1859,6 +2002,18 @@
     }
   }
 
+  async function copiarCampo(btn){
+    const copiou = await copiarTexto(btn.dataset.copiar || "");
+    const icone = btn.querySelector("i");
+    if(!icone) return;
+    icone.className = copiou ? "bi bi-check2" : "bi bi-exclamation-triangle";
+    btn.classList.toggle("is-copied", copiou);
+    setTimeout(() => {
+      icone.className = "bi bi-clipboard";
+      btn.classList.remove("is-copied");
+    }, 2000);
+  }
+
   listEl.addEventListener("click", (e) => {
     const trackBtn = e.target.closest(".save-tracking-btn");
     const barcodeBtn = e.target.closest(".show-barcode-btn");
@@ -1866,6 +2021,12 @@
     const deliveredBtn = e.target.closest(".mark-delivered-btn");
     const deleteBtn = e.target.closest(".delete-order-btn");
     const downloadBtn = e.target.closest(".barcode-download-btn");
+    const copyBtn = e.target.closest(".copy-field-btn");
+
+    if(copyBtn){
+      copiarCampo(copyBtn);
+      return;
+    }
 
     if(deliveredBtn){
       const ref = deliveredBtn.dataset.ref;

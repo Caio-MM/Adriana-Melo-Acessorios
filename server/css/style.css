@@ -2885,7 +2885,43 @@ body.tem-secao-fab-oculta .fab-top{
 }
 .admin-tab-btn:focus-visible,
 .delete-order-icon-btn:focus-visible,
-.edit-order-icon-btn:focus-visible{ outline:2px solid var(--blush-600); outline-offset:2px; }
+.edit-order-icon-btn:focus-visible,
+.copy-field-btn:focus-visible{ outline:2px solid var(--blush-600); outline-offset:2px; }
+
+/* Dados do cliente, um por linha, cada um com o seu botão de copiar: é assim
+   que a lojista usa — copia um campo, cola no formulário dos Correios, volta
+   e copia o próximo. O rótulo tem largura fixa para os valores alinharem. */
+.order-fields{ display:flex; flex-direction:column; gap:.15rem; }
+.order-field{ display:flex; align-items:center; gap:.5rem; min-height:30px; }
+/* 7.5rem é a largura em que "E-mail da conta", o rótulo mais longo, ainda
+   cabe numa linha só. */
+.order-field-label{
+  flex-shrink:0; width:7.5rem; color:var(--ink-soft); font-weight:600;
+}
+.order-field-value{ flex:1 1 auto; min-width:0; overflow-wrap:anywhere; }
+.copy-field-btn{
+  width:30px; height:30px; border-radius:50%; border:1px solid var(--blush-100); background:var(--white);
+  color:var(--ink-soft); display:flex; align-items:center; justify-content:center; font-size:.85rem;
+  transition:all .2s ease; flex-shrink:0;
+}
+.copy-field-btn:hover{ background:var(--blush-100); border-color:var(--blush-150); color:var(--color-primary-dark); }
+.copy-field-btn.is-copied,
+.copy-field-btn.is-copied:hover{
+  background:var(--color-success-soft); border-color:var(--color-success-soft); color:var(--color-success);
+}
+/* No celular não sobra largura para rótulo e valor lado a lado: "Complemento"
+   passava por cima do endereço. Empilha o rótulo em cima, e o botão fica na
+   linha do valor, onde o polegar já está. */
+@media (max-width: 575.98px){
+  .order-field{
+    display:grid; grid-template-columns:1fr auto;
+    grid-template-areas:"rotulo rotulo" "valor botao";
+    column-gap:.5rem; padding-bottom:.4rem;
+  }
+  .order-field-label{ grid-area:rotulo; width:auto; font-size:.78rem; }
+  .order-field-value{ grid-area:valor; }
+  .copy-field-btn{ grid-area:botao; align-self:center; }
+}
 
 .admin-row-actions{ display:flex; justify-content:flex-end; align-items:center; gap:.4rem; flex-wrap:nowrap; }
 
