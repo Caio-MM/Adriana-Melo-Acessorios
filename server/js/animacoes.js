@@ -239,12 +239,39 @@
 
     const fio = fita.querySelector(".fita-guia-fio");
     const laco = fita.querySelector(".fita-guia-laco");
-    let comprimento = 0;
+    const AMOSTRAS = 240;
+    let comprimento = 0, comprimentoNaTela = 0, tabelaDeTela = null;
 
+    /* ⚠️ O tracejado é medido em px de TELA, não em unidades do viewBox: quem
+       manda nisso é o vector-effect:non-scaling-stroke do CSS. O caminho tem
+       1008 unidades para ~880px de tela, então usar getTotalLength cru fazia o
+       rosa terminar de desenhar aos 87% da rolagem e o laço seguir sozinho
+       depois disso. A tabela guarda quanto de TELA cada fatia do caminho vale,
+       para o fim do rosa cair sempre no laço. */
     function medir() {
       if (!fio || !fio.getTotalLength) return;
       comprimento = fio.getTotalLength();
-      gsap.set(fio, { strokeDasharray: comprimento, strokeDashoffset: comprimento });
+      const ctm = fio.getScreenCTM();
+      tabelaDeTela = new Float64Array(AMOSTRAS + 1);
+      let acumulado = 0, anterior = null;
+      for (let i = 0; i <= AMOSTRAS; i++) {
+        const ponto = fio.getPointAtLength((comprimento * i) / AMOSTRAS);
+        const naTela = ctm ? ponto.matrixTransform(ctm) : ponto;
+        if (anterior) acumulado += Math.hypot(naTela.x - anterior.x, naTela.y - anterior.y);
+        tabelaDeTela[i] = acumulado;
+        anterior = naTela;
+      }
+      comprimentoNaTela = acumulado || comprimento;
+      gsap.set(fio, { strokeDasharray: comprimentoNaTela, strokeDashoffset: comprimentoNaTela });
+    }
+
+    // Quanto de tela o caminho já percorreu até a fração p (interpolando a tabela).
+    function telaAte(pr) {
+      if (!tabelaDeTela) return comprimentoNaTela * pr;
+      const pos = Math.min(Math.max(pr, 0), 1) * AMOSTRAS;
+      const i = Math.floor(pos);
+      if (i >= AMOSTRAS) return tabelaDeTela[AMOSTRAS];
+      return tabelaDeTela[i] + (tabelaDeTela[i + 1] - tabelaDeTela[i]) * (pos - i);
     }
     medir();
 
@@ -257,8 +284,8 @@
       onUpdate(self) {
         const p = self.progress;
         fita.style.setProperty("--progresso", p.toFixed(4));
-        if (fio && comprimento) {
-          fio.style.strokeDashoffset = String(comprimento * (1 - p));
+        if (fio && comprimentoNaTela) {
+          fio.style.strokeDashoffset = String(comprimentoNaTela - telaAte(p));
           if (laco && fio.getPointAtLength) {
             const ponto = fio.getPointAtLength(comprimento * p);
             // O viewBox é 60x1000 esticado para a altura da tela; converter a
