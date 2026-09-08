@@ -13,6 +13,76 @@
     ]);
   }
 
+  const CHAVE_DIGITACAO = "plc_titulo_digitado";
+
+  function jaDigitouNestaVisita() {
+    try {
+      return sessionStorage.getItem(CHAVE_DIGITACAO) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function marcarQueDigitou() {
+    try {
+      sessionStorage.setItem(CHAVE_DIGITACAO, "1");
+    } catch (e) {
+      return;
+    }
+  }
+
+  function criarCursorDeLaco(titulo) {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "hero-cursor bow-icon");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    const use = document.createElementNS(NS, "use");
+    use.setAttribute("href", "#bow-shape");
+    svg.appendChild(use);
+    titulo.appendChild(svg);
+    return svg;
+  }
+
+  function digitacaoDoTitulo(titulo, split) {
+    const letras = split.chars;
+    const cursor = criarCursorDeLaco(titulo);
+    const inicioDoDestaque = letras.findIndex((letra) => letra.closest("em"));
+    const linha = gsap.timeline();
+
+    gsap.set(titulo, { opacity: 1 });
+    gsap.set(letras, { opacity: 0 });
+    gsap.set(cursor, { opacity: 0 });
+
+    function levarCursorPara(letra) {
+      const l = letra.getBoundingClientRect();
+      const t = titulo.getBoundingClientRect();
+      cursor.style.left = l.right - t.left + "px";
+      cursor.style.top = l.top - t.top + l.height * 0.6 + "px";
+    }
+
+    let quando = 0;
+    letras.forEach((letra, i) => {
+      if (i === inicioDoDestaque) quando += 0.2;
+      quando += inicioDoDestaque >= 0 && i >= inicioDoDestaque ? 0.036 : 0.018;
+      linha.call(() => {
+        gsap.set(letra, { opacity: 1 });
+        gsap.set(cursor, { opacity: 1 });
+        levarCursorPara(letra);
+      }, null, quando);
+    });
+
+    linha.to(cursor, { opacity: 0, duration: 0.13, repeat: 3, yoyo: true }, quando + 0.15);
+    linha.to(cursor, { opacity: 0, duration: 0.25 }, quando + 0.7);
+    linha.call(() => {
+      cursor.remove();
+      split.revert();
+      marcarQueDigitou();
+    }, null, quando + 1);
+
+    return linha;
+  }
+
   function entradaDoHero() {
     const hero = document.querySelector(".hero");
     if (!hero) return;
@@ -34,17 +104,20 @@
     fontesProntas().then(() => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
+      const digitar = !jaDigitouNestaVisita();
       let split = null;
       if (window.SplitText && titulo) {
         gsap.registerPlugin(SplitText);
         try {
-          split = new SplitText(titulo, { type: "lines" });
+          split = new SplitText(titulo, { type: digitar ? "words,chars" : "lines" });
         } catch (e) {
           split = null;
         }
       }
 
-      if (split && split.lines.length) {
+      if (split && digitar && split.chars.length) {
+        tl.add(digitacaoDoTitulo(titulo, split), 0);
+      } else if (split && split.lines && split.lines.length) {
         gsap.set(titulo, { opacity: 1 });
         tl.from(split.lines, { y: 26, opacity: 0, duration: 0.7, stagger: 0.09 });
         tl.add(() => split.revert());

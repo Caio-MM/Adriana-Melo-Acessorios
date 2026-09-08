@@ -563,6 +563,47 @@
     });
   }
 
+  const linhaDeCategorias = document.querySelector(".chip-linha");
+  const btnVerTodas = document.getElementById("verTodasCategorias");
+  const btnVerTodasTexto = document.getElementById("verTodasCategoriasTexto");
+
+  function categoriasForaDaVista(){
+    const group = document.getElementById("filterGroup");
+    if(!group) return 0;
+    const visiveis = [...group.querySelectorAll(".chip")].filter(c => !c.hidden);
+    const limite = group.getBoundingClientRect().right;
+    return visiveis.filter(c => c.getBoundingClientRect().right > limite + 1).length;
+  }
+
+  function atualizarBotaoDeCategorias(){
+    if(!linhaDeCategorias || !btnVerTodas) return;
+    if(linhaDeCategorias.classList.contains("esta-aberta")) return;
+    const fora = categoriasForaDaVista();
+    btnVerTodas.classList.toggle("d-none", fora === 0);
+    if(fora > 0){
+      btnVerTodasTexto.textContent = "+" + fora;
+      btnVerTodas.setAttribute("aria-label", "Ver todas as categorias — " + fora + " fora da tela");
+    }
+  }
+
+  btnVerTodas?.addEventListener("click", () => {
+    const aberta = linhaDeCategorias.classList.toggle("esta-aberta");
+    btnVerTodas.setAttribute("aria-expanded", String(aberta));
+    if(aberta){
+      btnVerTodasTexto.textContent = "Ver menos";
+      btnVerTodas.setAttribute("aria-label", "Mostrar menos categorias");
+    }else{
+      document.getElementById("filterGroup").scrollTo({ left: 0, behavior: "smooth" });
+      atualizarBotaoDeCategorias();
+    }
+  });
+
+  window.addEventListener("resize", atualizarBotaoDeCategorias);
+  document.addEventListener("vitrine:render", atualizarBotaoDeCategorias);
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(atualizarBotaoDeCategorias);
+  }
+
   function esconderCategoriasVazias(){
     const group = document.getElementById("filterGroup");
     if(!group) return;
@@ -643,6 +684,7 @@
       }
       if(changed){ renderProducts(); renderCart(); }
       esconderCategoriasVazias();
+      atualizarBotaoDeCategorias();
       verifyPaymentRules(data.paymentRules);
     }catch(err){
       console.warn("Não foi possível verificar atualizações do catálogo:", err);
