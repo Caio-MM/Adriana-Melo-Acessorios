@@ -1,9 +1,35 @@
 (function () {
   "use strict";
-  if (!window.gsap || !window.ScrollTrigger) return;
+  if (!window.gsap) return;
 
-  gsap.registerPlugin(ScrollTrigger);
   const mm = gsap.matchMedia();
+
+  function carregarScrollTrigger() {
+    return new Promise((resolve) => {
+      if (window.ScrollTrigger) return resolve(true);
+      const asset = document.getElementById("assetScrollTrigger");
+      const script = document.createElement("script");
+      script.src = asset ? asset.href : "js/vendor/ScrollTrigger.min.js";
+      script.onload = () => resolve(!!window.ScrollTrigger);
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    });
+  }
+
+  function quandoDerFolga(acao) {
+    let feito = false;
+    function uma() {
+      if (feito) return;
+      feito = true;
+      window.removeEventListener("scroll", uma);
+      window.removeEventListener("pointerdown", uma);
+      acao();
+    }
+    window.addEventListener("scroll", uma, { once: true, passive: true });
+    window.addEventListener("pointerdown", uma, { once: true, passive: true });
+    if ("requestIdleCallback" in window) requestIdleCallback(uma, { timeout: 2500 });
+    else setTimeout(uma, 1200);
+  }
 
   function fontesProntas() {
     if (!document.fonts || !document.fonts.ready) return Promise.resolve();
@@ -501,34 +527,49 @@
     }
   }
 
-  mm.add("(min-width: 992px) and (prefers-reduced-motion: no-preference)", () => {
-    const tl = entregaGuiada({ comPin: true });
-    return () => { if (tl && tl.scrollTrigger) tl.scrollTrigger.kill(); };
-  });
-
-  mm.add("(max-width: 991.98px) and (prefers-reduced-motion: no-preference)", () => {
-    const tl = entregaGuiada({ comPin: false });
-    return () => { if (tl && tl.scrollTrigger) tl.scrollTrigger.kill(); };
-  });
-
   mm.add("(prefers-reduced-motion: no-preference)", () => {
     entradaDoHero();
-    entradaDoRodape();
-    entradaDosTitulos();
-    camadasComParallax();
-    const gatilhoDaFaixa = marqueeReativo();
-    const gatilhoDaFita = fitaGuia();
-    animarVitrine();
-    document.addEventListener("vitrine:render", animarVitrine);
-    return () => {
-      document.removeEventListener("vitrine:render", animarVitrine);
-      if (gatilhoDaFaixa) gatilhoDaFaixa.kill();
-      if (gatilhoDaFita) gatilhoDaFita.kill();
-    };
   });
 
-  window.addEventListener("load", () => ScrollTrigger.refresh());
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => ScrollTrigger.refresh());
+  function animacoesDeRolagem() {
+    gsap.registerPlugin(ScrollTrigger);
+
+    mm.add("(min-width: 992px) and (prefers-reduced-motion: no-preference)", () => {
+      const tl = entregaGuiada({ comPin: true });
+      return () => { if (tl && tl.scrollTrigger) tl.scrollTrigger.kill(); };
+    });
+
+    mm.add("(max-width: 991.98px) and (prefers-reduced-motion: no-preference)", () => {
+      const tl = entregaGuiada({ comPin: false });
+      return () => { if (tl && tl.scrollTrigger) tl.scrollTrigger.kill(); };
+    });
+
+    mm.add("(prefers-reduced-motion: no-preference)", () => {
+      entradaDoRodape();
+      entradaDosTitulos();
+      camadasComParallax();
+      const gatilhoDaFaixa = marqueeReativo();
+      const gatilhoDaFita = fitaGuia();
+      animarVitrine();
+      document.addEventListener("vitrine:render", animarVitrine);
+      return () => {
+        document.removeEventListener("vitrine:render", animarVitrine);
+        if (gatilhoDaFaixa) gatilhoDaFaixa.kill();
+        if (gatilhoDaFita) gatilhoDaFita.kill();
+      };
+    });
+
+    ScrollTrigger.refresh();
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => ScrollTrigger.refresh());
+    }
+  }
+
+  if (window.matchMedia("(prefers-reduced-motion: no-preference)").matches) {
+    quandoDerFolga(() => {
+      carregarScrollTrigger().then((ok) => {
+        if (ok) animacoesDeRolagem();
+      });
+    });
   }
 })();
