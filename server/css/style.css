@@ -1110,6 +1110,9 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   background:var(--cream);
 }
 .mock-escala{ position:absolute; inset:0; overflow:hidden; }
+/* Enquanto js/main.js mede a altura real do conteúdo: sem tirar o piso,
+   scrollHeight devolveria o próprio piso e a conta não fecharia. */
+.mock-escala-inner.esta-medindo{ min-height:0; }
 .mock-escala-inner{
   --esc:.68;
   width:calc(100% / var(--esc));
@@ -1850,15 +1853,19 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .fab-top{ right:24px; bottom:92px; width:44px; height:44px; font-size:1.1rem; background:var(--white); color:var(--blush-700); border:1.5px solid var(--blush-200); opacity:0; pointer-events:none; transform:translateY(10px); }
 .fab-top.show{ opacity:1; pointer-events:auto; transform:translateY(0); }
 
+/* O aviso de cupom entra na mesma regra dos flutuantes: ele para bem em cima
+   dos mocks de tela desta seção. */
 body.tem-secao-fab-oculta .fab,
-body.tem-secao-fab-oculta .fab-top{
+body.tem-secao-fab-oculta .fab-top,
+body.tem-secao-fab-oculta .coupon-toast-container{
   opacity:0; pointer-events:none; transform:translateY(10px);
 }
 
 .toast-body{ font-size:.9rem; }
 
 .coupon-toast-container{
-  right:var(--spacing-md); bottom:156px; z-index:1085; 
+  right:var(--spacing-md); bottom:156px; z-index:1085;
+  transition:opacity var(--animation-normal) var(--ease-out), transform var(--animation-normal) var(--ease-out); 
   width:clamp(300px, 25vw, 380px); max-width:calc(100vw - 2 * var(--spacing-md));
 }
 .coupon-toast{
@@ -3318,8 +3325,20 @@ body.admin-gate-active .admin-state-area{
 }
 
 @media (max-width: 991.98px){
+  /* ⚠️ Devolve a máquina de escala que o bloco de 991.98px lá em cima desliga
+     (`transform:none`, `position:static`) para os mocks que aparecem soltos na
+     página. Dentro do carrossel eles TÊM de ser reduzidos: em tamanho real a
+     página de pagamento dá 861px numa moldura de 640 e era cortada no meio do
+     cartão do Pix. Repetir --esc sozinho não bastava — sem o transform ele não
+     era usado por ninguém. */
+  .scrolly-card .mock{ position:relative; overflow:hidden; }
+  .scrolly-card .mock-escala{ position:absolute; inset:0; overflow:hidden; }
   .scrolly-card .mock-escala-inner{
     --esc:.68;
+    width:calc(100% / var(--esc));
+    min-height:calc(100% / var(--esc));
+    transform:scale(var(--esc));
+    transform-origin:top left;
   }
   .scrolly-card .mock-nav{ padding:.55rem 1rem; }
   .scrolly-card .mock-nav > img{ height:24px; }
@@ -3344,7 +3363,12 @@ body.admin-gate-active .admin-state-area{
   .scrolly-card .mock-total strong{ font-size:1rem; }
 
   .scrolly-card .mock-cartao{ padding:.7rem .8rem; }
-  .scrolly-card .pix-qr-frame{ width:104px; height:104px; margin-inline:auto; }
+  /* ⚠️ O quadrado de dentro tem que seguir a moldura. Ele estava preso em
+     118px fixos (regra dos mocks soltos) enquanto a moldura encolhia para 104,
+     88 e 72px aqui — e vazava para fora dela, parecendo um QR quebrado. */
+  .scrolly-card .pix-qr-frame{ width:104px; height:104px; margin-inline:auto; padding:.4rem; }
+  .scrolly-card .pix-qr.mock-qr-art{ width:100%; height:100%; }
+  .scrolly-card .mock-oculto{ font-size:.56rem; padding:.12rem .35rem; bottom:7px; }
   .scrolly-card .mock-cartao .section-title{ font-size:1rem !important; }
   .scrolly-card .mock-cartao .section-sub{ display:block; font-size:.74rem; margin-bottom:.5rem !important; }
   .scrolly-card .pix-amount{ font-size:1.05rem; }
@@ -3358,12 +3382,12 @@ body.admin-gate-active .admin-state-area{
   .scrolly-card .mock-timeline strong{ font-size:.84rem; }
   .scrolly-card .mock-timeline em{ font-size:.74rem; }
 
+  /* Quebra em duas linhas em vez de deslizar: ninguém rola o print de uma
+     tela, então a última aba só aparecia cortada na borda. */
   .scrolly-card .mock-abas{
-    display:flex; flex-wrap:nowrap; overflow-x:auto; gap:.35rem;
-    margin-bottom:.7rem; scrollbar-width:none;
+    display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.7rem;
   }
-  .scrolly-card .mock-abas::-webkit-scrollbar{ display:none; }
-  .scrolly-card .mock-abas span{ flex:0 0 auto; font-size:.7rem; padding:.25rem .55rem; }
+  .scrolly-card .mock-abas span{ font-size:.7rem; padding:.25rem .55rem; }
   .scrolly-card .mock-policy h5{ font-size:.95rem; margin-bottom:.5rem; }
   .scrolly-card .mock-policy p{ font-size:.8rem; }
   .scrolly-card .mock-policy ul{ display:block; font-size:.76rem; padding-left:1rem; }
@@ -3381,9 +3405,9 @@ body.admin-gate-active .admin-state-area{
 }
 
 @media (max-width: 991.98px){
-  .stories{ --palco-altura:min(80vh, 640px); }
+  .stories{ --palco-altura:min(84vh, 700px); }
 
-  .scrolly-card .pix-qr-frame{ width:88px; height:88px; }
+  .scrolly-card .pix-qr-frame{ width:104px; height:104px; }
   .scrolly-card .mock-cartao{ padding:.6rem .7rem; }
   .scrolly-card .mock-cartao .section-title{ margin-top:.4rem !important; margin-bottom:.15rem !important; }
   .scrolly-card .mock-cartao .section-sub{ margin-bottom:.35rem !important; }
@@ -3406,7 +3430,9 @@ body.admin-gate-active .admin-state-area{
   .scrolly-card .mock-total{ padding:.4rem .55rem; margin-top:.35rem; }
   .scrolly-card .mock-economia{ font-size:.68rem; }
 
-  .scrolly-card .pix-qr-frame{ width:72px; height:72px; }
+  /* Do tamanho da pílula "código ocultado" para baixo o QR deixava de ler
+     como QR. A escala geral se reajusta sozinha em js/main.js. */
+  .scrolly-card .pix-qr-frame{ width:104px; height:104px; }
   .scrolly-card .pix-badge{ font-size:.66rem; padding:.15rem .5rem; }
   .scrolly-card .mock-cartao .section-sub{ font-size:.7rem; }
 

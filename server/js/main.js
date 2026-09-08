@@ -289,22 +289,43 @@
       aplicarPausa();
     }
 
-    const ALTURA_PAGINA = 960;
     const noComputador = window.matchMedia("(min-width: 992px)");
     const escalaveis = paineis
       .map(c => c.querySelector(".mock-escala-inner"))
       .filter(Boolean);
 
+    /* ⚠️ A altura da página é MEDIDA, não uma constante: ela depende da largura
+       do mock, que depende da própria escala. Duas passadas convergem.
+       Escala fixa não serve — a mesma .68 sobrava num celular de 812px e
+       cortava 62px num de 667px, e no computador deixava 52px vazios. */
+    const ESC_MIN = 0.45, ESC_MAX = 0.95;
+
+    function alturaDoConteudo(el){
+      el.classList.add("esta-medindo");
+      const h = el.scrollHeight;
+      el.classList.remove("esta-medindo");
+      return h;
+    }
+
     function ajustarEscalaDosPaineis(){
-      if(!noComputador.matches || !palco) return;
+      if(!palco) return;
       const visivel = paineis.find(c => c.classList.contains("is-atual")) || paineis[0];
       const mock = visivel && visivel.querySelector(".mock");
       const barraMoldura = visivel && visivel.querySelector(".scrolly-frame-bar");
       const altura = (mock && mock.clientHeight)
         || (palco.clientHeight - (barraMoldura ? barraMoldura.offsetHeight : 0));
       if(altura <= 0) return;
-      const esc = (altura / ALTURA_PAGINA).toFixed(4);
-      escalaveis.forEach(el => el.style.setProperty("--esc", esc));
+
+      const molde = visivel && visivel.querySelector(".mock-escala-inner");
+      if(!molde) return;
+      let esc = ESC_MAX;
+      for(let passada = 0; passada < 2; passada++){
+        escalaveis.forEach(el => el.style.setProperty("--esc", esc));
+        const natural = alturaDoConteudo(molde);
+        if(!natural) return;
+        esc = Math.min(ESC_MAX, Math.max(ESC_MIN, altura / natural));
+      }
+      escalaveis.forEach(el => el.style.setProperty("--esc", esc.toFixed(4)));
     }
 
     window.addEventListener("resize", ajustarEscalaDosPaineis);
