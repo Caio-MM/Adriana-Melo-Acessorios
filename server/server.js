@@ -184,11 +184,47 @@ const CUSTOM_PRODUCT_ID_START = 1000;
 const PESO_EMBALAGEM_KG = 0.04;
 const PESO_LACO_KG = 0.02;
 
+/* Categorias do modelo antigo, por ocasião. Saíram de BUILTIN_CATEGORIES na
+   virada para tipo de produto, mas continuam listadas ENQUANTO houver produto
+   usando: sem isso os produtos ainda não reclassificados ficam sem chip de
+   filtro e o card passa a exibir o slug cru ("maternidade") no lugar do
+   rótulo, porque categoryLabelFor() em js/main.js descobre o rótulo lendo o
+   texto do chip. Somem sozinhas quando o último produto sair delas — não é
+   preciso apagar nada à mão. */
+const CATEGORIAS_APOSENTADAS = [
+  { slug: "maternidade",   label: "Maternidade" },
+  { slug: "festa",         label: "Festa" },
+  { slug: "batizado",      label: "Batizado" },
+  { slug: "dia-a-dia",     label: "Dia a dia" },
+  { slug: "presente",      label: "Presente" },
+  { slug: "recem-nascido", label: "Recém Nascido" },
+];
+
+function categoriasEmUso(){
+  const overridesMap = getProductOverridesMap();
+  const usadas = new Set();
+  for (const id of getAllProductIds()) {
+    const cat = effectiveProduct(id, overridesMap).category;
+    if (cat) usadas.add(cat);
+  }
+  return usadas;
+}
+
 function getAllCategories(){
-  return [
+  const usadas = categoriasEmUso();
+  const lista = [
     ...BUILTIN_CATEGORIES.map(c => ({ ...c, builtin: true })),
     ...db.listCustomCategories().map(c => ({ slug: c.slug, label: c.label, builtin: false })),
+    ...CATEGORIAS_APOSENTADAS
+      .filter(c => usadas.has(c.slug))
+      .map(c => ({ ...c, builtin: true, aposentada: true })),
   ];
+  /* Deduplica por slug: o detector automático do painel já criou categorias
+     custom com o mesmo slug de fixas ("tiara", "kit", "bolsa"...), e a lista
+     saía com entradas repetidas. A primeira ocorrência vence, então a fixa
+     tem prioridade sobre a custom homônima. */
+  const vistos = new Set();
+  return lista.filter(c => (vistos.has(c.slug) ? false : vistos.add(c.slug)));
 }
 function isValidCategorySlug(slug){
   return getAllCategories().some(c => c.slug === slug);
