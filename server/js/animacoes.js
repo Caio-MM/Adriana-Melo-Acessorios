@@ -13,24 +13,6 @@
     ]);
   }
 
-  const CHAVE_DIGITACAO = "plc_titulo_digitado";
-
-  function jaDigitouNestaVisita() {
-    try {
-      return sessionStorage.getItem(CHAVE_DIGITACAO) === "1";
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function marcarQueDigitou() {
-    try {
-      sessionStorage.setItem(CHAVE_DIGITACAO, "1");
-    } catch (e) {
-      return;
-    }
-  }
-
   function criarBlocoDeDigitacao(titulo) {
     const bloco = document.createElement("span");
     bloco.className = "hero-bloco";
@@ -106,7 +88,6 @@
     linha.call(() => {
       bloco.remove();
       split.revert();
-      marcarQueDigitou();
     }, null, quando + 1.35);
 
     return linha;
@@ -133,23 +114,18 @@
     fontesProntas().then(() => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-      const digitar = !jaDigitouNestaVisita();
       let split = null;
       if (window.SplitText && titulo) {
         gsap.registerPlugin(SplitText);
         try {
-          split = new SplitText(titulo, { type: digitar ? "words,chars" : "lines" });
+          split = new SplitText(titulo, { type: "words,chars" });
         } catch (e) {
           split = null;
         }
       }
 
-      if (split && digitar && split.chars.length) {
+      if (split && split.chars.length) {
         tl.add(digitacaoDoTitulo(titulo, split), 0);
-      } else if (split && split.lines && split.lines.length) {
-        gsap.set(titulo, { opacity: 1 });
-        tl.from(split.lines, { y: 26, opacity: 0, duration: 0.7, stagger: 0.09 });
-        tl.add(() => split.revert());
       } else if (titulo) {
         tl.to(titulo, { opacity: 1, duration: 0.8 });
       }
