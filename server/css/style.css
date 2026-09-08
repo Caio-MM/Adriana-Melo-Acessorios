@@ -3639,7 +3639,11 @@ body.admin-gate-active .admin-state-area{
    existe margem: vira um fio horizontal fino logo abaixo da navbar. */
 .fita-guia{
   position:fixed; z-index:1025; pointer-events:none;
-  left:4px; top:0; width:46px; height:100vh;
+  /* Recuada 12px em cima e embaixo para o laço da ponta caber INTEIRO nos
+     dois extremos: com a fita ocupando 100vh cravado, no fim da página ele
+     ficava em top:100% — ou seja, na borda de baixo — e sobravam 9px dele na
+     tela, parecendo que tinha sumido. */
+  left:4px; top:12px; width:46px; height:calc(100vh - 24px);
 }
 .fita-guia-svg{ width:100%; height:100%; display:block; overflow:visible; }
 .fita-guia-trilho,
@@ -3655,9 +3659,15 @@ body.admin-gate-active .admin-state-area{
    para o fio ter por onde correr em vez de surgir do nada. */
 .fita-guia-trilho{ stroke:var(--blush-150); opacity:.5; }
 .fita-guia-fio{ stroke:var(--blush-500); }
+/* ⚠️ altura explícita: este <svg> não tem viewBox próprio (quem tem é o
+   <symbol> referenciado pelo <use>), então o navegador não consegue deduzir a
+   proporção e `height:auto` cai no padrão de 150px dos elementos substituídos.
+   O resultado era um laço esticado de 26x150 em vez de 26x18. */
 .fita-guia-laco{
-  position:absolute; left:50%; top:0; width:26px; height:auto;
-  color:var(--blush-600); margin-left:-13px; margin-top:-9px;
+  position:absolute; left:50%; top:0; width:26px; height:18px;
+  color:var(--blush-600);
+  /* Centraliza no ponto do caminho, em vez de pendurar a partir dele. */
+  transform:translate(-50%, -50%);
   filter:drop-shadow(0 4px 8px rgba(192,84,128,.45));
 }
 
@@ -3672,6 +3682,9 @@ body.admin-gate-active .admin-state-area{
        topo, 65px depois), então qualquer deslocamento fixo esconderia a fita
        atrás dela em um dos dois estados. */
     left:0; top:0; width:100%; height:10px; z-index:1035;
+    /* No fio horizontal a recuada vertical não faz sentido — ele é uma barra
+       no topo, não um caminho que percorre a altura da tela. */
+    padding:0;
   }
   .fita-guia-svg{ display:none; }
   .fita-guia::before{
@@ -3684,8 +3697,8 @@ body.admin-gate-active .admin-state-area{
     background:linear-gradient(90deg, var(--blush-300), var(--blush-600));
   }
   .fita-guia-laco{
-    left:calc(var(--progresso, 0) * 100%); top:-3px;
-    width:18px; margin-left:-9px; margin-top:0;
+    left:calc(var(--progresso, 0) * 100%); top:1px;
+    width:18px; height:13px;
   }
 }
 

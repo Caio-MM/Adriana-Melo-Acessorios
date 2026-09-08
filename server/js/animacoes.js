@@ -261,6 +261,7 @@
           fio.style.strokeDashoffset = String(comprimento * (1 - p));
           if (laco && fio.getPointAtLength) {
             const ponto = fio.getPointAtLength(comprimento * p);
+            // (a folga das pontas vem do recuo de 12px da .fita-guia no CSS)
             // O viewBox é 60x1000 esticado para a altura da tela; converter a
             // coordenada do caminho para porcentagem deixa o laço colado no
             // fio em qualquer altura de janela, sem recalcular no resize.
@@ -405,6 +406,27 @@
     });
   }
 
+  /* ⚠️ A grade de produtos é preenchida DEPOIS, por fetch da API — e ela tem
+     ~1800px. Os ScrollTrigger.refresh() que existem no fim deste arquivo rodam
+     no `load` e no `fonts.ready`, que podem acontecer ANTES de a grade existir:
+     aí todo gatilho abaixo dela fica com coordenada de uma página que ainda não
+     tinha os produtos.
+
+     Com fades de onEnter isso passava despercebido (o fade disparava um pouco
+     antes). Com o PIN da seção "Do pedido até a sua porta" o mesmo erro fazia a
+     seção grudar 758px cedo demais e cobrir os produtos e a história — foi o
+     bug que apareceu em produção, onde a grade tem 47 produtos.
+
+     setTimeout por dois motivos: não chamar refresh() de dentro do mesmo ciclo
+     em que animarVitrine está criando os batches (refresh reentrante mede
+     errado), e agrupar as chamadas — vitrine:render dispara a cada tecla na
+     busca e a cada "Ver mais". */
+  let remedidaPendente;
+  function remedirGatilhos() {
+    clearTimeout(remedidaPendente);
+    remedidaPendente = setTimeout(() => ScrollTrigger.refresh(), 200);
+  }
+
   function animarVitrine() {
     // isConnected separa os dois casos: quem foi descartado numa remontagem
     // morre aqui; quem continua na grade mantém o gatilho que ainda não disparou.
@@ -417,7 +439,9 @@
     const grid = document.getElementById("productsGrid");
     if (!grid) return;
     const cards = gsap.utils.toArray(grid.querySelectorAll(".reveal:not(.is-visible)"));
-    if (!cards.length) return;
+    // Mesmo sem card novo para animar (uma busca que filtrou tudo, por
+    // exemplo) a altura da grade mudou — e é a altura que desalinha o pin.
+    if (!cards.length) { remedirGatilhos(); return; }
 
     /* Tirar .reveal desliga a transição do CSS. Sem isto os DOIS sistemas
        animam o mesmo card e o transition-delay do .reveal-delay-* briga com o
@@ -439,6 +463,10 @@
     cards.forEach((el) => {
       (el.getBoundingClientRect().top < limite ? agora : depois).push(el);
     });
+
+    // A grade acabou de mudar de altura: tudo que vem abaixo dela precisa ser
+    // remedido, inclusive o pin.
+    remedirGatilhos();
 
     if (agora.length) entrarEmCascata(agora);
     if (depois.length) {
