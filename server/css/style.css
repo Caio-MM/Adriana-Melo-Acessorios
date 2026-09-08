@@ -2250,7 +2250,7 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   position:fixed; right:24px; bottom:24px; width:56px; height:56px; border-radius:50%;
   background:var(--blush-600); color:#fff; display:flex; align-items:center; justify-content:center;
   box-shadow:var(--shadow-soft); z-index:1040; border:none; font-size:1.4rem;
-  transition:opacity .25s ease, transform .25s ease;
+  transition:opacity .25s ease, transform .25s ease, bottom .25s ease;
 }
 .fab:hover{ background:var(--blush-700); color:#fff; }
 .fab-top{ right:24px; bottom:92px; width:44px; height:44px; font-size:1.1rem; background:var(--white); color:var(--blush-700); border:1.5px solid var(--blush-200); opacity:0; pointer-events:none; transform:translateY(10px); }
@@ -2420,11 +2420,18 @@ body.tem-secao-fab-oculta .fab-top{
 }
 
 @media (max-width: 575.98px){
+  /* ⚠️ Encostada em baixo, largura cheia. Flutuando no meio da tela ela
+     cobria o texto do "como funciona" — num aparelho de 375px qualquer cartão
+     de 236px parado no meio cobre alguma coisa. Embaixo só ocupa a faixa que
+     já é de interface. */
   .coupon-toast-container{
-    right:var(--spacing-sm); left:auto; bottom:148px;
-
-    width:min(58vw, 236px); max-width:none;
+    right:var(--spacing-sm); left:var(--spacing-sm); bottom:var(--spacing-sm);
+    width:auto; max-width:none;
   }
+  /* Os dois flutuantes sobem o tanto que a barra ocupa (medido em
+     js/cupom-toast.js), senão ficariam por cima dela. */
+  body.tem-cupom-em-baixo .fab{ bottom:calc(24px + var(--altura-cupom, 0px)); }
+  body.tem-cupom-em-baixo .fab-top{ bottom:calc(92px + var(--altura-cupom, 0px)); }
   .coupon-toast{ width:100%; max-width:none; }
 
   .coupon-toast-body{ padding:var(--spacing-sm) var(--spacing-xs) var(--spacing-xs); }
@@ -3714,10 +3721,16 @@ body.admin-gate-active .admin-state-area{
     top:12px; height:calc(100vh - 24px);
     z-index:1035;
   }
-  /* O laço acompanha a faixa: 12px de largura mantém a ponta dele dentro dos
-     12px livres. É pequeno, mas num aparelho de verdade (2x ou 3x de
-     densidade) a silhueta continua legível. */
-  .fita-guia-laco{ width:10px; height:7px; }
+  /* ⚠️ A onda é achatada aqui, não redesenhada: o mesmo path com scaleX em
+     torno do próprio eixo (x=30 no viewBox). Sem isso o fio varre os 10px
+     inteiros e o laço, que é centrado nele, não tem onde crescer.
+     non-scaling-stroke lá em cima mantém os 2,5px de espessura. */
+  .fita-guia-trilho,
+  .fita-guia-fio{ transform:scaleX(.26); transform-origin:30px 0; }
+  /* ⚠️ 14x10 recuado 1px é o teto. Medi a caixa real das letras (Range) na
+     página inteira: o texto mais à esquerda é o campo de busca, em x=11.
+     Centrado em 4, o laço vai de -3 a 11 e não encosta em nenhum. */
+  .fita-guia-laco{ width:14px; height:10px; left:calc(50% - 1px); }
 }
 
 /* Decoração pura: sem ela a página não perde informação nenhuma. */

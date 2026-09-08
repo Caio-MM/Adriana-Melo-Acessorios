@@ -261,12 +261,20 @@
           fio.style.strokeDashoffset = String(comprimento * (1 - p));
           if (laco && fio.getPointAtLength) {
             const ponto = fio.getPointAtLength(comprimento * p);
-            // (a folga das pontas vem do recuo de 12px da .fita-guia no CSS)
             // O viewBox é 60x1000 esticado para a altura da tela; converter a
             // coordenada do caminho para porcentagem deixa o laço colado no
             // fio em qualquer altura de janela, sem recalcular no resize.
-            laco.style.left = (ponto.x / 60) * 100 + "%";
             laco.style.top = (ponto.y / 1000) * 100 + "%";
+            /* ⚠️ Na faixa estreita do celular o laço NÃO cavalga a onda: ele é
+               maior que a faixa, e seguir o x jogaria a ponta dele em cima da
+               primeira letra da página. Fica no meio (left:50% do CSS) — daí
+               limpar o inline, senão o valor do computador sobreviveria a um
+               giro de tela. */
+            if (fita.clientWidth > 20) {
+              laco.style.left = (ponto.x / 60) * 100 + "%";
+            } else if (laco.style.left) {
+              laco.style.left = "";
+            }
           }
         }
       },
@@ -386,12 +394,29 @@
       /* No celular os passos empilham na vertical, então o pacote desce em vez
          de atravessar — e passa POR CADA parada, não em linha reta do primeiro
          ao último. Daí os dois trechos encadeados. */
+      /* ⚠️ 68px à DIREITA do ícone, nunca no centro dele. Na altura de um
+         ícone essa faixa está vazia; na linha do meio ficam todos os títulos,
+         e o pacote parava em cima da palavra "Personalize". */
+      const DESVIO_X = 68;
+      const emX = (i) => centroDoPasso(passos[i]).x + DESVIO_X + "px";
+      const emY = (i) => centroDoPasso(passos[i]).y + "px";
       tl.fromTo(movel,
-        { left: () => centroDoPasso(passos[0]).x + "px", top: () => centroDoPasso(passos[0]).y + "px" },
-        { left: () => centroDoPasso(passos[1]).x + "px", top: () => centroDoPasso(passos[1]).y + "px", ease: "none", duration: 1 }
+        { left: () => emX(0), top: () => emY(0) },
+        { left: () => emX(1), top: () => emY(1), ease: "none", duration: 1 }
       ).to(movel,
-        { left: () => centroDoPasso(passos[2]).x + "px", top: () => centroDoPasso(passos[2]).y + "px", ease: "none", duration: 1 }
+        { left: () => emX(2), top: () => emY(2), ease: "none", duration: 1 }
       );
+
+      /* ⚠️ Só aparece PARADO. Entre um ícone e outro ele cruza o título e o
+         parágrafo do passo, então some no caminho e volta na chegada — era o
+         que o @keyframes antigo fazia com opacity:0, e que se perdeu quando o
+         GSAP virou dono da posição. */
+      tl.fromTo(movel,
+        { opacity: 1 },
+        { opacity: 0, duration: 0.3, ease: "none" }, 0
+      ).to(movel, { opacity: 1, duration: 0.3, ease: "none" }, 0.7)
+        .to(movel, { opacity: 0, duration: 0.3, ease: "none" }, 1)
+        .to(movel, { opacity: 1, duration: 0.3, ease: "none" }, 1.7);
     }
 
     return tl;

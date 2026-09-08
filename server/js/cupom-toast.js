@@ -159,6 +159,29 @@
     if(toastEl.classList.contains("show")) toast.hide();
   });
 
+  /* No celular a notificação fica encostada em baixo, onde moram os dois
+     botões flutuantes. Publicar a altura dela deixa o CSS subir os dois pelo
+     tanto exato — e o ResizeObserver cobre o momento em que o cupom é
+     revelado e a barra cresce. */
+  const caixaDoCupom = document.getElementById("couponToastContainer");
+  function publicarAlturaDoCupom(){
+    if(!caixaDoCupom) return;
+    document.body.style.setProperty("--altura-cupom", caixaDoCupom.offsetHeight + "px");
+  }
+  if(caixaDoCupom && typeof ResizeObserver === "function"){
+    new ResizeObserver(() => {
+      if(document.body.classList.contains("tem-cupom-em-baixo")) publicarAlturaDoCupom();
+    }).observe(caixaDoCupom);
+  }
+  toastEl.addEventListener("shown.bs.toast", () => {
+    publicarAlturaDoCupom();
+    document.body.classList.add("tem-cupom-em-baixo");
+  });
+  toastEl.addEventListener("hidden.bs.toast", () => {
+    document.body.classList.remove("tem-cupom-em-baixo");
+    document.body.style.removeProperty("--altura-cupom");
+  });
+
   document.addEventListener("plc:auth", (e) => {
     if(e.detail.user) return;
     setTimeout(() => {
