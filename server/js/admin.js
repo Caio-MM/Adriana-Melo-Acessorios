@@ -64,12 +64,18 @@
 
   const PAYMENT_METHOD_LABELS = { pix: "Pix", card: "Cartão ou boleto" };
 
+  /* Semente até o painel carregar de verdade (applyCategories logo abaixo
+     substitui pela lista do servidor). Precisa espelhar BUILTIN_CATEGORIES em
+     server.js — que agora é por TIPO de produto, não por ocasião. */
   let CATEGORY_LABELS = {
-    "maternidade": "Maternidade",
-    "festa": "Festa",
-    "batizado": "Batizado",
-    "dia-a-dia": "Dia a dia",
-    "presente": "Presente",
+    "laco-unico":  "Laço Único",
+    "parzinho":    "Parzinho",
+    "laco-g":      "Laço G",
+    "laco-pompom": "Laço Pompom",
+    "tiara":       "Tiara",
+    "kit":         "Kit",
+    "bolsa":       "Bolsa",
+    "cabide":      "Cabide",
   };
   let currentCategories = Object.entries(CATEGORY_LABELS).map(([slug, label]) => ({ slug, label, builtin: true }));
   function applyCategories(categories){
@@ -100,14 +106,28 @@
       .replace(/[úùû]/g, "u")
       .replace(/ç/g, "c");
   }
+  /* ⚠️ A ORDEM é o que resolve — o primeiro que casar vence, e vários nomes do
+     catálogo casam com mais de uma regra:
+
+       "Laço Branco ( G )"     -> Laço G tem que vir antes do fallback de laço
+       "Laço Parzinho"         -> Parzinho antes de Laço Único
+       "Kit Bolsa com Laço"    -> Kit antes de Bolsa (é bolsa + laço combinando,
+                                  conferido na foto; o nome começa com "Kit")
+       "Laça Franzido com Peróla" -> não tem palavra de tipo nenhuma, cai no
+                                  fallback de laço (e sim, o nome tem dois erros
+                                  de digitação no catálogo real)
+
+     O fallback aceita "laça" de propósito: normalizarTexto tira o cedilha mas
+     não conserta a vogal, e existe produto cadastrado assim. */
   const DETECTORES_DE_CATEGORIA = [
-    { rotulo: "Laço Pompom",       regex: /\bpompom\b/ },
-    { rotulo: "Parzinho",          regex: /\bparzinho\b/ },
-    { rotulo: "Tiara",             regex: /\btiaras?\b/ },
-    { rotulo: "Bolsa",             regex: /\bbolsas?\b/ },
-    { rotulo: "Cabide",            regex: /\bcabides?\b/ },
-    { rotulo: "Laço Único",        regex: /\bunico\b/ },
-    { rotulo: "Kit Laço na Caixa", regex: /\bkit\b/ },
+    { rotulo: "Laço G",       regex: /\(\s*g\s*\)|\bgrande\b/ },
+    { rotulo: "Laço Pompom",  regex: /\bpompom\b/ },
+    { rotulo: "Parzinho",     regex: /\bparzinhos?\b/ },
+    { rotulo: "Tiara",        regex: /\btiaras?\b/ },
+    { rotulo: "Cabide",       regex: /\bcabides?\b/ },
+    { rotulo: "Kit",          regex: /\bkits?\b/ },
+    { rotulo: "Bolsa",        regex: /\bbolsas?\b/ },
+    { rotulo: "Laço Único",   regex: /\bunico\b|\blac[oa]s?\b|\blacinhos?\b/ },
   ];
   function detectarCategoriaPorNome(nome){
     const texto = normalizarTexto(nome);

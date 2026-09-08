@@ -687,8 +687,8 @@ test("categorias: cria, renomeia (slug não muda), bloqueia excluir em uso, excl
   assert.equal((await post("/api/admin/categories", { label: "Outra" }, sharedClienteCookie)).status, 403);
 
   // Categoria fixa não pode ser renomeada nem excluída por aqui.
-  assert.equal((await patch("/api/admin/categories/festa", { label: "Festa Nova" }, adminCookie)).status, 400);
-  assert.equal((await fetch(ORIGIN + `/api/admin/categories/festa`, {
+  assert.equal((await patch("/api/admin/categories/tiara", { label: "Tiara Nova" }, adminCookie)).status, 400);
+  assert.equal((await fetch(ORIGIN + `/api/admin/categories/tiara`, {
     method: "DELETE", headers: { Origin: ORIGIN, Cookie: adminCookie },
   })).status, 400);
 
@@ -714,7 +714,7 @@ test("categorias: cria, renomeia (slug não muda), bloqueia excluir em uso, excl
 
   // Devolve o produto 5 para a categoria original e tenta excluir de novo —
   // agora sem nenhum produto usando o slug, a exclusão deve funcionar.
-  await patch("/api/admin/products/5", { category: "festa" }, adminCookie);
+  await patch("/api/admin/products/5", { category: "laco-unico" }, adminCookie);
   const excluida = await fetch(ORIGIN + `/api/admin/categories/${slug}`, {
     method: "DELETE", headers: { Origin: ORIGIN, Cookie: adminCookie },
   });

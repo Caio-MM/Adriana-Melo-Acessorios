@@ -135,14 +135,14 @@ const mpClient = new MercadoPagoConfig({
 // verdadeira e distorcia o frete calculado.
 const CAIXA_PADRAO = { weight:0.2, width:16, height:7, length:20 };
 const PRODUCTS = {
-  1: { name:"Laço Bailarina",        price:34.90, ...CAIXA_PADRAO, category:"dia-a-dia",   badges:[] },
-  2: { name:"Laço Duquesa",          price:49.90, ...CAIXA_PADRAO, category:"festa",       badges:["Mais vendido"] },
-  3: { name:"Laço Recém-nascida",    price:29.90, ...CAIXA_PADRAO, category:"maternidade", badges:[] },
-  4: { name:"Laço Pérola",           price:59.90, ...CAIXA_PADRAO, category:"batizado",    badges:[] },
-  5: { name:"Laço Borboleta",        price:44.90, ...CAIXA_PADRAO, category:"festa",       badges:[] },
-  6: { name:"Kit Presente 3 Laços",  price:89.90, ...CAIXA_PADRAO, category:"presente",    badges:["Novo"] },
-  7: { name:"Laço Tiara Flor",       price:39.90, ...CAIXA_PADRAO, category:"dia-a-dia",   badges:[] },
-  8: { name:"Laço Personalizado",    price:64.90, ...CAIXA_PADRAO, category:"presente",    badges:["Novo"] },
+  1: { name:"Laço Bailarina",        price:34.90, ...CAIXA_PADRAO, category:"laco-unico",  badges:[] },
+  2: { name:"Laço Duquesa",          price:49.90, ...CAIXA_PADRAO, category:"laco-unico",  badges:["Mais vendido"] },
+  3: { name:"Laço Recém-nascida",    price:29.90, ...CAIXA_PADRAO, category:"laco-unico",  badges:[] },
+  4: { name:"Laço Pérola",           price:59.90, ...CAIXA_PADRAO, category:"laco-unico",  badges:[] },
+  5: { name:"Laço Borboleta",        price:44.90, ...CAIXA_PADRAO, category:"laco-unico",  badges:[] },
+  6: { name:"Kit Presente 3 Laços",  price:89.90, ...CAIXA_PADRAO, category:"kit",         badges:["Novo"] },
+  7: { name:"Laço Tiara Flor",       price:39.90, ...CAIXA_PADRAO, category:"tiara",       badges:[] },
+  8: { name:"Laço Personalizado",    price:64.90, ...CAIXA_PADRAO, category:"laco-unico",  badges:["Novo"] },
 };
 
 /* Categorias fixas — precisam ficar em sincronia com os chips de filtro em
@@ -150,13 +150,23 @@ const PRODUCTS = {
    criadas pelo painel ("+ Nova categoria"), guardadas em custom_categories;
    PRODUCT_CATEGORIES continua existindo só com os slugs fixos porque é
    contra ela que product_overrides valida uma categoria vinda do painel
-   antes de somar as dinâmicas — ver isValidCategory, mais abaixo. */
+   antes de somar as dinâmicas — ver isValidCategory, mais abaixo.
+
+   ⚠️ Aqui é POR TIPO DE PRODUTO, não por ocasião. Antes eram Maternidade,
+   Festa, Batizado, Dia a dia e Presente — e o resultado é que 28 dos 47
+   produtos caíram todos em "maternidade": um mesmo laço é de festa E de
+   batizado, então quem cadastra escolhe um e o resto vai para o genérico.
+   Tipo é excludente (ou é tiara, ou é bolsa) e está escrito no nome de todo
+   produto, o que também deixa a reclassificação automática funcionar. */
 const BUILTIN_CATEGORIES = [
-  { slug: "maternidade", label: "Maternidade" },
-  { slug: "festa",       label: "Festa" },
-  { slug: "batizado",    label: "Batizado" },
-  { slug: "dia-a-dia",   label: "Dia a dia" },
-  { slug: "presente",    label: "Presente" },
+  { slug: "laco-unico",  label: "Laço Único" },
+  { slug: "parzinho",    label: "Parzinho" },
+  { slug: "laco-g",      label: "Laço G" },
+  { slug: "laco-pompom", label: "Laço Pompom" },
+  { slug: "tiara",       label: "Tiara" },
+  { slug: "kit",         label: "Kit" },
+  { slug: "bolsa",       label: "Bolsa" },
+  { slug: "cabide",      label: "Cabide" },
 ];
 const PRODUCT_CATEGORIES = BUILTIN_CATEGORIES.map(c => c.slug);
 const PRODUCT_BADGES = ["Mais vendido", "Novo"];
@@ -3852,7 +3862,7 @@ app.get("/api/products/photos/:id", async (req, res) => {
 });
 
 /* Slug curto e sem acento a partir do texto digitado — o mesmo formato dos
-   5 slugs fixos ("dia-a-dia"), porque é isso que vai para o data-cat dos
+   slugs fixos ("laco-unico"), porque é isso que vai para o data-cat dos
    chips de filtro e para PRODUCT.category no banco. */
 function slugifyCategory(label){
   return label

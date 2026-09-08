@@ -3,14 +3,14 @@
 
   /* ============ CATÁLOGO (somente para EXIBIÇÃO no front-end) ============ */
   const products = [
-    { id:1, name:"Laço Bailarina", cat:"dia-a-dia", catLabel:"Dia a dia", price:34.90, color:"#F4B4CC", badges:[], desc:"Laço em cetim rosa bebê, leve e confortável para o dia a dia." },
-    { id:2, name:"Laço Duquesa", cat:"festa", catLabel:"Festa", price:49.90, color:"#DD6E9B", badges:["Mais vendido"], desc:"Cetim duplo com volume extra, perfeito para festas e ensaios." },
-    { id:3, name:"Laço Recém-nascida", cat:"maternidade", catLabel:"Maternidade", price:29.90, color:"#FBEAF0", badges:[], desc:"Presilha macia em algodão, indicada para os primeiros meses." },
-    { id:4, name:"Laço Pérola", cat:"batizado", catLabel:"Batizado", price:59.90, color:"#F8ECF1", badges:[], desc:"Detalhes em pérolas para o dia especial do batizado." },
-    { id:5, name:"Laço Borboleta", cat:"festa", catLabel:"Festa", price:44.90, color:"#EA8FB4", badges:[], desc:"Formato de borboleta com fita de organza, ideal para festas infantis." },
-    { id:6, name:"Kit Presente 3 Laços", cat:"presente", catLabel:"Presente", price:89.90, color:"#C05480", badges:["Novo"], desc:"Trio de laços em tons de rosa, embalado em caixa para presente." },
-    { id:7, name:"Laço Tiara Flor", cat:"dia-a-dia", catLabel:"Dia a dia", price:39.90, color:"#F4B4CC", badges:[], desc:"Tiara macia com flor de tecido, confortável para uso prolongado." },
-    { id:8, name:"Laço Personalizado", cat:"presente", catLabel:"Presente", price:64.90, color:"#DD6E9B", badges:["Novo"], desc:"Bordado com o nome que você escolher, embalagem para presente." },
+    { id:1, name:"Laço Bailarina", cat:"laco-unico", catLabel:"Laço Único", price:34.90, color:"#F4B4CC", badges:[], desc:"Laço em cetim rosa bebê, leve e confortável para o dia a dia." },
+    { id:2, name:"Laço Duquesa", cat:"laco-unico", catLabel:"Laço Único", price:49.90, color:"#DD6E9B", badges:["Mais vendido"], desc:"Cetim duplo com volume extra, perfeito para festas e ensaios." },
+    { id:3, name:"Laço Recém-nascida", cat:"laco-unico", catLabel:"Laço Único", price:29.90, color:"#FBEAF0", badges:[], desc:"Presilha macia em algodão, indicada para os primeiros meses." },
+    { id:4, name:"Laço Pérola", cat:"laco-unico", catLabel:"Laço Único", price:59.90, color:"#F8ECF1", badges:[], desc:"Detalhes em pérolas para o dia especial do batizado." },
+    { id:5, name:"Laço Borboleta", cat:"laco-unico", catLabel:"Laço Único", price:44.90, color:"#EA8FB4", badges:[], desc:"Formato de borboleta com fita de organza, ideal para festas infantis." },
+    { id:6, name:"Kit Presente 3 Laços", cat:"kit", catLabel:"Kit", price:89.90, color:"#C05480", badges:["Novo"], desc:"Trio de laços em tons de rosa, embalado em caixa para presente." },
+    { id:7, name:"Laço Tiara Flor", cat:"tiara", catLabel:"Tiara", price:39.90, color:"#F4B4CC", badges:[], desc:"Tiara macia com flor de tecido, confortável para uso prolongado." },
+    { id:8, name:"Laço Personalizado", cat:"laco-unico", catLabel:"Laço Único", price:64.90, color:"#DD6E9B", badges:["Novo"], desc:"Bordado com o nome que você escolher, embalagem para presente." },
   ];
 
   /* ============ SEGURANÇA — SANITIZAÇÃO ============ */
@@ -667,9 +667,43 @@
       if(!c?.slug || group.querySelector(`.chip[data-cat="${CSS.escape(c.slug)}"]`)) return;
       const chip = document.createElement("button");
       chip.className = "chip";
+      chip.type = "button";
       chip.dataset.cat = c.slug;
+      chip.setAttribute("aria-pressed", "false");
+      /* ⚠️ Só o rótulo aqui dentro, nada de contagem nem ícone:
+         categoryLabelFor() (mais abaixo) descobre a categoria de um produto
+         lendo chip.textContent, e qualquer coisa a mais vira "Tiara 8" no card
+         e no Quick View. Contagem, se houver, vai por atributo. */
       chip.textContent = c.label || c.slug;
       group.appendChild(chip);
+    });
+  }
+
+  /* Categoria sem nenhum produto vira filtro que só leva ao "nada encontrado".
+     Acontecia de verdade: "Bolsa" e "Kit Laço na Caixa" apareciam na vitrine
+     com zero produtos dentro. Os dados já estão todos em memória, então a
+     contagem sai daqui mesmo, sem endpoint novo. */
+  function esconderCategoriasVazias(){
+    const group = document.getElementById("filterGroup");
+    if(!group) return;
+    const comProduto = new Set(products.map(p => p.cat));
+    group.querySelectorAll(".chip").forEach(chip => {
+      const cat = chip.dataset.cat;
+      if(cat === "todos") return;
+      const vazia = !comProduto.has(cat);
+      chip.hidden = vazia;
+      // Um chip escondido que continua sendo o filtro ativo deixaria a vitrine
+      // vazia sem nenhum jeito visível de voltar.
+      if(vazia && currentFilter === cat){
+        currentFilter = "todos";
+        const todos = group.querySelector('.chip[data-cat="todos"]');
+        group.querySelectorAll(".chip").forEach(c => {
+          c.classList.remove("active");
+          c.setAttribute("aria-pressed", "false");
+        });
+        if(todos){ todos.classList.add("active"); todos.setAttribute("aria-pressed", "true"); }
+        aplicarRecorte();
+      }
     });
   }
 
@@ -740,6 +774,9 @@
         }
       }
       if(changed){ renderProducts(); renderCart(); }
+      // Depois de o catálogo real chegar: é só aqui que dá para saber quais
+      // categorias ficaram sem produto.
+      esconderCategoriasVazias();
       verifyPaymentRules(data.paymentRules);
     }catch(err){
       console.warn("Não foi possível verificar atualizações do catálogo:", err);
@@ -765,9 +802,18 @@
   document.getElementById("filterGroup").addEventListener("click", function(e){
     const btn = e.target.closest(".chip");
     if(!btn) return;
-    document.querySelectorAll("#filterGroup .chip").forEach(c => c.classList.remove("active"));
+    document.querySelectorAll("#filterGroup .chip").forEach(c => {
+      c.classList.remove("active");
+      c.setAttribute("aria-pressed", "false");
+    });
     btn.classList.add("active");
+    btn.setAttribute("aria-pressed", "true");
     currentFilter = btn.dataset.cat;
+    /* No celular a fileira rola para o lado: sem isto, tocar num chip da ponta
+       deixa metade dele fora da tela e não fica claro qual está selecionado.
+       inline:"nearest" não mexe em nada quando o chip já está inteiro visível,
+       e block:"nearest" impede que a página role verticalmente junto. */
+    btn.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
     aplicarRecorte();
   });
 

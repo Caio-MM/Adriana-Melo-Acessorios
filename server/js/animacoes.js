@@ -273,49 +273,76 @@
     });
   }
 
-  /* ---- VAN GUIADA PELA ROLAGEM (peça central) ----
-     Até agora a van rodava num loop CSS de 4s que ignorava a rolagem. Aqui a
-     seção prende na tela e a entrega anda com o dedo: 0% da rolagem = passo 1,
-     100% = passo 3. É a metáfora que o site já tinha desenhada — o trajeto do
-     pedido — finalmente ligada ao trajeto de quem está lendo.
+  /* ---- A ENTREGA GUIADA PELA ROLAGEM (peça central) ----
+     Antes a entrega rodava num loop CSS que ignorava a rolagem. Aqui ela anda
+     com o dedo: 0% = passo 1, 100% = passo 3, e o passo em que está acende.
+     É a metáfora que o site já tinha desenhada — o trajeto do pedido —
+     finalmente ligada ao trajeto de quem está lendo.
 
-     Só no computador: prender a tela em celular irrita mais do que encanta, e
-     lá a van nem aparece (display:none abaixo de 768px). */
-  function vanGuiada() {
+     Serve as três faixas de tela, mudando só duas coisas:
+
+       computador (>=992px)  van, seção PRESA na tela
+       tablet (768-991px)    van, sem prender
+       celular (<768px)      o pacotinho, sem prender
+
+     Prender a tela em aparelho pequeno irrita mais do que encanta; e abaixo de
+     768px a van nem existe (display:none no CSS), por isso lá quem viaja é o
+     pacote. Sem o pin, o percurso é a passagem da própria seção pela tela. */
+  function entregaGuiada({ comPin }) {
     const wrap = document.querySelector(".process-wrap");
-    const van = document.querySelector(".process-truck");
     const passos = gsap.utils.toArray("#sobre .process-step");
-    if (!wrap || !van || passos.length < 3) return;
+    if (!wrap || passos.length < 3) return;
 
+    const van = document.querySelector(".process-truck");
+    const pacote = document.getElementById("processPackage");
+    // Quem está visível nesta largura é quem viaja.
+    const visivel = (el) => el && getComputedStyle(el).display !== "none";
+    const movel = visivel(van) ? van : pacote;
+    if (!visivel(movel)) return;
+
+    const ehVan = movel === van;
     // Avisa o CSS para desligar o keyframe de deslocamento e deixar o GSAP
-    // como dono único do transform da van.
-    van.classList.add("is-guiada");
+    // como dono único do movimento.
+    movel.classList.add("is-guiada");
 
     /* Posições medidas do ícone de cada passo, não porcentagens chutadas: é o
-       que faz a van encostar exatamente em cada parada em qualquer largura.
-       Em função (não valor fixo) porque invalidateOnRefresh remede tudo a cada
-       ScrollTrigger.refresh() — que já acontece no load e no fonts.ready. */
+       que faz a entrega encostar exatamente em cada parada em qualquer
+       largura. Em função (não valor fixo) porque invalidateOnRefresh remede
+       tudo a cada ScrollTrigger.refresh(). */
+    /* ⚠️ Posição de LAYOUT (offsetLeft/offsetTop), não getBoundingClientRect.
+       O rect devolve a posição ANIMADA, e os ícones estão sempre em movimento:
+       o passo entra com translateY(28px) do .reveal e depois flutua ±5px pelo
+       @keyframes process-icon-float. Medir com rect dava alvo errado por
+       25-30px dependendo do instante — é a mesma armadilha que o código do
+       pacote antigo já documentava em main.js. offsetLeft/offsetTop ignoram
+       transform, então valem em qualquer momento da animação.
+
+       Somar a cadeia de offsetParent até o pai do móvel resolve o resto: `left`
+       e `top` contam a partir do bloco que contém o elemento, e o .process-wrap
+       é um .row do Bootstrap (margens negativas + padding nas colunas). */
     function centroDoPasso(passo) {
       const icone = passo.querySelector(".process-icon-wrap") || passo;
-      const r = icone.getBoundingClientRect();
-      return r.left + r.width / 2 - wrap.getBoundingClientRect().left;
+      const pai = movel.offsetParent;
+      let x = 0, y = 0, n = icone;
+      while (n && n !== pai) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+      return { x: x + icone.offsetWidth / 2, y: y + icone.offsetHeight / 2 };
     }
-    // A van nasce em left:14% com translate(-50%): o x do GSAP é sempre
-    // relativo a esse ponto de partida.
+    // A van nasce em left:14% com translate(-50%): o x do GSAP é relativo a
+    // esse ponto de partida. O pacote é posicionado por left/top absolutos.
     const partida = () => wrap.getBoundingClientRect().width * 0.14;
 
     let parada;
 
     /* Roda a cada quadro do scrub: liga as rodas enquanto há movimento e
-       acende o passo em que a van está. Classe, não tween — assim acende E
-       apaga sozinho ao rolar de volta, e o estilo continua morando no CSS.
+       acende o passo corrente. Classe, não tween — assim acende E apaga
+       sozinho ao rolar de volta, e o estilo continua morando no CSS.
        ⚠️ Precisa ser passado na CRIAÇÃO do gatilho: o ScrollTrigger guarda a
        referência da função nesse momento, então atribuir vars.onUpdate depois
        não tem efeito nenhum (silenciosamente). */
     function aCadaQuadro(self) {
-      van.classList.add("is-andando");
+      movel.classList.add("is-andando");
       clearTimeout(parada);
-      parada = setTimeout(() => van.classList.remove("is-andando"), 120);
+      parada = setTimeout(() => movel.classList.remove("is-andando"), 120);
 
       const naVez = Math.min(
         Math.floor(self.progress * passos.length),
@@ -324,29 +351,48 @@
       passos.forEach((passo, i) => passo.classList.toggle("is-na-vez", i === naVez));
     }
 
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: "#sobre",
-        start: "center center",
-        // Uma tela de rolagem presa. Mais que isso vira armadilha: a seção tem
-        // só ~490px de conteúdo e ninguém quer ficar preso relendo três passos.
-        end: "+=100%",
-        pin: true,
-        scrub: 0.6,
-        anticipatePin: 1,
-        invalidateOnRefresh: true,
-        /* Maior que o -3 do batch da vitrine: o pin MUDA a altura da página, e
-           os gatilhos dos cards precisam ser medidos depois disso, senão
-           recalculam com a altura errada. */
-        refreshPriority: 1,
-        onUpdate: aCadaQuadro,
-      },
-    });
+    const gatilho = {
+      trigger: "#sobre",
+      scrub: 0.6,
+      invalidateOnRefresh: true,
+      /* Maior que o -3 do batch da vitrine: com pin a altura da página MUDA, e
+         os gatilhos dos cards precisam ser medidos depois disso. */
+      refreshPriority: 1,
+      onUpdate: aCadaQuadro,
+    };
 
-    tl.fromTo(van,
-      { x: () => centroDoPasso(passos[0]) - partida() },
-      { x: () => centroDoPasso(passos[2]) - partida(), ease: "none", duration: 1 }
-    );
+    if (comPin) {
+      gatilho.start = "center center";
+      // Uma tela de rolagem presa. Mais que isso vira armadilha: a seção tem
+      // só ~490px de conteúdo e ninguém quer ficar preso relendo três passos.
+      gatilho.end = "+=100%";
+      gatilho.pin = true;
+      gatilho.anticipatePin = 1;
+    } else {
+      // Sem prender: o percurso é a seção atravessando a tela, de baixo para
+      // cima. A entrega completa a viagem quando a seção termina de passar.
+      gatilho.start = "top 80%";
+      gatilho.end = "bottom 55%";
+    }
+
+    const tl = gsap.timeline({ scrollTrigger: gatilho });
+
+    if (ehVan) {
+      tl.fromTo(movel,
+        { x: () => centroDoPasso(passos[0]).x - partida() },
+        { x: () => centroDoPasso(passos[2]).x - partida(), ease: "none", duration: 1 }
+      );
+    } else {
+      /* No celular os passos empilham na vertical, então o pacote desce em vez
+         de atravessar — e passa POR CADA parada, não em linha reta do primeiro
+         ao último. Daí os dois trechos encadeados. */
+      tl.fromTo(movel,
+        { left: () => centroDoPasso(passos[0]).x + "px", top: () => centroDoPasso(passos[0]).y + "px" },
+        { left: () => centroDoPasso(passos[1]).x + "px", top: () => centroDoPasso(passos[1]).y + "px", ease: "none", duration: 1 }
+      ).to(movel,
+        { left: () => centroDoPasso(passos[2]).x + "px", top: () => centroDoPasso(passos[2]).y + "px", ease: "none", duration: 1 }
+      );
+    }
 
     return tl;
   }
@@ -483,8 +529,15 @@
   /* A van presa à rolagem é só no computador: abaixo de 992px prender a tela
      atrapalha, e abaixo de 768px a van nem existe (display:none). O celular
      mantém o pacotinho pulando entre paradas, que já funciona bem lá. */
+  /* Duas faixas, mesma animação, só muda o prender. O gsap.matchMedia troca
+     sozinho quando a largura cruza 992px — inclusive girando o aparelho. */
   mm.add("(min-width: 992px) and (prefers-reduced-motion: no-preference)", () => {
-    const tl = vanGuiada();
+    const tl = entregaGuiada({ comPin: true });
+    return () => { if (tl && tl.scrollTrigger) tl.scrollTrigger.kill(); };
+  });
+
+  mm.add("(max-width: 991.98px) and (prefers-reduced-motion: no-preference)", () => {
+    const tl = entregaGuiada({ comPin: false });
     return () => { if (tl && tl.scrollTrigger) tl.scrollTrigger.kill(); };
   });
 

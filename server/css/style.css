@@ -3740,3 +3740,57 @@ body.admin-gate-active .admin-state-area{
 }
 .process-step .process-num{ transition:background-color .45s ease, color .45s ease; }
 .process-step.is-na-vez .process-num{ background:var(--blush-700); color:var(--white); }
+
+/* ============ FILTROS DE CATEGORIA NO CELULAR ============
+   Eram 13 botões num flex-wrap sem nenhuma media query, o que no celular
+   quebrava em 5 fileiras e comia ~330px antes do primeiro produto. Vira uma
+   fileira única que desliza para o lado.
+
+   A margem negativa + padding faz a fileira sangrar até a borda da tela: sem
+   isso ela pareceria cortada no meio do nada, em vez de continuar. */
+@media (max-width: 991.98px){
+  .chip-group{
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+    scroll-snap-type:x proximity;
+    scrollbar-width:none;
+    margin-inline:calc(var(--bs-gutter-x, 1.5rem) * -.5);
+    padding-inline:calc(var(--bs-gutter-x, 1.5rem) * .5);
+    padding-block:2px;
+    /* Esmaece as pontas para dizer "tem mais para o lado" sem precisar de seta. */
+    mask-image:linear-gradient(90deg, transparent 0, #000 16px,
+                                       #000 calc(100% - 24px), transparent 100%);
+  }
+  .chip-group::-webkit-scrollbar{ display:none; }
+  .chip{
+    flex:0 0 auto;
+    scroll-snap-align:start;
+    /* 44px é o alvo de toque recomendado; os chips tinham ~36px. */
+    min-height:44px;
+    display:inline-flex; align-items:center;
+  }
+}
+
+/* ============ ENTREGA GUIADA — CELULAR E TABLET ============
+   O mesmo contrato da van no computador, agora para o pacotinho: .is-guiada
+   desliga o keyframe de deslocamento e o GSAP vira dono único da posição.
+   Sem isso os dois brigariam pelo mesmo left/top. */
+.process-package-mobile.is-guiada{
+  /* ⚠️ Sem display aqui: quem decide se o pacote existe é a media query de
+     767.98px. Forçar display:flex faria ele aparecer também no computador,
+     junto com a van. Aqui só o que o keyframe fazia e agora ninguém faz:
+     tornar visível e parar de animar sozinho. */
+  opacity:1;
+  animation:none;
+  /* Centraliza nos DOIS eixos: guiado por left/top, o padrão translateY(-50%)
+     só resolvia a vertical e o pacote ficava meia largura à direita do ícone. */
+  transform:translate(-50%, -50%);
+}
+.process-package-mobile.is-guiada.is-dirigindo{ animation:none; }
+
+/* Entre 768px e 991px a van aparece mas não é mais o loop de 4s: também é
+   guiada, só que sem prender a tela. */
+@media (max-width: 991.98px){
+  .process-truck.is-guiada{ opacity:1; }
+}

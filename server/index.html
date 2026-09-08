@@ -401,7 +401,7 @@
       <div class="reveal">
         <span class="section-eyebrow"><i class="bi bi-flower1"></i> nossa coleção</span>
         <h2 class="section-title">Um laço para cada momento</h2>
-        <p class="section-sub mt-2">Escolha por ocasião e monte o pedido — cada peça é confeccionada especialmente para você.</p>
+        <p class="section-sub mt-2">Escolha pelo tipo e monte o pedido — cada peça é confeccionada especialmente para você.</p>
       </div>
 
       <div class="vitrine-busca reveal">
@@ -412,13 +412,16 @@
       </div>
     </div>
 
-    <div class="chip-group mb-3" id="filterGroup">
-      <button class="chip active" data-cat="todos">Todos</button>
-      <button class="chip" data-cat="maternidade">Maternidade</button>
-      <button class="chip" data-cat="festa">Festa</button>
-      <button class="chip" data-cat="batizado">Batizado</button>
-      <button class="chip" data-cat="dia-a-dia">Dia a dia</button>
-      <button class="chip" data-cat="presente">Presente</button>
+    <div class="chip-group mb-3" id="filterGroup" role="group" aria-label="Filtrar por tipo de produto">
+      <button class="chip active" data-cat="todos" aria-pressed="true">Todos</button>
+      <button class="chip" data-cat="laco-unico" aria-pressed="false">Laço Único</button>
+      <button class="chip" data-cat="parzinho" aria-pressed="false">Parzinho</button>
+      <button class="chip" data-cat="laco-g" aria-pressed="false">Laço G</button>
+      <button class="chip" data-cat="laco-pompom" aria-pressed="false">Laço Pompom</button>
+      <button class="chip" data-cat="tiara" aria-pressed="false">Tiara</button>
+      <button class="chip" data-cat="kit" aria-pressed="false">Kit</button>
+      <button class="chip" data-cat="bolsa" aria-pressed="false">Bolsa</button>
+      <button class="chip" data-cat="cabide" aria-pressed="false">Cabide</button>
     </div>
 
     <!-- A vitrine não anunciava nada ao mudar de filtro; com busca e "Ver
@@ -660,14 +663,14 @@
                         <div class="order-card mb-2">
                           <div class="mock-produto">
                             <img src="img/mock-produto-1.jpg" alt="" width="373" height="560" loading="lazy" decoding="async">
-                            <div><strong>Laço Duquesa</strong><span class="mock-muted">Rosa pink · 1 un.</span></div>
+                            <div><strong>Laço Duquesa</strong><span class="mock-muted">Presilha M · 1 un.</span></div>
                             <span class="mock-preco">R$ 49,90</span>
                           </div>
                         </div>
                         <div class="order-card mb-3 mock-produto-extra">
                           <div class="mock-produto">
                             <img src="img/mock-produto-2.jpg" alt="" width="373" height="560" loading="lazy" decoding="async">
-                            <div><strong>Laço Borboleta</strong><span class="mock-muted">Rosa bebê · 2 un.</span></div>
+                            <div><strong>Laço Borboleta</strong><span class="mock-muted">Presilha P · 2 un.</span></div>
                             <span class="mock-preco">R$ 89,80</span>
                           </div>
                         </div>
@@ -752,7 +755,7 @@
                           <img src="img/mock-produto-2.jpg" alt="" width="373" height="560" loading="lazy" decoding="async">
                           <div>
                             <strong>Laço Borboleta</strong>
-                            <span class="mock-muted">Rosa bebê · 2 unidades</span>
+                            <span class="mock-muted">Presilha P · 2 unidades</span>
                           </div>
                           <span class="mock-preco">R$ 89,80</span>
                         </div>
