@@ -127,9 +127,13 @@
   }
 
   /* ---- VITRINE ----
-     A grade é reconstruída a cada filtro, busca e "Ver mais" (renderProducts
-     em js/main.js dispara vitrine:render). Os gatilhos antigos precisam morrer
-     junto, senão vazam um por tecla digitada na busca. */
+     Filtro e busca reconstroem a grade inteira; "Ver mais" só acrescenta os
+     novos ao final (renderProducts/acrescentarProdutos em js/main.js, os dois
+     disparam vitrine:render). Gatilho de card que saiu da página precisa
+     morrer, senão vaza um por tecla digitada na busca — mas gatilho de card
+     que CONTINUA na página tem que sobreviver: no "Ver mais", um card do lote
+     anterior ainda abaixo da dobra segue esperando a rolagem, e ele já perdeu
+     o .reveal, então não seria reinscrito e ficaria invisível para sempre. */
   let gatilhosDaVitrine = [];
 
   const DOBRA = 0.88;
@@ -151,8 +155,13 @@
   }
 
   function animarVitrine() {
-    gatilhosDaVitrine.forEach((st) => st.kill());
-    gatilhosDaVitrine = [];
+    // isConnected separa os dois casos: quem foi descartado numa remontagem
+    // morre aqui; quem continua na grade mantém o gatilho que ainda não disparou.
+    gatilhosDaVitrine = gatilhosDaVitrine.filter((st) => {
+      if (st.trigger && st.trigger.isConnected) return true;
+      st.kill();
+      return false;
+    });
 
     const grid = document.getElementById("productsGrid");
     if (!grid) return;
@@ -182,11 +191,13 @@
 
     if (agora.length) entrarEmCascata(agora);
     if (depois.length) {
-      gatilhosDaVitrine = ScrollTrigger.batch(depois, {
-        start: "top " + Math.round(DOBRA * 100) + "%",
-        refreshPriority: -3,
-        onEnter: entrarEmCascata,
-      });
+      gatilhosDaVitrine = gatilhosDaVitrine.concat(
+        ScrollTrigger.batch(depois, {
+          start: "top " + Math.round(DOBRA * 100) + "%",
+          refreshPriority: -3,
+          onEnter: entrarEmCascata,
+        })
+      );
     }
   }
 
