@@ -59,8 +59,10 @@
     gsap.set(letras, { opacity: 0 });
     gsap.set(bloco, { opacity: 0 });
 
-    const FOLGA_X = 3;
-    const FOLGA_Y = 2;
+    const CORPO = parseFloat(getComputedStyle(titulo).fontSize) || 16;
+    const FOLGA_X = 0.09 * CORPO;
+    const RECUO_TOPO = 0.1 * CORPO;
+    const SOBRA_BASE = 0.04 * CORPO;
     let corAtual = null;
 
     function caixaRelativa(alvo) {
@@ -68,9 +70,9 @@
       const t = titulo.getBoundingClientRect();
       return {
         left: a.left - t.left - FOLGA_X,
-        top: a.top - t.top - FOLGA_Y,
+        top: a.top - t.top + RECUO_TOPO,
         width: a.width + FOLGA_X * 2,
-        height: a.height + FOLGA_Y * 2,
+        height: a.height - RECUO_TOPO + SOBRA_BASE,
       };
     }
 

@@ -422,7 +422,8 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 }
 .hero-title em{
   font-style:italic; color:var(--blush-700); font-weight:500;
-  background:var(--blush-150); border-radius:6px;
+  background:linear-gradient(to bottom, transparent .14em, var(--blush-150) .14em);
+  border-radius:6px;
   padding:.04em .09em; margin:0 -.09em;
   -webkit-box-decoration-break:clone; box-decoration-break:clone;
 }
