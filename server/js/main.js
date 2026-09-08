@@ -506,8 +506,24 @@
     });
   }
 
+  /* Rótulo curto do parcelamento, só para o card da vitrine: ao lado do botão
+     "+" sobram ~84px no celular, e "ou 3x de R$ 10,67 sem juros" quebrava em
+     TRÊS linhas. Montado a partir do plano em vez de recortar o rótulo pronto,
+     que segue inteiro no Quick View, no carrinho e no checkout.
+     Encurtar só vale quando o parcelamento é sem juros: com juros, omitir isso
+     seria informação enganosa, então volta o rótulo completo. Hoje nenhum
+     parcelamento tem juros (ver PAYMENT_RULES em js/pricing.js), mas a regra é
+     configurável e a guarda custa uma linha. */
+  function rotuloCurtoDeParcelamento(pay){
+    const plano = pay.installment;
+    if(plano.count <= 1) return "";
+    if(!plano.interestFree) return `ou ${pay.installmentLabel}`;
+    return `${plano.count}x de ${formatMoney(plano.value)}`;
+  }
+
   function cartaoDeProdutoHTML(p, i){
       const pay = pricing.paymentSummaryFor(p.price);
+      const parcelamento = rotuloCurtoDeParcelamento(pay);
       const photo = imageFor(p);
       return `
       <div class="col-6 col-md-4 col-lg-3 reveal reveal-delay-${i % 4}">
@@ -531,7 +547,7 @@
               <div class="product-pricing">
                 <span class="product-price">${formatMoney(p.price)}</span>
                 <span class="product-pix">${formatMoney(pay.pixPrice)} <small>no Pix</small></span>
-                <span class="product-installment">ou ${escapeHTML(pay.installmentLabel)}</span>
+                ${parcelamento ? `<span class="product-installment">${escapeHTML(parcelamento)}</span>` : ""}
               </div>
               <button class="btn-add flex-shrink-0" data-id="${p.id}"${p.soldOut ? " disabled" : ""} aria-label="${p.soldOut ? `${escapeHTML(p.name)} está esgotado` : `Adicionar ${escapeHTML(p.name)} ao carrinho`}"><i class="bi bi-plus-lg"></i></button>
             </div>
