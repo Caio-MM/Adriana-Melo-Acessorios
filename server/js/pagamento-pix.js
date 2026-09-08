@@ -1,8 +1,6 @@
 (function(){
   "use strict";
 
-  /* ============ PÁGINA DO PIX — QR na tela e confirmação automática ============ */
-
   const STORAGE_KEY = "plc_pix_pendente";
   const INTERVALO_MS = 4000;      
   const LIMITE_MS = 20 * 60 * 1000; 

@@ -8,21 +8,12 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 
-<!-- Recarrega sozinha: quando a loja voltar, a cliente já cai no site sem
-     precisar atualizar na mão. É <meta refresh> e não JavaScript porque a
-     CSP do servidor não permite script inline, e esta página precisa
-     funcionar mesmo servida por um servidor de arquivos qualquer, sem o
-     Node no ar (ver o comentário do MAINTENANCE_MODE no server.js). -->
 <meta http-equiv="refresh" content="30">
 
 <!--
-  ⚠️ ESTA PÁGINA É PROPOSITALMENTE AUTOSSUFICIENTE.
-  Nada de <link rel="stylesheet">, nada de <script src>, nenhuma imagem
-  externa: todo o estilo está no <style> abaixo e o laço é um <svg> inline.
-  O motivo: ela aparece justamente quando o site NÃO está normal — durante
-  um deploy, um reinício ou uma queda. Se ela dependesse de css/style.css
-  ou do logo em img/, poderia abrir sem estilo nenhum, que é pior do que a
-  tela de erro do navegador que ela veio substituir.
+  ⚠️ Nada de arquivo externo aqui: nem CSS, nem script, nem imagem. Esta
+  página aparece justamente quando o site está fora do ar, e o que ela
+  buscasse fora poderia não vir.
   Fontes: pilhas do sistema, pelo mesmo motivo — os .woff2 da marca podem
   não estar sendo servidos na hora em que esta página é exibida.
 -->

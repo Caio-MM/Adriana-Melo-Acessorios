@@ -138,7 +138,6 @@
 
       <div id="adminContent" class="d-none admin-layout">
 
-        <!-- ============ NAVEGAÇÃO POR ABAS ============ -->
         <nav class="admin-sidebar" id="adminTabs" aria-label="Seções do painel">
           <button type="button" class="admin-tab-btn is-active" data-tab="dashboard"><i class="bi bi-speedometer2"></i> Dashboard</button>
           <button type="button" class="admin-tab-btn" data-tab="produtos"><i class="bi bi-tags"></i> Produtos</button>
@@ -150,7 +149,6 @@
 
         <div class="admin-tab-panels">
 
-          <!-- ============ DASHBOARD ============ -->
           <section class="admin-tab-panel" data-tab-panel="dashboard">
             <h2 class="admin-section-title">Visão geral</h2>
             <div class="stats-row" id="statsRow"></div>
@@ -204,11 +202,6 @@
               </button>
             </div>
 
-            <!-- Botão de autoatendimento para o problema mais comum do feed do
-                 Instagram: trocar o token no .env não basta depois da primeira
-                 vez (ver comentário da rota /api/admin/instagram/reconnect em
-                 server.js) — sem isto, a única forma de destravar era acesso a
-                 terminal para apagar a linha do banco na mão. -->
             <div class="admin-export-row">
               <p class="admin-hint">Se o feed do Instagram parou de aparecer na home depois de trocar o token: clique aqui para o site esquecer o token antigo e testar o novo agora.</p>
               <button type="button" class="btn-outline-blush btn-sm-blush" id="instagramReconnectBtn">
@@ -218,7 +211,6 @@
             </div>
           </section>
 
-          <!-- ============ PRODUTOS ============ -->
           <section class="admin-tab-panel d-none" data-tab-panel="produtos">
             <div class="admin-section-head">
               <h2 class="admin-section-title">Produtos</h2>
@@ -260,7 +252,6 @@
             </div>
           </section>
 
-          <!-- ============ CUPONS ============ -->
           <section class="admin-tab-panel d-none" data-tab-panel="cupons">
             <h2 class="admin-section-title">Cupons</h2>
             <p class="admin-hint">Cupons de desconto percentual — criados aqui já valem no checkout do site na hora.</p>
@@ -301,7 +292,6 @@
             </div>
           </section>
 
-          <!-- ============ VENDAS E PEDIDOS ============ -->
           <section class="admin-tab-panel d-none" data-tab-panel="pedidos">
             <div class="mb-5 d-none" id="pendingCartsSection">
               <h2 class="admin-section-title">Pendentes para recuperar</h2>
@@ -326,7 +316,6 @@
             <div id="adminList" class="orders-list d-none"></div>
           </section>
 
-          <!-- ============ CLIENTES ============ -->
           <section class="admin-tab-panel d-none" data-tab-panel="clientes">
             <div class="admin-section-head">
               <h2 class="admin-section-title">Clientes</h2>
@@ -386,7 +375,6 @@
             </div>
           </section>
 
-          <!-- ============ MENSAGENS ============ -->
           <section class="admin-tab-panel d-none" data-tab-panel="mensagens">
             <h2 class="admin-section-title">Mensagens recebidas</h2>
             <p class="admin-hint">Enviadas pelo formulário “Vamos criar seu laço?” da página inicial.</p>
@@ -405,7 +393,6 @@
   </div>
 </main>
 
-<!-- ============ MODAL: EDITAR PRODUTO ============ -->
 <div class="modal fade" id="editProductModal" tabindex="-1" aria-labelledby="editProductModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -522,7 +509,6 @@
   </div>
 </div>
 
-<!-- ============ MODAL: EDITAR CUPOM ============ -->
 <div class="modal fade" id="editCouponModal" tabindex="-1" aria-labelledby="editCouponModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -555,7 +541,6 @@
   </div>
 </div>
 
-<!-- ============ MODAL: ADICIONAR PRODUTO ============ -->
 <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -618,8 +603,6 @@
               <input type="number" class="form-control" id="apLength" required min="0.01" max="100" step="0.1" inputmode="decimal" placeholder="Ex.: 11" value="20">
             </div>
           </div>
-          <!-- Valores padrão = caixa fixa que a lojista usa para enviar (16x7x20cm,
-               200g) — ela edita só quando o produto for maior/mais pesado que isso. -->
           <div class="form-text mb-3" style="margin-top:-.5rem">Medidas da embalagem de 1 unidade — a mesma info que os produtos fixos do catálogo já usam para calcular o frete.</div>
 
           <div class="mb-3">

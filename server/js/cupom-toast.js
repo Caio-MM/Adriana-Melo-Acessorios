@@ -1,8 +1,6 @@
 (function(){
   "use strict";
 
-  /* ============ NOTIFICAÇÃO DE CUPOM — e-mail gera o cupom, igual à seção "Ganhe 10% ============ */
-
   const STORAGE_KEY = "plc_cupom_toast_email_enviado";
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -142,12 +140,6 @@
     }, 2000);
   });
 
-  /* A notificação é só da tela principal — atrapalha quando some atrás do
-     Quick View de um produto, do carrinho ou do menu do celular. Os três se
-     escondem atrás do MESMO seletor (Bootstrap adiciona a classe "show" a
-     qualquer modal/offcanvas aberto), então um seletor genérico cobre os
-     três sem precisar ficar de olho em cada um por id — inclusive um
-     overlay novo que apareça no futuro. */
   function algumOverlayAberto(){
     return !!document.querySelector(".modal.show, .offcanvas.show");
   }
@@ -157,29 +149,6 @@
   });
   document.addEventListener("show.bs.offcanvas", () => {
     if(toastEl.classList.contains("show")) toast.hide();
-  });
-
-  /* No celular a notificação fica encostada em baixo, onde moram os dois
-     botões flutuantes. Publicar a altura dela deixa o CSS subir os dois pelo
-     tanto exato — e o ResizeObserver cobre o momento em que o cupom é
-     revelado e a barra cresce. */
-  const caixaDoCupom = document.getElementById("couponToastContainer");
-  function publicarAlturaDoCupom(){
-    if(!caixaDoCupom) return;
-    document.body.style.setProperty("--altura-cupom", caixaDoCupom.offsetHeight + "px");
-  }
-  if(caixaDoCupom && typeof ResizeObserver === "function"){
-    new ResizeObserver(() => {
-      if(document.body.classList.contains("tem-cupom-em-baixo")) publicarAlturaDoCupom();
-    }).observe(caixaDoCupom);
-  }
-  toastEl.addEventListener("shown.bs.toast", () => {
-    publicarAlturaDoCupom();
-    document.body.classList.add("tem-cupom-em-baixo");
-  });
-  toastEl.addEventListener("hidden.bs.toast", () => {
-    document.body.classList.remove("tem-cupom-em-baixo");
-    document.body.style.removeProperty("--altura-cupom");
   });
 
   document.addEventListener("plc:auth", (e) => {

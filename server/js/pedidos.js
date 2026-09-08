@@ -144,7 +144,6 @@
     }
   });
 
-  /* ============ EXCLUSÃO DE CONTA (LGPD) ============ */
   const accountDanger = document.getElementById("accountDanger");
   const deleteBtn = document.getElementById("deleteAccountBtn");
   const deleteModalEl = document.getElementById("deleteAccountModal");
@@ -178,7 +177,6 @@
         deleteErrorEl.textContent = data.error || "Não foi possível excluir a conta agora.";
         return;
       }
-      // Conta excluída — redireciona para a home com aviso.
       window.location.href = "index.html?conta=excluida";
     }catch(err){
       console.error("Erro ao excluir conta:", err);

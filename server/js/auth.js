@@ -1,7 +1,6 @@
 (function(){
   "use strict";
 
-  /* ============ SESSÃO — usado em toda página (index.html, conta.html, pedidos.html). ============ */
   function escapeHTML(str){
     return String(str).replace(/[&<>"']/g, ch => ({
       "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"

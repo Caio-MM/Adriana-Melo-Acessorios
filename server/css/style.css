@@ -1,4 +1,3 @@
-/* ============ TOKENS ============ */
 :root{
   --cream:#FFFDFC;
   --white:#FFFFFF;
@@ -39,12 +38,6 @@
   --radius-sm:14px;
   --shadow-soft: 0 20px 45px -20px rgba(192,84,128,0.35);
 
-  /* Cartão do painel: superfície branca sobre o fundo creme. Estes três
-     valores já existiam escritos à mão em 4 componentes diferentes
-     (.stat-tile, .dashboard-chart-card, .admin-table-wrap, .order-card) —
-     virar token não muda nada na tela, só passa a existir um lugar só pra
-     mexer. Não confundir com --shadow-sm logo abaixo: aquele tem blur e
-     spread de verdade diferentes. */
   --shadow-card: 0 10px 25px -20px rgba(84,41,60,.3);
   --shadow-card-hover: 0 16px 32px -18px rgba(84,41,60,.4);
   --admin-card-pad: 1.25rem 1.4rem;
@@ -105,7 +98,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   *{ animation:none !important; transition:none !important; scroll-behavior:auto !important; }
 }
 
-/* ============ REVEAL ON SCROLL ============ */
 .reveal{
   opacity:0; transform:translateY(28px);
   transition:opacity .6s ease, transform .6s ease;
@@ -135,17 +127,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
   max-width:560px;
 }
 
-/* Utilitários de cor — existem pra tirar `style="color:var(--…)"` de dentro
-   dos templates do painel (js/admin.js), onde a mesma cor era repetida
-   dezenas de vezes à mão. */
 .text-ink-soft{ color:var(--ink-soft); }
 .text-ink-soft strong{ color:var(--ink); }
 .text-blush{ color:var(--blush-700); }
 
-/* ============ BOW ICON ============ */
 .bow-icon{ display:inline-block; fill:currentColor; }
 
-/* ============ NAVBAR ============ */
 .plc-navbar{
   position:fixed; top:0; left:0; right:0; z-index:1030;
   padding:var(--nav-pad-y) 0;
@@ -261,16 +248,12 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .btn-outline-blush:hover{ background:var(--blush-100); color:var(--blush-700); }
 .btn-outline-blush:active{ transform:scale(.97); }
 
-/* Botão compacto — a ÚNICA definição de "botão pequeno" do painel. Antes esta
-   mesma medida existia em dois seletores de contexto (.tracking-row,
-   .admin-products-table) e mais 8 vezes como style= inline no HTML/JS. */
 .btn-sm-blush,
 .tracking-row .btn-outline-blush,
 .admin-products-table .btn-outline-blush{
   padding:.4rem 1rem; font-size:.82rem; white-space:nowrap;
 }
 
-/* Botões de ação destrutiva (ex.: excluir conta) — cor de perigo, discreta */
 .btn-outline-danger{
   background:transparent; border:1.5px solid var(--color-danger); color:var(--color-danger);
   border-radius:999px; padding:.58rem 1.4rem; font-weight:600; font-size:.9rem;
@@ -288,13 +271,11 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .btn-danger-solid:disabled{ opacity:.6; }
 .account-danger{ border-top:1px solid var(--blush-100); }
 
-/* Consentimento (LGPD) nos formulários */
 .consent-check .form-check-label{ color:var(--ink-soft); line-height:1.45; }
 .consent-check .form-check-input:checked{ background-color:var(--blush-600); border-color:var(--blush-600); }
 .consent-check .form-check-input:focus{ border-color:var(--blush-500); box-shadow:0 0 0 3px var(--blush-100); }
 .consent-check a{ color:var(--blush-700); text-decoration:underline; }
 
-/* ====================== BANNER DE COOKIES (js/cookie-consent.js) ====================== */
 .cookie-consent{
   position:fixed; left:1.25rem; bottom:1.25rem; z-index:1090;
   width:min(400px, calc(100vw - 2.5rem));
@@ -307,9 +288,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .cookie-consent.is-visible{ opacity:1; transform:none; }
 .cookie-consent.is-leaving{ opacity:0; transform:translateY(16px); }
 
-/* Garante espaço rolável do tamanho do banner: em páginas curtas (ex.: tela
-   de login/2FA no celular) sem isso o banner fixo pode cobrir conteúdo do
-   rodapé sem nenhum jeito de rolar até ele. */
 body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 
 .cookie-consent-head{ display:flex; align-items:center; gap:.6rem; margin-bottom:.6rem; }
@@ -329,8 +307,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .cookie-consent-actions{ display:flex; gap:.6rem; }
 .cookie-consent-btn{ flex:1 1 0; padding:.6rem 1rem; font-size:.88rem; }
 
-/* Desktop: vira uma barra horizontal esticada no rodapé — texto à esquerda,
-   botões ancorados à direita (preenche da direita para a esquerda). */
 @media (min-width:992px){
   .cookie-consent{
     left:1.5rem; right:1.5rem; bottom:1.5rem; width:auto; max-width:none;
@@ -386,12 +362,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .account-pill .account-icon{ width:18px; height:18px; }
 }
 
-/* Nome de quem está logada visível também em telas menores que 1200px —
-   nesse ponto o menu principal já virou hambúrguer, mas essa pílula não
-   fica dentro dele, então sem isso a conta conectada não tinha nenhum
-   indício visual (só o ícone genérico). Só a pílula de saudação (não a de
-   admin/sair, que seguem só-ícone fora do desktop, já disponíveis dentro
-   do menu hambúrguer). */
 .account-pill-primary{ width:auto; max-width:118px; padding:0 .65rem 0 .55rem; }
 .account-pill-primary .account-pill-label{
   display:inline; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
@@ -426,7 +396,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   transition:transform .55s cubic-bezier(.34,.6,.32,1), opacity .55s ease .05s;
 }
 
-/* ============ HERO ============ */
 .hero{
   padding:150px 0 90px;
   background:
@@ -451,35 +420,23 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 
 .hero-art{ position:relative; height:460px; }
 
-/* A foto entra no lugar do laço grande que era só ilustração. Os quatro
-   lacinhos .floaty continuam em volta — por isso ela é posicionada em
-   absolute igual ao laço era, sem mexer nas coordenadas deles. */
 .hero-photo-wrap{
   position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
   width:min(84%, 380px); z-index:1;
-  /* Moldura branca, como foto revelada. É o que separa a imagem do fundo:
-     o bokeh da foto é rosa-claro e o hero também, então sem esta borda a
-     foto encosta no fundo e some. A sombra sozinha não dava conta. */
   background:var(--white); padding:12px 12px 14px;
   border-radius:var(--radius-lg);
   box-shadow:var(--shadow-soft);
 }
-/* Cartão rosa inclinado atrás — dá profundidade e evita a foto "flutuar"
-   solta no creme. Usa --blush-200 (e não --blush-100) porque sobre o creme
-   do hero o tom mais claro ficava imperceptível. */
 .hero-photo-wrap::before{
   content:""; position:absolute; inset:-16px -16px -24px;
   background:var(--blush-200); border-radius:var(--radius-lg);
   transform:rotate(-5deg); z-index:-1;
 }
-/* <picture> nasce inline: sem isto sobra uma faixa branca sob a foto. */
 .hero-photo-wrap picture{ display:block; }
 .hero-photo{
   display:block; width:100%; height:auto;
   border-radius:calc(var(--radius-lg) - 10px);
 }
-/* Selo em Caveat: é a assinatura artesanal da marca e ancora o canto
-   inferior, que antes ficava vazio. */
 .hero-photo-badge{
   position:absolute; right:-14px; bottom:14px;
   display:inline-flex; align-items:center; gap:.35rem;
@@ -490,21 +447,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   transform:rotate(-4deg);
 }
 .hero-photo-badge i{ font-size:.8rem; }
-/* Lacinhos ao redor da foto. Ficam nas faixas laterais que sobram dos dois
-   lados dela (a foto ocupa o miolo) — os que encostam na borda passam POR
-   TRÁS, porque .hero-photo-wrap tem z-index:1 e estes não. Tamanhos, tons e
-   atrasos variados de propósito: se todos subissem juntos e do mesmo
-   tamanho, viraria um padrão repetido em vez de algo solto. */
-/* z-index:2 fica ACIMA do .hero-photo-wrap (z-index:1). Sem isso o cartão
-   rosa inclinado — que é o ::before do wrap, e portanto participa do
-   stacking context dele — cobre os laços inteiros no celular, onde o cartão
-   ocupa quase toda a área. Encostar na borda da foto é proposital: dá
-   camada, como um adesivo. */
-/* Contêiner dos laços: existe só para receber o parallax de rolagem (o GSAP
-   move ESTE nó, e cada laço dentro continua dono do seu @keyframes floaty).
-   inset:0 mantém as coordenadas de cada laço exatamente como eram quando eles
-   eram filhos diretos de .hero-art, e o z-index herda o papel que era do
-   .floaty: ficar ACIMA do .hero-photo-wrap (z-index:1). */
 .hero-flutuantes{ position:absolute; inset:0; z-index:2; pointer-events:none; }
 .floaty{ position:absolute; z-index:2; animation:floaty 6s ease-in-out infinite; }
 .floaty.f1{ top:6%;    left:8%;   width:46px; color:var(--blush-300); animation-delay:0s; }
@@ -517,25 +459,13 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .floaty.f8{ bottom:0%; left:26%;  width:28px; color:var(--blush-500); animation-delay:1.5s; }
 @keyframes floaty{ 0%,100%{ transform:translateY(0) rotate(0deg);} 50%{ transform:translateY(-16px) rotate(6deg);} }
 
-/* No celular a área da foto não some mais (antes era d-none, porque só tinha
-   ilustração decorativa ali). A altura fixa de 460px vira automática pra
-   não sobrar um vão embaixo da foto em tela pequena. */
 @media (max-width: 991.98px){
   .hero{ padding:120px 0 70px; }
   .hero-art{ height:auto; padding:1.5rem 0 1rem; display:flex; justify-content:center; }
-  /* Menor que no computador: no celular ela vem depois do texto e dos
-     botões, então serve de fecho do bloco — não precisa (nem deve) tomar a
-     tela inteira. */
-  /* position:relative (e não static): o cartão rosa é um ::before absoluto e
-     precisa se ancorar NA FOTO. Com static ele subia pro .hero-art, que é o
-     ancestral posicionado, e o cartão virava do tamanho da coluna inteira. */
   .hero-photo-wrap{
     position:relative; top:auto; left:auto; transform:none;
     width:min(62%, 225px); padding:9px 9px 11px;
   }
-  /* Os lacinhos referenciam as bordas do .hero-art; com ele em altura
-     automática as faixas laterais ficam estreitas, então sobram só quatro,
-     espalhados nos quatro cantos, pra não empilharem em cima da foto. */
   .floaty.f3, .floaty.f4, .floaty.f7, .floaty.f8{ display:none; }
   .floaty.f1{ top:0;   left:1%;  width:38px; }
   .floaty.f2{ top:6%;  right:1%; width:30px; }
@@ -545,31 +475,17 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .hero-photo-badge i{ font-size:.7rem; }
 }
 
-/* ============ MARQUEE STRIP ============ */
-
 .plc-marquee{
   position:relative; overflow:hidden; white-space:nowrap;
   color:#fff; padding:1.05rem 0;
-  /* Fallback sólido para navegadores sem color-mix() — se a imagem de
-     fundo abaixo for inválida, o parser descarta só essa propriedade e
-     este background-color chapado continua valendo. */
   background-color:var(--blush-700);
   background-image:linear-gradient(120deg,
     color-mix(in srgb, var(--blush-700) 95%, var(--ink) 5%) 0%,
     color-mix(in srgb, var(--blush-700) 85%, var(--ink) 15%) 100%);
-  /* Sombra rosa-tintada já usada no resto do site (elevação) + um fio de
-     brilho no topo, como o reflexo de uma fita de cetim. */
   box-shadow:var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.18);
-  /* A faixa (fundo + conteúdo) esmaece nas duas pontas em vez de cortar
-     em seco — a mesma máscara nas duas prefixadas para cobrir Safari. */
   -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
   mask-image:linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
 }
-/* Brilho sutil que atravessa a faixa periodicamente — bem discreto (12%
-   de opacidade), pausa junto do scroll em prefers-reduced-motion. Anima
-   `transform` (não `background-position`) de propósito: é a propriedade
-   que o navegador consegue compositar direto na GPU, sem repintar a cada
-   quadro — a mesma razão pela qual o scroll do texto usa translateX. */
 .plc-marquee::after{
   content:""; position:absolute; top:0; bottom:0; left:-30%; width:30%;
   pointer-events:none; will-change:transform;
@@ -607,7 +523,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .plc-marquee::after{ animation:none; content:none; }
 }
 
-/* ============ CATEGORY CHIPS ============ */
 .chip-group{ display:flex; flex-wrap:wrap; gap:.65rem; }
 .chip{
   border:1.5px solid var(--blush-200); background:var(--white); color:var(--ink);
@@ -617,7 +532,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .chip:hover{ border-color:var(--blush-500); }
 .chip.active{ background:var(--blush-600); border-color:var(--blush-600); color:#fff; }
 
-/* ============ PRODUCT CARDS ============ */
 .product-card{
   background:var(--white); border-radius:var(--radius-md); overflow:hidden;
   border:1px solid var(--blush-100); height:100%;
@@ -627,9 +541,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 
 .product-card.is-featured{ border-color:var(--blush-300); box-shadow:0 12px 30px -20px rgba(192,84,128,.5); }
 .product-thumb{
-  /* 2:3 — mesma proporção das fotos reais que a loja usa (retrato,
-     4000x6000px). Batendo com a foto de origem, object-fit:cover não
-     precisa cortar nada; era 1:1 antes, cortando fotos retrato pros lados. */
   aspect-ratio:2/3; display:flex; align-items:center; justify-content:center;
   position:relative; background:var(--blush-50); overflow:hidden;
 }
@@ -671,19 +582,12 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 @media (hover: none){
   .product-quickview{ opacity:1; transform:translateY(0); }
 }
-/* Espaçamento e entrelinha enxutos de propósito: o card gastava 201px de
-   corpo no celular só com respiro e entrelinha herdada do site, sem que
-   nenhuma fonte fosse grande. Tamanho de fonte NÃO foi reduzido em lugar
-   nenhum aqui — a vitrine precisa continuar fácil de ler. */
 .product-body{ padding:.8rem .9rem .95rem; }
 .product-cat{ font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--blush-600); font-weight:700; }
 .product-name{
   font-family:var(--font-display); font-size:1.08rem; font-weight:600;
-  /* Sem isto o nome herda a entrelinha do corpo do site (~1,65) e gasta 57px
-     em duas linhas; com 1.25 gasta 43px, na mesma fonte e no mesmo tamanho. */
   line-height:1.25; margin:.15rem 0 .3rem;
 }
-/* ---- vitrine: busca, contagem, estado vazio e esgotado ---- */
 .vitrine-busca{ position:relative; flex:0 1 300px; min-width:220px; }
 .vitrine-busca > .bi-search{
   position:absolute; left:1rem; top:50%; transform:translateY(-50%);
@@ -697,8 +601,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   border-color:var(--blush-500); background:var(--white);
   box-shadow:0 0 0 3px var(--blush-100);
 }
-/* o X nativo do type=search some: temos um botão próprio, e dois seria
-   confuso além de desalinhado com o resto do site */
 .vitrine-busca .form-control::-webkit-search-cancel-button{ display:none; }
 .vitrine-busca-limpar{
   position:absolute; right:.5rem; top:50%; transform:translateY(-50%);
@@ -713,8 +615,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .vitrine-vazio{ text-align:center; padding:3rem 1rem; }
 .vitrine-vazio .bow-icon{ width:56px; height:auto; color:var(--blush-200); margin-bottom:1rem; }
 
-/* Esgotado: o card continua clicável (dá pra ver o produto), só não dá pra
-   comprar. Foto esmaecida sinaliza sem precisar ler o selo. */
 .product-badge.is-soldout{
   background:var(--stone-600); box-shadow:0 6px 14px -6px rgba(0,0,0,.35);
 }
@@ -745,18 +645,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .btn-add:active{ transform:scale(.88); }
 .btn-add.is-added{ background:var(--color-success); color:#fff; }
 
-/* ============ QUICK VIEW (detalhes do produto) ============ */
-
-/* No computador (mesmo breakpoint do .modal-lg do Bootstrap, que já
-   deixa o modal bem mais largo aqui) a foto vai numa coluna e as
-   informações — descrição, cor, quantidade e PREÇO — na outra, lado a
-   lado. Só isso já resolve o preço ficar espremido embaixo da foto; no
-   celular continua empilhado do jeito que sempre foi.
-   align-items:center (não flex-start): a coluna de texto é bem mais baixa
-   que a foto — centralizar reparte essa sobra entre topo e base em vez de
-   deixar tudo vazio só embaixo. (Testado: usar CSS Grid pra colocar o
-   preço/botão dentro da coluna de texto quebrava a centralização do
-   modal do Bootstrap — não compensa o risco por um ganho pequeno.) */
 @media (min-width: 992px){
   .qv-body{ display:flex; align-items:center; gap:1.75rem; }
   .qv-media{ flex:0 0 300px; }
@@ -764,13 +652,8 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 }
 
 .qv-thumb{
-  /* ⚠️ width:auto/height:auto, NÃO width:100%/height:auto. Com width:100% fixo,
-     quando max-height precisa cortar (foto 2:3 — a proporção real do
-     catálogo — é mais alta do que a caixa em telas comuns), a LARGURA não
-     acompanhava: sobrava fundo --blush-50 nas laterais, como se a foto
-     estivesse com moldura errada. Com os dois eixos livres e max-width +
-     max-height juntos, o navegador encolhe largura E altura respeitando a
-     proporção — o mesmo que um <img> normal faria, sem barra nenhuma. */
+  /* ⚠️ width:auto, não width:100%. Fixando a largura, quando o max-height
+     corta a foto 2:3 a largura não acompanha e sobra fundo nas laterais. */
   position:relative; aspect-ratio:var(--qv-ratio, 2/3);
   width:auto; height:auto;
   max-width:100%; max-height:min(65vh, 520px);
@@ -780,12 +663,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   display:flex; align-items:center; justify-content:center; background:var(--blush-50);
 }
 .qv-thumb img{
-  /* contain, nunca cover: a lojista pediu a foto inteira, sem corte nenhum.
-     Como a moldura assume a proporção da própria foto (--qv-ratio, definido
-     em js/main.js quando ela carrega), normalmente não sobra faixa de fundo
-     nenhuma; o contain é a garantia de que, se sobrar (foto ainda
-     carregando, ou max-height cortando em tela baixa), ela encolhe inteira
-     em vez de perder pedaço. */
   position:absolute; inset:0; width:100%; height:100%; object-fit:contain;
   opacity:0; transition:opacity .4s ease;
 }
@@ -798,7 +675,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   animation:shimmer 1.4s ease-in-out infinite;
 }
 
-/* ============ QUICK VIEW — galeria de fotos ============ */
 .qv-gallery-nav-btn{
   position:absolute; top:50%; transform:translateY(-50%); width:36px; height:36px; border-radius:50%;
   background:rgba(255,255,255,.9); border:none; display:flex; align-items:center; justify-content:center;
@@ -817,28 +693,13 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .qv-gallery-thumb.is-active{ box-shadow:0 0 0 2.5px var(--blush-600); }
 .qv-gallery-thumb:focus-visible{ outline:3px solid var(--blush-600); outline-offset:2px; }
 
-/* O preço gruda no rodapé da área que rola. Com letra grande o conteúdo
-   passa a ser mais alto que o modal, e sem isto o preço ficava abaixo da
-   dobra enquanto "Adicionar ao carrinho" — que fica no rodapé fixo —
-   continuava clicável: dava pra comprar sem nunca ter visto o valor.
-   Só no celular: no computador a coluna da direita já mostra tudo junto.
-   Fundo opaco porque o resto do conteúdo passa por baixo ao rolar. */
-/* Rodapé do Quick View: preço em cima, quantidade+botão embaixo, os dois
-   ocupando a largura toda. O .modal-footer do Bootstrap é uma linha com os
-   itens à direita — sem isto tudo brigaria pela mesma linha. */
 .qv-footer{ display:block; padding-top:.75rem; }
 .qv-footer .qv-payment{
   padding-bottom:.75rem; margin-bottom:.75rem;
   border-bottom:1px solid var(--blush-100);
 }
 
-/* ============ QUICK VIEW — quantidade + adicionar ao carrinho ============
-   As duas ações do rodapé, lado a lado: é aqui, na hora de decidir, que faz
-   sentido ajustar quanto levar — não lá em cima, perto da descrição. */
 .qv-order-row{ display:flex; align-items:stretch; gap:.6rem; }
-/* Padding menor que o .btn-blush padrão: ao lado do seletor de quantidade, o
-   texto "Adicionar ao carrinho" só cabe numa linha com a folga reduzida —
-   medido em 375px, faltavam ~2px com o padding padrão. */
 .qv-order-row .btn-blush{
   flex:1 1 auto; padding-left:.9rem; padding-right:.9rem; white-space:nowrap;
 }
@@ -860,12 +721,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   min-width:1.6rem; text-align:center; font-weight:700; color:var(--ink); font-size:1rem;
 }
 
-/* ---- Quick View: tags, garantias e estado esgotado ----
-   A coluna da direita só tinha descrição + cores + quantidade (~250px)
-   contra uma foto de até 560px, e sobrava um vazio grande. Com a escolha
-   de cor removida sobraria ainda menos — estes blocos preenchem com dado
-   REAL do produto (categoria, selos) e com as garantias que a loja já
-   afirma no resto do site. */
 .qv-tags{ display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.85rem; }
 .qv-tag{
   font-size:.68rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase;
@@ -907,7 +762,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .qv-card-label{ font-size:.8rem; color:var(--ink); }
 .qv-card-inst{ font-size:.8rem; color:var(--ink-soft); }
 
-/* ============ FORMA DE PAGAMENTO (carrinho) ============ */
 .pay-methods{ display:flex; flex-direction:column; gap:.55rem; }
 
 .pay-method{
@@ -934,16 +788,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .pay-method .pm-price{ margin-left:auto; font-weight:700; color:var(--blush-700); white-space:nowrap; font-size:.92rem; }
 #cartInstallmentNote:empty{ display:none; }
 
-/* ============ NOSSA HISTÓRIA / INSTAGRAM (js/instagram-feed.js) ============
-   Card com 3 estados alternados via classe d-none pelo JS: loading (skeleton
-   com shimmer), live (avatar + grid de posts reais) e fallback (quando a
-   API não está configurada/disponível — ver server/lib/instagram.js). */
-/* Header do card, fora dele: mesma largura e centralização do
-   .instagram-feed-card logo abaixo, para os dois lerem como um bloco só em
-   vez do texto ficar mais estreito ou desalinhado por cima do card.
-   justify-content:center (não space-between) — só sobrou o botão aqui, sem
-   o texto "nos siga"/@handle que tinha antes; space-between jogaria um
-   único item para a esquerda em vez de centralizado. */
 .instagram-follow-head{
   display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
   gap:.85rem; max-width:420px; margin:0 auto 1.1rem;
@@ -1001,26 +845,10 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .instagram-feed-thumb:hover img{ transform:none; }
 }
 
-/* ============ PROCESS ============ */
 .process-wrap{ position:relative; }
 .process-step{ text-align:center; padding:0 1.1rem; }
 .process-icon-wrap{
-  /* z-index:2 explícito — não é decoração, é ordem de empilhamento: precisa
-     ficar ACIMA da van (z-index:1) para o número do passo nunca ser coberto
-     quando ela passa perto, mas isso não depende de onde cada um está no
-     HTML (frágil); com os três valores explícitos (linha:0 < van:1 <
-     ícone:2) a ordem é garantida em qualquer navegador. */
   position:relative; z-index:2; width:92px; height:92px; margin:0 auto 1.3rem;
-  /* Flutua sozinho, contínuo — mesmo espírito do .floaty dos laços no hero
-     (translateY + infinite), só que mais discreto (5px, não 16px, sem
-     rotate) porque aqui é um ícone com número, não um enfeite — e também
-     porque a van do computador (.process-truck) já tem uma folga apertada
-     de propósito até este círculo (perto da linha, como pedido); testei ao
-     vivo com 8px de balanço e a folga caía a menos de 1px no pico. 5px
-     mantém uns 3-4px de sobra mesmo no pior instante dos dois balanços
-     juntos. O atraso por passo (.reveal-delay-1/2, já usados no fade de
-     entrada) tira os três de sincronia, pro efeito não ficar "batendo"
-     junto. */
   animation:process-icon-float 4.2s ease-in-out infinite;
 }
 .reveal-delay-1 .process-icon-wrap{ animation-delay:.35s; }
@@ -1054,8 +882,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .process-step:hover .process-num{ border-color:var(--blush-500); color:var(--blush-600); }
 .process-step h3{ transition:color .25s ease; }
 .process-step:hover h3{ color:var(--blush-700); }
-/* Fixa — sem GSAP, sem scaleX de entrada. Só a van (abaixo) se move; a
-   estrada em si fica parada, como pedido depois de testar a versão animada. */
 .process-line{
   position:absolute; top:44px; left:16%; right:16%; height:3px;
   width:auto; max-width:none; padding:0; margin-top:0;
@@ -1063,45 +889,12 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   background-size:14px 3px; background-repeat:repeat-x; z-index:0;
 }
 
-/* Vanzinha de entrega que percorre a linha pontilhada — âncora vertical
-   PRÓPRIA (top:26px), não a mesma da linha (top:44px). Fica FORA de
-   .process-line de propósito: se fosse filha dela, o scaleX que desenha a
-   linha (js/animacoes.js) espremeria a van junto, porque transform não muda
-   a régua de porcentagem dos filhos, só distorce o que já foi desenhado.
-   ⚠️ Medi em pixel: com a sombra encostando na linha (top:44px, como era
-   antes) sobrava só ~5px até o topo do círculo do ícone — e o balanço
-   vertical do keyframe (translateY oscilando) já é o suficiente pra
-   mergulhar nesses 5px, fazendo a van parecer passar POR DENTRO do ícone.
-   top:26px (18px a menos) tira a van do contato com a linha de propósito —
-   fica visivelmente flutuando por cima dela — e abre uma folga de verdade
-   (~24px) até o ícone, folga essa que sobra até depois do balanço.
-   transform:translate(-50%,-95%) segue valendo sobre essa nova âncora.
-   ⚠️ z-index:1 é EXPLÍCITO de propósito, não um acidente de ordem no DOM:
-   a van tem que ficar ACIMA da linha (z-index:0, .process-line) — pedido
-   direto — e ABAIXO do círculo numerado (z-index:2, .process-icon-wrap),
-   senão ela tampa o número ao passar perto. Testei com z-index alto demais:
-   a van passava por cima do número. Com z-index:1 ela some por um instante
-   atrás de cada ícone ao se cruzarem — like um carro atrás de um poste, bem
-   menos estranho que cobrir o número — mas nunca fica atrás da própria
-   linha, que é sempre a camada mais baixa das três.
-   display:none por padrão (e não d-none do Bootstrap): as classes
-   responsivas do Bootstrap saem com !important no recorte
-   (bootstrap.purged.css) e brigariam com o display:block daqui. Parada (sem
-   .is-dirigindo) fica invisível — só aparece dirigindo, disparada por
-   IntersectionObserver em js/main.js. */
+/* ⚠️ Fica FORA de .process-line: como filha, o scaleX que desenha a linha
+   espremeria a van junto. z-index:1 é explícito — acima da linha (0) e
+   abaixo do círculo numerado (2), senão tampa o número ao passar.
+   display:none e não d-none: as classes do Bootstrap saem com !important
+   no recorte e brigariam com o display daqui. */
 .process-truck{
-  /* margin:0 — ACHADO O VERDADEIRO CULPADO do "van passando por dentro do
-     ícone": filho direto de .process-wrap (um .row.g-5 do Bootstrap), esta
-     div herdava ".row > *{ margin-top: var(--bs-gutter-y) }" = +48px
-     (--bs-gutter-y do g-5 é 3rem) — um top:24px virava, de fato, 72px, bem
-     dentro do círculo do ícone (que começa a ~52px). .process-line já tinha
-     esse reset (margin-top:0) de uma correção anterior; a van nunca tinha
-     ganhado o mesmo.
-     top:36px (medido contra a posição REAL do ícone, sem o offset fantasma):
-     deixa a base da van a ~6px da linha (visivelmente por cima, mas perto —
-     não flutuando longe) e ~9px do ícone mesmo no pico do balanço do
-     keyframe — testado com a folga mínima medida ao vivo ao longo do ciclo
-     inteiro, não só na posição de repouso. */
   display:none; position:absolute; top:36px; left:14%; z-index:1;
   width:78px; height:48px; margin:0; transform:translate(-50%, -95%);
   opacity:0; pointer-events:none;
@@ -1123,15 +916,9 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .process-truck-wheel circle:not(.process-truck-hub){ fill:var(--ink); }
 .process-truck-wheel .process-truck-hub{ fill:var(--blush-50); }
 
-/* Risquinhos de velocidade, à esquerda da van (atrás dela, já que anda para
-   a direita) — o que faz ela ler como "em movimento" e não só "flutuando". */
 .process-truck-lines{ position:absolute; left:-16px; top:4px; overflow:visible; }
 .process-truck-lines line{ stroke:var(--blush-300); stroke-width:2.5; stroke-linecap:round; opacity:0; }
 
-/* Loop, não uma passada só: a entrega se repete enquanto a seção está na
-   tela. A viagem em si cabe nos primeiros ~56% do ciclo de 4s (os mesmos
-   ~2,2s de antes) — o resto é pausa invisível (opacity:0 dos dois lados),
-   para não parecer um desenho reiniciando de repente no meio da tela. */
 .process-truck.is-dirigindo{
   animation:process-truck-drive 4s cubic-bezier(.4,0,.15,1) infinite;
 }
@@ -1144,9 +931,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .process-truck.is-dirigindo .process-truck-lines line:nth-child(2){ animation-delay:.05s; }
 .process-truck.is-dirigindo .process-truck-lines line:nth-child(3){ animation-delay:.09s; }
 
-/* left anda 14%->86% (a rota inteira); o balanço fica só no transform, que
-   não mexe em layout a cada quadro — só a posição horizontal (left) precisa
-   recalcular layout, e isso já é barato para um elemento de 78px. */
 @keyframes process-truck-drive{
   0%   { left:14%; opacity:0; transform:translate(-50%,-95%) translateY(0) rotate(0deg); }
   3%   { opacity:1; }
@@ -1165,31 +949,11 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   56%, 100%{ opacity:0; }
 }
 
-/* ---- versão do celular: pacotinho "batendo" ao lado de cada ícone ----
-   Duas tentativas antes desta: uma linha vertical contínua ligando o ícone 1
-   ao 3 passava POR TRÁS do título/parágrafo de cada passo (a queixa
-   original); a segunda tentava viajar só nos vãos em branco entre os
-   blocos, mas esses vãos variam MUITO com o tamanho do texto de cada
-   passo — em alguns casos ficam menores que o próprio pacote, que acabava
-   preso atrás do ícone seguinte a viagem inteira.
-   Esta versão não depende do texto: o pacote só visita a ALTURA de cada
-   ícone (--y1/--y2/--y3, o centro vertical de cada .process-icon-wrap,
-   sempre estável) e fica deslocado para a DIREITA dele (68px), numa faixa
-   que nunca tem texto (o parágrafo fica numa linha bem abaixo do ícone) e
-   nunca é coberta pelo próprio ícone (92px de diâmetro, centralizado — o
-   pacote de 28px começa a folga a partir de +46px do centro). */
+/* ⚠️ left/top em px e margin:0 por causa do reset ".row > *" do Bootstrap
+   (width:100% e margin-top:var(--bs-gutter-y)): ele empata com a largura daqui
+   e somava 48px ao top, jogando o pacote na altura do título em vez da do
+   ícone. */
 .process-package-mobile{
-  /* left usa um valor em px calculado em JS (--x1), não 50%+transform: este
-     div é filho direto de .process-wrap, que é um .row do Bootstrap, e o
-     reset de grid ".row > *{width:100%}" do bootstrap.purged.css empata em
-     especificidade com a largura daqui — mesmo com !important, a largura
-     usada para resolver um translateX em % ficava incorreta. Em px, a
-     posição não depende da largura calculada do elemento, só da altura
-     (para centralizar verticalmente) — e altura não tem esse problema.
-     margin:0 pelo MESMO motivo, mas para "top": ".row > *{ margin-top:
-     var(--bs-gutter-y) }" (48px no g-5) somava ao top:var(--y1) calculado —
-     era por isso que o pacote aparecia ao lado do TÍTULO do passo, não do
-     ÍCONE: 48px é quase exatamente a distância entre os dois. */
   display:none; position:absolute; left:var(--x1, 0px); top:var(--y1, 0px); z-index:0;
   width:28px; height:28px; margin:0; border-radius:50%;
   background:var(--blush-700); color:#fff; font-size:.72rem;
@@ -1208,12 +972,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .process-package-mobile.is-dirigindo{
   animation:process-package-pula 7s cubic-bezier(.4,0,.15,1) infinite;
 }
-/* Três paradas, uma por ícone, com um salto invisível (opacity:0) entre
-   elas — a posição só muda enquanto opacity:0, nunca à vista. "top"/"left"
-   são repetidos em toda parada (mesmo sem mudar, como 18%→22%) de
-   propósito: um keyframe que não os redeclara faz o navegador interpolar em
-   linha reta até o PRÓXIMO que declarar, e sem repetir o pacote "arrastava"
-   de um ícone a outro por baixo do fade. */
 @keyframes process-package-pula{
   0%   { top:var(--y1, 0px); left:var(--x1, 0px); opacity:0; transform:translateY(-50%) rotate(0deg) scale(.8); }
   4%   { opacity:1; transform:translateY(-50%) rotate(-12deg) scale(1); }
@@ -1231,36 +989,19 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   64%, 100%{ top:var(--y3, 0px); left:var(--x3, 0px); opacity:0; transform:translateY(-50%) rotate(0deg) scale(.8); }
 }
 
-/* ============ GARANTIAS — player no formato de stories ============
-   Antes esta seção prendia a rolagem da página e deslizava os cartões conforme
-   se rolava. Travava em parte dos aparelhos — é o consenso da literatura de
-   usabilidade, e era exatamente a queixa — e custava quase três telas no
-   computador e quase seis no celular para mostrar quatro frases.
-   Agora: barrinhas de progresso, avanço automático e toque para navegar, no
-   gesto que as clientes já conhecem do Instagram. A rolagem da página nunca é
-   tocada, e o mesmo componente serve computador e celular. */
-/* A seção era transparente e o palco não tinha fundo nem sombra: o painel
-   ficava boiando no creme, sem estar apoiado em nada. Daí a sensação de morno. */
 .stories-section{
   padding:5rem 0; position:relative; overflow:hidden;
   background:linear-gradient(180deg, var(--blush-50) 0%, var(--cream) 70%);
 }
 .scrolly-head{ max-width:600px; margin-bottom:1.75rem; }
 
-/* Uma variável dita a altura do palco, e a largura do bloco inteiro sai dela.
-   Sem isso as barrinhas ficavam mais largas que o painel — num stories elas
-   têm de ter exatamente a largura da mídia. */
 .stories{
   --palco-altura:clamp(420px, 62vh, 640px);
   position:relative; margin:0 auto;
   max-width:min(940px, calc(var(--palco-altura) * 4 / 3));
 }
 
-/* ---- barrinhas de progresso ---- */
 .stories-bars{ display:flex; gap:6px; margin:0 0 .9rem; position:relative; z-index:2; }
-/* O botão tem 18px de altura para ser um alvo de toque decente, mas o trilho
-   visível é só a faixa de 5px no meio — pintada por ::before. Antes o botão
-   inteiro tinha 4px, o que é impossível de acertar com o dedo. */
 .stories-bar{
   flex:1 1 0; height:18px; padding:0; border:0; background:transparent;
   position:relative; cursor:pointer; appearance:none;
@@ -1268,8 +1009,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .stories-bar::before{
   content:""; position:absolute; left:0; right:0; top:calc(50% - 2.5px);
   height:5px; border-radius:999px;
-  /* --blush-300 e não --blush-150: sobre o creme do fundo, o tom mais claro
-     dava contraste de praticamente 1:1 e o trilho sumia da tela. */
   background:var(--blush-300);
 }
 .stories-bar:focus-visible{ outline:3px solid var(--blush-600); outline-offset:2px; border-radius:6px; }
@@ -1280,18 +1019,12 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   transform:scaleX(0); transform-origin:left center;
 }
 .stories-bar.is-vista .stories-bar-fill{ transform:scaleX(1); }
-/* O preenchimento É o relógio: quando a animação termina, o player avança.
-   Pausar é só trocar --play, e o tempo já decorrido fica preservado — não há
-   cronômetro paralelo para manter em sincronia. */
 .stories-bar.is-ativa .stories-bar-fill{
   animation:stories-encher var(--dur, 5.5s) linear forwards;
   animation-play-state:var(--play, running);
 }
 @keyframes stories-encher{ from{ transform:scaleX(0); } to{ transform:scaleX(1); } }
 
-/* ---- palco ---- */
-/* Altura estável, vinda da variável acima: antes dependia de min(58vh, ...)
-   dentro de um miolo preso e precisava ser recalculada pelo ScrollTrigger. */
 .stories-palco{
   position:relative; width:100%; height:var(--palco-altura);
   overflow:hidden; border-radius:var(--radius-lg);
@@ -1299,10 +1032,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   background:var(--white); z-index:1;
   box-shadow:0 18px 44px -26px rgba(84,41,60,.38), 0 0 0 1px var(--blush-100);
 }
-/* Os cartões ficam LADO A LADO e o conjunto desliza, em vez de um sumir e o
-   outro aparecer — dá à troca a leitura de gesto, e não de corte. 100% da
-   largura do palco: nenhum vizinho fica visível (a prévia do próximo painel
-   foi tirada, achava bagunçado no celular). */
 .scrolly-card{
   position:absolute; top:0; bottom:0; left:0; width:100%; margin:0;
   transform:translateX(calc((var(--i) - var(--atual, 0)) * 100%));
@@ -1311,8 +1040,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .scrolly-card .scrolly-frame{ height:100%; }
 .scrolly-frame{ position:relative; }
 
-/* Zonas de toque invisíveis, no gesto de stories. São <button> de verdade, então
-   teclado e leitor de tela ganham anterior/próximo de graça. */
 .stories-zona{
   position:absolute; top:0; bottom:0; z-index:3;
   border:0; background:transparent; padding:0; cursor:pointer; appearance:none;
@@ -1321,11 +1048,8 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .stories-zona.is-proxima{ right:0; width:68%; }
 .stories-zona:focus-visible{ outline:3px solid var(--blush-600); outline-offset:-6px; border-radius:var(--radius-lg); }
 
-/* ---- legenda do slide atual ---- */
 .stories-legenda{ margin-top:1.5rem; min-height:6.5rem; }
 .stories-legenda-item[hidden]{ display:none; }
-/* Sair de display:none reinicia a animação sozinho — a legenda entra junto
-   com o painel, em vez de simplesmente aparecer trocada. */
 .stories-legenda-item{
   display:flex; align-items:flex-start; gap:1.1rem;
   animation:stories-legenda-entra .5s var(--ease-out) both .08s;
@@ -1334,8 +1058,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   from{ opacity:0; transform:translateY(10px); }
   to{ opacity:1; transform:none; }
 }
-/* O numeral era 15px e sumia. Grande, ele vira a âncora visual que marca o
-   ritmo a cada troca. */
 .stories-numero{
   font-family:var(--font-display); font-size:clamp(2.4rem, 5vw, 3.4rem);
   line-height:.85; color:var(--blush-300); flex:none;
@@ -1359,15 +1081,12 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 }
 .stories-repetir:hover{ background:var(--blush-50); border-color:var(--blush-600); }
 
-/* ⚠️ O bloco global *{animation:none!important} (topo do arquivo) mataria o
-   preenchimento e a barra ativa ficaria vazia para sempre. Aqui ela é fixada
-   cheia, para continuar indicando "você está aqui". O avanço automático não
-   começa nesse modo — quem decide isso é o JS. */
 @media (prefers-reduced-motion: reduce){
+  /* ⚠️ Fixa cheia porque o *{animation:none!important} do topo do arquivo
+     mataria o preenchimento e a barra ficaria vazia para sempre. */
   .stories-bar.is-ativa .stories-bar-fill{ transform:scaleX(1); }
 }
 
-/* ---- moldura de navegador ---- */
 .scrolly-frame{
   display:flex; flex-direction:column;
   border-radius:var(--radius-lg); overflow:hidden; background:var(--white);
@@ -1386,31 +1105,14 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 
-/* ============ GARANTIAS — os painéis de dentro da moldura ============
-   Cada painel é uma PÁGINA REAL da loja remontada com as MESMAS classes do
-   site (.account-card, .pix-*, .order-card, .policy-highlight, .contact-*) e
-   desenhada em escala reduzida, como se fosse a página vista de longe. Não é
-   captura de tela: encaixa exato na moldura em qualquer tamanho, fica nítido
-   em retina e permite esconder por design o QR e o código do Pix.
-   O truque da escala: o miolo é largo como uma página de verdade
-   (100% ÷ --esc) e leva um scale(--esc), então volta a caber na moldura
-   exatamente, sem número mágico em px. */
 .mock{
   flex:1 1 auto; min-height:0; position:relative; overflow:hidden;
   background:var(--cream);
 }
 .mock-escala{ position:absolute; inset:0; overflow:hidden; }
 .mock-escala-inner{
-  /* Valor inicial só para o primeiro quadro: js/main.js recalcula --esc a
-     partir da altura da moldura (ver ajustarEscalaDosPaineis) para que a
-     página tenha SEMPRE a mesma altura útil em unidades de página. Com um
-     valor fixo aqui, em janela baixa a moldura encolhia mas o conteúdo não,
-     e o painel do Pix acabava cortado. */
   --esc:.68;
   width:calc(100% / var(--esc));
-  /* min-height junto do flex abaixo: o miolo passa a ocupar a moldura inteira
-     (em unidades não-escaladas), e aí o conteúdo da página pode se centralizar
-     verticalmente em vez de ficar grudado no topo com um vazio embaixo. */
   min-height:calc(100% / var(--esc));
   transform:scale(var(--esc));
   transform-origin:top left;
@@ -1419,30 +1121,22 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .mock-muted{ color:var(--ink-soft); font-size:.86rem; display:block; }
 .mock-link{ color:var(--blush-600); font-size:.95rem; }
 
-/* barra de navegação da "página" */
 .mock-nav{
   display:flex; align-items:center; gap:1.2rem;
   padding:.8rem 2rem; background:rgba(255,255,255,.94);
   border-bottom:1px solid var(--blush-100);
 }
 .mock-nav > img{ height:34px; width:auto; }
-/* As páginas internas de verdade (pagamento-pix, acompanhar-pedido, politica)
-   usam .simple-header — só a logo e a conta, sem menu. */
 .mock-nav.is-simples{ justify-content:space-between; }
 .mock-nav-conta{
   width:34px; height:34px; border-radius:50%; background:var(--blush-100); color:var(--blush-700);
   display:flex; align-items:center; justify-content:center; font-size:1rem;
 }
 
-/* miolo da "página" */
 .mock-pagina{
   padding:2rem 2.5rem 2.5rem;
   flex:1 1 auto; display:flex; flex-direction:column; justify-content:center;
 }
-/* ⚠️ Larguras generosas de propósito. Estes painéis são páginas reais
-   reduzidas por transform, e a largura NÃO escalada passa de 1400px: com o
-   max-width de 640px da página de verdade, 55% do painel virava margem vazia
-   e a peça parecia um recorte perdido no meio do branco. */
 .mock-cartao{ max-width:760px; margin:0 auto; width:100%; }
 .mock-largura{ max-width:1080px; margin:0 auto; width:100%; }
 .mock-duas{ display:grid; grid-template-columns:1fr 1.05fr; gap:2.5rem; align-items:center; }
@@ -1465,23 +1159,9 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   border-radius:999px; padding:.3rem .8rem;
 }
 
-/* No celular o 2º produto do resumo do Pix some (.mock-produto-extra), mas
-   os números do subtotal continuavam somando os DOIS — sobrava um total que
-   não batia com o único item visível, parecendo produto faltando. Um
-   segundo .mock-resumo/.mock-total (mesmas classes, então herdam o estilo
-   de cima — só com .is-resumo-mobile, valores recalculados para o 1º item
-   só) troca de lugar com o original na mesma media query que esconde o 2º
-   produto, então os dois sempre mudam juntos. */
 .mock-resumo.is-resumo-mobile, .mock-total.is-resumo-mobile{ display:none; }
 
-/* Pix: o QR e o código vão ilegíveis de propósito — é uma ilustração da tela,
-   não um código que leve a algum lugar. Antes era um xadrez borrado preto e
-   branco (achado feio, pedido pra trocar) — agora é um degradê rosa suave
-   com o laço da marca no meio, que comunica "isto é só ilustração" sem
-   parecer um erro de carregamento. */
 .mock-qr-frame{ position:relative; }
-/* Precisa da dupla classe: .pix-qr (definida bem depois neste arquivo) usa o
-   atalho `background:#fff`, que zeraria o background definido aqui. */
 .pix-qr.mock-qr-art{
   border-radius:8px;
   display:flex; align-items:center; justify-content:center;
@@ -1504,14 +1184,12 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .pix-copy-row .mock-borrado{ flex:1 1 auto; min-width:0; }
 .pix-copy-row .pix-copy-btn{ display:inline-flex; align-items:center; gap:.4rem; white-space:nowrap; }
 
-/* produto dentro dos painéis */
 .mock-produto{ display:flex; align-items:center; gap:.9rem; }
 .mock-produto img{ width:52px; height:52px; border-radius:12px; object-fit:cover; flex-shrink:0; }
 .mock-produto.is-grande img{ width:68px; height:68px; }
 .mock-produto strong{ display:block; font-size:1rem; }
 .mock-preco{ margin-left:auto; font-weight:700; color:var(--blush-700); white-space:nowrap; }
 
-/* linha do tempo do pedido */
 .mock-timeline{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1rem; }
 .mock-timeline li{ display:flex; gap:.9rem; align-items:flex-start; }
 .mock-timeline li > span{
@@ -1523,7 +1201,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .mock-timeline strong{ display:block; font-size:.98rem; }
 .mock-timeline em{ font-style:normal; font-size:.86rem; color:var(--ink-soft); }
 
-/* políticas */
 .mock-abas{ display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1.5rem; }
 .mock-abas span{
   font-size:.85rem; color:var(--blush-700); background:var(--blush-50);
@@ -1535,7 +1212,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .mock-policy ul{ font-size:.95rem; color:var(--ink-soft); padding-left:1.1rem; }
 .mock-policy li{ margin-bottom:.35rem; }
 
-/* formulário de contato (só a aparência dos campos) */
 .mock-campos{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
 .mock-rotulo{ display:block; font-size:.85rem; font-weight:600; margin:.9rem 0 .35rem; }
 .mock-campos .mock-rotulo{ margin-top:0; }
@@ -1547,54 +1223,21 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .mock-input.is-area{ min-height:92px; }
 .mock-enviar{ display:inline-flex; align-items:center; gap:.5rem; margin-top:1.2rem; }
 
-
-
-/* ---- laços em volta do palco ----
-   Posições recalculadas: as antigas foram desenhadas para a área de tela cheia
-   do deck e ficavam perdidas agora que o bloco tem ~620px. Aqui eles abraçam
-   as bordas do palco, metade para fora, flutuando em tempos diferentes. */
 .scrolly-bow{
   position:absolute; z-index:0; pointer-events:none;
   animation:floaty 6s ease-in-out infinite;
 }
-/* Nos quatro cantos da SEÇÃO. Presos ao bloco central (~620px) eles ficavam
-   colados na moldura e abafavam o painel; aqui ocupam o vazio das laterais,
-   que no computador é largo. */
 .scrolly-bow.sb1{ top:12%;    left:3.5%;  width:74px; color:var(--blush-200); animation-delay:0s;   animation-duration:7s; }
 .scrolly-bow.sb2{ top:18%;    right:4%;   width:56px; color:var(--blush-150); animation-delay:1.6s; animation-duration:8.5s; }
 .scrolly-bow.sb3{ bottom:14%; left:6%;    width:58px; color:var(--blush-150); animation-delay:3.1s; animation-duration:7.8s; }
 .scrolly-bow.sb4{ bottom:9%;  right:3%;   width:68px; color:var(--blush-200); animation-delay:2.2s; animation-duration:6.4s; }
 
-/* ============ GARANTIAS — celular ============
-   O componente é o MESMO nos dois tamanhos agora (antes o celular caía numa
-   lista empilhada, com ~100 linhas próprias e 5,8 telas de rolagem). O que
-   muda aqui é só o painel: encolher uma página inteira para 343px de largura
-   deixaria o texto ilegível, então no celular ele abre em tamanho normal, em
-   coluna única, e o palco vira retrato — o que aliás é mais fiel a stories. */
 @media (max-width: 991.98px){
   .stories-section{ padding:3.25rem 0; }
   .stories{ --palco-altura:min(70vh, 560px); max-width:100%; }
   .stories-palco{ border-radius:var(--radius-md); }
   .scrolly-card .scrolly-frame{ height:100%; }
-  /* ⚠️ CORTE DE CONTEÚDO NO CELULAR — medido: os painéis têm de 722 a 999px
-     e o palco oferece ~510. Sem os cortes abaixo, metade de cada painel
-     desaparecia atrás do degradê (o de "Atendimento direto" perdia 53%).
-     Reduzir a escala não resolve: a 0,47 o texto ficaria com ~7px.
-     A regra é mostrar só a metade que PROVA a garantia. */
 
-  /* ⚠️ Os cortes que existiam aqui foram removidos. A loja é usada
-     principalmente no celular, e a cliente perdia justamente o que constrói
-     confiança: o cartão do Pix inteiro, as 3 condições de troca, as etapas
-     "Embalada para presente" e "A caminho", e o formulário de contato.
-
-     A causa da falta de espaço não era o conteúdo — era o painel do celular
-     ser uma MINIATURA DA PÁGINA DE COMPUTADOR (duas colunas, larguras de
-     1080px, encolhidas por transform). Agora ele é uma miniatura da página de
-     CELULAR: canvas estreito, escala perto de 1:1, tudo empilhado. Ver o
-     bloco "PAINÉIS EM FORMA DE CELULAR" no fim deste arquivo. */
-
-  /* O painel ainda pode sobrar um pouco; o fim some num degradê em vez de
-     cortar seco, sinalizando que a leitura continua no site. */
   .scrolly-card .mock::after{
     content:""; position:absolute; left:0; right:0; bottom:0; height:64px;
     background:linear-gradient(transparent, var(--white));
@@ -1603,28 +1246,16 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .stories-legenda{ margin-top:1.1rem; min-height:6.5rem; }
   .stories-bars{ gap:4px; }
 
-  /* A barra com os 3 pontinhos + URL é cromo de navegador de COMPUTADOR;
-     num celular ela é incongruente além de custar altura. Fica só uma faixa
-     discreta com o cadeado e o domínio, que é o que prova "site real". */
   .scrolly-frame-dot{ display:none; }
   .scrolly-frame-bar{ padding:.5rem .9rem; justify-content:center; }
   .scrolly-frame-url{ margin-left:0; font-size:.8rem; max-width:100%; }
   .mock-nav{ display:none; }
 
-  /* Cortes por painel, do mais alto para o mais baixo. Tudo com escopo dentro
-     do mock: .section-sub, .pix-status e .cart-hint são classes do site
-     inteiro — soltas aqui, quebrariam a página de pagamento de verdade. */
-  .mock-produto-extra{ display:none; }          /* 2º produto do resumo do Pix */
+  .mock-produto-extra{ display:none; }
   .mock-resumo:not(.is-resumo-mobile),
-  .mock-total:not(.is-resumo-mobile){ display:none; }   /* números somavam os 2 produtos */
+  .mock-total:not(.is-resumo-mobile){ display:none; }
   .mock-resumo.is-resumo-mobile{ display:flex; }
   .mock-total.is-resumo-mobile{ display:flex; }
-  /* A 4ª etapa ("A caminho — com código de rastreio por e-mail") era a última
-     coisa ainda escondida no celular. Com a composição de celular ela cabe, e
-     é justamente uma promessa de serviço: fica. */
-   /* conversa fica em 3 balões */
-  /* No cartão do Pix o QR já diz o que fazer; instrução, status e validade
-     são texto de apoio que no celular só custa altura. */
   .mock-cartao .section-sub,
   .mock-cartao .pix-or,
   .mock-cartao .pix-status,
@@ -1632,13 +1263,8 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .mock .pix-qr-frame{ width:150px; height:150px; }
   .mock .pix-qr.mock-qr-art{ width:118px; height:118px; }
 
-  /* 13,8px era menor que o corpo do próprio site; sobe para o tamanho de
-     leitura confortável no celular. */
   .mock-muted{ font-size:.9rem; }
 
-  /* Nada de escala aqui: encolher uma página inteira para 343px de largura
-     deixaria o texto ilegível. No celular o painel abre em tamanho normal e
-     em coluna única — vira a versão mobile da mesma página. */
   .mock{ position:static; overflow:visible; }
   .mock-escala{ position:static; overflow:visible; }
   .mock-escala-inner{ --esc:1; width:100%; min-height:0; transform:none; }
@@ -1649,21 +1275,13 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .mock-largura, .mock-cartao{ max-width:none; }
   .mock-nav{ padding:.7rem 1.1rem; }
   .mock-duas > div + div{ margin-top:1.25rem; }
-  /* lado a lado o total e o selo de economia se espremem em 375px */
   .mock-total{ flex-direction:column; align-items:flex-start; gap:.5rem; }
-  /* Deixar encolher e quebrar palavra longa: só faz sentido na largura do
-     celular. No computador isso fazia o texto quebrar em mais linhas e o
-     conteúdo estourar a moldura, por isso fica restrito a este bloco. */
   .mock-produto, .mock-produto > div,
   .mock-duas > *, .mock-campos > *{ min-width:0; }
   .mock-produto strong, .mock-link{ overflow-wrap:anywhere; }
-  /* Nenhum laço: em 375px não sobra folga lateral, e todos apareciam
-     cortados pela borda — viravam mancha rosa, não laço. */
   .scrolly-bow{ display:none; }
 }
 
-
-/* ============ CONTATO ============ */
 .contact-form-card{
   background:var(--white); border-radius:var(--radius-lg);
   box-shadow:var(--shadow-soft); padding:2rem;
@@ -1707,7 +1325,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .contact-form-card{ padding:1.5rem 1.25rem; }
 }
 
-/* ============ NEWSLETTER / CTA ============ */
 .plc-cta{
   background:linear-gradient(135deg, var(--blush-600), var(--blush-700));
   border-radius:var(--radius-lg); color:#fff; padding:3rem;
@@ -1736,7 +1353,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 }
 .plc-cta input.form-control:focus{ box-shadow:0 0 0 3px rgba(255,255,255,.5); }
 
-/* Sobrescreve .consent-check: aqui o fundo é rosa escuro, não claro. */
 .plc-cta .consent-check .form-check-label{ color:rgba(255,255,255,.92); text-shadow:0 1px 2px rgba(0,0,0,.15); }
 .plc-cta .consent-check a{ color:#fff; text-decoration-color:rgba(255,255,255,.6); }
 .plc-cta .consent-check a:hover{ text-decoration-color:#fff; }
@@ -1760,19 +1376,12 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 }
 .plc-cta .btn-blush:active{ transform:translateY(0); box-shadow:none; }
 
-/* ============ FOOTER ============
-   Reorganizado: antes eram 4 colunas 4/2/2/4, e a última (pagamento) tinha
-   conteúdo estreito num espaço largo — sobrava um vão enorme à direita, que
-   era o que mais dava aparência de inacabado. Agora os links ocupam a linha de
-   cima em quatro colunas do tamanho certo, e o pagamento ganha uma faixa
-   própria, de largura inteira, onde as bandeiras finalmente respiram. */
 .plc-footer{
   position:relative;
   background:var(--ink);
   color:var(--blush-100);
   padding:2.4rem 0 1rem;
 }
-/* O encontro do creme com o vinho era um corte seco. */
 .plc-footer-topo{
   position:absolute; inset:0 0 auto 0; height:3px;
   background:linear-gradient(90deg,
@@ -1804,8 +1413,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 
 .plc-footer-col{ display:flex; flex-direction:column; align-items:flex-start; gap:.5rem; }
 
-/* Link com um traço que cresce da esquerda no hover, em vez de só trocar de
-   cor. Custa nada e é o que dá vida a uma lista de links parada. */
 .plc-footer a{
   position:relative;
   color:var(--blush-150); font-size:.88rem; letter-spacing:.01em;
@@ -1836,7 +1443,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   transform:translateY(-3px);
 }
 
-/* ---- faixa de pagamento ---- */
 .plc-footer-pagamento{
   border-top:1px solid rgba(255,255,255,.1);
   padding:1.15rem 0 1.1rem;
@@ -1868,8 +1474,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .pay-logo-badge.is-icon{ gap:.35rem; color:var(--ink); font-size:.72rem; font-weight:700; }
 .pay-logo-badge.is-icon i{ font-size:1rem; color:var(--blush-700); }
 
-/* ---- linha final: às pontas, não centralizada ----
-   Centralizado brigava com todo o resto do rodapé, que é alinhado à esquerda. */
 .footer-bottom{
   border-top:1px solid rgba(255,255,255,.1);
   padding-top:.85rem;
@@ -1882,9 +1486,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .plc-footer-grid{ grid-template-columns:repeat(3, minmax(0, 1fr)); gap:1.5rem 1.25rem; }
   .plc-footer-marca{ grid-column:1 / -1; }
 }
-/* No celular o rodapé chegava a 1,15x a altura da tela — uma tela inteira só
-   de rodapé. As três listas passam a dividir a mesma linha (rótulos curtos
-   cabem), e tudo encolhe junto. */
 @media (max-width: 575.98px){
   .plc-footer{ padding:1.9rem 0 .9rem; }
   .plc-footer-grid{ gap:1.25rem .9rem; padding-bottom:1.1rem; }
@@ -1910,8 +1511,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .shipping-option .so-name{ font-weight:600; font-size:.86rem; }
 .shipping-option .so-days{ font-size:.76rem; color:var(--ink-soft); }
 .shipping-option .so-price{ margin-left:auto; font-weight:700; color:var(--blush-700); white-space:nowrap; }
-
-/* ============ CART OFFCANVAS ============ */
 
 .cart-offcanvas{ background:var(--cream); width:min(400px, 100%); max-width:100%; }
 .cart-offcanvas .offcanvas-header{
@@ -2090,7 +1689,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .checkout-hint-toast .toast-body{ font-weight:500; font-size:.92rem; }
 .checkout-hint-toast .bi-exclamation-circle-fill{ color:var(--gold-100); }
 
-/* ====================== PÁGINA DO PIX (pagamento-pix.html) ====================== */
 .pix-badge{
   display:inline-flex; align-items:center; gap:.35rem;
   background:var(--blush-100); color:var(--blush-700);
@@ -2145,8 +1743,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .pix-spinner{ animation:none; }
 }
 
-/* ============ PÁGINA DE OBRIGADO (pós-compra) ============ */
-
 .thanks-mark{
   position:relative; display:flex; align-items:center; justify-content:center;
   width:76px; height:76px; margin:0 auto; border-radius:50%;
@@ -2181,7 +1777,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 
 .thanks-step.is-done .thanks-step-icon{ background:var(--color-success-soft); color:var(--color-success); }
 
-/* ============ COMPARTILHAR ============ */
 .share-block{
   margin-top:1.75rem; padding-top:1.25rem;
   border-top:1px solid var(--blush-100);
@@ -2245,7 +1840,6 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .cart-rec-add:hover{ background:var(--blush-600); color:#fff; }
 .cart-rec-add:active{ transform:scale(.88); }
 
-/* ============ FLOATING BUTTONS ============ */
 .fab{
   position:fixed; right:24px; bottom:24px; width:56px; height:56px; border-radius:50%;
   background:var(--blush-600); color:#fff; display:flex; align-items:center; justify-content:center;
@@ -2256,18 +1850,12 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .fab-top{ right:24px; bottom:92px; width:44px; height:44px; font-size:1.1rem; background:var(--white); color:var(--blush-700); border:1.5px solid var(--blush-200); opacity:0; pointer-events:none; transform:translateY(10px); }
 .fab-top.show{ opacity:1; pointer-events:auto; transform:translateY(0); }
 
-/* A seção de garantias termina bem no canto onde os dois FABs vivem — sem
-   isto, "voltar ao topo" e o WhatsApp ficavam por cima da legenda do slide
-   e cortavam palavra no meio (js/main.js troca esta classe via
-   IntersectionObserver enquanto a seção está na tela). */
 body.tem-secao-fab-oculta .fab,
 body.tem-secao-fab-oculta .fab-top{
   opacity:0; pointer-events:none; transform:translateY(10px);
 }
 
 .toast-body{ font-size:.9rem; }
-
-/* ============ NOTIFICAÇÃO DE CUPOM (js/cupom-toast.js) ============ */
 
 .coupon-toast-container{
   right:var(--spacing-md); bottom:156px; z-index:1085; 
@@ -2281,10 +1869,6 @@ body.tem-secao-fab-oculta .fab-top{
 }
 .coupon-toast:hover{ box-shadow:var(--shadow-md); }
 
-/* Pop-in de entrada + um halo pulsando bem sutil enquanto o toast fica
-   parado na tela — chama o olho de novo depois que a entrada já passou,
-   sem competir com o resto da página (só o brilho, sem mover nada). Pausa
-   no hover pra não distrair enquanto a pessoa lê/preenche o e-mail. */
 .coupon-toast.show{
   animation:couponToastPopIn var(--animation-long) var(--ease-out) both,
             couponToastGlow 2.8s ease-in-out var(--animation-long) infinite;
@@ -2413,37 +1997,33 @@ body.tem-secao-fab-oculta .fab-top{
 }
 
 @media (max-width: 991.98px){
-  /* Mais para baixo no tablet: fica logo acima do botão "voltar ao topo"
-     (.fab-top, que também fica de pé em bottom:92px+44px de altura) — não
-     em cima do WhatsApp (.fab) direto, senão os dois se sobrepõem. */
   .coupon-toast-container{ width:clamp(260px, 32vw, 300px); bottom:148px; }
 }
 
 @media (max-width: 575.98px){
-  /* ⚠️ Encostada em baixo, largura cheia. Flutuando no meio da tela ela
-     cobria o texto do "como funciona" — num aparelho de 375px qualquer cartão
-     de 236px parado no meio cobre alguma coisa. Embaixo só ocupa a faixa que
-     já é de interface. */
+  /* Empilhada acima dos dois flutuantes, como sempre foi: bottom:148px passa
+     do WhatsApp (24+56) e da seta (92+44). O que mudou é o tamanho — ela
+     cobria o texto do "como funciona".
+     ⚠️ O p-3 do Bootstrap punha 16px de folga em volta, 32px só de altura. */
   .coupon-toast-container{
-    right:var(--spacing-sm); left:var(--spacing-sm); bottom:var(--spacing-sm);
-    width:auto; max-width:none;
+    right:var(--spacing-sm); left:auto; bottom:148px;
+    width:min(50vw, 190px); max-width:none;
+    padding:0 !important;
   }
-  /* Os dois flutuantes sobem o tanto que a barra ocupa (medido em
-     js/cupom-toast.js), senão ficariam por cima dela. */
-  body.tem-cupom-em-baixo .fab{ bottom:calc(24px + var(--altura-cupom, 0px)); }
-  body.tem-cupom-em-baixo .fab-top{ bottom:calc(92px + var(--altura-cupom, 0px)); }
   .coupon-toast{ width:100%; max-width:none; }
 
-  .coupon-toast-body{ padding:var(--spacing-sm) var(--spacing-xs) var(--spacing-xs); }
-  .coupon-toast-head{ margin-bottom:2px; padding-right:1.6rem; }
-  .coupon-toast-icon{ width:24px; height:24px; font-size:.72rem; }
-  .coupon-toast-text{ font-size:var(--font-size-small); }
-  .coupon-toast-field{ margin-top:var(--spacing-xs); }
-  .coupon-toast-input{ padding:.4rem .6rem .4rem 1.9rem; font-size:.75rem; }
-  .coupon-toast-reveal{ margin-top:var(--spacing-xs); }
+  .coupon-toast-body{ padding:.35rem .4rem .4rem; }
+  .coupon-toast-close{ top:.1rem; right:.1rem; transform:scale(.85); }
+  .coupon-toast-head{ margin-bottom:0; padding-right:1.15rem; gap:.3rem; }
+  .coupon-toast-icon{ width:18px; height:18px; font-size:.58rem; }
+  .coupon-toast-text{ font-size:.7rem; line-height:1.2; }
+  .coupon-toast-field{ margin-top:.3rem; }
+  .coupon-toast-field > i{ font-size:.7rem; left:.55rem; }
+  /* ⚠️ O campo não encolhe junto: 38px é o piso do alvo de toque. */
+  .coupon-toast-input{ padding:.45rem .45rem .45rem 1.6rem; font-size:.72rem; }
+  .coupon-toast-reveal{ margin-top:.35rem; }
 }
 
-/* ============ SIMPLE HEADER (conta.html / pedidos.html) ============ */
 .simple-header{
 
   position:sticky; top:0; z-index:1030;
@@ -2463,7 +2043,6 @@ body.tem-secao-fab-oculta .fab-top{
   .simple-header .plc-brand{ font-size:1.5rem; }
 }
 
-/* ============ PÁGINAS DE CONTA (login/cadastro/pedidos) ============ */
 .account-main{ padding:2.5rem 0 4rem; min-height:70vh; }
 
 .auth-page{ display:flex; flex-direction:column; min-height:100vh; min-height:100dvh; }
@@ -2487,7 +2066,6 @@ body.tem-secao-fab-oculta .fab-top{
 .account-tabs .nav-link.active{ background:var(--blush-600); color:#fff; }
 .account-msg:empty{ display:none; }
 
-/* ============ TELA DE LOGIN/CADASTRO (painel deslizante) ============ */
 .auth-shell{
   position:relative; overflow:hidden;
 
@@ -2645,10 +2223,6 @@ body.tem-secao-fab-oculta .fab-top{
 .auth-link:hover{ color:var(--blush-600); }
 .auth-link:disabled{ color:var(--ink-soft); text-decoration:none; cursor:not-allowed; }
 
-/* Escolha do método de verificação (2FA) — mesmo visual do seletor de
-   forma de pagamento do carrinho (.pay-method), mas como <button> de ação
-   imediata em vez de <label>+<input radio> selecionado e confirmado
-   depois: por isso é uma classe própria, não um reaproveitamento direto. */
 .verify-choice-group{ display:flex; flex-direction:column; gap:.6rem; margin-bottom:1.1rem; }
 .verify-choice{
   display:flex; align-items:center; gap:.65rem; width:100%; text-align:left; cursor:pointer;
@@ -2838,11 +2412,6 @@ body.tem-secao-fab-oculta .fab-top{
 .order-status-paid{ background:var(--color-success-soft); color:var(--color-success); }
 .order-status-failed{ background:#FBE1E1; color:var(--color-danger); }
 
-/* ---- CONTAGEM NOS FILTROS DO PAINEL ----
-   O número vem de um atributo, e não do texto do botão, porque no site a
-   vitrine lê chip.textContent para saber o nome da categoria — um número
-   dentro do botão viraria parte do rótulo. Aqui não há esse leitor hoje,
-   mas o padrão vale para não criar o mesmo problema depois. */
 #ordersFilter .chip[data-contagem]::after,
 #customersFilter .chip[data-contagem]::after{
   content:attr(data-contagem);
@@ -2856,11 +2425,6 @@ body.tem-secao-fab-oculta .fab-top{
   background:rgba(255,255,255,.28); color:#fff;
 }
 
-/* ============ ACOMPANHAMENTO DE PEDIDO (acompanhar-pedido.html) ============ */
-/* Linha do tempo Confirmado -> Em produção -> Postado -> Entregue. Cada
-   passo tem uma "linha" (::before) ligando ao anterior, colorida conforme
-   o passo já foi concluído (.is-done) ou não — o primeiro passo não tem
-   linha à esquerda (não há "anterior" antes dele). */
 .fulfillment-timeline{
   display:flex; justify-content:space-between; gap:.25rem; margin:1.25rem 0 1.5rem;
 }
@@ -2887,7 +2451,6 @@ body.tem-secao-fab-oculta .fab-top{
 .tracking-route-item .tracking-route-date{ font-size:.72rem; color:var(--ink-soft); }
 .tracking-route-item .tracking-route-desc{ font-size:.85rem; }
 
-/* ============ PAINEL ADMINISTRATIVO (admin.html) ============ */
 .order-card.is-highlighted{
   border-color:var(--blush-500); box-shadow:0 0 0 3px var(--blush-100);
   transition:box-shadow .3s ease, border-color .3s ease;
@@ -2911,8 +2474,6 @@ body.tem-secao-fab-oculta .fab-top{
 }
 .delete-order-icon-btn:hover{ background:#FBE1E1; border-color:#FBE1E1; color:var(--color-danger); }
 .edit-order-icon-btn:hover{ background:var(--blush-100); border-color:var(--blush-150); color:var(--color-primary-dark); }
-/* Produto do catálogo original não pode ser excluído — o botão continua
-   ocupando o lugar (a coluna não "pula" de linha pra linha), só apagado. */
 .delete-order-icon-btn:disabled{ opacity:.4; cursor:not-allowed; }
 .delete-order-icon-btn:disabled:hover{
   background:var(--white); border-color:var(--blush-100); color:var(--ink-soft);
@@ -2922,13 +2483,8 @@ body.tem-secao-fab-oculta .fab-top{
 .edit-order-icon-btn:focus-visible,
 .copy-field-btn:focus-visible{ outline:2px solid var(--blush-600); outline-offset:2px; }
 
-/* Dados do cliente, um por linha, cada um com o seu botão de copiar: é assim
-   que a lojista usa — copia um campo, cola no formulário dos Correios, volta
-   e copia o próximo. O rótulo tem largura fixa para os valores alinharem. */
 .order-fields{ display:flex; flex-direction:column; gap:.15rem; }
 .order-field{ display:flex; align-items:center; gap:.5rem; min-height:30px; }
-/* 7.5rem é a largura em que "E-mail da conta", o rótulo mais longo, ainda
-   cabe numa linha só. */
 .order-field-label{
   flex-shrink:0; width:7.5rem; color:var(--ink-soft); font-weight:600;
 }
@@ -2943,9 +2499,6 @@ body.tem-secao-fab-oculta .fab-top{
 .copy-field-btn.is-copied:hover{
   background:var(--color-success-soft); border-color:var(--color-success-soft); color:var(--color-success);
 }
-/* No celular não sobra largura para rótulo e valor lado a lado: "Complemento"
-   passava por cima do endereço. Empilha o rótulo em cima, e o botão fica na
-   linha do valor, onde o polegar já está. */
 @media (max-width: 575.98px){
   .order-field{
     display:grid; grid-template-columns:1fr auto;
@@ -2959,9 +2512,6 @@ body.tem-secao-fab-oculta .fab-top{
 
 .admin-row-actions{ display:flex; justify-content:flex-end; align-items:center; gap:.4rem; flex-wrap:nowrap; }
 
-/* Lista do modal "Gerenciar categorias" — uma linha por categoria, fixa ou
-   criada pelo painel. As fixas mostram só a etiqueta "fixa" (sem os ícones
-   de editar/excluir, que não fazem sentido para elas — ver server.js). */
 .manage-categories-list{
   display:flex; flex-direction:column; gap:.5rem;
   max-height:50vh; overflow-y:auto;
@@ -2977,26 +2527,18 @@ body.tem-secao-fab-oculta .fab-top{
   border-radius:999px; padding:.15rem .55rem; flex-shrink:0;
 }
 
-/* Gancho de arrastar, na primeira coluna da tabela de produtos — pega,
-   segura e leva pra cima/baixo (Pointer Events, ver js/admin.js) passando
-   por cima dos outros produtos. Também aceita seta pra cima/baixo pelo
-   teclado, pra continuar acessível sem o ponteiro. */
 .admin-drag-handle{
   width:30px; height:30px; padding:0;
   display:flex; align-items:center; justify-content:center;
   border:1px solid var(--blush-100); background:var(--white);
   color:var(--blush-700); border-radius:8px; font-size:.95rem;
   cursor:grab; transition:background .15s ease, border-color .15s ease;
-  touch-action:none; /* sem isso, arrastar no celular rola a página em vez de mover a linha */
+  touch-action:none;
 }
 .admin-drag-handle:hover{ background:var(--blush-100); border-color:var(--blush-200); }
 .admin-drag-handle:focus-visible{ outline:2px solid var(--blush-600); outline-offset:2px; }
 .admin-drag-handle:active{ cursor:grabbing; }
 
-/* Linhas da tabela de produtos: transição suave por padrão, pra quando
-   outras linhas abrem espaço durante um arrasto (ver applyDragGap em
-   js/admin.js) — a linha SENDO arrastada tem essa transição desligada
-   (.is-dragging), porque ela precisa acompanhar o ponteiro sem atraso. */
 #productsTableBody tr{ transition:transform .15s ease; }
 #productsTableBody tr.is-dragging{
   transition:none; position:relative;
@@ -3012,7 +2554,6 @@ body.tem-secao-fab-oculta .fab-top{
 }
 tr.is-hidden-product{ opacity:.6; }
 
-/* ============ TELA DE CARREGAMENTO (conexão lenta) — ver js/loading.js ============ */
 .app-loading{
   position:fixed; inset:0; z-index:2000;
   display:flex; align-items:center; justify-content:center;
@@ -3052,7 +2593,6 @@ body.app-loading-lock{ overflow:hidden; }
   @keyframes app-loading-pulse{ 50%{ opacity:.45; } }
 }
 
-/* ============ VERIFICAÇÃO EM DUAS ETAPAS (admin.html) — cadastro + códigos de recuperação ============ */
 body.admin-gate-active .admin-state-area{
   display:flex; align-items:center; justify-content:center;
 
@@ -3180,10 +2720,6 @@ body.admin-gate-active .admin-state-area{
   .tfa-recovery-list{ grid-template-columns:1fr; }
 }
 
-/* Cabeçalho do painel: sóbrio de propósito. A vitrine usa o par
-   .section-eyebrow (Caveat cursivo) + .section-title grande; aqui isso
-   repetia "painel administrativo" duas vezes e roubava a altura da tela de
-   quem só quer ver os números. */
 .admin-page-head{ border-bottom:1px solid var(--blush-100); padding-bottom:1rem; }
 .admin-page-title{
   font-family:var(--font-display); font-weight:600; font-size:1.65rem;
@@ -3196,44 +2732,25 @@ body.admin-gate-active .admin-state-area{
   font-family:var(--font-display); font-weight:600; font-size:1.2rem; margin-bottom:1rem;
 }
 
-/* Título de seção com uma ação à direita (ex.: "Produtos" + "Adicionar").
-   Substitui a repetição de `d-flex flex-wrap align-items-center
-   justify-content-between gap-2 mb-1` em 4 lugares.
-   margin-bottom:0 de propósito: o botão é mais alto que o h2, e o
-   align-items:center já deixa uma folga embaixo do título — a mesma que o par
-   .admin-section-title + .admin-hint produz na seção SEM botão. Somar margem
-   aqui deixaria as duas desalinhadas (era 14px contra 7px). Todo
-   .admin-section-head é seguido de um .admin-hint, que traz o próprio
-   espaço até o conteúdo. */
 .admin-section-head{
   display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
   gap:.5rem; margin-bottom:0;
 }
 .admin-section-head .admin-section-title{ margin-bottom:0; }
 
-/* Texto de apoio embaixo de cada título de seção. Fica colado no título
-   (margin-top negativa, contra o margin-bottom de 1rem do .admin-section-title)
-   pra ler como parte do cabeçalho e não como um parágrafo solto. */
 .admin-hint{
   color:var(--ink-soft); font-size:var(--font-size-small);
   line-height:1.5; max-width:62ch; margin:0 0 1.1rem;
 }
 .admin-section-title + .admin-hint{ margin-top:-.55rem; }
 
-/* Estado vazio: ocupa a largura do conteúdo que substitui. Antes usava
-   .account-card, que é max-width:440px — dentro do painel de 1100px virava
-   uma caixinha encostada à esquerda, sem relação com a tabela/lista ausente. */
 .admin-empty{
   width:100%; padding:2.25rem 1.5rem; text-align:center;
   background:var(--blush-50); border:1px dashed var(--blush-200);
   border-radius:var(--radius-md);
 }
-/* O <p> aqui carrega .section-sub (max-width:560px, sem margem automática) —
-   sem isto o texto encostaria à esquerda dentro da caixa centralizada. */
 .admin-empty p{ max-width:38ch; margin-left:auto; margin-right:auto; }
 
-/* Exportar planilha: ação secundária, vai pro rodapé do painel pra não
-   empurrar as métricas pra baixo da dobra. */
 .admin-export-row{
   display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
   gap:1rem; margin-top:1.5rem; padding-top:1.25rem;
@@ -3243,10 +2760,8 @@ body.admin-gate-active .admin-state-area{
 
 .admin-wrap{ max-width:1100px; }
 
-/* Todos os modais do site já eram declarados assim, um por um, no HTML. */
 .modal-content{ border-radius:var(--radius-md); border:none; }
 
-/* ============ NAVEGAÇÃO EM ABAS DO PAINEL ============ */
 .admin-layout{ display:flex; align-items:flex-start; gap:2rem; }
 .admin-sidebar{
   display:flex; flex-direction:column; gap:.3rem; flex-shrink:0; width:200px;
@@ -3261,8 +2776,6 @@ body.admin-gate-active .admin-state-area{
 .admin-tab-btn i{ font-size:1rem; width:1.1em; text-align:center; }
 .admin-tab-btn:hover{ background:var(--blush-50); color:var(--ink); }
 .admin-tab-btn.is-active{ background:var(--blush-100); color:var(--blush-700); font-weight:700; }
-/* Barra de acento: o fundo rosa-claro sozinho é fraco demais pra dizer
-   "você está aqui" numa lista vertical de 6 itens. */
 .admin-tab-btn.is-active::before{
   content:""; position:absolute; left:0; top:.55rem; bottom:.55rem;
   width:3px; border-radius:999px; background:var(--blush-600);
@@ -3279,21 +2792,12 @@ body.admin-gate-active .admin-state-area{
     flex-shrink:0; white-space:nowrap; border:1.5px solid var(--blush-200); border-radius:999px;
     padding:.55rem 1.1rem;
   }
-  /* Na régua horizontal a barra de acento não cabe: a pílula ativa vira
-     sólida, que se distingue mesmo com as abas passando cortadas na borda. */
   .admin-tab-btn.is-active::before{ display:none; }
   .admin-tab-btn.is-active{
     background:var(--blush-600); color:var(--white); border-color:var(--blush-600);
   }
 }
 
-/* ============ BASE COMPARTILHADA DOS CARTÕES DO PAINEL ============
-   Um lugar só define superfície + borda + sombra. Antes cada um destes
-   quatro reescrevia os mesmos três valores à mão, com paddings que variavam
-   de 1.2 a 1.5rem sem motivo — diferenças pequenas demais pra notar uma a
-   uma, e é a soma delas que fazia o painel parecer desalinhado.
-   .order-card fica de fora de propósito: é compartilhado com a página
-   "Meus pedidos" da cliente e não deve depender de uma regra do admin. */
 .stat-tile,
 .dashboard-chart-card,
 .admin-table-wrap,
@@ -3304,7 +2808,6 @@ body.admin-gate-active .admin-state-area{
 .stat-tile,
 .dashboard-chart-card{ padding:var(--admin-card-pad); }
 
-/* ============ VISÃO GERAL — CARDS DE MÉTRICA ============ */
 .stats-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; }
 .stat-tile{
   display:flex; align-items:center; gap:.9rem; transition:transform .2s ease, box-shadow .2s ease;
@@ -3321,7 +2824,6 @@ body.admin-gate-active .admin-state-area{
 .stat-tile .stat-value{ font-family:var(--font-display); font-size:1.5rem; font-weight:600; color:var(--ink); display:block; line-height:1.25; }
 .stat-tile .stat-label{ font-size:.78rem; color:var(--ink-soft); }
 
-/* ============ GRÁFICO DE VENDAS POR MÊS ============ */
 .dashboard-chart-card{ margin-top:1.25rem; }
 .dashboard-chart-header{
   display:flex; align-items:baseline; justify-content:space-between; gap:1rem;
@@ -3396,9 +2898,6 @@ body.admin-gate-active .admin-state-area{
   .sales-chart-tooltip{ font-size:.66rem; padding:.32rem .5rem; }
 }
 
-/* overflow:hidden pra tabela larga não passar por cima dos cantos
-   arredondados. Quem rola é a .table-responsive DENTRO deste cartão — por
-   isso o wrapper e o container de rolagem são duas divs, e não uma. */
 .admin-table-wrap{ overflow:hidden; }
 .admin-products-table{ font-size:.9rem; }
 .admin-products-table th{
@@ -3503,9 +3002,6 @@ body.admin-gate-active .admin-state-area{
 .ep-crop-hint{ font-size:.76rem; color:var(--ink-soft); line-height:1.4; }
 
 .ep-crop-stage{
-  /* 2:3 — mesma proporção do card da vitrine e do Quick View. Uma foto
-     enviada que já seja 2:3 (o padrão da loja) não perde nada com zoom
-     em 1 (crop.baseScale vira um "cover" exato, sem sobra pra cortar). */
   position:relative; width:min(280px, 68vw); aspect-ratio:2/3; margin:0 auto;
   overflow:hidden; border-radius:var(--radius-md);
   background:var(--blush-50); cursor:grab; touch-action:none;
@@ -3564,7 +3060,6 @@ body.admin-gate-active .admin-state-area{
   .account-card{ padding:2.25rem 2.5rem; }
 }
 
-/* ============ ERROR BOUNDARY GLOBAL (js/error-boundary.js) ============ */
 .error-boundary-overlay{
   position:fixed; inset:0; z-index:9999;
   display:flex; align-items:center; justify-content:center;
@@ -3586,7 +3081,6 @@ body.admin-gate-active .admin-state-area{
 @media (prefers-reduced-motion: reduce){
   .error-boundary-overlay{ animation:none; }
 }
-/* ====================== POLÍTICAS DA LOJA (politica.html) ====================== */
 .policy-wrap{ max-width:68ch; margin:0 auto; padding-bottom:2rem; }
 .policy-back{
   display:inline-flex; align-items:center; gap:.4rem;
@@ -3649,75 +3143,32 @@ body.admin-gate-active .admin-state-area{
 .policy-footer-note i{ color:var(--blush-700); font-size:1.2rem; line-height:1.4; }
 .policy-footer-note p{ font-size:.88rem; line-height:1.6; color:var(--ink-soft); }
 
-/* ============ FITA-GUIA DE ROLAGEM ============
-   Fio de cetim que atravessa a página e se desenha conforme a rolagem, com um
-   lacinho cavalgando a ponta. Substitui a ideia de "barra de progresso" por
-   algo que é a própria matéria-prima da loja.
-
-   No computador vive na margem esquerda, que está sempre vazia. No celular não
-   existe margem: vira um fio horizontal fino logo abaixo da navbar. */
 .fita-guia{
   position:fixed; z-index:1025; pointer-events:none;
-  /* Recuada 12px em cima e embaixo para o laço da ponta caber INTEIRO nos
-     dois extremos: com a fita ocupando 100vh cravado, no fim da página ele
-     ficava em top:100% — ou seja, na borda de baixo — e sobravam 9px dele na
-     tela, parecendo que tinha sumido. */
   left:4px; top:12px; width:46px; height:calc(100vh - 24px);
 }
 .fita-guia-svg{ width:100%; height:100%; display:block; overflow:visible; }
 .fita-guia-trilho,
 .fita-guia-fio{
   fill:none; stroke-width:2.5; stroke-linecap:round;
-  /* O viewBox 40x1000 é esticado para 40x100vh com preserveAspectRatio="none",
-     o que deformaria a espessura do traço (fininho na vertical, grosso na
-     horizontal). non-scaling-stroke mantém 2.5px de tela em qualquer altura
-     de janela. */
   vector-effect:non-scaling-stroke;
 }
-/* O trilho é a fita ainda não percorrida: quase invisível, só o suficiente
-   para o fio ter por onde correr em vez de surgir do nada. */
 .fita-guia-trilho{ stroke:var(--blush-150); opacity:.5; }
 .fita-guia-fio{ stroke:var(--blush-500); }
-/* ⚠️ altura explícita: este <svg> não tem viewBox próprio (quem tem é o
-   <symbol> referenciado pelo <use>), então o navegador não consegue deduzir a
-   proporção e `height:auto` cai no padrão de 150px dos elementos substituídos.
-   O resultado era um laço esticado de 26x150 em vez de 26x18. */
+/* ⚠️ Altura explícita: este <svg> não tem viewBox próprio (quem tem é o
+   <symbol> do <use>), então height:auto cai nos 150px do padrão. */
 .fita-guia-laco{
   position:absolute; left:50%; top:0; width:26px; height:18px;
   color:var(--blush-600);
-  /* Centraliza no ponto do caminho, em vez de pendurar a partir dele. */
   transform:translate(-50%, -50%);
   filter:drop-shadow(0 4px 8px rgba(192,84,128,.45));
 }
 
-/* Abaixo de 1400px a fita continua VERTICAL, só que fina e encostada na borda.
-
-   Medi a 375px quanto sobra entre a borda e o conteúdo de cada seção: 12px na
-   maioria, 6px no "como funciona" e 0px na vitrine (os filtros deslizantes
-   sangram até a borda de propósito). Não cabem os 46px do computador, então a
-   faixa vira 16px — o suficiente para o fio e o laço, sem deslocar nada do
-   conteúdo.
-
-   ⚠️ Fica na ESQUERDA porque a direita tem os botões flutuantes (WhatsApp de
-   56px e voltar-ao-topo de 44px) a 24px da borda.
-
-   A ondulação encolhe sozinha, sem desenhar outro caminho: o viewBox é
-   "0 0 60 1000" com preserveAspectRatio="none", então num contêiner de 16px o
-   eixo horizontal é comprimido para 16/60 ≈ 27% e a onda de ~18px vira ~5px.
-   A espessura do traço NÃO encolhe junto por causa do
-   vector-effect:non-scaling-stroke lá em cima. */
 @media (max-width: 1399.98px){
   .fita-guia{
-    /* ⚠️ 10px. Medi a caixa REAL das letras (Range, não a caixa do elemento):
-       o texto começa exatamente em x=12. E o laço não fica parado no meio da
-       faixa — ele CAVALGA a onda, então sua borda direita é
-       (0,695 × largura) + metade dele. Com faixa de 16 ele chegava a 17 e com
-       12 ainda chegava a 14, cobrindo o "L" de "Laços". Com 10 o ponto mais à
-       direita do percurso dá 11,95 — encosta nos 12 sem tocar em letra. */
+    /* ⚠️ 10px porque o texto da página começa em x=12 (medido com Range, a
+       caixa real das letras). Faixa maior cobria o "L" de "Laços". */
     left:0; width:10px;
-    /* Mesmo recuo de 12px do computador: é ele que faz o laço caber inteiro
-       nas duas pontas. Sem isso, no fim da página ele ficava pendurado na
-       borda de baixo com só 9px visíveis. */
     top:12px; height:calc(100vh - 24px);
     z-index:1035;
   }
@@ -3733,37 +3184,23 @@ body.admin-gate-active .admin-state-area{
   .fita-guia-laco{ width:14px; height:10px; left:calc(50% - 1px); }
 }
 
-/* Decoração pura: sem ela a página não perde informação nenhuma. */
 @media (prefers-reduced-motion: reduce){
   .fita-guia{ display:none; }
 }
 
-/* ============ VAN GUIADA PELA ROLAGEM ============
-   No computador o GSAP assume a van: a seção prende na tela e a entrega anda
-   conforme a pessoa rola, em vez de rodar num loop de 4s alheio a ela.
-
-   .is-guiada desliga SÓ o keyframe de deslocamento. As rodas e os risquinhos
-   de velocidade continuam no CSS de propósito: eles ficam em nós FILHOS, então
-   não disputam o transform da van — a regra é um dono por nó, não por seção. */
 .process-truck.is-guiada{ opacity:1; }
 .process-truck.is-guiada.is-dirigindo{ animation:none; }
-/* Os risquinhos piscavam no ciclo de 4s do keyframe; presos à rolagem isso
-   não faz sentido, então ficam constantes e quem dá a sensação de velocidade
-   é o próprio deslocamento. */
 .process-truck.is-guiada.is-dirigindo .process-truck-lines line{
   animation:none; opacity:.75;
 }
-/* As rodas só giram enquanto a pessoa rola — o JS alterna o play-state. */
 .process-truck.is-guiada.is-dirigindo .process-truck-wheel{
   animation:process-truck-spin .35s linear infinite;
   animation-play-state:paused;
 }
 .process-truck.is-guiada.is-andando .process-truck-wheel{ animation-play-state:running; }
 
-/* Passo aceso quando a van chega nele. ⚠️ Não mexe em transform: o
-   .process-icon-wrap já é dono dele pelo @keyframes process-icon-float, e o
-   .reveal é dono do opacity/translateY do bloco. Sobram cor, contorno e
-   sombra — que ninguém disputa. */
+/* ⚠️ Não mexe em transform: o @keyframes process-icon-float já é dono dele
+   neste nó. Sobram cor, contorno e sombra. */
 .process-step .process-icon{ transition:box-shadow .45s ease, background-color .45s ease; }
 .process-step.is-na-vez .process-icon{
   background:var(--blush-600); color:var(--white);
@@ -3772,13 +3209,6 @@ body.admin-gate-active .admin-state-area{
 .process-step .process-num{ transition:background-color .45s ease, color .45s ease; }
 .process-step.is-na-vez .process-num{ background:var(--blush-700); color:var(--white); }
 
-/* ============ FILTROS DE CATEGORIA NO CELULAR ============
-   Eram 13 botões num flex-wrap sem nenhuma media query, o que no celular
-   quebrava em 5 fileiras e comia ~330px antes do primeiro produto. Vira uma
-   fileira única que desliza para o lado.
-
-   A margem negativa + padding faz a fileira sangrar até a borda da tela: sem
-   isso ela pareceria cortada no meio do nada, em vez de continuar. */
 @media (max-width: 991.98px){
   .chip-group{
     flex-wrap:nowrap;
@@ -3789,7 +3219,6 @@ body.admin-gate-active .admin-state-area{
     margin-inline:calc(var(--bs-gutter-x, 1.5rem) * -.5);
     padding-inline:calc(var(--bs-gutter-x, 1.5rem) * .5);
     padding-block:2px;
-    /* Esmaece as pontas para dizer "tem mais para o lado" sem precisar de seta. */
     mask-image:linear-gradient(90deg, transparent 0, #000 16px,
                                        #000 calc(100% - 24px), transparent 100%);
   }
@@ -3797,47 +3226,24 @@ body.admin-gate-active .admin-state-area{
   .chip{
     flex:0 0 auto;
     scroll-snap-align:start;
-    /* 44px é o alvo de toque recomendado; os chips tinham ~36px. */
     min-height:44px;
     display:inline-flex; align-items:center;
   }
 }
 
-/* ============ ENTREGA GUIADA — CELULAR E TABLET ============
-   O mesmo contrato da van no computador, agora para o pacotinho: .is-guiada
-   desliga o keyframe de deslocamento e o GSAP vira dono único da posição.
-   Sem isso os dois brigariam pelo mesmo left/top. */
 .process-package-mobile.is-guiada{
   /* ⚠️ Sem display aqui: quem decide se o pacote existe é a media query de
-     767.98px. Forçar display:flex faria ele aparecer também no computador,
-     junto com a van. Aqui só o que o keyframe fazia e agora ninguém faz:
-     tornar visível e parar de animar sozinho. */
+     767.98px — forçar display:flex o faria aparecer no computador. */
   opacity:1;
   animation:none;
-  /* Centraliza nos DOIS eixos: guiado por left/top, o padrão translateY(-50%)
-     só resolvia a vertical e o pacote ficava meia largura à direita do ícone. */
   transform:translate(-50%, -50%);
 }
 .process-package-mobile.is-guiada.is-dirigindo{ animation:none; }
 
-/* Entre 768px e 991px a van aparece mas não é mais o loop de 4s: também é
-   guiada, só que sem prender a tela. */
 @media (max-width: 991.98px){
   .process-truck.is-guiada{ opacity:1; }
 }
 
-/* ============ CELULAR EM PRIMEIRO LUGAR ============
-   A maioria das clientes compra pelo celular. Esta seção fecha as lacunas
-   entre o que o computador mostra e o que o celular mostra, e sobe os alvos
-   de toque para os 44px recomendados.
-   ------------------------------------------------------------------------ */
-
-/* --- 1. Rótulo das pílulas de conta nas páginas sem menu sanduíche ---
-   Abaixo de 1200px as pílulas viram só um ícone de 20px. No index.html isso é
-   aceitável porque o menu sanduíche repete "Painel admin" e "Sair" por
-   extenso. ⚠️ Mas as outras 13 páginas usam .simple-header, que NÃO tem
-   sanduíche — ali o ícone mudo é o único caminho para entrar, sair ou abrir o
-   painel. Nessas páginas o rótulo aparece em qualquer largura. */
 .simple-header .account-pill{ width:auto; padding:0 .85rem 0 .7rem; }
 .simple-header .account-pill .account-pill-label{
   display:inline; font-size:.82rem;
@@ -3847,10 +3253,6 @@ body.admin-gate-active .admin-state-area{
   .simple-header .account-pill .account-pill-label{ font-size:.76rem; }
 }
 
-/* --- 2. Alvos de toque de 44px ---
-   Medidos a 375px. O tamanho APARENTE não muda: quem cresce é a área tocável,
-   por padding ou por um pseudo-elemento invisível centrado no botão. Assim o
-   visual continua o mesmo e o dedo para de errar. */
 .alvo-44::after{
   content:""; position:absolute; top:50%; left:50%;
   width:44px; height:44px; min-width:100%; min-height:100%;
@@ -3874,42 +3276,24 @@ body.admin-gate-active .admin-state-area{
   width:max(44px, 100%); height:max(44px, 100%);
   transform:translate(-50%, -50%);
 }
-/* A caixa de consentimento tinha 16px — a menor do site, e trava cadastro e
-   newsletter.
-   ⚠️ Aqui NÃO dá para usar o truque do pseudo-elemento: <input> é elemento
-   substituído e ::after não renderiza nele — testei com hit-test e o toque
-   fora dos 20px não pegava nada. Quem responde ao toque é o <label for=...>,
-   então é ele que vira a área grande: a linha inteira fica tocável. */
+/* ⚠️ A área de toque é o <label>, não o <input>: input é elemento substituído
+   e ::after não renderiza nele (conferido com hit-test). */
 .form-check-input{ width:1.25rem; height:1.25rem; margin-top:.15rem; }
 .form-check-label{
   display:inline-flex; align-items:center; min-height:44px;
-  /* Encosta no texto sem deslocá-lo: o alvo cresce para os lados da linha. */
   padding-block:.25rem;
 }
 
-/* --- 3. Preço do Pix legível ---
-   Estava em .625rem (10px) abaixo de 400px: o menor texto de conteúdo do site
-   inteiro, e é PREÇO. O card ganhou folga quando encurtamos o parcelamento. */
 @media (max-width: 400px){
   .product-pix{ font-size:.78rem; }
   .product-installment{ font-size:.7rem; }
 }
 
-/* --- 4. O caminho da entrega também no celular ---
-   .process-line é d-none d-md-block: abaixo de 768px o pacotinho percorre as
-   três paradas sem nenhum caminho visível, e a metáfora fica pela metade.
-
-   ⚠️ NÃO é uma linha vertical contínua: isso já foi tentado e passava por trás
-   dos parágrafos (está registrado no comentário do HTML). Aqui o tracejado
-   aparece SÓ no vão entre um passo e o outro — que é exatamente por onde o
-   pacote viaja — e por isso não pode encostar em texto nenhum. */
 @media (max-width: 767.98px){
   .process-step{ position:relative; }
   .process-step:not(:last-child)::after{
     content:""; position:absolute; z-index:0;
     left:50%; transform:translateX(-50%);
-    /* Começa no fim do conteúdo do passo e atravessa a calha do .row.g-5
-       (3rem) até o próximo ícone. */
     top:100%; height:3rem; width:3px;
     background-image:linear-gradient(to bottom, var(--blush-500) 60%, transparent 0%);
     background-size:3px 14px; background-repeat:repeat-y;
@@ -3918,60 +3302,23 @@ body.admin-gate-active .admin-state-area{
 }
 @media (max-width: 767.98px){
   @media (prefers-reduced-motion: reduce){
-    /* O caminho é informação (mostra a sequência), não movimento — fica. */
     .process-step:not(:last-child)::after{ opacity:.55; }
   }
 }
 
-/* --- 5. Textos de venda da tela de login no celular ---
-   .auth-deco-copies some abaixo de 992px e sobra só "Sua conta Adriana Melo".
-   Os três blocos que convencem — "é a sua primeira vez por aqui?", "que bom te
-   ver de novo", "calma, acontece / Vamos recuperar" — não tinham substituto
-   nenhum. Aqui voltam em forma compacta, acima do formulário: sem o painel
-   decorativo (que não cabe), só o texto. */
 @media (max-width: 991.98px){
   .auth-deco-copies{
-    /* grid, não block: os três textos ficam empilhados na MESMA célula
-       (grid-area 1/1, regra :2562) e só o do modo atual fica visível. Com
-       display:block os três entrariam no fluxo e os invisíveis continuariam
-       ocupando altura, porque são escondidos por visibility, não por display. */
     display:grid; margin:0 0 1.25rem; text-align:center;
-    /* Sem fundo nem moldura: no celular ele é uma introdução ao formulário,
-       não um painel lateral. */
     background:none; padding:0; min-height:0;
   }
-  /* A troca de qual texto aparece já é feita por [data-mode] no .auth-shell
-     (regras :2567-2573) — o grid de uma célula só empilha os três e mostra o
-     do modo atual. Aqui só é preciso não deixar a altura dos três somando. */
   .auth-deco-copies .auth-deco-script{ font-size:1.05rem; }
   .auth-deco-copies .auth-deco-title{ font-size:1.25rem; margin-bottom:.35rem; }
   .auth-deco-copies .auth-deco-text{ font-size:.9rem; margin-bottom:0; }
-  /* Os botões de alternância já existem como abas no topo (conta.html:85) —
-     repetir aqui seria dois controles para a mesma coisa. */
   .auth-deco-copies .auth-switch{ display:none; }
 }
 
-/* ============ PAINÉIS DAS GARANTIAS EM FORMA DE CELULAR ============
-   Os mocks são páginas reais renderizadas numa largura de computador e
-   reduzidas por transform:scale(--esc). No celular isso obrigava a esconder
-   metade do conteúdo, porque uma página de 1080px de largura encolhida não
-   cabe em 375px sem virar letra de 7px.
-
-   Aqui o canvas passa a ser do tamanho de um celular e a escala vai perto de
-   1:1 — o mock deixa de ser "um computador visto de longe" e passa a ser um
-   celular visto de perto, que é justamente o que a cliente reconhece. */
 @media (max-width: 991.98px){
   .scrolly-card .mock-escala-inner{
-    /* ⚠️ A escala foi calibrada contra o COMPUTADOR, não contra o "tamanho
-       real". Medi: no computador o miolo destes mocks é renderizado com
-       escala 0,53, ou seja, o texto sai com 7,2 a 8,3px. Eles são ILUSTRAÇÃO
-       da página — quem se lê é a legenda abaixo do palco.
-
-       Com 0,68 o celular renderiza o mesmo texto a ~8,3px: continua
-       ilustração, mas fica MAIOR que no computador — e a esse tamanho os
-       quatro painéis cabem inteiros, sem esconder nada. Era o corte que fazia
-       a cliente perder o cartão do Pix e as condições de troca.
-       (0,70 deixava o painel do pagamento 11px acima do palco.) */
     --esc:.68;
   }
   .scrolly-card .mock-nav{ padding:.55rem 1rem; }
@@ -3980,15 +3327,12 @@ body.admin-gate-active .admin-state-area{
   .scrolly-card .mock-cartao,
   .scrolly-card .mock-largura{ max-width:none; }
 
-  /* Empilha em vez de esconder a segunda coluna. */
   .scrolly-card .mock-duas,
   .scrolly-card .mock-duas.is-pagamento{
     grid-template-columns:1fr; gap:.85rem; align-items:stretch;
   }
   .scrolly-card .mock-campos{ grid-template-columns:1fr; gap:.5rem; }
 
-  /* Tipografia e espaçamentos de celular: o mock encolhe pela composição,
-     não por escala — é isso que mantém o texto legível. */
   .scrolly-card .mock-pagina .section-title{ font-size:1.15rem !important; margin-bottom:.5rem !important; }
   .scrolly-card .mock-pagina .section-eyebrow{ font-size:.72rem; }
   .scrolly-card .mock-muted{ font-size:.76rem; }
@@ -3999,7 +3343,6 @@ body.admin-gate-active .admin-state-area{
   .scrolly-card .mock-total{ padding:.5rem .6rem; }
   .scrolly-card .mock-total strong{ font-size:1rem; }
 
-  /* Cartão do Pix: presente, só compacto. O QR era o que mais custava. */
   .scrolly-card .mock-cartao{ padding:.7rem .8rem; }
   .scrolly-card .pix-qr-frame{ width:104px; height:104px; margin-inline:auto; }
   .scrolly-card .mock-cartao .section-title{ font-size:1rem !important; }
@@ -4011,12 +3354,10 @@ body.admin-gate-active .admin-state-area{
   .scrolly-card .pix-copy-row{ gap:.35rem; }
   .scrolly-card .pix-copy-row .form-control{ font-size:.66rem; padding:.3rem .45rem; }
 
-  /* Linha do tempo do rastreio: as 4 etapas, mais juntas. */
   .scrolly-card .mock-timeline{ gap:.5rem; }
   .scrolly-card .mock-timeline strong{ font-size:.84rem; }
   .scrolly-card .mock-timeline em{ font-size:.74rem; }
 
-  /* Políticas: as abas viram uma fileira que rola, e as 3 condições ficam. */
   .scrolly-card .mock-abas{
     display:flex; flex-wrap:nowrap; overflow-x:auto; gap:.35rem;
     margin-bottom:.7rem; scrollbar-width:none;
@@ -4028,32 +3369,20 @@ body.admin-gate-active .admin-state-area{
   .scrolly-card .mock-policy ul{ display:block; font-size:.76rem; padding-left:1rem; }
   .scrolly-card .mock-policy li{ margin-bottom:.2rem; }
 
-  /* Formulário de contato: os 4 campos, compactos. */
   .scrolly-card .mock-rotulo{ font-size:.72rem; }
   .scrolly-card .mock-input{ padding:.35rem .5rem; font-size:.74rem; }
   .scrolly-card .mock-input.is-area{ min-height:44px; }
   .scrolly-card .mock-enviar{ padding:.4rem .8rem; font-size:.8rem; }
 
-  /* O 2º produto volta, então o resumo do computador volta a bater e o par
-     .is-resumo-mobile (que somava só 1 item) deixa de ser necessário. */
   .scrolly-card .mock-produto-extra{ display:block; }
   .scrolly-card .mock-resumo:not(.is-resumo-mobile),
   .scrolly-card .mock-total:not(.is-resumo-mobile){ display:block; }
   .scrolly-card .is-resumo-mobile{ display:none !important; }
 }
 
-/* Palco um pouco mais alto no celular. Medido: com a composição de celular
-   acima, o painel do pagamento pede ~740px e o de contato ~700px. O palco
-   oferecia 512. Subir para ~715 faz os quatro caberem inteiros.
-   O custo é ~160px a mais na seção — bem menos que os ~490 que seria mostrar
-   os painéis de computador sem cortar. */
 @media (max-width: 991.98px){
-  /* Um pouco mais alto que os 560px de antes, mas longe de dobrar: é o que,
-     junto da escala acima, faz os quatro painéis caberem inteiros. */
   .stories{ --palco-altura:min(80vh, 640px); }
 
-  /* Cartão do Pix: era 489px, a maior peça do painel. Continua completo —
-     selo, título, valor, QR, código copia-e-cola, status e validade. */
   .scrolly-card .pix-qr-frame{ width:88px; height:88px; }
   .scrolly-card .mock-cartao{ padding:.6rem .7rem; }
   .scrolly-card .mock-cartao .section-title{ margin-top:.4rem !important; margin-bottom:.15rem !important; }
@@ -4061,18 +3390,13 @@ body.admin-gate-active .admin-state-area{
   .scrolly-card .pix-amount{ margin-bottom:.35rem; }
   .scrolly-card .pix-status{ margin-bottom:.2rem; }
 
-  /* Formulário de contato: os 4 campos ficam, com respiro de celular. */
   .scrolly-card .contact-form-card{ padding:.7rem .8rem; }
   .scrolly-card .mock-campos{ gap:.4rem; }
   .scrolly-card .mock-input{ padding:.3rem .45rem; }
   .scrolly-card .mock-input.is-area{ min-height:36px; }
 }
 
-/* Ajuste fino dos dois painéis que ainda estouravam (pagamento e contato).
-   Tudo continua presente — o que muda é respiro e tamanho de miniatura, não
-   a quantidade de informação. */
 @media (max-width: 991.98px){
-  /* Produtos do resumo: a foto prova o item, mas 34px já provam. */
   .scrolly-card .mock-produto img{ width:28px; height:28px; }
   .scrolly-card .order-card{ padding:.35rem .5rem; margin-bottom:.3rem !important; }
   .scrolly-card .mock-produto{ gap:.5rem; }
@@ -4086,20 +3410,12 @@ body.admin-gate-active .admin-state-area{
   .scrolly-card .pix-badge{ font-size:.66rem; padding:.15rem .5rem; }
   .scrolly-card .mock-cartao .section-sub{ font-size:.7rem; }
 
-  /* Contato: os 4 campos e os contatos reais, ambos presentes. */
   .scrolly-card .contact-form-card{ padding:.55rem .65rem; }
   .scrolly-card .mock-input.is-area{ min-height:30px; }
   .scrolly-card .social-circle{ width:30px; height:30px; }
   .scrolly-card .mock-duas > div > .d-flex{ gap:.5rem !important; margin-bottom:.4rem !important; }
 }
 
-/* No celular os 3 passos empilham em coluna cheia, então a calha horizontal
-   do .row não serve para nada — e ela estava desalinhando a seção: a margem
-   negativa da linha (−24px) é maior que o padding das colunas (17,6px), o que
-   puxava o texto para 6px da borda enquanto todas as outras seções começam em
-   12px. Zerar as duas na horizontal alinha o "como funciona" com o resto (e
-   tira a única sobreposição que restava com a fita-guia). A calha VERTICAL
-   continua, que é o que separa um passo do outro. */
 @media (max-width: 767.98px){
   .process-wrap{ margin-inline:0; }
   .process-wrap > .process-step{ padding-inline:0; }

@@ -1,8 +1,6 @@
 (function(){
   "use strict";
 
-  /* ============ COMPARTILHAR — botões de WhatsApp / Facebook / Pinterest / copiar link ============ */
-
   const MENSAGEM = "Achei esse ateliê de laços feitos à mão e amei 🎀";
 
   function comUtm(url, origem){

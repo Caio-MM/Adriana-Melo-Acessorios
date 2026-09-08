@@ -32,9 +32,6 @@
 
 <!--#DADOS-ESTRUTURADOS#-->
 
-<!-- Faixa latin (U+0000-00FF), não latin-ext: ç ã õ á é do português estão
-     todos aqui. São os dois arquivos que o <h1> usa — o romano e o itálico
-     do <em>. Sem hash correto o navegador baixa e não usa. -->
 <link rel="preload" href="css/fonts/fraunces-400-latin-39ce20.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="css/fonts/fraunces-500-latin-ddaaa5.woff2" as="font" type="font/woff2" crossorigin>
 
@@ -46,7 +43,6 @@
 </head>
 <body>
 
-<!-- ============ SVG SYMBOLS ============ -->
 <svg width="0" height="0" style="position:absolute">
   <symbol id="bow-shape" viewBox="0 0 100 70">
     <path d="M50 35 C50 35 38 6 15 10 C-4 13 -4 47 15 51 C36 56 50 35 50 35 Z"/>
@@ -57,13 +53,6 @@
   </symbol>
 </svg>
 
-<!-- ============ FITA-GUIA DE ROLAGEM ============
-     A fita é o material dos produtos virando navegação: ela se desenha
-     conforme a pessoa rola e o lacinho na ponta marca onde ela está, dando a
-     noção de "quanto falta" sem parecer uma barra de progresso de download.
-
-     aria-hidden porque é puramente decorativa — quem usa leitor de tela já
-     tem os marcos de navegação (<nav>, <section>, títulos) para se situar. -->
 <div class="fita-guia" aria-hidden="true">
   <svg class="fita-guia-svg" viewBox="0 0 60 1000" preserveAspectRatio="none" focusable="false">
     <path class="fita-guia-trilho" d="M30 0 C62 110 -2 230 30 350 C62 470 -2 590 30 710 C62 830 -2 910 30 1000"/>
@@ -72,7 +61,6 @@
   <svg class="fita-guia-laco bow-icon" focusable="false"><use href="#bow-shape"/></svg>
 </div>
 
-<!-- ============ NAVBAR ============ -->
 <nav class="plc-navbar" id="mainNav" aria-label="Navegação principal">
   <div class="container d-flex align-items-center justify-content-between">
 
@@ -126,7 +114,6 @@
   </div>
 </div>
 
-<!-- ============ CARRINHO (OFFCANVAS) ============ -->
 <div class="offcanvas offcanvas-end cart-offcanvas" tabindex="-1" id="cartOffcanvas" aria-labelledby="cartOffcanvasLabel">
   <div class="offcanvas-header">
     <div class="d-flex align-items-center gap-2">
@@ -295,7 +282,6 @@
     </div>  </div>
 </div>
 
-<!-- ============ HERO ============ -->
 <header class="hero" id="inicio">
   <div class="container">
     <div class="row align-items-center gy-5">
@@ -314,9 +300,6 @@
       </div>
       <div class="col-lg-6">
         <div class="hero-art">
-          <!-- Contêiner só para o parallax de rolagem. Os laços não podem
-               recebê-lo diretamente: cada um já é dono do próprio transform
-               pelo @keyframes floaty, e dois donos no mesmo nó se anulam. -->
           <div class="hero-flutuantes" aria-hidden="true">
             <svg class="bow-icon floaty f1"><use href="#bow-shape"/></svg>
             <svg class="bow-icon floaty f2"><use href="#bow-shape"/></svg>
@@ -328,9 +311,6 @@
             <svg class="bow-icon floaty f8"><use href="#bow-shape"/></svg>
           </div>
           <div class="hero-photo-wrap">
-            <!-- ⚠️ O <img> precisa de srcset/sizes junto com o <source>: com um
-                 src solitário aqui, o leitor de pré-carregamento do Chrome baixa
-                 o JPEG em paralelo com o WebP, sempre, e nunca o exibe. -->
             <picture>
               <source type="image/webp" sizes="(max-width: 991.98px) 76vw, 356px"
                       srcset="img/hero-menina-400.webp 400w, img/hero-menina-760.webp 760w">
@@ -348,7 +328,6 @@
   </div>
 </header>
 
-<!-- ============ MARQUEE ============ -->
 <div class="plc-marquee" role="region" aria-label="Diferenciais da loja">
     <div class="plc-marquee-track">
     <div class="plc-marquee-group">
@@ -394,7 +373,6 @@
   </div>
 </div>
 
-<!-- ============ COLEÇÕES / PRODUTOS ============ -->
 <section id="colecoes" class="py-5 py-lg-6" style="padding-top:5rem; padding-bottom:5rem;">
   <div class="container">
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-4 mb-4">
@@ -424,8 +402,6 @@
       <button class="chip" data-cat="cabide" aria-pressed="false">Cabide</button>
     </div>
 
-    <!-- A vitrine não anunciava nada ao mudar de filtro; com busca e "Ver
-         mais" isso passa a importar de verdade para quem usa leitor de tela. -->
     <p class="vitrine-contagem mb-4" id="vitrineContagem" role="status" aria-live="polite"></p>
 
     <div class="row g-4" id="productsGrid"></div>
@@ -442,7 +418,6 @@
   </div>
 </section>
 
-<!-- ============ NOSSA HISTÓRIA ============ -->
 <section id="historia" class="py-5" style="padding-top:5rem; padding-bottom:5rem;">
   <div class="container">
     <div class="row align-items-center gy-5">
@@ -460,9 +435,6 @@
         </div>
       </div>
       <div class="col-lg-6 reveal reveal-delay-1">
-        <!-- Anuncia o card logo abaixo em vez de ficar solto no fim da coluna
-             da história (era o que acontecia antes) — mesma largura e
-             centralização do card, para os dois lerem como um bloco só. -->
         <div class="instagram-follow-head">
           <a href="https://www.instagram.com/adriana_melo_acessorios/" target="_blank" rel="noopener noreferrer" class="btn-outline-blush"><i class="bi bi-instagram me-1"></i> Seguir no Instagram</a>
         </div>
@@ -507,7 +479,6 @@
   </div>
 </section>
 
-<!-- ============ COMO FUNCIONA ============ -->
 <section id="sobre" class="py-5" style="background:var(--blush-50); padding-top:5rem; padding-bottom:5rem;">
   <div class="container">
     <div class="text-center mx-auto mb-5 reveal" style="max-width:560px">
@@ -518,20 +489,9 @@
 
     <div class="process-wrap row g-5">
       <div class="process-line d-none d-md-block"></div>
-      <!-- Versão do celular: a van de lado não faz sentido girada na
-           vertical, então aqui quem "entrega" é um pacotinho pulando pelos
-           2 espaços em branco entre os 3 passos empilhados — nunca por cima
-           do texto (era o problema da versão anterior, com uma linha
-           contínua atrás dos parágrafos). Também CSS puro, disparado pelo
-           mesmo IntersectionObserver do carro (js/main.js). -->
       <div class="process-package-mobile" id="processPackage" aria-hidden="true">
         <i class="bi bi-box-seam"></i>
       </div>
-      <!-- Vanzinha de entrega que percorre a linha pontilhada — CSS puro
-           (@keyframes em style.css), disparada por IntersectionObserver em
-           js/main.js quando a seção entra na tela. Sem classes d-none/d-md-*
-           do Bootstrap: elas saem com !important no recorte
-           (bootstrap.purged.css) e brigariam com o display:block daqui. -->
       <div class="process-truck" id="processTruck" aria-hidden="true">
         <svg class="process-truck-lines" viewBox="0 0 20 40" width="20" height="40">
           <line x1="18" y1="12" x2="6" y2="12"/>
@@ -539,8 +499,6 @@
           <line x1="18" y1="28" x2="6" y2="28"/>
         </svg>
         <svg class="process-truck-svg" viewBox="0 0 64 40" width="100%" height="100%">
-          <!-- Sombra sob as rodas: é o que faz a van ler como pousada NA
-               linha, em vez de flutuando solta perto dela. -->
           <ellipse class="process-truck-shadow" cx="27" cy="35" rx="21" ry="2.6"/>
           <rect class="process-truck-body" x="4" y="10" width="34" height="17" rx="4"/>
           <path class="process-truck-cab" d="M38 15 h10 a4 4 0 0 1 4 4 v4 a4 4 0 0 1 -4 4 h-10 z"/>
@@ -584,19 +542,7 @@
   </div>
 </section>
 
-<!-- ============ GARANTIAS ============ -->
-<!-- Player no formato dos stories do Instagram: barrinhas de progresso, avanço
-     automático, e toque/clique para navegar. Substituiu um deck que prendia a
-     rolagem da página — técnica que trava em parte dos aparelhos (é o consenso
-     da literatura de usabilidade) e que ocupava quase três telas no computador
-     e quase seis no celular. Aqui a rolagem da página nunca é sequestrada.
-
-     Os painéis são HTML de verdade, não captura de tela: encaixam na moldura
-     em qualquer tamanho, ficam nítidos em tela retina e permitem esconder os
-     dados sensíveis do Pix por design. As fotos de produto são as reais. -->
 <section id="depoimentos" class="stories-section">
-  <!-- Laços nos CANTOS da seção, não em volta do painel: presos ao bloco
-       central eles abafavam a moldura. Aqui ocupam o vazio das laterais. -->
   <svg class="bow-icon scrolly-bow sb1" aria-hidden="true"><use href="#bow-shape"/></svg>
   <svg class="bow-icon scrolly-bow sb2" aria-hidden="true"><use href="#bow-shape"/></svg>
   <svg class="bow-icon scrolly-bow sb3" aria-hidden="true"><use href="#bow-shape"/></svg>
@@ -634,8 +580,6 @@
       </div>
 
       <div class="stories-palco">
-        <!-- Zonas de toque: botões de verdade, então teclado e leitor de tela
-             ganham anterior/próximo sem código extra. -->
         <button type="button" class="stories-zona is-anterior" data-dir="-1">
           <span class="visually-hidden">Garantia anterior</span>
         </button>
@@ -683,9 +627,6 @@
                           <div><span class="mock-muted">Total no Pix</span><strong>R$ 132,71</strong></div>
                           <span class="mock-economia">você economiza R$ 6,99</span>
                         </div>
-                        <!-- No celular o 2º produto (.mock-produto-extra) some, então este
-                             resumo soma só o 1º item — sem isso o subtotal ficava maior que
-                             o único produto visível, como se faltasse um produto. -->
                         <dl class="mock-resumo is-resumo-mobile">
                           <div><dt>Subtotal</dt><dd>R$ 49,90</dd></div>
                           <div class="is-desconto"><dt>Desconto Pix (5%)</dt><dd>−R$ 2,50</dd></div>
@@ -866,8 +807,6 @@
           </figure>
       </div>
 
-      <!-- A legenda mora aqui e não dentro de cada painel: antes o título e a
-           descrição existiam duas vezes (na coluna de passos e no cartão). -->
       <div class="stories-legenda" id="storiesLegenda">
                     <div class="stories-legenda-item">
             <span class="stories-numero" aria-hidden="true">01</span>
@@ -915,7 +854,6 @@
 </section>
 
 
-<!-- ============ CTA / NEWSLETTER ============ -->
 <section class="py-5" style="padding-top:5rem; padding-bottom:5rem;">
   <div class="container">
     <div class="plc-cta text-center text-md-start reveal">
@@ -950,7 +888,6 @@
   </div>
 </section>
 
-<!-- ============ CONTATO ============ -->
 <section id="contato" class="py-5" style="padding-top:5rem; padding-bottom:6rem;">
   <div class="container">
     <div class="row g-5">
@@ -1036,9 +973,7 @@
   </div>
 </section>
 
-<!-- ============ FOOTER ============ -->
 <footer class="plc-footer">
-  <!-- Borda de cima: o corte de creme para vinho era seco demais. -->
   <div class="plc-footer-topo" aria-hidden="true"></div>
 
   <div class="container">
@@ -1079,8 +1014,6 @@
       </nav>
     </div>
 
-    <!-- Faixa própria: antes o pagamento dividia a linha com os links e sobrava
-         um vão enorme à direita. Em linha, os selos preenchem a largura. -->
     <div class="plc-footer-pagamento" id="formasPagamento">
       <h3 class="plc-footer-heading">Formas de pagamento</h3>
       <div class="pay-row">
@@ -1108,11 +1041,9 @@
   </div>
 </footer>
 
-<!-- ============ FLOATING BUTTONS ============ -->
 <button class="fab fab-top" id="btnTop" aria-label="Voltar ao topo"><i class="bi bi-arrow-up"></i></button>
 <a class="fab" href="https://wa.me/5561982749808" target="_blank" rel="noopener" aria-label="WhatsApp"><i class="bi bi-whatsapp"></i></a>
 
-<!-- ============ TOAST ============ -->
 <div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" style="z-index:1080">
   <div id="cartToast" class="toast align-items-center border-0" role="alert" style="background:var(--ink); color:#fff">
     <div class="d-flex">
@@ -1128,7 +1059,6 @@
   </div>
 </div>
 
-<!-- ============ MODAL: QUICK VIEW ============ -->
 <div class="modal fade" id="quickViewModal" tabindex="-1" aria-labelledby="qvName" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
     <div class="modal-content" style="border-radius:var(--radius-md); border:none">
@@ -1147,9 +1077,6 @@
           <div class="qv-gallery-thumbs d-none" id="qvGalleryThumbs" role="group" aria-label="Fotos do produto"></div>
         </div>
         <div class="qv-info">
-          <!-- Categoria e selos vêm do próprio produto (dado real). Preenchem
-               o topo da coluna, que antes começava direto na descrição e
-               deixava a direita visivelmente vazia. -->
           <div class="qv-tags" id="qvTags"></div>
 
           <p class="section-sub qv-desc" id="qvDesc">Descrição do produto.</p>
@@ -1158,10 +1085,6 @@
             <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i> Esgotado no momento.
           </div>
 
-          <!-- Garantias reais da loja, as mesmas já afirmadas na faixa da home
-               e na seção de garantias. É o que preenche a coluna sem inventar
-               dado que o produto não tem (a maioria não tem nem descrição
-               própria nem segunda foto). -->
           <ul class="qv-garantias">
             <li><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Troca grátis em até 7 dias</li>
             <li><i class="bi bi-scissors" aria-hidden="true"></i> Feito à mão, sob encomenda</li>
@@ -1170,11 +1093,6 @@
           </ul>
         </div>
       </div>
-      <!-- O preço fica no RODAPÉ, junto do botão, e não no corpo que rola:
-           assim ele está sempre visível na hora de decidir, inclusive para
-           quem usa letra grande no celular (aí o corpo passa a rolar e,
-           dentro dele, o preço ficaria abaixo da dobra enquanto o botão
-           continuava clicável — dava pra comprar sem ver o valor). -->
       <div class="modal-footer border-0 qv-footer">
         <div class="qv-payment" style="border-color:var(--blush-100)!important">
           <div class="qv-pix">
@@ -1190,13 +1108,6 @@
             <span class="qv-card-inst" id="qvInstallment"></span>
           </div>
         </div>
-        <!-- Quantidade ao lado do botão, e não lá em cima na coluna de
-             descrição: é aqui, no instante de decidir comprar, que a
-             cliente quer ajustar quanto vai levar. Junto no rodapé fixo
-             também tira a quantidade de dentro da área que rola — antes
-             ficava perto do fim do corpo rolável e, com a foto ocupando boa
-             parte da tela, um celular baixo cortava o controle mesmo antes
-             de chegar no botão. -->
         <div class="qv-order-row">
           <div class="qv-stepper" role="group" aria-label="Quantidade">
             <button type="button" id="qvMinus" aria-label="Diminuir quantidade">−</button>
@@ -1210,7 +1121,6 @@
   </div>
 </div>
 
-<!-- ============ NOTIFICAÇÃO DE CUPOM (js/cupom-toast.js) ============ -->
 <div class="toast-container position-fixed p-3 coupon-toast-container" id="couponToastContainer">
   <div id="couponToast" class="toast coupon-toast" role="alert" aria-live="polite" aria-atomic="true"
        data-cupom="<!--#CUPOM-BOAS-VINDAS#-->">
@@ -1252,10 +1162,6 @@
 <script src="js/error-boundary.js" defer></script>
 <script src="js/loading.js" defer></script>
 <script src="js/vendor/bootstrap.bundle.min.js" defer></script>
-<!-- fetchpriority="low": só animacoes.js usa essas três, e o site é
-     inteiramente legível sem elas (ver o comentário no topo de animacoes.js).
-     Sem a prioridade baixa, 50 KB decorativos disputam a mesma conexão com o
-     CSS que o <h1> precisa para pintar. -->
 <script src="js/vendor/gsap.min.js" defer fetchpriority="low"></script>
 <script src="js/vendor/ScrollTrigger.min.js" defer fetchpriority="low"></script>
 <script src="js/vendor/SplitText.min.js" defer fetchpriority="low"></script>

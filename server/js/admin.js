@@ -7,11 +7,6 @@
     }[ch]));
   }
 
-  // Cor usada dentro de atributos (style/value/data-hex). Como é contexto
-  // CSS/atributo e não texto, escapar não basta — valida como hex estrito e
-  // cai num fallback seguro se vier qualquer outra coisa, evitando quebra de
-  // atributo caso um hex inválido chegue ao banco por outra via. Mesmo
-  // safeColor de js/main.js.
   function safeColor(color){
     return /^#[0-9a-fA-F]{3,8}$/.test(String(color || "")) ? color : "#F4B4CC";
   }
@@ -22,10 +17,6 @@
     return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
   }
 
-  /* navigator.clipboard só existe em contexto seguro: em produção (HTTPS) e em
-     localhost funciona, mas abrir o painel pelo IP da rede local para conferir
-     no celular cai fora dessa regra — daí o modo antigo como reserva, para o
-     botão nunca falhar calado. */
   function copiarPeloCampo(texto){
     const campo = document.createElement("textarea");
     campo.value = texto;
@@ -64,9 +55,6 @@
 
   const PAYMENT_METHOD_LABELS = { pix: "Pix", card: "Cartão ou boleto" };
 
-  /* Semente até o painel carregar de verdade (applyCategories logo abaixo
-     substitui pela lista do servidor). Precisa espelhar BUILTIN_CATEGORIES em
-     server.js — que agora é por TIPO de produto, não por ocasião. */
   let CATEGORY_LABELS = {
     "laco-unico":  "Laço Único",
     "parzinho":    "Parzinho",
@@ -90,13 +78,6 @@
     if(selectedSlug) selectEl.value = selectedSlug;
   }
 
-  /* ============================ DETECTOR DE CATEGORIA PELO NOME ============================
-     Enquanto a lojista digita o nome do produto, tenta reconhecer o tipo e já
-     seleciona (ou cria, se ainda não existir) a categoria correspondente —
-     só os 7 tipos pedidos por enquanto. Ordem importa: os termos mais
-     específicos vêm antes de "kit", que é genérico o bastante para aparecer
-     em qualquer um dos outros (ex.: "Kit 2 Tiaras" deve cair em Tiara, não
-     em Kit Laço na Caixa). */
   function normalizarTexto(s){
     return String(s).toLowerCase()
       .replace(/[áàâã]/g, "a")
@@ -106,19 +87,10 @@
       .replace(/[úùû]/g, "u")
       .replace(/ç/g, "c");
   }
-  /* ⚠️ A ORDEM é o que resolve — o primeiro que casar vence, e vários nomes do
-     catálogo casam com mais de uma regra:
-
-       "Laço Branco ( G )"     -> Laço G tem que vir antes do fallback de laço
-       "Laço Parzinho"         -> Parzinho antes de Laço Único
-       "Kit Bolsa com Laço"    -> Kit antes de Bolsa (é bolsa + laço combinando,
-                                  conferido na foto; o nome começa com "Kit")
-       "Laça Franzido com Peróla" -> não tem palavra de tipo nenhuma, cai no
-                                  fallback de laço (e sim, o nome tem dois erros
-                                  de digitação no catálogo real)
-
-     O fallback aceita "laça" de propósito: normalizarTexto tira o cedilha mas
-     não conserta a vogal, e existe produto cadastrado assim. */
+  /* ⚠️ A ORDEM decide: o primeiro que casar vence. "Laço Parzinho" tem que
+     bater em Parzinho antes de Laço Único, "Kit Bolsa com Laço" em Kit antes
+     de Bolsa. O fallback aceita "laça" porque existe produto assim no
+     catálogo. */
   const DETECTORES_DE_CATEGORIA = [
     { rotulo: "Laço G",       regex: /\(\s*g\s*\)|\bgrande\b/ },
     { rotulo: "Laço Pompom",  regex: /\bpompom\b/ },
@@ -137,15 +109,6 @@
     return null;
   }
 
-  // Cria a categoria detectada na hora, se ainda não existir — a lojista não
-  // precisa passar pelo "+ Nova" manualmente para os 7 tipos reconhecidos.
-  // Só mexe no <select> se a própria pessoa não tiver escolhido uma
-  // categoria manualmente antes (selectEl.dataset.categoriaManual) — ver o
-  // listener de "change" logo abaixo, que marca essa flag.
-  /* Devolve a categoria com esse rótulo, criando no servidor se ainda não
-     existir. Compartilhada pela detecção enquanto se digita e pelo botão
-     "Organizar categorias", que faz o mesmo em lote. Devolve null se a rede
-     falhar — quem chama decide se para ou segue sem categoria. */
   async function garantirCategoria(rotulo){
     const existente = currentCategories.find(c => c.label.toLowerCase() === rotulo.toLowerCase());
     if(existente) return existente;
@@ -168,16 +131,11 @@
     if(selectEl.dataset.categoriaManual === "true") return;
     const rotulo = detectarCategoriaPorNome(nome);
     if(!rotulo) return;
-    // Falha de rede não trava o formulário: só deixa de autodetectar agora —
-    // a lojista sempre pode escolher a categoria à mão.
     const categoria = await garantirCategoria(rotulo);
     if(categoria && selectEl.dataset.categoriaManual !== "true"){
       renderCategoryOptions(selectEl, categoria.slug);
     }
   }
-  // Espera uma pausa na digitação (400ms) antes de detectar — sem isso, cada
-  // tecla digitada tentaria criar/selecionar categoria, disparando um POST
-  // por letra sempre que o nome ainda não tem categoria correspondente.
   function comAtraso(fn, ms){
     let temporizador = null;
     return (...args) => {
@@ -185,9 +143,6 @@
       temporizador = setTimeout(() => fn(...args), ms);
     };
   }
-  // Temporizador do formulário de EDITAR — o de ADICIONAR usa o próprio
-  // (aoDigitarNomeAdicionarComAtraso, mais abaixo), que encadeia a detecção
-  // de categoria com a descrição automática.
   const autoDetectarCategoriaEditar = comAtraso(autoDetectarCategoria, 400);
 
   const STATUS_LABELS = {
@@ -232,7 +187,6 @@
     );
   }
 
-  /* ==================== VERIFICAÇÃO EM DUAS ETAPAS ==================== */
   let tfaSecret = null;
 
   async function startTwoFactorSetup(){
@@ -307,7 +261,6 @@
   });
   document.getElementById("tfaDoneBtn")?.addEventListener("click", () => loadDashboard());
 
-  /* ================================ ABAS ================================ */
   const adminTabsEl = document.getElementById("adminTabs");
   const tabButtons = [...document.querySelectorAll(".admin-tab-btn")];
   const tabPanels = [...document.querySelectorAll(".admin-tab-panel")];
@@ -324,7 +277,6 @@
     if(btn) switchTab(btn.dataset.tab);
   });
 
-  /* ============================= VISÃO GERAL ============================= */
   function renderStats(stats){
 
     const avgTicket = stats.totalOrders ? stats.totalRevenue / stats.totalOrders : 0;
@@ -353,7 +305,6 @@
     `;
   }
 
-  /* ======================== GRÁFICO DE VENDAS POR MÊS ======================== */
   const MONTH_LABELS = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
   const salesChartEl = document.getElementById("salesChart");
 
@@ -393,8 +344,6 @@
       `;
     }).join("");
   }
-
-  /* ==================== VISÕES DO DASHBOARD ==================== */
 
   function renderBarList(el, items, emptyMessage){
     if(!el) return;
@@ -510,7 +459,6 @@
     );
   }
 
-  /* ======================== CARRINHOS PENDENTES ======================== */
   const PENDING_CART_MIN_AGE_MS = 60 * 60 * 1000;
   const PENDING_CART_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -610,7 +558,6 @@
     deleteContactMessageWithConfirm(Number(btn.dataset.id), () => loadDashboard());
   });
 
-  /* ============================== PRODUTOS ============================== */
   let productsCache = [];
 
   const CUSTOM_PRODUCT_ID_START = 1000;
@@ -652,11 +599,6 @@
     }).join("");
   }
 
-  /* O detector por título só rodava enquanto se digita o nome de um produto
-     novo — quem já estava no catálogo nunca foi reclassificado. Este botão
-     passa o mesmo detector por todos os produtos já cadastrados de uma vez.
-     Produto cujo título não casa com nenhum dos tipos conhecidos nunca é
-     mexido, e nada é aplicado antes de ela ver a lista e confirmar. */
   const organizarCategoriasBtn = document.getElementById("organizarCategoriasBtn");
   const productsOrderMsgEl = document.getElementById("productsOrderMsg");
 
@@ -744,11 +686,7 @@
 
   let editOriginal = null;
 
-  // Ordem importa aqui: pendingPhotos[0] é sempre a capa mostrada na loja.
   let pendingPhotos = [];
-  // null = a próxima foto enviada é ADICIONADA à lista; um índice = a
-  // próxima foto enviada SUBSTITUI pendingPhotos[nesse índice] (recorte de
-  // uma foto já na lista, pelo ícone de tesoura de cada miniatura).
   let photoCropTarget = null;
   let photoUploadInFlight = false;
 
@@ -764,10 +702,6 @@
     epPreviewPlaceholder.classList.toggle("d-none", hasPhoto);
   }
 
-  // Desenha a lista a
-  // partir do estado (pendingPhotos) e cada clique de mover/remover/recortar
-  // muda esse mesmo array e re-renderiza. A miniatura do topo (epPreview)
-  // segue a capa (índice 0) automaticamente via setPreviewPhoto.
   function renderPhotoList(){
     epPhotosListEl.innerHTML = pendingPhotos.map((url, i) => `
       <div class="ep-photo-item">
@@ -837,19 +771,12 @@
     epDescription.value = product.description || "";
     epPrice.value = product.price;
     epPhotoFile.value = "";
-    // Reabre "destravado" a cada produto — o detector de categoria só some
-    // se a PESSOA mudar o select nesta sessão do modal, não por causa de um
-    // produto anterior que foi editado antes.
     epCategory.dataset.categoriaManual = "false";
     renderCategoryOptions(epCategory, product.category || "");
     epBadgeBestseller.checked = (product.badges || []).includes("Mais vendido");
     epBadgeNew.checked = (product.badges || []).includes("Novo");
     epSoldOut.checked = Boolean(product.soldOut);
 
-    // Mesmo cuidado das cores: um array vazio já vindo do servidor é
-    // "removeu todas as fotos" de propósito — só cai para a foto única
-    // antiga (photoUrl) quando `photos` nem existe (produto de antes desta
-    // coluna existir).
     pendingPhotos = Array.isArray(product.photos) ? [...product.photos] : (product.photoUrl ? [product.photoUrl] : []);
     photoCropTarget = null;
     renderPhotoList();
@@ -865,7 +792,7 @@
       name: product.name,
       description: product.description || "",
       price: product.price,
-      photos: [...pendingPhotos], // ordem importa — NÃO ordenar antes de comparar no submit
+      photos: [...pendingPhotos],
       category: product.category || "",
       badges: [...(product.badges || [])].sort(),
       soldOut: Boolean(product.soldOut),
@@ -873,11 +800,6 @@
     editModal.show();
   }
 
-  /* ============ FOTO DO PRODUTO — recorte no navegador e depois upload ============ */
-
-  // 2:3 — mesma proporção do .ep-crop-stage (CSS) e do card/Quick View na
-  // loja. Batendo com a proporção das fotos reais (retrato, 4000x6000px),
-  // uma foto enviada sem mexer no zoom sai do recorte sem nenhum corte.
   const CROP_OUTPUT_W = 800;
   const CROP_OUTPUT_H = 1200;
   const CROP_JPEG_QUALITY = 0.9;
@@ -1020,9 +942,6 @@
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if(!res.ok) throw new Error(data.error || "Não foi possível enviar a imagem.");
-        // null = estava adicionando uma foto nova -> entra no fim da lista;
-        // um índice = estava reajustando o recorte de uma foto já na lista
-        // -> substitui só aquela posição, sem mudar a ordem das outras.
         if(photoCropTarget === null) pendingPhotos.push(data.photoUrl);
         else pendingPhotos[photoCropTarget] = data.photoUrl;
         photoCropTarget = null;
@@ -1058,17 +977,12 @@
     handleEpFileSelected(epPhotoFile.files[0]);
   });
 
-  // Arrastar um arquivo até a área de fotos faz o mesmo que clicar em
-  // "Adicionar foto" — mesmo limite de 8, mesmo fluxo de recorte 2:3 logo
-  // em seguida (só 1 arquivo por vez aqui, igual ao <input> sem `multiple`).
   const epPhotoDropzone = document.getElementById("epPhotoDropzone");
   ["dragenter", "dragover"].forEach(evt => epPhotoDropzone.addEventListener(evt, (e) => {
     e.preventDefault();
     epPhotoDropzone.classList.add("is-dragover");
   }));
   epPhotoDropzone.addEventListener("dragleave", (e) => {
-    // dragleave dispara ao passar por cima de qualquer filho (miniatura,
-    // botão) — só tira o destaque quando o cursor realmente saiu da área.
     if(!epPhotoDropzone.contains(e.relatedTarget)) epPhotoDropzone.classList.remove("is-dragover");
   });
   epPhotoDropzone.addEventListener("drop", (e) => {
@@ -1102,12 +1016,6 @@
     }
   });
 
-  /* ============ ORDEM DOS PRODUTOS NA VITRINE ============
-     A lista já é redesenhada na hora do gesto (arrastar ou seta do teclado
-     — a lojista vê o produto se mover na mesma hora) e só então a ordem vai
-     pro servidor. Se a gravação falhar, a tabela é recarregada do servidor
-     — melhor voltar visivelmente ao que está salvo do que deixar na tela
-     uma ordem que não existe no banco. */
   let salvandoOrdem = false;
 
   async function saveProductsOrder(nova){
@@ -1131,7 +1039,7 @@
       console.error("Erro ao salvar a ordem dos produtos:", err);
       msg.textContent = err.message || "Não foi possível salvar a ordem.";
       msg.className = "small mb-2 account-msg text-danger";
-      await loadDashboard();   // volta pra ordem que está de fato salva
+      await loadDashboard();
     }finally{
       salvandoOrdem = false;
     }
@@ -1145,20 +1053,11 @@
     const nova = [...productsCache];
     [nova[de], nova[para]] = [nova[para], nova[de]];
     saveProductsOrder(nova);
-    // Mantém o foco no mesmo produto depois do re-render (ele trocou de <tr>).
     requestAnimationFrame(() => {
       productsTableBodyEl.querySelector(`.admin-drag-handle[data-id="${id}"]`)?.focus();
     });
   }
 
-  /* Arrastar e soltar: o gancho (.admin-drag-handle) segue o ponteiro em
-     tempo real (translateY direto, sem transição — precisa acompanhar sem
-     atraso); as OUTRAS linhas abrem espaço com uma transição suave conforme
-     o ponto de solta muda, dando a sensação de "passar por cima" dos outros
-     produtos. A troca de posição de verdade (no array e no servidor) só
-     acontece ao soltar — durante o arrasto é tudo visual. Pointer Events
-     (não HTML5 drag-and-drop) de propósito: funciona igual com mouse e
-     dedo, sem precisar de polyfill para toque. */
   let drag = null;
 
   function rowFor(id){
@@ -1249,11 +1148,6 @@
     if(toggleHiddenBtn) toggleProductHidden(Number(toggleHiddenBtn.dataset.id));
   });
 
-  /* Ocultar: some da vitrine (index.html) e do checkout, mas continua no
-     painel para poder reativar — a alternativa pros 8 produtos do catálogo
-     fixo, que não podem ser excluídos de verdade (ver botão de lixeira
-     desabilitado). Produto criado no painel também pode ser ocultado (por
-     exemplo para "pausar" um item sem apagar o histórico dele). */
   async function toggleProductHidden(id){
     const product = productsCache.find(p => p.id === id);
     if(!product) return;
@@ -1300,9 +1194,6 @@
     if(name !== editOriginal.name) patch.name = name;
     if(description !== editOriginal.description) patch.description = description;
     if(price !== editOriginal.price) patch.price = price;
-    // Ordem é o próprio dado aqui (diferente de badges/cores, abaixo) — sem
-    // .sort() antes de comparar, senão reordenar sem adicionar/remover nada
-    // nunca seria detectado como mudança.
     if(JSON.stringify(pendingPhotos) !== JSON.stringify(editOriginal.photos)) patch.photos = pendingPhotos;
     if(category !== editOriginal.category) patch.category = category;
     const sortedBadges = [...badges].sort();
@@ -1342,7 +1233,6 @@
     }
   });
 
-  /* ============================ NOVA CATEGORIA ============================ */
   async function promptNewCategory(selectToUpdate){
     const label = prompt("Nome da nova categoria (ex.: Aniversário):");
     if(!label || !label.trim()) return;
@@ -1355,14 +1245,8 @@
       const data = await res.json().catch(() => ({}));
       if(!res.ok) throw new Error(data.error || "Não foi possível criar a categoria.");
       currentCategories = [...currentCategories, data];
-      // Escolha explícita da pessoa — trava o detector automático pra essa
-      // sessão do formulário, senão ele podia sobrescrever essa categoria
-      // recém-criada na próxima pausa de digitação no nome.
       selectToUpdate.dataset.categoriaManual = "true";
       renderCategoryOptions(selectToUpdate, data.slug);
-      // A descrição automática menciona a categoria — se essa troca foi no
-      // formulário de adicionar produto, ela precisa refletir a categoria
-      // recém-criada.
       if(selectToUpdate === apCategory) atualizarDescricaoAutomatica();
     }catch(err){
       alert(err.message || "Não foi possível criar a categoria agora.");
@@ -1370,8 +1254,6 @@
   }
   document.getElementById("epNewCategoryBtn").addEventListener("click", () => promptNewCategory(epCategory));
 
-
-  /* ============================ ADICIONAR PRODUTO ============================ */
   const addProductModalEl = document.getElementById("addProductModal");
   const addProductModal = new bootstrap.Modal(addProductModalEl);
   const addProductForm = document.getElementById("addProductForm");
@@ -1384,12 +1266,6 @@
   const apLength = document.getElementById("apLength");
   const apCategory = document.getElementById("apCategory");
 
-  /* Descrição automática — mesma frase que já era gerada só para o Google
-     (dadosEstruturados, em server.js: "{nome} — laço artesanal feito à mão
-     pela Adriana Melo Acessórios, ideal para {categoria}."), agora também
-     preenchendo o campo de verdade ao ADICIONAR um produto. Só ao adicionar:
-     editar um produto existente não mexe na descrição sozinho, porque ali
-     ela pode já ter sido escrita/ajustada de propósito. */
   function atualizarDescricaoAutomatica(){
     if(apDescription.dataset.descricaoManual === "true") return;
     const nome = apName.value.trim();
@@ -1401,10 +1277,6 @@
   }
   apDescription.addEventListener("input", () => { apDescription.dataset.descricaoManual = "true"; });
 
-  // Encadeado com a detecção de categoria (mesmo atraso de digitação): a
-  // descrição menciona a categoria, então só faz sentido gerá-la DEPOIS que
-  // a categoria (que pode ter acabado de ser detectada/criada) já estiver
-  // escolhida — daí o await antes de atualizarDescricaoAutomatica().
   async function aoDigitarNomeAdicionar(){
     await autoDetectarCategoria(apName.value, apCategory);
     atualizarDescricaoAutomatica();
@@ -1424,20 +1296,8 @@
   const apPhotosListEl = document.getElementById("apPhotosList");
   const apPhotoStatus = document.getElementById("apPhotoStatus");
 
-  /* ============ FOTOS NA CRIAÇÃO DO PRODUTO ============
-     O upload (POST /api/admin/products/:id/photo) exige um id, que só existe
-     depois de criar o produto — então aqui a foto não sobe na hora: ela é
-     recortada no navegador e fica guardada como blob até o submit, que faz
-     criar -> subir cada foto -> PATCH com a lista final.
+  let apPendingPhotos = [];
 
-     Sem o recorte interativo de propósito: o enquadramento aplicado é o MESMO
-     que o cropper do modal de edição usa por padrão (cobrir, centralizado), e
-     numa foto que já é 2:3 — o formato que a loja usa (4000x6000) — isso não
-     corta nada. Quem quiser reenquadrar tem o botão de recorte no modal de
-     edição, que abre logo depois de criar. */
-  let apPendingPhotos = [];   // [{ blob, previewUrl }]
-
-  // Mesmo enquadramento inicial de openCropper: escala "cobrir" e centralizado.
   function fitPhotoTo23(file){
     return new Promise((resolve, reject) => {
       const objectUrl = URL.createObjectURL(file);
@@ -1552,8 +1412,6 @@
     apPhotoFile.value = "";
   });
 
-  // Mesmo fluxo do <input multiple>, mas soltando os arquivos na área de
-  // fotos em vez de escolher pelo seletor do sistema.
   const apPhotoDropzone = document.getElementById("apPhotoDropzone");
   ["dragenter", "dragover"].forEach(evt => apPhotoDropzone.addEventListener(evt, (e) => {
     e.preventDefault();
@@ -1570,12 +1428,6 @@
 
   document.getElementById("apNewCategoryBtn").addEventListener("click", () => promptNewCategory(apCategory));
 
-  /* ============================ GERENCIAR CATEGORIAS ============================
-     Renomear e excluir categorias criadas pelo painel (as 5 fixas do catálogo
-     só aparecem na lista como referência, sem os ícones de ação — ver o
-     bloqueio correspondente em server.js). Um modal só, aberto tanto do
-     formulário de editar quanto do de adicionar produto, para não duplicar
-     a lista em dois lugares. */
   const manageCategoriesModalEl = document.getElementById("manageCategoriesModal");
   const manageCategoriesModal = new bootstrap.Modal(manageCategoriesModalEl);
   const manageCategoriesListEl = document.getElementById("manageCategoriesList");
@@ -1604,9 +1456,6 @@
   document.getElementById("epManageCategoriesBtn").addEventListener("click", openManageCategoriesModal);
   document.getElementById("apManageCategoriesBtn").addEventListener("click", openManageCategoriesModal);
 
-  // Depois de renomear/excluir, os dois <select> (editar e adicionar produto)
-  // precisam refletir a mudança — mesmo que estejam com um modal por cima
-  // deste (o formulário que estava aberto quando "Gerenciar" foi clicado).
   function refreshCategorySelects(){
     renderCategoryOptions(epCategory, epCategory.value);
     renderCategoryOptions(apCategory, apCategory.value);
@@ -1693,9 +1542,6 @@
       const data = await res.json().catch(() => ({}));
       if(!res.ok) throw new Error(data.error || "Não foi possível criar o produto.");
 
-      // Produto criado: agora as fotos têm um id pra onde subir. Uma falha
-      // aqui NÃO desfaz a criação (o produto já existe) — o modal de edição
-      // abre em seguida com o que subiu, pra terminar sem recomeçar tudo.
       let fotosComProblema = false;
       if(apPendingPhotos.length){
         apSaveBtn.textContent = "Enviando fotos...";
@@ -1740,12 +1586,6 @@
     }
   });
 
-  /* ================================ PEDIDOS ================================ */
-
-  /* CPF e CEP são gravados só com dígitos. O botão de copiar entrega EXATAMENTE
-     o texto que está na tela, então a máscara é aplicada aqui e vai junto — o
-     site dos Correios aceita os dois formatos, e copiar algo diferente do que
-     se vê é o tipo de surpresa que faz a pessoa conferir dígito por dígito. */
   function mascararCpf(valor){
     const d = String(valor || "").replace(/\D/g, "");
     return d.length === 11 ? `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9)}` : (valor || "");
@@ -1755,9 +1595,6 @@
     return d.length === 8 ? `${d.slice(0,5)}-${d.slice(5)}` : (valor || "");
   }
 
-  /* Um campo por linha, na ordem do formulário dos Correios, cada um com o seu
-     botão — é o que ela faz na prática: copia, cola, volta, copia o próximo.
-     `complemento` só aparece quando existe (a maioria dos pedidos não tem). */
   function camposDoCliente(order){
     const a = order.address || {};
     const c = order.customer || {};
@@ -1888,11 +1725,6 @@
     setTimeout(() => card.classList.remove("is-highlighted"), 4000);
   }
 
-  /* ---- SITUAÇÃO DO PEDIDO ----
-     São SETE status possíveis (STATUS_LABELS, mais acima), e a lojista pediu
-     três grupos. O agrupamento não é inventado aqui: é o mesmo que o CSS já
-     usa nos selos (.order-status-pending / -paid / -failed), para o selo de
-     cada card nunca discordar do grupo em que ele está. */
   const GRUPOS_DE_SITUACAO = {
     pago:      ["pago"],
     pendente:  ["pendente", "em análise"],
@@ -2145,17 +1977,10 @@
     }
   });
 
-  /* ================================ CUPONS ================================ */
-  /* ==================== CLIENTES E CONTATOS ==================== */
   function toggleBlock(el, show){
     el?.classList.toggle("d-none", !show);
   }
 
-  /* ---- RECORTES DA ABA CLIENTES ----
-     Três listas sobre a mesma tabela. As duas primeiras saem do que o painel
-     já recebia; a terceira usa exatamente a mesma regra do renderPendingCarts
-     (status "pendente" entre 1h e 14 dias), para as duas telas nunca
-     discordarem sobre o que é um carrinho pendente. */
   const WHATSAPP_SEM_COMPRA_MESSAGE =
     "Oi! Aqui é da Adriana Melo Acessórios. Vi que você se cadastrou na loja e queria saber se posso ajudar a escolher um laço 💗";
 
@@ -2171,8 +1996,6 @@
     });
   }
 
-  /* Normaliza as três origens (pedidos, contas, newsletter) para o mesmo
-     formato de linha, para a tabela não precisar saber de onde cada uma veio. */
   function linhasDoSegmento(seg){
     const { customers, contas, subscribers } = dadosDeClientes;
 
@@ -2183,8 +2006,6 @@
       return customers.filter(temCarrinhoPendente);
     }
 
-    // "não compraram": quem gerou pedido e não pagou + contas que nunca
-    // compraram + e-mails do cupom que não viraram cliente.
     const semCompra = customers.filter(c => c.paidOrders === 0);
     const emailsJaListados = new Set(
       customers.map(c => String(c.email || "").toLowerCase()).filter(Boolean)
@@ -2266,9 +2087,6 @@
     if(!customers.length){ body.innerHTML = ""; return; }
 
     body.innerHTML = customers.map((c, i) => {
-      /* A mensagem muda com o recorte: quem já comprou recebe pós-venda, quem
-         nunca comprou recebe convite, e quem largou o carrinho recebe a de
-         recuperação que já existia. */
       const mensagem = segmentoDeClientes === "compraram" ? WHATSAPP_POST_SALE_MESSAGE
                      : segmentoDeClientes === "carrinho"  ? null
                      : WHATSAPP_SEM_COMPRA_MESSAGE;

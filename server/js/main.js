@@ -1,7 +1,6 @@
 (function(){
   "use strict";
 
-  /* ============ CATÁLOGO (somente para EXIBIÇÃO no front-end) ============ */
   const products = [
     { id:1, name:"Laço Bailarina", cat:"laco-unico", catLabel:"Laço Único", price:34.90, color:"#F4B4CC", badges:[], desc:"Laço em cetim rosa bebê, leve e confortável para o dia a dia." },
     { id:2, name:"Laço Duquesa", cat:"laco-unico", catLabel:"Laço Único", price:49.90, color:"#DD6E9B", badges:["Mais vendido"], desc:"Cetim duplo com volume extra, perfeito para festas e ensaios." },
@@ -13,17 +12,12 @@
     { id:8, name:"Laço Personalizado", cat:"laco-unico", catLabel:"Laço Único", price:64.90, color:"#DD6E9B", badges:["Novo"], desc:"Bordado com o nome que você escolher, embalagem para presente." },
   ];
 
-  /* ============ SEGURANÇA — SANITIZAÇÃO ============ */
   function escapeHTML(str){
     return String(str).replace(/[&<>"']/g, ch => ({
       "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
     }[ch]));
   }
 
-  // Cor de produto usada dentro de atributos `style` inline. Como é contexto
-  // CSS (não HTML), escapar não basta — validamos como hex estrito e caímos
-  // num fallback seguro se vier qualquer outra coisa, evitando quebra de
-  // atributo/injeção via um valor de cor malformado.
   function safeColor(color){
     return /^#[0-9a-fA-F]{3,8}$/.test(String(color || "")) ? color : "#F4B4CC";
   }
@@ -36,10 +30,6 @@
 
   const productsById = new Map(products.map(p => [p.id, p]));
 
-  // Tons só DECORATIVOS: pintam o fundo do card e o laço de contorno quando
-  // o produto ainda não tem foto. Não têm nada a ver com a escolha de cor
-  // (que saiu do site) — é a paleta da marca, para produto novo não nascer
-  // com um fundo cinza.
   const PALETA_DECORATIVA = ["#F4B4CC", "#DD6E9B", "#FBEAF0", "#F8ECF1", "#EA8FB4", "#C05480"];
 
   const pricing = window.PLCPricing;
@@ -49,10 +39,9 @@
     return p.image || "";
   }
 
-  /* ⚠️ Só as fotos em /api/products/photos/<uuid> respondem ?w=. Uma URL
-     externa colada no painel, ou um caminho antigo em /img/products/, tem que
-     sair sem srcset. Larguras precisam existir em LARGURAS_DE_FOTO
-     (server.js): fora da lista, volta o original de 1600px. */
+  /* ⚠️ Só as fotos em /api/products/photos/<uuid> respondem ?w=, e a largura
+     tem que existir em LARGURAS_DE_FOTO (server.js) — fora da lista volta o
+     original de 1600px. */
   const ROTA_FOTO_REDIMENSIONAVEL =
     /^\/api\/products\/photos\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -69,7 +58,6 @@
     return larguras.map(w => `${escapeHTML(url)}?w=${w} ${w}w`).join(", ");
   }
 
-  // Acompanha col-6 col-md-4 col-lg-3, com o container de 1140px no fim.
   const SIZES_DO_CARD = "(max-width: 767.98px) 50vw, (max-width: 991.98px) 33vw, 285px";
 
   function atributosDeFoto(url, larguras, sizes){
@@ -79,11 +67,6 @@
     const set = srcsetDe(url, larguras);
     return `src="${src}"${set ? ` srcset="${set}" sizes="${sizes}"` : ""}`;
   }
-  // Galeria completa do produto — usada só no Quick View (o card da grade
-  // continua mostrando uma imagem só, via imageFor). Cai para [imageFor(p)]
-  // quando `photos` ainda não chegou de /api/products (mesma ponte do
-  // servidor: p.image já É a capa, então isso nunca fica sem imagem
-  // enquanto imageFor(p) tiver algo).
   function photosFor(p){
     if(Array.isArray(p?.photos) && p.photos.length) return p.photos;
     const img = imageFor(p);
@@ -104,15 +87,12 @@
     checkoutHintToastBody.textContent = text;
     checkoutHintToast.show();
   }
-  // Confirmação após exclusão de conta (redireciona de pedidos.html para cá
-  // com ?conta=excluida). Reaproveita o toast e limpa o parâmetro da URL.
   if(new URLSearchParams(location.search).get("conta") === "excluida"){
     showCheckoutHintToast("Sua conta foi excluída e seus dados pessoais, removidos.");
     history.replaceState(null, "", location.pathname);
   }
   const cartPillEl = document.querySelector(".cart-pill");
 
-  /* ============ REVEAL ON SCROLL — fade/slide-up sutil para seções e cards conforme ============ */
   const revealObserver = ("IntersectionObserver" in window)
     ? new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -132,26 +112,6 @@
   }
   observeReveal();
 
-  /* ============ COMO FUNCIONA — entrega em loop (van no computador, pacote no celular) ============
-     CSS puro (@keyframes em style.css): a viagem, o balanço e o giro das
-     rodas (ou os 2 pulos do pacote) ligam juntos com esta única classe, e
-     repetem sozinhos (animation infinite) enquanto a seção está na tela. A
-     linha pontilhada por baixo (só no computador) é fixa — não depende de
-     nada disto, nem do GSAP.
-
-     No celular os 3 passos empilham, então uma van de lado girada 90° não
-     faz sentido (ficaria com as rodas na lateral). Duas ideias descartadas
-     antes desta: uma linha vertical contínua ligando o ícone 1 ao 3 passava
-     por trás do título/parágrafo de cada passo (atrapalhava a leitura); e
-     uma que só viajava nos vãos em branco entre os blocos quebrava porque
-     esses vãos variam com o tamanho do texto de cada passo — em alguns
-     casos ficam menores que o próprio pacote. Esta versão não depende do
-     texto: o pacote só visita a ALTURA de cada ícone (--y1/--y2/--y3, o
-     centro vertical de cada .process-icon-wrap — sempre estável, não muda
-     com o texto) deslocado para o lado (em style.css), numa faixa que nunca
-     tem texto nem é coberta pelo próprio ícone. Medido de verdade (não um
-     valor cravado no CSS) e recalculado no resize, mesmo padrão de
-     ajustarEscalaDosPaineis (mais abaixo, nas garantias). */
   const processTruckEl = document.getElementById("processTruck");
   const processPackageEl = document.getElementById("processPackage");
   const processWrapEl = processTruckEl?.closest(".process-wrap");
@@ -165,9 +125,6 @@
       const r = el.getBoundingClientRect();
       return r.top - wrapRect.top + r.height / 2;
     };
-    /* Deslocamento horizontal em px, não em % do próprio elemento: metade
-       do ícone (92px de diâmetro ⇒ 46px de raio) mais uma folga de 8px, para
-       o pacote nunca tocar o círculo do ícone. */
     const posX = el => {
       const r = el.getBoundingClientRect();
       const centroX = r.left - wrapRect.left + r.width / 2;
@@ -185,13 +142,6 @@
   window.addEventListener("load", posicionarParadasMobile);
   if(document.fonts?.ready) document.fonts.ready.then(posicionarParadasMobile);
 
-  /* Remedir de novo a cada volta do loop (o CSS repete a cada 7s) — não só
-     no load/resize/fonts.ready/interseção. Os passos entram com a reveal
-     (translateY, em .reveal no style.css) e, dependendo de QUANDO exatamente
-     a seção cruza o gatilho, essa transição pode não ter terminado ainda no
-     instante em que a animação liga — medir de novo a cada iteração
-     autocorrige isso sozinho em até 7s, sem precisar adivinhar um atraso
-     fixo que funcione sempre. */
   processPackageEl?.addEventListener("animationiteration", posicionarParadasMobile);
 
   if(processWrapEl && "IntersectionObserver" in window){
@@ -199,10 +149,6 @@
       entries.forEach(entry => {
         if(!entry.isIntersecting) return;
         posicionarParadasMobile();
-        /* Meio segundo de atraso antes de ligar — chegar na seção e a
-           entrega já sair andando no mesmo instante fica abrupto demais;
-           essa pausa dá tempo da pessoa primeiro ler "como funciona" antes
-           da animação começar. */
         setTimeout(() => {
           processTruckEl?.classList.add("is-dirigindo");
           processPackageEl?.classList.add("is-dirigindo");
@@ -212,17 +158,6 @@
     }, { threshold: 0, rootMargin: "0px 0px -25% 0px" }).observe(processWrapEl);
   }
 
-  /* ============ GARANTIAS — player no formato de stories ============
-     Substituiu um deck que prendia a rolagem da página. Aquilo travava em
-     parte dos aparelhos (é característica da técnica, não ajuste fino) e
-     custava quase três telas no computador e quase seis no celular.
-
-     O RELÓGIO É A PRÓPRIA BARRINHA: cada uma é uma animação CSS, e o evento
-     animationend dela é o que avança o slide. Assim pausar é trocar uma
-     variável (--play) e o tempo já decorrido fica preservado exatamente —
-     com um setTimeout paralelo seria preciso manter dois estados em sincronia.
-     O setTimeout que existe aqui é só rede de segurança, para o caso de o
-     evento não chegar (troca de display cancela animação sem avisar). */
   const stories = document.getElementById("garantiasStories");
   if(stories){
     const barras   = Array.from(stories.querySelectorAll(".stories-bar"));
@@ -232,9 +167,6 @@
     const repetir  = document.getElementById("storiesRepetir");
     const menosMovimento = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    /* Cada painel precisa saber a própria posição na fila — é --i que o CSS usa
-       para deslocá-lo. Definido aqui, e não no HTML, para não haver como a
-       marcação e a ordem real saírem de sincronia. */
     paineis.forEach((el, n) => el.style.setProperty("--i", n));
 
     let atual = 0;
@@ -251,11 +183,6 @@
     function irPara(indice, direcao){
       const i = (indice + paineis.length) % paineis.length;
 
-      /* Todos os painéis ficam no DOM e o conjunto desliza; quem não é o atual
-         some do leitor de tela por aria-hidden, não por hidden — precisa
-         continuar renderizado para o próximo poder espiar na borda.
-         O hidden do HTML existe para quem está sem JS (aí só o primeiro
-         aparece); com JS ligado ele sai logo na primeira troca. */
       palco.style.setProperty("--atual", i);
       paineis.forEach((el, n) => {
         el.hidden = false;
@@ -264,11 +191,9 @@
       });
       legendas.forEach((el, n) => { el.hidden = n !== i; });
 
-      /* ⚠️ Reiniciar animação de CSS é tirar a classe, forçar um reflow e só
-         então repor. Chamar getAnimations().cancel() NÃO serve: cancelar
-         remove a animação de vez, e ela só volta quando o animation-name muda
-         de novo. Feito assim a barra nunca enchia — ficava em scaleX(0) — e o
-         avanço acontecia só pela rede de segurança lá embaixo. */
+      /* ⚠️ Reiniciar animação de CSS é tirar a classe, forçar reflow e repor.
+         getAnimations().cancel() não serve: cancela de vez, e a barra nunca
+         enchia. */
       barras.forEach((b, n) => {
         b.classList.remove("is-ativa");
         b.classList.toggle("is-vista", n < i);
@@ -286,8 +211,6 @@
       armarSalvaVidas();
     }
 
-    /* Se o animationend não chegar (troca de display cancela a animação sem
-       disparar evento), o player travaria no slide 01 para sempre. */
     function armarSalvaVidas(){
       clearTimeout(salvaVidas);
       if(menosMovimento.matches) return;
@@ -298,8 +221,6 @@
 
     function avancar(){
       if(atual < paineis.length - 1){ irPara(atual + 1, 1); return; }
-      // No fim PARA, não repete em laço: isto é um bloco de confiança, não um
-      // feed. Um laço deixaria animação rodando para sempre no fim da página.
       terminou = true;
       clearTimeout(salvaVidas);
       barras.forEach(b => { b.classList.remove("is-ativa"); b.classList.add("is-vista"); });
@@ -322,7 +243,6 @@
 
     if(repetir) repetir.addEventListener("click", () => irPara(0, 1));
 
-    // Setas navegam; Home/End vão aos extremos (padrão de abas do APG).
     stories.querySelector(".stories-bars").addEventListener("keydown", (e) => {
       const mapa = { ArrowRight: atual + 1, ArrowLeft: atual - 1, Home: 0, End: barras.length - 1 };
       if(!(e.key in mapa)) return;
@@ -331,13 +251,10 @@
       barras[atual].focus();
     });
 
-    /* Deslizar com o dedo: a premissa do formato é o gesto do Instagram, e
-       quem desliza sem resposta conclui que está quebrado. O touch-action
-       pan-y no palco (CSS) preserva a rolagem vertical da página. */
     let xInicial = null;
     palco.addEventListener("pointerdown", (e) => {
       xInicial = e.clientX;
-      pausas.add("segurando");   // toque e segure, como nos stories de verdade
+      pausas.add("segurando");
       aplicarPausa();
     });
     const soltar = () => { pausas.delete("segurando"); aplicarPausa(); };
@@ -351,11 +268,6 @@
     });
     palco.addEventListener("pointercancel", () => { xInicial = null; });
 
-    /* ⚠️ Passar o mouse NÃO pausa. Parece detalhe, mas era o que fazia a seção
-       parecer parada: quem chegava com o cursor em cima dela congelava tudo na
-       hora e nunca via passar. Stories de verdade pausam no toque-e-segure, e
-       é isso que está abaixo. Foco pausa porque quem navega por teclado precisa
-       de tempo para ler. */
     stories.addEventListener("focusin",  () => { pausas.add("foco"); aplicarPausa(); });
     stories.addEventListener("focusout", () => { pausas.delete("foco"); aplicarPausa(); });
     document.addEventListener("visibilitychange", () => {
@@ -363,7 +275,6 @@
       aplicarPausa();
     });
 
-    // Começa pausado: nada é consumido antes de a pessoa chegar na seção.
     pausas.add("fora");
     aplicarPausa();
     if("IntersectionObserver" in window){
@@ -371,9 +282,6 @@
         if(entrada.isIntersecting) pausas.delete("fora"); else pausas.add("fora");
         aplicarPausa();
         if(entrada.isIntersecting) armarSalvaVidas();
-        // O WhatsApp e o "voltar ao topo" são fixed no canto inferior direito,
-        // exatamente onde a moldura do celular termina — sem isto eles ficavam
-        // por cima da legenda e cortavam palavra no meio, parecendo bug.
         document.body.classList.toggle("tem-secao-fab-oculta", entrada.isIntersecting);
       }, { threshold: 0.4 }).observe(stories);
     } else {
@@ -381,10 +289,6 @@
       aplicarPausa();
     }
 
-    /* Os painéis são desenhados em tamanho de página real e reduzidos por
-       transform:scale(--esc). Amarrando --esc à altura do palco, a página tem
-       sempre a mesma altura útil, caiba a janela que for. Só no computador:
-       abaixo de 992px o CSS repõe --esc:1 e o painel abre em tamanho normal. */
     const ALTURA_PAGINA = 960;
     const noComputador = window.matchMedia("(min-width: 992px)");
     const escalaveis = paineis
@@ -393,11 +297,6 @@
 
     function ajustarEscalaDosPaineis(){
       if(!noComputador.matches || !palco) return;
-      /* Mede o .mock do painel VISÍVEL, não o palco: a moldura tem uma barra
-         de título (os pontinhos + endereço) que come ~48px. Usando a altura do
-         palco, o conteúdo estourava a moldura por essa diferença e o rodapé do
-         painel saía cortado. Os painéis escondidos medem zero, por isso o
-         fallback subtrai a barra da altura do palco. */
       const visivel = paineis.find(c => c.classList.contains("is-atual")) || paineis[0];
       const mock = visivel && visivel.querySelector(".mock");
       const barraMoldura = visivel && visivel.querySelector(".scrolly-frame-bar");
@@ -410,7 +309,6 @@
 
     window.addEventListener("resize", ajustarEscalaDosPaineis);
     noComputador.addEventListener("change", ajustarEscalaDosPaineis);
-    // Fonte que chega atrasada muda a altura do conteúdo dentro do painel.
     if(document.fonts && document.fonts.ready){
       document.fonts.ready.then(ajustarEscalaDosPaineis);
     }
@@ -418,7 +316,6 @@
     irPara(0, 1);
   }
 
-  /* ============ ANIMAÇÃO "ADICIONAR AO CARRINHO" — três efeitos combinados, disparados ============ */
   function bumpCartIcon(){
     if(!cartPillEl) return;
     cartPillEl.classList.remove("is-bumped");
@@ -479,18 +376,10 @@
     });
   }
 
-  /* ============ VITRINE — categoria + busca + "Ver mais" ============
-     Tudo no cliente: /api/products devolve o catálogo inteiro de uma vez e
-     `products` já está em memória, então filtrar aqui evita uma ida ao
-     servidor a cada tecla. `PAGINA` limita quantos cards existem no DOM —
-     cada card custa ~20 elementos e um IntersectionObserver, então com o
-     catálogo crescendo isso é o que segura a página leve. */
   const PAGINA = 12;
   let buscaAtual = "";
   let visiveis = PAGINA;
 
-  // Sem acento e sem caixa dos dois lados: senão "laco"/"LAÇO" não acham
-  // "Laço", que é exatamente como a cliente digita no celular.
   function normalizarBusca(texto){
     return String(texto ?? "")
       .normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -506,14 +395,6 @@
     });
   }
 
-  /* Rótulo curto do parcelamento, só para o card da vitrine: ao lado do botão
-     "+" sobram ~84px no celular, e "ou 3x de R$ 10,67 sem juros" quebrava em
-     TRÊS linhas. Montado a partir do plano em vez de recortar o rótulo pronto,
-     que segue inteiro no Quick View, no carrinho e no checkout.
-     Encurtar só vale quando o parcelamento é sem juros: com juros, omitir isso
-     seria informação enganosa, então volta o rótulo completo. Hoje nenhum
-     parcelamento tem juros (ver PAYMENT_RULES em js/pricing.js), mas a regra é
-     configurável e a guarda custa uma linha. */
   function rotuloCurtoDeParcelamento(pay){
     const plano = pay.installment;
     if(plano.count <= 1) return "";
@@ -557,8 +438,6 @@
     `;
   }
 
-  // Remonta a grade inteira. Certo para busca, chips, primeira carga e
-  // atualização vinda da API — nesses casos a lista muda de verdade.
   function renderProducts(){
     const todos = produtosFiltrados();
     const list = todos.slice(0, visiveis);
@@ -569,11 +448,6 @@
     document.dispatchEvent(new CustomEvent("vitrine:render"));
   }
 
-  /* "Ver mais" NÃO passa por renderProducts(): remontar a grade destruiria os
-     cards que a pessoa já está olhando, e eles voltariam sem `is-visible` —
-     a entrada do .reveal e a do GSAP rodariam de novo em tudo, e cada <img>
-     nova repetiria o shimmer mesmo com os bytes em cache. Aqui só os novos
-     entram no DOM; quem já estava fica intacto. */
   function acrescentarProdutos(){
     const todos = produtosFiltrados();
     const jaNaTela = grid.children.length;
@@ -588,8 +462,6 @@
       el.querySelectorAll(".product-thumb img").forEach(wireImage);
     });
     atualizarResumoVitrine(todos.length, Math.min(visiveis, todos.length));
-    // observeReveal e o GSAP filtram por :not(.is-visible), então os dois
-    // pegam só o lote recém-inserido.
     observeReveal(grid);
     document.dispatchEvent(new CustomEvent("vitrine:render"));
   }
@@ -602,8 +474,6 @@
   const buscaInput = document.getElementById("buscaProduto");
   const buscaLimparBtn = document.getElementById("buscaLimpar");
 
-  // Contagem, estado vazio e o botão "Ver mais" andam juntos com o render —
-  // por isso numa função só, chamada de dentro de renderProducts().
   function atualizarResumoVitrine(total, mostrando){
     if(vitrineContagemEl){
       vitrineContagemEl.textContent = total === 0
@@ -619,9 +489,6 @@
     if(buscaLimparBtn) buscaLimparBtn.classList.toggle("d-none", !buscaAtual);
   }
 
-  // Qualquer mudança de recorte volta pra primeira "página": senão, quem
-  // clicou em "Ver mais" e depois trocou de categoria continuaria vendo
-  // uma lista longa de outra coisa.
   function aplicarRecorte(){
     visiveis = PAGINA;
     renderProducts();
@@ -633,7 +500,6 @@
       clearTimeout(debounce);
       debounce = setTimeout(() => { buscaAtual = buscaInput.value; aplicarRecorte(); }, 180);
     });
-    // Esc limpa: atalho esperado num campo de busca.
     buscaInput.addEventListener("keydown", (e) => {
       if(e.key === "Escape" && buscaInput.value){
         e.preventDefault();
@@ -650,8 +516,6 @@
   vitrineMaisBtn?.addEventListener("click", acrescentarProdutos);
 
   renderProducts();
-
-
 
   function categoryLabelFor(catSlug){
     const chip = document.querySelector(`#filterGroup .chip[data-cat="${CSS.escape(catSlug)}"]`);
@@ -670,19 +534,14 @@
       chip.type = "button";
       chip.dataset.cat = c.slug;
       chip.setAttribute("aria-pressed", "false");
-      /* ⚠️ Só o rótulo aqui dentro, nada de contagem nem ícone:
-         categoryLabelFor() (mais abaixo) descobre a categoria de um produto
-         lendo chip.textContent, e qualquer coisa a mais vira "Tiara 8" no card
-         e no Quick View. Contagem, se houver, vai por atributo. */
+      /* ⚠️ Só o rótulo aqui dentro: categoryLabelFor() lê chip.textContent, e
+         qualquer coisa a mais vira "Tiara 8" no card. Contagem vai em
+         atributo. */
       chip.textContent = c.label || c.slug;
       group.appendChild(chip);
     });
   }
 
-  /* Categoria sem nenhum produto vira filtro que só leva ao "nada encontrado".
-     Acontecia de verdade: "Bolsa" e "Kit Laço na Caixa" apareciam na vitrine
-     com zero produtos dentro. Os dados já estão todos em memória, então a
-     contagem sai daqui mesmo, sem endpoint novo. */
   function esconderCategoriasVazias(){
     const group = document.getElementById("filterGroup");
     if(!group) return;
@@ -692,8 +551,6 @@
       if(cat === "todos") return;
       const vazia = !comProduto.has(cat);
       chip.hidden = vazia;
-      // Um chip escondido que continua sendo o filtro ativo deixaria a vitrine
-      // vazia sem nenhum jeito visível de voltar.
       if(vazia && currentFilter === cat){
         currentFilter = "todos";
         const todos = group.querySelector('.chip[data-cat="todos"]');
@@ -752,16 +609,6 @@
           changed = true;
         }
       });
-      // O laço acima só ATUALIZA campos dos produtos já conhecidos — nunca
-      // reordena nem remove nada de `products` (o array que renderProducts()
-      // percorre). Sem este passo, mudar a ordem no painel (ou ocultar um
-      // produto) nunca aparecia na vitrine: os objetos eram corrigidos "no
-      // lugar", mas o lugar continuava sendo a ordem fixa deste arquivo.
-      // `data.products` já vem na ordem certa E sem os ocultos (o servidor
-      // filtra); reconstruir `products` nessa ordem resolve as duas coisas
-      // de uma vez. Não mexe em `productsById` — um produto que acabou de
-      // ficar oculto continua encontrável ali, então um carrinho que já
-      // tinha esse item (de antes de virar oculto) não quebra ao renderizar.
       const serverIds = Array.isArray(data.products) ? data.products.map(o => o.id) : null;
       if(serverIds){
         const currentOrder = products.map(p => p.id).join(",");
@@ -774,8 +621,6 @@
         }
       }
       if(changed){ renderProducts(); renderCart(); }
-      // Depois de o catálogo real chegar: é só aqui que dá para saber quais
-      // categorias ficaram sem produto.
       esconderCategoriasVazias();
       verifyPaymentRules(data.paymentRules);
     }catch(err){
@@ -809,15 +654,10 @@
     btn.classList.add("active");
     btn.setAttribute("aria-pressed", "true");
     currentFilter = btn.dataset.cat;
-    /* No celular a fileira rola para o lado: sem isto, tocar num chip da ponta
-       deixa metade dele fora da tela e não fica claro qual está selecionado.
-       inline:"nearest" não mexe em nada quando o chip já está inteiro visível,
-       e block:"nearest" impede que a página role verticalmente junto. */
     btn.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
     aplicarRecorte();
   });
 
-  /* ============ CARRINHO ============ */
   const CART_KEY = "plc_cart_v1";
 
   function loadCart(){
@@ -827,11 +667,6 @@
       if(!Array.isArray(parsed)) return [];
       return parsed
         .filter(i => i && Number.isInteger(i.id) && Number.isInteger(i.qty))
-        // Carrinho salvo ANTES da escolha de cor sair do site pode ter
-        // `color`/`secondColor` — descartados aqui de propósito: uma linha
-        // por produto agora. Se sobrarem duas linhas do mesmo id (era o
-        // mesmo laço em duas cores), soma as quantidades em vez de mostrar
-        // o produto repetido.
         .reduce((acc, i) => {
           const existente = acc.find(x => x.id === i.id);
           if(existente) existente.qty = Math.min(10, existente.qty + i.qty);
@@ -882,9 +717,6 @@
   const PENDING_ITEM_KEY = "plc_item_pendente";
 
   function addToCart(id, qty){
-    // Produto esgotado nunca entra no carrinho: o card e o Quick View já
-    // bloqueiam, isto fecha a porta pra qualquer outro caminho (item
-    // pendente restaurado depois do login, por exemplo).
     if(findProduct(id)?.soldOut) return;
 
     if(!currentUser){
@@ -894,8 +726,6 @@
         console.warn("Não foi possível guardar o item pendente:", err);
       }
 
-
-
       if(!sessionChecked){
         redirectAoSaberDaSessao = true;
         return;
@@ -904,8 +734,6 @@
       return;
     }
 
-    // Uma linha por produto: sem escolha de cor, não existe mais mais de
-    // uma variação do mesmo item.
     const existing = cart.find(i => i.id === id);
     if(existing){
       existing.qty = Math.min(10, existing.qty + qty);
@@ -1002,8 +830,6 @@
     const pixDiscount = pricing.pixDiscountFor(afterCoupon);
     const shippingPrice = shipping ? shipping.price : 0;
 
-
-
     pmPixPriceEl.textContent = formatMoney(afterCoupon - pixDiscount + shippingPrice);
     pmPixNoteEl.textContent = `${pricing.PAYMENT_RULES.pixDiscountPercent}% de desconto · ${formatMoney(pixDiscount)} a menos`;
     pmCardPriceEl.textContent = formatMoney(afterCoupon + shippingPrice);
@@ -1024,8 +850,6 @@
     cartInstallmentNoteEl.textContent = (!isPix && plan.count > 1)
       ? `ou ${pricing.installmentLabelFor(total)} no cartão`
       : "";
-
-
 
     const pendente = checkoutBlockInfo();
     checkoutBtn.disabled = cart.length === 0;
@@ -1123,7 +947,6 @@
     if(couponMsgEl) couponMsgEl.textContent = "";
   }
 
-
   function renderCart(){
 
     const checkoutPanel = document.getElementById("cartCheckoutPanel");
@@ -1173,7 +996,6 @@
     updateTotals();
   }
 
-  /* ============ CROSS-SELL NO CARRINHO ("Complete seu pedido") ============ */
   function pickCartRecommendations(){
     const inCartIds = new Set(cart.map(i => i.id));
     const inCartCats = new Set(cart.map(i => findProduct(i.id)?.cat).filter(Boolean));
@@ -1239,7 +1061,6 @@
 
   updateCartBadges();
 
-  /* ============ FRETE — MELHOR ENVIO ============ */
   const cepInput = document.getElementById("cepInput");
   const calcShippingBtn = document.getElementById("calcShippingBtn");
   const shippingMsgEl = document.getElementById("shippingMsg");
@@ -1262,9 +1083,6 @@
     return {
       nome: addrInputs.nome.value.trim(),
       telefone: addrInputs.telefone.value.trim(),
-      // Dígitos só, igual ao cadastro (js/conta.js) — é o formato que
-      // auth.isValidCpf (server.js) espera para conferir o dígito
-      // verificador.
       cpf: addrInputs.cpf.value.replace(/\D/g, ""),
       rua: addrInputs.rua.value.trim(),
       numero: addrInputs.numero.value.trim(),
@@ -1293,10 +1111,6 @@
     return out;
   }
 
-  // Mesmo algoritmo do dígito verificador usado em auth.isValidCpf
-  // (server.js) — duplicado aqui de propósito: o navegador não importa a
-  // lib do servidor, e vale avisar "CPF inválido" antes do submit em vez de
-  // só depois que o servidor recusar.
   function isValidCpfBR(value){
     const v = value.replace(/\D/g, "");
     if(!/^\d{11}$/.test(v)) return false;
@@ -1384,17 +1198,11 @@
     if(currentUser.name && !addrInputs.nome.value.trim()){
       addrInputs.nome.value = currentUser.name;
     }
-    // Só um ponto de partida — o pacote pode ser presente para outra
-    // pessoa, então o CPF continua editável, igual ao nome/telefone.
     if(currentUser.cpf && !addrInputs.cpf.value.trim()){
       addrInputs.cpf.value = maskCpf(currentUser.cpf);
     }
     fillCep(currentUser.cep);
 
-    // Endereço completo salvo de uma compra anterior (server.js:
-    // GET /api/auth/address) — preenche o que a conta ainda não tiver
-    // preenchido acima. Best-effort: se falhar, os campos só ficam vazios,
-    // igual ao comportamento de sempre para quem não tem endereço salvo.
     try{
       const res = await fetch("/api/auth/address");
       if(!res.ok) return;
@@ -1520,7 +1328,6 @@
   calcShippingBtn.addEventListener("click", calcShipping);
   cepInput.addEventListener("keydown", e => { if(e.key === "Enter"){ e.preventDefault(); calcShipping(); } });
 
-  /* ============ CUPOM DE DESCONTO ============ */
   async function applyCoupon(){
     const code = couponInput.value.trim();
     if(!code){
@@ -1558,7 +1365,6 @@
 
   renderCart(); 
 
-  /* ============ CHECKOUT — MERCADO PAGO (Checkout Pro) ============ */
   async function goToCheckout(){
 
     if(!currentUser){
@@ -1632,18 +1438,10 @@
     history.replaceState(null, "", location.pathname);
   }
 
-  /* ============ QUICK VIEW — tela de detalhes do produto ============ */
   let qvProductId = null, qvQty = 1;
   const qvModalEl = document.getElementById("quickViewModal");
   const qvModal = new bootstrap.Modal(qvModalEl);
 
-  // O Quick View parece uma tela própria (título, foto grande, ocupa a
-  // viewport) então o botão/gesto de voltar do navegador precisa fechá-lo
-  // e devolver o usuário pra vitrine — sem isso, abrir o modal nunca
-  // empilha uma entrada de histórico, e "voltar" pula direto pra página
-  // que estava aberta antes do site (a vitrine em si nunca é recarregada,
-  // então filtro e scroll já ficam intactos sozinhos; só falta o
-  // navegador ter uma entrada própria pra descartar).
   let qvHistoryPushed = false;
   let qvClosingFromPopstate = false;
 
@@ -1657,9 +1455,6 @@
 
   window.addEventListener("popstate", (e) => {
     if(e.state && e.state.quickView != null){
-      // Reabrir pelo "avançar" pousa numa entrada que já tem quickView no
-      // state — sem marcar aqui, um fechamento por X/Esc logo em seguida
-      // não saberia que precisa consumir essa entrada com history.back().
       qvHistoryPushed = true;
       openQuickView(e.state.quickView, { fromPopState: true });
     } else if(qvHistoryPushed){
@@ -1676,15 +1471,11 @@
   const qvSoldOutMsgEl = document.getElementById("qvSoldOutMsg");
   const qvAddBtnEl = document.getElementById("qvAddBtn");
 
-  /* ============ QUICK VIEW — galeria de fotos ============ */
   let qvPhotos = [], qvPhotoIndex = 0;
   const qvGalleryPrevEl = document.getElementById("qvGalleryPrev");
   const qvGalleryNextEl = document.getElementById("qvGalleryNext");
   const qvGalleryThumbsEl = document.getElementById("qvGalleryThumbs");
 
-  // Setas/miniaturas só aparecem com mais de 1 foto — com 0 ou 1, o Quick
-  // View fica idêntico a antes desta feature (mesma imagem única ou o
-  // ícone decorativo de fallback).
   function renderQvGallery(){
     const hasGallery = qvPhotos.length > 1;
     qvGalleryPrevEl.classList.toggle("d-none", !hasGallery);
@@ -1705,7 +1496,6 @@
     const img = document.getElementById("qvImage");
     img.classList.remove("is-loaded", "is-error");
     thumb.classList.add("is-loading");
-    // limpa a proporção da foto anterior — a nova define a dela ao carregar
     thumb.style.removeProperty("--qv-ratio");
     img.src = urlDaFoto(qvPhotos[qvPhotoIndex], 900);
     qvGalleryPrevEl.disabled = qvPhotoIndex === 0;
@@ -1721,15 +1511,11 @@
     const btn = e.target.closest(".qv-gallery-thumb");
     if(btn) setQvPhoto(Number(btn.dataset.index));
   });
-  // Seta esquerda/direita do teclado navega a galeria — exceto quando o
-  // foco está no seletor de cor (radiogroup nativo), que já usa as mesmas
-  // teclas para mover entre as cores.
   qvModalEl.addEventListener("keydown", (e) => {
     if(qvPhotos.length <= 1) return;
     if(e.key === "ArrowLeft"){ e.preventDefault(); setQvPhoto(qvPhotoIndex - 1); }
     else if(e.key === "ArrowRight"){ e.preventDefault(); setQvPhoto(qvPhotoIndex + 1); }
   });
-
 
   function renderQuickViewPayment(){
     const p = findProduct(qvProductId);
@@ -1754,8 +1540,6 @@
     if(!p) return;
     qvProductId = p.id; qvQty = 1;
 
-    // Esgotado: mensagem visível e botão travado. Antes isto era derivado de
-    // "nenhuma cor em estoque"; agora é o próprio produto que diz.
     qvSoldOutMsgEl.classList.toggle("d-none", !p.soldOut);
     qvAddBtnEl.disabled = Boolean(p.soldOut);
     qvAddBtnEl.textContent = p.soldOut ? "Esgotado" : "Adicionar ao carrinho";
@@ -1763,7 +1547,6 @@
     document.getElementById("qvName").textContent = p.name;
     document.getElementById("qvDesc").textContent = p.desc;
 
-    // Categoria + selos do produto (dado real; selo só aparece se existir).
     const tagsEl = document.getElementById("qvTags");
     if(tagsEl){
       const tags = [];
@@ -1797,11 +1580,6 @@
   }
   wireImage(document.getElementById("qvImage"));
 
-  // A moldura assume a proporção da PRÓPRIA foto assim que ela carrega. Com
-  // object-fit:contain a foto já aparece inteira em qualquer moldura, mas se
-  // a moldura fosse sempre 2:3 uma foto deitada ficaria com faixas de fundo
-  // em cima e embaixo. Assim não há corte nem espaço morto — a foto aparece
-  // exatamente como foi enviada.
   (() => {
     const qvImg = document.getElementById("qvImage");
     if(!qvImg) return;
@@ -1831,9 +1609,6 @@
     if(card) openQuickView(Number(card.dataset.id));
   });
 
-  // Ativação por teclado do card (Enter/Espaço) — só quando o foco está no
-  // próprio card, não em um botão filho (.btn-add/.product-quickview), que
-  // já trata Enter/Espaço nativamente por ser um <button> de verdade.
   grid.addEventListener("keydown", function(e){
     if(e.key !== "Enter" && e.key !== " ") return;
     if(!e.target.classList.contains("product-card")) return;
@@ -1868,10 +1643,6 @@
     bootstrap.Offcanvas.getInstance(document.getElementById("cartOffcanvas"))?.hide();
   });
 
-  /* Clique em link de âncora (#historia, #colecoes etc.) rola até a seção
-     mas NUNCA deixa o # entrar na URL — sem isso, o navegador grava o hash
-     no endereço e um F5 mais tarde (já fora do contexto do clique) pula de
-     novo para aquela seção, em vez de abrir do topo como o resto do site. */
   document.addEventListener("click", (e) => {
     const link = e.target.closest('a[href^="#"]');
     if(!link) return;
@@ -1932,7 +1703,6 @@
     window.scrollTo({ top:0, behavior:"smooth" });
   });
 
-  /* ============ FORMULÁRIOS ============ */
   function isValidEmail(v){
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   }
@@ -2021,7 +1791,6 @@
     }
   });
 
-  /* ============ RODAPÉ — selos de forma de pagamento ============ */
   const payBadgePixEl = document.getElementById("payBadgePix");
   const payBadgeInstallmentsEl = document.getElementById("payBadgeInstallments");
   if(payBadgePixEl){

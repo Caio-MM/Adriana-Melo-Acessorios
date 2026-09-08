@@ -18,9 +18,6 @@
     return d.toLocaleString("pt-BR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
   }
 
-  // Mesmos rótulos de pagamento usados em pedidos.html/admin.html — um
-  // pedido que não chegou a "pago" não tem linha do tempo de produção/envio
-  // para mostrar, só essa mensagem.
   const PAYMENT_ISSUE_LABELS = {
     "pendente": "Este pedido ainda está aguardando confirmação de pagamento.",
     "em análise": "O pagamento deste pedido está em análise.",
@@ -39,11 +36,6 @@
     "estornado":   { label:"Estornado", cls:"order-status-failed" },
   };
 
-  // Linha do tempo fixa — a posição de fulfillmentStatus nesta lista decide
-  // quais passos já ficam marcados como concluídos (is-done) e qual é o
-  // atual (is-current). null/ausente = só "Confirmado" (pedido pago, ainda
-  // sem nenhum fulfillment_status gravado — caso raro, cobre pedidos
-  // pagos bem no instante em que esta coluna foi criada).
   const FULFILLMENT_STEPS = [
     { key: "confirmado", label: "Confirmado" },
     { key: "em_producao", label: "Em produção" },
@@ -139,8 +131,6 @@
     const shippingWrap = document.getElementById("trackShippingWrap");
 
     if(order.status !== "pago"){
-      // Pedido nunca chegou a pago (ou deixou de estar) — não há linha do
-      // tempo de produção/envio para mostrar, só o motivo.
       timelineWrap.classList.add("d-none");
       shippingWrap.classList.add("d-none");
       paymentIssue.classList.remove("d-none");

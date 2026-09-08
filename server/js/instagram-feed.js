@@ -1,16 +1,3 @@
-/**
- * =============================================================================
- *  FEED AUTOMÁTICO DO INSTAGRAM — seção "nossa história" (index.html)
- * =============================================================================
- *  Busca /api/instagram/feed (server/lib/instagram.js) e alterna entre os
- *  3 estados já presentes no HTML (#instagramFeedCard): loading (default,
- *  visível até essa busca terminar), live (grid de posts reais) ou
- *  fallback (API não configurada/indisponível — mostra "Seguir no
- *  Instagram" no lugar). Arquivo próprio, não entra em main.js — só
- *  manipula classes dentro do próprio card, sem interferir no
- *  IntersectionObserver de scroll-reveal que já existe lá.
- * =============================================================================
- */
 (() => {
   "use strict";
 
@@ -39,11 +26,6 @@
     feed.posts.forEach((post) => {
       const a = document.createElement("a");
       a.className = "instagram-feed-thumb";
-      // Só http/https. O permalink vem da Graph API por HTTPS e não é
-      // controlável por terceiros — não é uma falha hoje —, mas href sem
-      // validação de esquema é o tipo de coisa que vira XSS se um dia a
-      // origem do dado mudar. Link estranho cai no perfil da loja, e aí a
-      // miniatura continua útil em vez de virar link morto.
       a.href = /^https?:\/\//i.test(String(post.permalink || ""))
         ? post.permalink
         : PERFIL_INSTAGRAM;

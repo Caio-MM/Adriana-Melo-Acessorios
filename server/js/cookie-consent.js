@@ -1,34 +1,17 @@
-/**
- * =============================================================================
- *  BANNER DE CONSENTIMENTO DE COOKIES (LGPD)
- * =============================================================================
- *  Aparece na primeira visita, injetado em todas as páginas. A decisão fica
- *  salva em localStorage — não reaparece depois de Aceitar/Rejeitar.
- *
- *  Esta loja usa apenas cookies/armazenamento ESSENCIAIS (carrinho no
- *  localStorage e o cookie de sessão do login). Por isso o banner é honesto e
- *  simples: não há rastreamento de terceiros a "gerenciar", então não existe
- *  um painel de configurações granular falso. "Rejeitar" é tão fácil quanto
- *  "Aceitar" (exigência de LGPD/GDPR) e apenas registra a preferência.
- *
- *  Sem dependências: cria o DOM e injeta o CSS (via classes já em style.css).
- * =============================================================================
- */
 (function () {
   "use strict";
 
   var STORAGE_KEY = "plc_cookie_consent";
 
-  // Já decidiu antes? Não mostra de novo.
   var prev = null;
-  try { prev = localStorage.getItem(STORAGE_KEY); } catch (e) { /* storage bloqueado: mostra mesmo assim */ }
+  try { prev = localStorage.getItem(STORAGE_KEY); } catch (e) { }
   if (prev === "accepted" || prev === "rejected") return;
 
   function save(decision) {
     try {
       localStorage.setItem(STORAGE_KEY, decision);
       localStorage.setItem(STORAGE_KEY + "_at", new Date().toISOString());
-    } catch (e) { /* sem storage: a decisão vale só nesta sessão */ }
+    } catch (e) { }
   }
 
   function build() {
@@ -62,7 +45,6 @@
     banner.classList.add("is-leaving");
     var done = function () { banner.remove(); };
     banner.addEventListener("animationend", done, { once: true });
-    // Rede de segurança caso a animação não dispare (reduced-motion, etc.).
     setTimeout(done, 400);
   }
 
@@ -71,10 +53,6 @@
     document.body.appendChild(banner);
     document.body.classList.add("has-cookie-consent");
 
-    // Reserva espaço rolável do tamanho do banner: sem isso, em telas
-    // curtas (celular) com pouco conteúdo, o banner fixo no rodapé pode
-    // cobrir permanentemente algo importante ali (ex.: um botão), sem
-    // nenhum jeito de rolar a página pra revelar o que está atrás dele.
     var resizeObserver = null;
     if (typeof ResizeObserver !== "undefined") {
       resizeObserver = new ResizeObserver(function () {
@@ -89,8 +67,6 @@
       var btn = e.target.closest("[data-consent]");
       if (btn) dismiss(banner, btn.getAttribute("data-consent"), resizeObserver);
     });
-    // Foco no primeiro botão para quem navega por teclado — sem prender o foco
-    // (é banner, não modal): Tab continua saindo normalmente para a página.
     requestAnimationFrame(function () {
       banner.classList.add("is-visible");
       var firstBtn = banner.querySelector(".cookie-consent-btn");

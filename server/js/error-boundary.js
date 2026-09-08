@@ -1,4 +1,3 @@
-/* ============ ERROR BOUNDARY GLOBAL ============ */
 (function(){
   "use strict";
 

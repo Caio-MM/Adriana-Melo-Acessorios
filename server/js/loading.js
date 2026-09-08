@@ -1,4 +1,3 @@
-/* ============ TELA DE CARREGAMENTO PARA CONEXÃO LENTA ============ */
 (function(){
   "use strict";
 

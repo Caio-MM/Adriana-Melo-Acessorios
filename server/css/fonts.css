@@ -1,10 +1,6 @@
-/* ============ FONTES HOSPEDADAS AQUI (antes vinham do Google Fonts) ============ */
 
-/* Eram quatro blocos (pesos 500 e 700 nas duas faixas) apontando para dois
-   arquivos variáveis. Como nada no site pede peso de Caveat, tudo caía no 400
-   e o eixo wght era 35% de arquivo morto — congelado por
-   scripts/instanciar-fontes.js. Agora o peso declarado é o que existe no
-   arquivo. ⚠️ Caveat em negrito daqui em diante sai como bold sintético. */
+/* ⚠️ A Caveat aqui é peso fixo 400 (instanciada por
+   scripts/instanciar-fontes.js): negrito nela sai sintético. */
 @font-face {
   font-family: 'Caveat';
   font-style: normal;

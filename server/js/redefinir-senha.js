@@ -1,7 +1,6 @@
 (function(){
   "use strict";
 
-  /* ============ REDEFINIR SENHA — página aberta pelo link enviado no e-mail ============ */
   const token = new URLSearchParams(window.location.search).get("token");
 
   const form = document.getElementById("resetForm");

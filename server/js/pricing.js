@@ -5,7 +5,6 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  /* ============ ⚙️ REGRA DO NEGÓCIO — é aqui que se muda o parcelamento e o desconto. ============ */
   const PAYMENT_RULES = {
     pixDiscountPercent: 5,       
     maxInstallments: 3,          

@@ -28,8 +28,6 @@
     const data = await res.json().catch(() => ({}));
     if(!res.ok){
       const err = new Error(data.error || "Algo deu errado. Tente novamente em instantes.");
-      // Cooldown de reenvio (2FA por e-mail) manda quanto falta em ms — sem
-      // isso o chamador só teria a mensagem de texto, não o número.
       if(typeof data.retryAfterMs === "number") err.retryAfterMs = data.retryAfterMs;
       throw err;
     }
@@ -43,7 +41,6 @@
     return retorno === "carrinho" ? "index.html?carrinho=1" : "pedidos.html";
   }
 
-  /* ============ PAINEL DESLIZANTE — alternar entre "Entrar" e "Criar conta". ============ */
   const authShell = document.getElementById("authForms");
   const modeButtons = document.querySelectorAll("[data-auth-mode]");
 
@@ -106,12 +103,6 @@
     }
   });
 
-  /* ============ 2FA — escolha do método, depois o código ============
-     Passo 1 (twoFactorChoiceStep): "app" ou "e-mail" — clique já é a ação,
-     não uma seleção que espera confirmação depois.
-     Passo 2 (twoFactorCodeStep): mesmo campo #twoFactorCode/#twoFactorForm
-     para os dois métodos — um código emailado entra no mesmo lugar que um
-     código do app, o back-end (/api/auth/login/2fa) já tenta os dois. */
   const twoFactorChoiceStep = document.getElementById("twoFactorChoiceStep");
   const twoFactorCodeStep = document.getElementById("twoFactorCodeStep");
   const chooseAppBtn = document.getElementById("chooseAppBtn");
@@ -151,8 +142,6 @@
     }, 1000);
   }
 
-  // Chamado ao entrar na tela (login com 2FA) e sempre que o desafio
-  // caduca no meio do caminho — começa sempre do passo de escolha.
   function resetTwoFactorStepsUI(){
     resetEmailCooldownUI();
     showMessage(twoFactorMsg, "", null);
@@ -174,9 +163,6 @@
     setTimeout(() => twoFactorCode.focus(), 50);
   }
 
-  // Trata o desafio caduco do mesmo jeito nos dois caminhos (código/e-mail):
-  // volta pro login E reseta esta tela pro passo de escolha, pra próxima
-  // vez começar do zero.
   function handleExpiredChallenge(message){
     pendingChallengeToken = null;
     resetTwoFactorStepsUI();
@@ -247,10 +233,6 @@
     }
   });
 
-  // Reenviar dentro do passo de e-mail: mesma chamada do cartão de escolha,
-  // só que agora já estamos no passo 2. Se o servidor disser que ainda tem
-  // cooldown ativo (voltou pro passo 1 e escolheu e-mail de novo antes dos
-  // 60s), usa o retryAfterMs real em vez de assumir 60s de novo.
   twoFactorEmailBtn?.addEventListener("click", async () => {
     if(!pendingChallengeToken) return;
     showMessage(twoFactorMsg, "", null);
