@@ -500,6 +500,12 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
    stacking context dele — cobre os laços inteiros no celular, onde o cartão
    ocupa quase toda a área. Encostar na borda da foto é proposital: dá
    camada, como um adesivo. */
+/* Contêiner dos laços: existe só para receber o parallax de rolagem (o GSAP
+   move ESTE nó, e cada laço dentro continua dono do seu @keyframes floaty).
+   inset:0 mantém as coordenadas de cada laço exatamente como eram quando eles
+   eram filhos diretos de .hero-art, e o z-index herda o papel que era do
+   .floaty: ficar ACIMA do .hero-photo-wrap (z-index:1). */
+.hero-flutuantes{ position:absolute; inset:0; z-index:2; pointer-events:none; }
 .floaty{ position:absolute; z-index:2; animation:floaty 6s ease-in-out infinite; }
 .floaty.f1{ top:6%;    left:8%;   width:46px; color:var(--blush-300); animation-delay:0s; }
 .floaty.f2{ top:14%;   right:6%;  width:34px; color:var(--blush-500); animation-delay:1.2s; }
@@ -3623,3 +3629,101 @@ body.admin-gate-active .admin-state-area{
 }
 .policy-footer-note i{ color:var(--blush-700); font-size:1.2rem; line-height:1.4; }
 .policy-footer-note p{ font-size:.88rem; line-height:1.6; color:var(--ink-soft); }
+
+/* ============ FITA-GUIA DE ROLAGEM ============
+   Fio de cetim que atravessa a página e se desenha conforme a rolagem, com um
+   lacinho cavalgando a ponta. Substitui a ideia de "barra de progresso" por
+   algo que é a própria matéria-prima da loja.
+
+   No computador vive na margem esquerda, que está sempre vazia. No celular não
+   existe margem: vira um fio horizontal fino logo abaixo da navbar. */
+.fita-guia{
+  position:fixed; z-index:1025; pointer-events:none;
+  left:4px; top:0; width:46px; height:100vh;
+}
+.fita-guia-svg{ width:100%; height:100%; display:block; overflow:visible; }
+.fita-guia-trilho,
+.fita-guia-fio{
+  fill:none; stroke-width:2.5; stroke-linecap:round;
+  /* O viewBox 40x1000 é esticado para 40x100vh com preserveAspectRatio="none",
+     o que deformaria a espessura do traço (fininho na vertical, grosso na
+     horizontal). non-scaling-stroke mantém 2.5px de tela em qualquer altura
+     de janela. */
+  vector-effect:non-scaling-stroke;
+}
+/* O trilho é a fita ainda não percorrida: quase invisível, só o suficiente
+   para o fio ter por onde correr em vez de surgir do nada. */
+.fita-guia-trilho{ stroke:var(--blush-150); opacity:.5; }
+.fita-guia-fio{ stroke:var(--blush-500); }
+.fita-guia-laco{
+  position:absolute; left:50%; top:0; width:26px; height:auto;
+  color:var(--blush-600); margin-left:-13px; margin-top:-9px;
+  filter:drop-shadow(0 4px 8px rgba(192,84,128,.45));
+}
+
+/* A fita vertical só cabe onde existe margem de verdade. As margens do
+   container do Bootstrap encolhem junto com a tela (~40px a 1400px, ~30px a
+   1200px, quase nada abaixo disso), e a 1440px a fita já encostava 17px por
+   cima do texto. Então abaixo de 1400px ela vira um fio horizontal fino sob a
+   navbar, que não disputa espaço com nada. */
+@media (max-width: 1399.98px){
+  .fita-guia{
+    /* No topo absoluto, ACIMA da navbar: ela muda de altura ao rolar (91px no
+       topo, 65px depois), então qualquer deslocamento fixo esconderia a fita
+       atrás dela em um dos dois estados. */
+    left:0; top:0; width:100%; height:10px; z-index:1035;
+  }
+  .fita-guia-svg{ display:none; }
+  .fita-guia::before{
+    content:""; position:absolute; left:0; top:0; height:3px; width:100%;
+    background:var(--blush-150); opacity:.5;
+  }
+  .fita-guia::after{
+    content:""; position:absolute; left:0; top:0; height:3px;
+    width:calc(var(--progresso, 0) * 100%);
+    background:linear-gradient(90deg, var(--blush-300), var(--blush-600));
+  }
+  .fita-guia-laco{
+    left:calc(var(--progresso, 0) * 100%); top:-3px;
+    width:18px; margin-left:-9px; margin-top:0;
+  }
+}
+
+/* Decoração pura: sem ela a página não perde informação nenhuma. */
+@media (prefers-reduced-motion: reduce){
+  .fita-guia{ display:none; }
+}
+
+/* ============ VAN GUIADA PELA ROLAGEM ============
+   No computador o GSAP assume a van: a seção prende na tela e a entrega anda
+   conforme a pessoa rola, em vez de rodar num loop de 4s alheio a ela.
+
+   .is-guiada desliga SÓ o keyframe de deslocamento. As rodas e os risquinhos
+   de velocidade continuam no CSS de propósito: eles ficam em nós FILHOS, então
+   não disputam o transform da van — a regra é um dono por nó, não por seção. */
+.process-truck.is-guiada{ opacity:1; }
+.process-truck.is-guiada.is-dirigindo{ animation:none; }
+/* Os risquinhos piscavam no ciclo de 4s do keyframe; presos à rolagem isso
+   não faz sentido, então ficam constantes e quem dá a sensação de velocidade
+   é o próprio deslocamento. */
+.process-truck.is-guiada.is-dirigindo .process-truck-lines line{
+  animation:none; opacity:.75;
+}
+/* As rodas só giram enquanto a pessoa rola — o JS alterna o play-state. */
+.process-truck.is-guiada.is-dirigindo .process-truck-wheel{
+  animation:process-truck-spin .35s linear infinite;
+  animation-play-state:paused;
+}
+.process-truck.is-guiada.is-andando .process-truck-wheel{ animation-play-state:running; }
+
+/* Passo aceso quando a van chega nele. ⚠️ Não mexe em transform: o
+   .process-icon-wrap já é dono dele pelo @keyframes process-icon-float, e o
+   .reveal é dono do opacity/translateY do bloco. Sobram cor, contorno e
+   sombra — que ninguém disputa. */
+.process-step .process-icon{ transition:box-shadow .45s ease, background-color .45s ease; }
+.process-step.is-na-vez .process-icon{
+  background:var(--blush-600); color:var(--white);
+  box-shadow:0 14px 30px -12px rgba(192,84,128,.75);
+}
+.process-step .process-num{ transition:background-color .45s ease, color .45s ease; }
+.process-step.is-na-vez .process-num{ background:var(--blush-700); color:var(--white); }

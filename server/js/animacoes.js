@@ -126,6 +126,257 @@
     }
   }
 
+  /* ---- TÍTULOS DE SEÇÃO ----
+     O hero já entra por linhas (SplitText). Aqui o mesmo recurso, que já está
+     carregado e era usado num lugar só, monta os títulos das seções palavra a
+     palavra conforme cada uma chega.
+
+     Os títulos moram dentro de blocos .reveal, que também animam opacity e
+     translateY. Não há conflito: o .reveal é dono do BLOCO e o GSAP das
+     PALAVRAS — nós diferentes, transforms que se compõem. O que não pode é
+     dois donos no mesmo nó. */
+  const TITULOS = "#colecoes h2, #historia h2, #sobre h2, #depoimentos h2, .plc-cta h2, #contato h2";
+
+  function entradaDosTitulos() {
+    const titulos = gsap.utils.toArray(TITULOS);
+    if (!titulos.length) return;
+    if (window.SplitText) gsap.registerPlugin(SplitText);
+
+    titulos.forEach((titulo) => {
+      let split = null;
+      if (window.SplitText) {
+        try {
+          split = new SplitText(titulo, { type: "words" });
+        } catch (e) {
+          split = null;
+        }
+      }
+      const alvos = split && split.words.length ? split.words : [titulo];
+
+      gsap.fromTo(alvos,
+        { opacity: 0, y: 20 },
+        {
+          opacity: 1, y: 0, duration: 0.6, stagger: 0.045, ease: "power3.out",
+          // revert() devolve o título inteiro ao DOM: sem isso ele fica picado
+          // em <div>s e o leitor de tela anuncia palavra por palavra.
+          onComplete() {
+            if (split) split.revert();
+            else gsap.set(this.targets(), { clearProps: "opacity,transform" });
+          },
+          scrollTrigger: { trigger: titulo, start: "top 88%" },
+        }
+      );
+    });
+  }
+
+  /* ---- PROFUNDIDADE ----
+     É aqui que mora a diferença entre "vivo" e "morto": até agora TODA
+     animação do site era um fade que dispara uma vez e acaba. Nada acompanhava
+     a rolagem. Estas camadas andam presas ao dedo (scrub), em velocidades
+     diferentes, e é isso que dá sensação de profundidade.
+
+     ⚠️ Cada alvo abaixo foi escolhido por NÃO ter transform próprio no CSS:
+     - .hero-flutuantes é um contêiner novo; os 8 laços dentro dele é que têm
+       o @keyframes floaty, e pai + filho se compõem sem brigar.
+     - os 2 laços decorativos do CTA são posicionados por top/right/left, sem
+       transform (style.css:1717) — hoje estão completamente parados.
+     - .instagram-feed-card idem: o posicionamento dele é de fluxo normal.
+     Não use .hero-photo-wrap: ela tem translate(-50%,-50%) fixo no CSS. */
+  function camadasComParallax() {
+    const camadas = [
+      [".hero-flutuantes", 90],
+      ["#historia .instagram-feed-card", -46],
+      [".plc-cta .bow-icon", 70],
+    ];
+
+    camadas.forEach(([seletor, distancia]) => {
+      const alvos = gsap.utils.toArray(seletor);
+      if (!alvos.length) return;
+      gsap.fromTo(alvos,
+        { y: -distancia / 2 },
+        {
+          y: distancia / 2,
+          ease: "none",
+          scrollTrigger: {
+            trigger: alvos[0].closest("section, header") || alvos[0],
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+            invalidateOnRefresh: true,
+          },
+        }
+      );
+    });
+
+    // Os laços do CTA também giram devagar — parados eles pareciam adesivo
+    // colado; girando, viram fita.
+    const lacosCta = gsap.utils.toArray(".plc-cta .bow-icon");
+    if (lacosCta.length) {
+      gsap.fromTo(lacosCta,
+        { rotation: -8 },
+        {
+          rotation: 8, ease: "none",
+          scrollTrigger: {
+            trigger: ".plc-cta", start: "top bottom", end: "bottom top",
+            scrub: true, invalidateOnRefresh: true,
+          },
+        }
+      );
+    }
+  }
+
+  /* ---- FITA-GUIA ----
+     O fio se desenha por stroke-dashoffset preso ao progresso da página, e o
+     lacinho anda junto pelo próprio caminho (getPointAtLength), então ele
+     segue as curvas em vez de descer reto.
+
+     No celular o SVG é escondido e a fita vira um fio horizontal desenhado por
+     ::after com width em porcentagem — por isso o progresso também é publicado
+     como a custom property --progresso, que o CSS consome. */
+  function fitaGuia() {
+    const fita = document.querySelector(".fita-guia");
+    if (!fita) return;
+
+    const fio = fita.querySelector(".fita-guia-fio");
+    const laco = fita.querySelector(".fita-guia-laco");
+    let comprimento = 0;
+
+    function medir() {
+      if (!fio || !fio.getTotalLength) return;
+      comprimento = fio.getTotalLength();
+      gsap.set(fio, { strokeDasharray: comprimento, strokeDashoffset: comprimento });
+    }
+    medir();
+
+    return ScrollTrigger.create({
+      start: 0,
+      end: () => ScrollTrigger.maxScroll(window),
+      scrub: true,
+      invalidateOnRefresh: true,
+      onRefresh: medir,
+      onUpdate(self) {
+        const p = self.progress;
+        fita.style.setProperty("--progresso", p.toFixed(4));
+        if (fio && comprimento) {
+          fio.style.strokeDashoffset = String(comprimento * (1 - p));
+          if (laco && fio.getPointAtLength) {
+            const ponto = fio.getPointAtLength(comprimento * p);
+            // O viewBox é 60x1000 esticado para a altura da tela; converter a
+            // coordenada do caminho para porcentagem deixa o laço colado no
+            // fio em qualquer altura de janela, sem recalcular no resize.
+            laco.style.left = (ponto.x / 60) * 100 + "%";
+            laco.style.top = (ponto.y / 1000) * 100 + "%";
+          }
+        }
+      },
+    });
+  }
+
+  /* ---- VAN GUIADA PELA ROLAGEM (peça central) ----
+     Até agora a van rodava num loop CSS de 4s que ignorava a rolagem. Aqui a
+     seção prende na tela e a entrega anda com o dedo: 0% da rolagem = passo 1,
+     100% = passo 3. É a metáfora que o site já tinha desenhada — o trajeto do
+     pedido — finalmente ligada ao trajeto de quem está lendo.
+
+     Só no computador: prender a tela em celular irrita mais do que encanta, e
+     lá a van nem aparece (display:none abaixo de 768px). */
+  function vanGuiada() {
+    const wrap = document.querySelector(".process-wrap");
+    const van = document.querySelector(".process-truck");
+    const passos = gsap.utils.toArray("#sobre .process-step");
+    if (!wrap || !van || passos.length < 3) return;
+
+    // Avisa o CSS para desligar o keyframe de deslocamento e deixar o GSAP
+    // como dono único do transform da van.
+    van.classList.add("is-guiada");
+
+    /* Posições medidas do ícone de cada passo, não porcentagens chutadas: é o
+       que faz a van encostar exatamente em cada parada em qualquer largura.
+       Em função (não valor fixo) porque invalidateOnRefresh remede tudo a cada
+       ScrollTrigger.refresh() — que já acontece no load e no fonts.ready. */
+    function centroDoPasso(passo) {
+      const icone = passo.querySelector(".process-icon-wrap") || passo;
+      const r = icone.getBoundingClientRect();
+      return r.left + r.width / 2 - wrap.getBoundingClientRect().left;
+    }
+    // A van nasce em left:14% com translate(-50%): o x do GSAP é sempre
+    // relativo a esse ponto de partida.
+    const partida = () => wrap.getBoundingClientRect().width * 0.14;
+
+    let parada;
+
+    /* Roda a cada quadro do scrub: liga as rodas enquanto há movimento e
+       acende o passo em que a van está. Classe, não tween — assim acende E
+       apaga sozinho ao rolar de volta, e o estilo continua morando no CSS.
+       ⚠️ Precisa ser passado na CRIAÇÃO do gatilho: o ScrollTrigger guarda a
+       referência da função nesse momento, então atribuir vars.onUpdate depois
+       não tem efeito nenhum (silenciosamente). */
+    function aCadaQuadro(self) {
+      van.classList.add("is-andando");
+      clearTimeout(parada);
+      parada = setTimeout(() => van.classList.remove("is-andando"), 120);
+
+      const naVez = Math.min(
+        Math.floor(self.progress * passos.length),
+        passos.length - 1
+      );
+      passos.forEach((passo, i) => passo.classList.toggle("is-na-vez", i === naVez));
+    }
+
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: "#sobre",
+        start: "center center",
+        // Uma tela de rolagem presa. Mais que isso vira armadilha: a seção tem
+        // só ~490px de conteúdo e ninguém quer ficar preso relendo três passos.
+        end: "+=100%",
+        pin: true,
+        scrub: 0.6,
+        anticipatePin: 1,
+        invalidateOnRefresh: true,
+        /* Maior que o -3 do batch da vitrine: o pin MUDA a altura da página, e
+           os gatilhos dos cards precisam ser medidos depois disso, senão
+           recalculam com a altura errada. */
+        refreshPriority: 1,
+        onUpdate: aCadaQuadro,
+      },
+    });
+
+    tl.fromTo(van,
+      { x: () => centroDoPasso(passos[0]) - partida() },
+      { x: () => centroDoPasso(passos[2]) - partida(), ease: "none", duration: 1 }
+    );
+
+    return tl;
+  }
+
+  /* ---- FAIXA REAGINDO À ROLAGEM ----
+     A faixa vinho já corre sozinha (@keyframes scrollx). Inclinar conforme a
+     VELOCIDADE da rolagem é o efeito mais barato que existe para a página
+     parecer responder ao dedo — e a faixa é literalmente uma fita.
+
+     ⚠️ Nem o .plc-marquee (o fundo), nem o .plc-marquee-track. O track já é
+     dono do transform pelo keyframe scrollx, e inclinar o fundo abre um vão
+     triangular nos cantos — a 2,5° numa faixa de 1440px as bordas sobem 31px
+     e o creme aparece por baixo (conferido na tela). Inclinando os GRUPOS de
+     dentro, só o conteúdo balança e a faixa continua firme. */
+  function marqueeReativo() {
+    const grupos = gsap.utils.toArray(".plc-marquee-group");
+    if (!grupos.length) return;
+
+    const inclinar = gsap.quickTo(grupos, "skewY", { duration: 0.5, ease: "power3" });
+    let parada;
+
+    return ScrollTrigger.create({
+      onUpdate(self) {
+        inclinar(gsap.utils.clamp(-2.5, 2.5, self.getVelocity() / 900));
+        // Sem isto a faixa fica torta para sempre depois de uma rolagem rápida.
+        clearTimeout(parada);
+        parada = setTimeout(() => inclinar(0), 140);
+      },
+    });
+  }
+
   /* ---- VITRINE ----
      Filtro e busca reconstroem a grade inteira; "Ver mais" só acrescenta os
      novos ao final (renderProducts/acrescentarProdutos em js/main.js, os dois
@@ -201,12 +452,28 @@
     }
   }
 
+  /* A van presa à rolagem é só no computador: abaixo de 992px prender a tela
+     atrapalha, e abaixo de 768px a van nem existe (display:none). O celular
+     mantém o pacotinho pulando entre paradas, que já funciona bem lá. */
+  mm.add("(min-width: 992px) and (prefers-reduced-motion: no-preference)", () => {
+    const tl = vanGuiada();
+    return () => { if (tl && tl.scrollTrigger) tl.scrollTrigger.kill(); };
+  });
+
   mm.add("(prefers-reduced-motion: no-preference)", () => {
     entradaDoHero();
     entradaDoRodape();
+    entradaDosTitulos();
+    camadasComParallax();
+    const gatilhoDaFaixa = marqueeReativo();
+    const gatilhoDaFita = fitaGuia();
     animarVitrine();
     document.addEventListener("vitrine:render", animarVitrine);
-    return () => document.removeEventListener("vitrine:render", animarVitrine);
+    return () => {
+      document.removeEventListener("vitrine:render", animarVitrine);
+      if (gatilhoDaFaixa) gatilhoDaFaixa.kill();
+      if (gatilhoDaFita) gatilhoDaFita.kill();
+    };
   });
 
   // Fonte e imagem que chegam depois mudam a altura da página e desalinham os

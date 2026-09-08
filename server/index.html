@@ -57,6 +57,21 @@
   </symbol>
 </svg>
 
+<!-- ============ FITA-GUIA DE ROLAGEM ============
+     A fita é o material dos produtos virando navegação: ela se desenha
+     conforme a pessoa rola e o lacinho na ponta marca onde ela está, dando a
+     noção de "quanto falta" sem parecer uma barra de progresso de download.
+
+     aria-hidden porque é puramente decorativa — quem usa leitor de tela já
+     tem os marcos de navegação (<nav>, <section>, títulos) para se situar. -->
+<div class="fita-guia" aria-hidden="true">
+  <svg class="fita-guia-svg" viewBox="0 0 60 1000" preserveAspectRatio="none" focusable="false">
+    <path class="fita-guia-trilho" d="M30 0 C62 110 -2 230 30 350 C62 470 -2 590 30 710 C62 830 -2 910 30 1000"/>
+    <path class="fita-guia-fio"    d="M30 0 C62 110 -2 230 30 350 C62 470 -2 590 30 710 C62 830 -2 910 30 1000"/>
+  </svg>
+  <svg class="fita-guia-laco bow-icon" focusable="false"><use href="#bow-shape"/></svg>
+</div>
+
 <!-- ============ NAVBAR ============ -->
 <nav class="plc-navbar" id="mainNav" aria-label="Navegação principal">
   <div class="container d-flex align-items-center justify-content-between">
@@ -299,14 +314,19 @@
       </div>
       <div class="col-lg-6">
         <div class="hero-art">
-          <svg class="bow-icon floaty f1"><use href="#bow-shape"/></svg>
-          <svg class="bow-icon floaty f2"><use href="#bow-shape"/></svg>
-          <svg class="bow-icon floaty f3"><use href="#bow-shape"/></svg>
-          <svg class="bow-icon floaty f4"><use href="#bow-shape"/></svg>
-          <svg class="bow-icon floaty f5"><use href="#bow-shape"/></svg>
-          <svg class="bow-icon floaty f6"><use href="#bow-shape"/></svg>
-          <svg class="bow-icon floaty f7"><use href="#bow-shape"/></svg>
-          <svg class="bow-icon floaty f8"><use href="#bow-shape"/></svg>
+          <!-- Contêiner só para o parallax de rolagem. Os laços não podem
+               recebê-lo diretamente: cada um já é dono do próprio transform
+               pelo @keyframes floaty, e dois donos no mesmo nó se anulam. -->
+          <div class="hero-flutuantes" aria-hidden="true">
+            <svg class="bow-icon floaty f1"><use href="#bow-shape"/></svg>
+            <svg class="bow-icon floaty f2"><use href="#bow-shape"/></svg>
+            <svg class="bow-icon floaty f3"><use href="#bow-shape"/></svg>
+            <svg class="bow-icon floaty f4"><use href="#bow-shape"/></svg>
+            <svg class="bow-icon floaty f5"><use href="#bow-shape"/></svg>
+            <svg class="bow-icon floaty f6"><use href="#bow-shape"/></svg>
+            <svg class="bow-icon floaty f7"><use href="#bow-shape"/></svg>
+            <svg class="bow-icon floaty f8"><use href="#bow-shape"/></svg>
+          </div>
           <div class="hero-photo-wrap">
             <!-- ⚠️ O <img> precisa de srcset/sizes junto com o <source>: com um
                  src solitário aqui, o leitor de pré-carregamento do Chrome baixa
