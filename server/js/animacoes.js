@@ -60,7 +60,7 @@
 
     const FOLGA_X = 3;
     const FOLGA_Y = 2;
-    let linhaAnterior = null;
+    let corAtual = null;
 
     function caixaRelativa(alvo) {
       const a = alvo.getBoundingClientRect();
@@ -74,17 +74,11 @@
     }
 
     function levarBlocoPara(letra, cor) {
-      const caixa = caixaRelativa(letra);
-      const mudouDeLinha = linhaAnterior === null || Math.abs(caixa.top - linhaAnterior) > 4;
-      linhaAnterior = caixa.top;
-      gsap.to(bloco, {
-        ...caixa,
-        backgroundColor: cor,
-        opacity: 1,
-        duration: mudouDeLinha ? 0 : 0.07,
-        ease: "power2.out",
-        overwrite: true,
-      });
+      gsap.set(bloco, { ...caixaRelativa(letra), opacity: 1 });
+      if (cor !== corAtual) {
+        corAtual = cor;
+        gsap.to(bloco, { backgroundColor: cor, duration: 0.25, overwrite: "auto" });
+      }
     }
 
     const corComum = "var(--blush-500)";
