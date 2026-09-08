@@ -1582,23 +1582,16 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
      Reduzir a escala não resolve: a 0,47 o texto ficaria com ~7px.
      A regra é mostrar só a metade que PROVA a garantia. */
 
-  /* Painéis de duas colunas: fica a primeira, que é a prova.
-     Pagamento -> o resumo com "Desconto Pix (5%)".
-     Atendimento -> os contatos reais, não o formulário em branco. */
-  .mock-duas > div + div{ display:none; }
+  /* ⚠️ Os cortes que existiam aqui foram removidos. A loja é usada
+     principalmente no celular, e a cliente perdia justamente o que constrói
+     confiança: o cartão do Pix inteiro, as 3 condições de troca, as etapas
+     "Embalada para presente" e "A caminho", e o formulário de contato.
 
-  /* Política: a tarja destacada É a garantia; a lista de condições e a barra
-     de abas são contexto que cabe no site de verdade. */
-  .mock-abas{ display:none; }
-  .mock-policy ul{ display:none; }
-
-  /* Rastreio: a prova de "vai para a fila de produção" é a LINHA DO TEMPO.
-     O cartão do produto custava 142px e não prova nada disso; e bastam as duas
-     primeiras etapas (pagamento confirmado -> na fila), que são exatamente o
-     que a garantia promete. */
-  .is-rastreio .order-card:has(.mock-produto){ display:none; }
-  .is-rastreio .policy-back{ display:none; }
-  .is-rastreio .mock-timeline li:nth-child(n+3){ display:none; }
+     A causa da falta de espaço não era o conteúdo — era o painel do celular
+     ser uma MINIATURA DA PÁGINA DE COMPUTADOR (duas colunas, larguras de
+     1080px, encolhidas por transform). Agora ele é uma miniatura da página de
+     CELULAR: canvas estreito, escala perto de 1:1, tudo empilhado. Ver o
+     bloco "PAINÉIS EM FORMA DE CELULAR" no fim deste arquivo. */
 
   /* O painel ainda pode sobrar um pouco; o fim some num degradê em vez de
      cortar seco, sinalizando que a leitura continua no site. */
@@ -1626,9 +1619,10 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .mock-total:not(.is-resumo-mobile){ display:none; }   /* números somavam os 2 produtos */
   .mock-resumo.is-resumo-mobile{ display:flex; }
   .mock-total.is-resumo-mobile{ display:flex; }
-  .mock-timeline li:nth-child(n+4){ display:none; } /* últimas etapas do pedido */
-  .mock-bolha:nth-child(n+4){ display:none; }   /* conversa fica em 3 balões */
-  .mock-rodape{ display:none; }
+  /* A 4ª etapa ("A caminho — com código de rastreio por e-mail") era a última
+     coisa ainda escondida no celular. Com a composição de celular ela cabe, e
+     é justamente uma promessa de serviço: fica. */
+   /* conversa fica em 3 balões */
   /* No cartão do Pix o QR já diz o que fazer; instrução, status e validade
      são texto de apoio que no celular só custa altura. */
   .mock-cartao .section-sub,
@@ -3793,4 +3787,271 @@ body.admin-gate-active .admin-state-area{
    guiada, só que sem prender a tela. */
 @media (max-width: 991.98px){
   .process-truck.is-guiada{ opacity:1; }
+}
+
+/* ============ CELULAR EM PRIMEIRO LUGAR ============
+   A maioria das clientes compra pelo celular. Esta seção fecha as lacunas
+   entre o que o computador mostra e o que o celular mostra, e sobe os alvos
+   de toque para os 44px recomendados.
+   ------------------------------------------------------------------------ */
+
+/* --- 1. Rótulo das pílulas de conta nas páginas sem menu sanduíche ---
+   Abaixo de 1200px as pílulas viram só um ícone de 20px. No index.html isso é
+   aceitável porque o menu sanduíche repete "Painel admin" e "Sair" por
+   extenso. ⚠️ Mas as outras 13 páginas usam .simple-header, que NÃO tem
+   sanduíche — ali o ícone mudo é o único caminho para entrar, sair ou abrir o
+   painel. Nessas páginas o rótulo aparece em qualquer largura. */
+.simple-header .account-pill{ width:auto; padding:0 .85rem 0 .7rem; }
+.simple-header .account-pill .account-pill-label{
+  display:inline; font-size:.82rem;
+}
+@media (max-width: 359.98px){
+  .simple-header .account-pill{ padding:0 .6rem 0 .5rem; }
+  .simple-header .account-pill .account-pill-label{ font-size:.76rem; }
+}
+
+/* --- 2. Alvos de toque de 44px ---
+   Medidos a 375px. O tamanho APARENTE não muda: quem cresce é a área tocável,
+   por padding ou por um pseudo-elemento invisível centrado no botão. Assim o
+   visual continua o mesmo e o dedo para de errar. */
+.alvo-44::after{
+  content:""; position:absolute; top:50%; left:50%;
+  width:44px; height:44px; min-width:100%; min-height:100%;
+  transform:translate(-50%, -50%);
+}
+.navbar-toggler,
+.btn-close,
+.cart-back-btn,
+.social-circle,
+.product-quickview,
+.btn-add,
+.stories-bar{ position:relative; }
+.navbar-toggler::after,
+.btn-close::after,
+.cart-back-btn::after,
+.social-circle::after,
+.product-quickview::after,
+.btn-add::after,
+.stories-bar::after{
+  content:""; position:absolute; top:50%; left:50%;
+  width:max(44px, 100%); height:max(44px, 100%);
+  transform:translate(-50%, -50%);
+}
+/* A caixa de consentimento tinha 16px — a menor do site, e trava cadastro e
+   newsletter.
+   ⚠️ Aqui NÃO dá para usar o truque do pseudo-elemento: <input> é elemento
+   substituído e ::after não renderiza nele — testei com hit-test e o toque
+   fora dos 20px não pegava nada. Quem responde ao toque é o <label for=...>,
+   então é ele que vira a área grande: a linha inteira fica tocável. */
+.form-check-input{ width:1.25rem; height:1.25rem; margin-top:.15rem; }
+.form-check-label{
+  display:inline-flex; align-items:center; min-height:44px;
+  /* Encosta no texto sem deslocá-lo: o alvo cresce para os lados da linha. */
+  padding-block:.25rem;
+}
+
+/* --- 3. Preço do Pix legível ---
+   Estava em .625rem (10px) abaixo de 400px: o menor texto de conteúdo do site
+   inteiro, e é PREÇO. O card ganhou folga quando encurtamos o parcelamento. */
+@media (max-width: 400px){
+  .product-pix{ font-size:.78rem; }
+  .product-installment{ font-size:.7rem; }
+}
+
+/* --- 4. O caminho da entrega também no celular ---
+   .process-line é d-none d-md-block: abaixo de 768px o pacotinho percorre as
+   três paradas sem nenhum caminho visível, e a metáfora fica pela metade.
+
+   ⚠️ NÃO é uma linha vertical contínua: isso já foi tentado e passava por trás
+   dos parágrafos (está registrado no comentário do HTML). Aqui o tracejado
+   aparece SÓ no vão entre um passo e o outro — que é exatamente por onde o
+   pacote viaja — e por isso não pode encostar em texto nenhum. */
+@media (max-width: 767.98px){
+  .process-step{ position:relative; }
+  .process-step:not(:last-child)::after{
+    content:""; position:absolute; z-index:0;
+    left:50%; transform:translateX(-50%);
+    /* Começa no fim do conteúdo do passo e atravessa a calha do .row.g-5
+       (3rem) até o próximo ícone. */
+    top:100%; height:3rem; width:3px;
+    background-image:linear-gradient(to bottom, var(--blush-500) 60%, transparent 0%);
+    background-size:3px 14px; background-repeat:repeat-y;
+    opacity:.55;
+  }
+}
+@media (max-width: 767.98px){
+  @media (prefers-reduced-motion: reduce){
+    /* O caminho é informação (mostra a sequência), não movimento — fica. */
+    .process-step:not(:last-child)::after{ opacity:.55; }
+  }
+}
+
+/* --- 5. Textos de venda da tela de login no celular ---
+   .auth-deco-copies some abaixo de 992px e sobra só "Sua conta Adriana Melo".
+   Os três blocos que convencem — "é a sua primeira vez por aqui?", "que bom te
+   ver de novo", "calma, acontece / Vamos recuperar" — não tinham substituto
+   nenhum. Aqui voltam em forma compacta, acima do formulário: sem o painel
+   decorativo (que não cabe), só o texto. */
+@media (max-width: 991.98px){
+  .auth-deco-copies{
+    /* grid, não block: os três textos ficam empilhados na MESMA célula
+       (grid-area 1/1, regra :2562) e só o do modo atual fica visível. Com
+       display:block os três entrariam no fluxo e os invisíveis continuariam
+       ocupando altura, porque são escondidos por visibility, não por display. */
+    display:grid; margin:0 0 1.25rem; text-align:center;
+    /* Sem fundo nem moldura: no celular ele é uma introdução ao formulário,
+       não um painel lateral. */
+    background:none; padding:0; min-height:0;
+  }
+  /* A troca de qual texto aparece já é feita por [data-mode] no .auth-shell
+     (regras :2567-2573) — o grid de uma célula só empilha os três e mostra o
+     do modo atual. Aqui só é preciso não deixar a altura dos três somando. */
+  .auth-deco-copies .auth-deco-script{ font-size:1.05rem; }
+  .auth-deco-copies .auth-deco-title{ font-size:1.25rem; margin-bottom:.35rem; }
+  .auth-deco-copies .auth-deco-text{ font-size:.9rem; margin-bottom:0; }
+  /* Os botões de alternância já existem como abas no topo (conta.html:85) —
+     repetir aqui seria dois controles para a mesma coisa. */
+  .auth-deco-copies .auth-switch{ display:none; }
+}
+
+/* ============ PAINÉIS DAS GARANTIAS EM FORMA DE CELULAR ============
+   Os mocks são páginas reais renderizadas numa largura de computador e
+   reduzidas por transform:scale(--esc). No celular isso obrigava a esconder
+   metade do conteúdo, porque uma página de 1080px de largura encolhida não
+   cabe em 375px sem virar letra de 7px.
+
+   Aqui o canvas passa a ser do tamanho de um celular e a escala vai perto de
+   1:1 — o mock deixa de ser "um computador visto de longe" e passa a ser um
+   celular visto de perto, que é justamente o que a cliente reconhece. */
+@media (max-width: 991.98px){
+  .scrolly-card .mock-escala-inner{
+    /* ⚠️ A escala foi calibrada contra o COMPUTADOR, não contra o "tamanho
+       real". Medi: no computador o miolo destes mocks é renderizado com
+       escala 0,53, ou seja, o texto sai com 7,2 a 8,3px. Eles são ILUSTRAÇÃO
+       da página — quem se lê é a legenda abaixo do palco.
+
+       Com 0,68 o celular renderiza o mesmo texto a ~8,3px: continua
+       ilustração, mas fica MAIOR que no computador — e a esse tamanho os
+       quatro painéis cabem inteiros, sem esconder nada. Era o corte que fazia
+       a cliente perder o cartão do Pix e as condições de troca.
+       (0,70 deixava o painel do pagamento 11px acima do palco.) */
+    --esc:.68;
+  }
+  .scrolly-card .mock-nav{ padding:.55rem 1rem; }
+  .scrolly-card .mock-nav > img{ height:24px; }
+  .scrolly-card .mock-pagina{ padding:.9rem 1rem 1.1rem; }
+  .scrolly-card .mock-cartao,
+  .scrolly-card .mock-largura{ max-width:none; }
+
+  /* Empilha em vez de esconder a segunda coluna. */
+  .scrolly-card .mock-duas,
+  .scrolly-card .mock-duas.is-pagamento{
+    grid-template-columns:1fr; gap:.85rem; align-items:stretch;
+  }
+  .scrolly-card .mock-campos{ grid-template-columns:1fr; gap:.5rem; }
+
+  /* Tipografia e espaçamentos de celular: o mock encolhe pela composição,
+     não por escala — é isso que mantém o texto legível. */
+  .scrolly-card .mock-pagina .section-title{ font-size:1.15rem !important; margin-bottom:.5rem !important; }
+  .scrolly-card .mock-pagina .section-eyebrow{ font-size:.72rem; }
+  .scrolly-card .mock-muted{ font-size:.76rem; }
+  .scrolly-card .order-card{ padding:.5rem .6rem; margin-bottom:.4rem !important; }
+  .scrolly-card .mock-produto img{ width:34px; height:34px; }
+  .scrolly-card .mock-preco{ font-size:.82rem; }
+  .scrolly-card .mock-resumo{ font-size:.78rem; }
+  .scrolly-card .mock-total{ padding:.5rem .6rem; }
+  .scrolly-card .mock-total strong{ font-size:1rem; }
+
+  /* Cartão do Pix: presente, só compacto. O QR era o que mais custava. */
+  .scrolly-card .mock-cartao{ padding:.7rem .8rem; }
+  .scrolly-card .pix-qr-frame{ width:104px; height:104px; margin-inline:auto; }
+  .scrolly-card .mock-cartao .section-title{ font-size:1rem !important; }
+  .scrolly-card .mock-cartao .section-sub{ display:block; font-size:.74rem; margin-bottom:.5rem !important; }
+  .scrolly-card .pix-amount{ font-size:1.05rem; }
+  .scrolly-card .pix-or,
+  .scrolly-card .pix-status,
+  .scrolly-card .cart-hint{ display:block; font-size:.7rem; }
+  .scrolly-card .pix-copy-row{ gap:.35rem; }
+  .scrolly-card .pix-copy-row .form-control{ font-size:.66rem; padding:.3rem .45rem; }
+
+  /* Linha do tempo do rastreio: as 4 etapas, mais juntas. */
+  .scrolly-card .mock-timeline{ gap:.5rem; }
+  .scrolly-card .mock-timeline strong{ font-size:.84rem; }
+  .scrolly-card .mock-timeline em{ font-size:.74rem; }
+
+  /* Políticas: as abas viram uma fileira que rola, e as 3 condições ficam. */
+  .scrolly-card .mock-abas{
+    display:flex; flex-wrap:nowrap; overflow-x:auto; gap:.35rem;
+    margin-bottom:.7rem; scrollbar-width:none;
+  }
+  .scrolly-card .mock-abas::-webkit-scrollbar{ display:none; }
+  .scrolly-card .mock-abas span{ flex:0 0 auto; font-size:.7rem; padding:.25rem .55rem; }
+  .scrolly-card .mock-policy h5{ font-size:.95rem; margin-bottom:.5rem; }
+  .scrolly-card .mock-policy p{ font-size:.8rem; }
+  .scrolly-card .mock-policy ul{ display:block; font-size:.76rem; padding-left:1rem; }
+  .scrolly-card .mock-policy li{ margin-bottom:.2rem; }
+
+  /* Formulário de contato: os 4 campos, compactos. */
+  .scrolly-card .mock-rotulo{ font-size:.72rem; }
+  .scrolly-card .mock-input{ padding:.35rem .5rem; font-size:.74rem; }
+  .scrolly-card .mock-input.is-area{ min-height:44px; }
+  .scrolly-card .mock-enviar{ padding:.4rem .8rem; font-size:.8rem; }
+
+  /* O 2º produto volta, então o resumo do computador volta a bater e o par
+     .is-resumo-mobile (que somava só 1 item) deixa de ser necessário. */
+  .scrolly-card .mock-produto-extra{ display:block; }
+  .scrolly-card .mock-resumo:not(.is-resumo-mobile),
+  .scrolly-card .mock-total:not(.is-resumo-mobile){ display:block; }
+  .scrolly-card .is-resumo-mobile{ display:none !important; }
+}
+
+/* Palco um pouco mais alto no celular. Medido: com a composição de celular
+   acima, o painel do pagamento pede ~740px e o de contato ~700px. O palco
+   oferecia 512. Subir para ~715 faz os quatro caberem inteiros.
+   O custo é ~160px a mais na seção — bem menos que os ~490 que seria mostrar
+   os painéis de computador sem cortar. */
+@media (max-width: 991.98px){
+  /* Um pouco mais alto que os 560px de antes, mas longe de dobrar: é o que,
+     junto da escala acima, faz os quatro painéis caberem inteiros. */
+  .stories{ --palco-altura:min(80vh, 640px); }
+
+  /* Cartão do Pix: era 489px, a maior peça do painel. Continua completo —
+     selo, título, valor, QR, código copia-e-cola, status e validade. */
+  .scrolly-card .pix-qr-frame{ width:88px; height:88px; }
+  .scrolly-card .mock-cartao{ padding:.6rem .7rem; }
+  .scrolly-card .mock-cartao .section-title{ margin-top:.4rem !important; margin-bottom:.15rem !important; }
+  .scrolly-card .mock-cartao .section-sub{ margin-bottom:.35rem !important; }
+  .scrolly-card .pix-amount{ margin-bottom:.35rem; }
+  .scrolly-card .pix-status{ margin-bottom:.2rem; }
+
+  /* Formulário de contato: os 4 campos ficam, com respiro de celular. */
+  .scrolly-card .contact-form-card{ padding:.7rem .8rem; }
+  .scrolly-card .mock-campos{ gap:.4rem; }
+  .scrolly-card .mock-input{ padding:.3rem .45rem; }
+  .scrolly-card .mock-input.is-area{ min-height:36px; }
+}
+
+/* Ajuste fino dos dois painéis que ainda estouravam (pagamento e contato).
+   Tudo continua presente — o que muda é respiro e tamanho de miniatura, não
+   a quantidade de informação. */
+@media (max-width: 991.98px){
+  /* Produtos do resumo: a foto prova o item, mas 34px já provam. */
+  .scrolly-card .mock-produto img{ width:28px; height:28px; }
+  .scrolly-card .order-card{ padding:.35rem .5rem; margin-bottom:.3rem !important; }
+  .scrolly-card .mock-produto{ gap:.5rem; }
+  .scrolly-card .mock-produto strong{ font-size:.8rem; }
+
+  .scrolly-card .mock-resumo{ gap:.1rem; }
+  .scrolly-card .mock-total{ padding:.4rem .55rem; margin-top:.35rem; }
+  .scrolly-card .mock-economia{ font-size:.68rem; }
+
+  .scrolly-card .pix-qr-frame{ width:72px; height:72px; }
+  .scrolly-card .pix-badge{ font-size:.66rem; padding:.15rem .5rem; }
+  .scrolly-card .mock-cartao .section-sub{ font-size:.7rem; }
+
+  /* Contato: os 4 campos e os contatos reais, ambos presentes. */
+  .scrolly-card .contact-form-card{ padding:.55rem .65rem; }
+  .scrolly-card .mock-input.is-area{ min-height:30px; }
+  .scrolly-card .social-circle{ width:30px; height:30px; }
+  .scrolly-card .mock-duas > div > .d-flex{ gap:.5rem !important; margin-bottom:.4rem !important; }
 }
