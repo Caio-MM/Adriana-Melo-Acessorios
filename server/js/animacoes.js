@@ -54,6 +54,7 @@
     const inicioDoDestaque = letras.findIndex((letra) => letra.closest("em"));
     const linha = gsap.timeline();
 
+    titulo.classList.add("esta-digitando");
     gsap.set(titulo, { opacity: 1 });
     gsap.set(letras, { opacity: 0 });
     gsap.set(bloco, { opacity: 0 });
@@ -100,15 +101,15 @@
       linha.call(() => {
         gsap.to(bloco, { ...caixaRelativa(destaque), duration: 0.34, ease: "power2.inOut", overwrite: true });
       }, null, quando + 0.16);
-      linha.to(bloco, { opacity: 0, duration: 0.4, ease: "power1.in" }, quando + 0.85);
     } else {
       linha.to(bloco, { opacity: 0, duration: 0.3 }, quando + 0.2);
     }
 
     linha.call(() => {
-      bloco.remove();
       split.revert();
-    }, null, quando + 1.35);
+      titulo.classList.remove("esta-digitando");
+      bloco.remove();
+    }, null, quando + (podeMarcarTexto ? 0.95 : 1.35));
 
     return linha;
   }

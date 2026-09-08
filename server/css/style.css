@@ -420,7 +420,13 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   background:var(--blush-500); border-radius:6px;
   pointer-events:none;
 }
-.hero-title em{ font-style:italic; color:var(--blush-700); font-weight:500; }
+.hero-title em{
+  font-style:italic; color:var(--blush-700); font-weight:500;
+  background:var(--blush-150); border-radius:6px;
+  padding:.04em .09em; margin:0 -.09em;
+  -webkit-box-decoration-break:clone; box-decoration-break:clone;
+}
+.hero-title.esta-digitando em{ background:transparent; }
 .hero-lead{
   color:var(--ink-soft); font-size:1.15rem; line-height:1.6;
   max-width:480px; margin:1.35rem 0 2.4rem;
