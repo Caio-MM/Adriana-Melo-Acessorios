@@ -414,6 +414,9 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 .hero-title{
   font-weight:600; font-size:clamp(2.4rem, 5vw, 3.6rem); line-height:1.08; letter-spacing:-0.02em;
   position:relative;
+  /* ⚠️ Sem isto o título muda de largura quando a digitação devolve o texto
+     partido em letras ao normal: letra em elemento próprio não kerna. */
+  font-kerning:none;
 }
 .hero-bloco{
   position:absolute; left:0; top:0; width:0; height:0;
