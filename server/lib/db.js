@@ -739,6 +739,12 @@ const stmtListOrdersByUser = db.prepare(
   `SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC`
 );
 const stmtListAllOrders = db.prepare(`SELECT * FROM orders ORDER BY created_at DESC`);
+const stmtPedidosAguardandoEntrega = db.prepare(
+  `SELECT * FROM orders WHERE fulfillment_status = 'postado' AND tracking_code IS NOT NULL AND tracking_code <> '' ORDER BY shipped_at ASC`
+);
+function listOrdersAwaitingDelivery(){
+  return stmtPedidosAguardandoEntrega.all();
+}
 // Grava o código de rastreio e, se ele não for vazio, também avança
 // fulfillment_status para 'postado' — cobre os dois pontos que hoje chamam
 // updateOrderTracking (PATCH manual da lojista e geração de etiqueta no
@@ -880,9 +886,9 @@ function updateOrderTracking(ref, trackingCode) {
 function markOrderInProduction(ref) {
   stmtMarkOrderInProduction.run(Date.now(), ref);
 }
-function markOrderDelivered(ref) {
+function markOrderDelivered(ref, quando) {
   const now = Date.now();
-  stmtMarkOrderDelivered.run(now, now, ref);
+  stmtMarkOrderDelivered.run(quando || now, now, ref);
 }
 function setMelhorEnvioShipmentId(ref, shipmentId) {
   stmtSetMelhorEnvioShipmentId.run(shipmentId, Date.now(), ref);
@@ -1459,6 +1465,7 @@ module.exports = {
   listAllOrders,
   updateOrderTracking,
   markOrderInProduction,
+  listOrdersAwaitingDelivery,
   markOrderDelivered,
   setMelhorEnvioShipmentId,
   getOrderStats,

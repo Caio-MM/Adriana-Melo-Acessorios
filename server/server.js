@@ -48,6 +48,7 @@ const whatsapp = require("./lib/whatsapp");
 const instagram = require("./lib/instagram");
 const email = require("./lib/email");
 const emailPhotos = require("./lib/emailPhotos.js");
+const rastreio = require("./lib/rastreio.js");
 // Mesmo arquivo que a vitrine e o carrinho carregam no navegador (js/pricing.js,
 // em formato UMD) — é o que garante que o "5% no Pix" e o "3x sem juros"
 // mostrados na tela do produto sejam exatamente os valores cobrados aqui.
@@ -1953,10 +1954,33 @@ app.get("/api/orders/:reference/status", statusPollLimiter, auth.requireAuth, (r
    Melhor Envio (melhor_envio_shipment_id preenchido), consulta a API deles
    (fetchLiveTracking); senão — etiqueta comprada direto com a
    transportadora e o código só colado no painel — tenta o rastreio direto
-   dos Correios (fetchCorreiosPublicTracking), que só funciona para código
+   dos Correios (rastreio.consultarCorreios), que só funciona para código
    no formato deles. Nos dois casos, falha vira `null` sem quebrar a
-   página: o link de rastreio (carrierTrackingUrl) sempre continua servindo.
+   página: o link de rastreio (rastreio.linkDaTransportadora) sempre continua servindo.
 ========================================================================= */
+/* POST /api/orders/:reference/recebi — a própria cliente fecha a entrega
+   pela página de acompanhamento. Só vale para o dono do pedido e só depois
+   de postado, para não pular etapa da linha do tempo. */
+app.post("/api/orders/:reference/recebi", auth.requireAuth, (req, res) => {
+  try {
+    const order = db.getOrderByExternalReference(req.params.reference);
+    if(!order || order.user_id !== req.user.id){
+      return res.status(404).json({ error: "Pedido não encontrado." });
+    }
+    if(order.fulfillment_status === "entregue"){
+      return res.json({ ok: true, jaEstava: true });
+    }
+    if(order.fulfillment_status !== "postado"){
+      return res.status(409).json({ error: "Este pedido ainda não foi postado." });
+    }
+    db.markOrderDelivered(order.external_reference);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Erro ao confirmar recebimento:", err);
+    res.status(500).json({ error: "Não foi possível confirmar agora." });
+  }
+});
+
 app.get("/api/orders/:reference", statusPollLimiter, auth.requireAuth, async (req, res) => {
   try {
     const order = db.getOrderByExternalReference(req.params.reference);
@@ -1973,20 +1997,21 @@ app.get("/api/orders/:reference", statusPollLimiter, auth.requireAuth, async (re
     const live = trackingCode
       ? (order.melhor_envio_shipment_id
           ? await fetchLiveTracking(order.melhor_envio_shipment_id)
-          : await fetchCorreiosPublicTracking(trackingCode))
+          : await rastreio.consultarCorreios(trackingCode))
       : null;
+    const entregou = fecharEntregaPeloRastreio(order, live);
     res.json({
       reference: order.external_reference,
       status: order.status,
-      fulfillmentStatus: order.fulfillment_status || null,
+      fulfillmentStatus: entregou ? "entregue" : (order.fulfillment_status || null),
       shippedAt: order.shipped_at || null,
-      deliveredAt: order.delivered_at || null,
+      deliveredAt: entregou ? rastreio.dataDoEvento(entregou) || Date.now() : (order.delivered_at || null),
       items,
       shipping: { name: shipping.name, deliveryTime: shipping.delivery_time },
       total: order.total,
       createdAt: order.created_at,
       trackingCode,
-      carrierUrl: carrierTrackingUrl(trackingCode),
+      carrierUrl: rastreio.linkDaTransportadora(trackingCode),
       tracking: live,
     });
   } catch (err) {
@@ -2115,7 +2140,7 @@ async function purchaseShippingLabel(order, externalReference){
    normalizeTrackingResponse tenta reconhecer algumas formas plausíveis e,
    se não reconhecer nada, devolve null — quem chama sempre cai de volta
    para a linha do tempo manual (fulfillmentStatus) + link oficial da
-   transportadora (carrierTrackingUrl), nunca deixa a página quebrada.
+   transportadora (rastreio.linkDaTransportadora), nunca deixa a página quebrada.
 ========================================================================= */
 async function fetchLiveTracking(shipmentId){
   if(!shipmentId || !process.env.MELHOR_ENVIO_TOKEN) return null;
@@ -2156,70 +2181,6 @@ function normalizeTrackingEvent(raw){
   const location = raw.location || raw.local || [raw.city, raw.state].filter(Boolean).join("/") || null;
   if(!description && !date) return null;
   return { description, date, location: location || null };
-}
-
-/* =========================================================================
-   Rastreio "ao vivo" DIRETO dos Correios (best-effort) — para quando a
-   etiqueta foi comprada fora do Melhor Envio (direto no site da
-   transportadora) e só o código foi colado no painel. Nesse caso não existe
-   melhor_envio_shipment_id (só é gravado quando a etiqueta é comprada PELO
-   Melhor Envio), então fetchLiveTracking não tem o que consultar — este é
-   o equivalente para esse caminho.
-   -------------------------------------------------------------------------
-   ⚠️ Não é uma API pública documentada/com contrato: é o mesmo endpoint que
-   o site oficial dos Correios usa para a própria página de rastreio, sem
-   autenticação. Pode mudar de formato ou parar de responder sem aviso — por
-   isso é estritamente best-effort, no mesmo espírito de fetchLiveTracking:
-   qualquer falha (rede, formato inesperado, indisponibilidade, bloqueio)
-   só faz a página cair de volta para "sem eventos ao vivo". O link direto
-   para o rastreio oficial (carrierTrackingUrl) sempre funciona de qualquer
-   jeito, então a cliente nunca fica sem conseguir rastrear — só sem o
-   histórico embutido na nossa página quando este endpoint falhar. */
-async function fetchCorreiosPublicTracking(trackingCode){
-  if(!trackingCode || !CODIGO_CORREIOS_REGEX.test(trackingCode)) return null;
-  try{
-    const res = await fetch(`https://proxyapp.correios.com.br/v1/sro-rastro/${encodeURIComponent(trackingCode)}`, {
-      headers: { "Accept": "application/json" },
-      signal: AbortSignal.timeout(6000),
-    });
-    if(!res.ok) return null;
-    const data = await res.json();
-    const objeto = Array.isArray(data?.objetos) ? data.objetos[0] : (Array.isArray(data) ? data[0] : data);
-    const rawEventos = objeto?.eventos || objeto?.tracking_events || objeto?.events || null;
-    if(!Array.isArray(rawEventos)) return null;
-    const events = rawEventos.map(ev => {
-      if(!ev || typeof ev !== "object") return null;
-      const description = ev.descricao || ev.description || ev.message || null;
-      const date = ev.dtHrCriado || ev.data || ev.date || ev.created_at || null;
-      const unidade = ev.unidade || {};
-      const location = (unidade.cidade && unidade.uf) ? `${unidade.cidade}/${unidade.uf}` : (ev.local || ev.location || null);
-      if(!description && !date) return null;
-      return { description, date, location: location || null };
-    }).filter(Boolean);
-    if(events.length === 0) return null;
-    return { status: events[0].description, events };
-  }catch(err){
-    console.error(`Não foi possível consultar rastreio direto dos Correios (${trackingCode}):`, err.message || err);
-    return null;
-  }
-}
-
-// Código dos Correios tem sempre 13 caracteres, terminando em "BR" (ex.:
-// AA123456789BR) — usado tanto para escolher o link de rastreio quanto para
-// decidir se vale tentar o rastreio direto dos Correios (mais abaixo).
-const CODIGO_CORREIOS_REGEX = /^[A-Z]{2}\d{9}BR$/;
-
-// Link de rastreio da transportadora, sempre presente quando há código —
-// complemento permanente da rota "ao vivo" (fetchLiveTracking), não um
-// fallback só de erro. Código dos Correios cai no link oficial deles;
-// qualquer outro formato (etiqueta de outra transportadora comprada via
-// Melhor Envio) cai no link do próprio Melhor Envio, que redireciona para a
-// transportadora certa.
-function carrierTrackingUrl(trackingCode){
-  if(!trackingCode) return null;
-  return CODIGO_CORREIOS_REGEX.test(trackingCode)
-    ? `https://rastreamento.correios.com.br/app/index.php?objetos=${encodeURIComponent(trackingCode)}`
-    : `https://www.melhorenvio.com.br/rastreio/${encodeURIComponent(trackingCode)}`;
 }
 
 /* =========================================================================
@@ -2284,6 +2245,14 @@ async function entregarEmailDaFila(id){
    em qualquer um.
    Devolve o id na fila (ou null quando não há o que enviar: pedido sem
    e-mail, ou aviso já enfileirado antes para este pedido). */
+function fecharEntregaPeloRastreio(order, live){
+  if(!order || order.fulfillment_status !== "postado") return null;
+  const evento = rastreio.eventoDeEntrega(live?.events);
+  if(!evento) return null;
+  db.markOrderDelivered(order.external_reference, rastreio.dataDoEvento(evento));
+  return evento;
+}
+
 function estadoDoAvisoDePostagem(reference){
   const linha = db.getOutboxEntry("pedido_postado", reference);
   if(!linha) return null;
@@ -3394,6 +3363,37 @@ app.patch("/api/admin/orders/:reference/tracking", auth.requireAdmin, auth.requi
   } catch (err) {
     console.error("Erro ao salvar código de rastreio:", err);
     res.status(500).json({ error: "Não foi possível salvar o código de rastreio agora." });
+  }
+});
+
+/* POST /api/admin/orders/:reference/conferir-entrega — pergunta aos Correios
+   se o pedido já chegou e fecha a entrega quando eles confirmam. */
+app.post("/api/admin/orders/:reference/conferir-entrega", auth.requireAdmin, auth.requireAdminTwoFactor, async (req, res) => {
+  try {
+    const reference = String(req.params.reference || "");
+    const order = db.getOrderByExternalReference(reference);
+    if(!order){
+      return res.status(404).json({ error: "Pedido não encontrado." });
+    }
+    if(!order.tracking_code){
+      return res.status(409).json({ error: "Este pedido ainda não tem código de rastreio." });
+    }
+    const live = order.melhor_envio_shipment_id
+      ? await fetchLiveTracking(order.melhor_envio_shipment_id)
+      : await rastreio.consultarCorreios(order.tracking_code);
+    if(!live){
+      return res.json({ ok: true, entregue: false, semResposta: true });
+    }
+    const evento = fecharEntregaPeloRastreio(order, live);
+    res.json({
+      ok: true,
+      entregue: !!evento,
+      quando: evento ? rastreio.dataDoEvento(evento) : null,
+      ultimoEvento: live.events?.[0]?.description || null,
+    });
+  } catch (err) {
+    console.error("Erro ao conferir entrega nos Correios:", err);
+    res.status(500).json({ error: "Não foi possível consultar os Correios agora." });
   }
 });
 

@@ -30,6 +30,7 @@ require("dotenv").config({ path: path.join(__dirname, "..", ".env"), quiet: true
 
 const db = require("../lib/db.js");
 const emailPhotos = require("../lib/emailPhotos.js");
+const rastreio = require("../lib/rastreio.js");
 
 const LOTE = 20;
 
@@ -64,8 +65,33 @@ async function reenviarFilaDeEmail(){
   return { enviados, falhas };
 }
 
+/* Pergunta aos Correios se os pedidos já postados chegaram. Uma pausa entre
+   as consultas porque é o endereço público deles, sem contrato — sair
+   metralhando é o jeito mais rápido de ser bloqueada. */
+async function fecharEntregasConfirmadas(){
+  const pedidos = db.listOrdersAwaitingDelivery();
+  if(!pedidos.length){
+    console.log("Entregas: nenhum pedido postado aguardando confirmação.");
+    return { conferidos: 0, entregues: 0 };
+  }
+  let entregues = 0;
+  for(const pedido of pedidos){
+    const live = await rastreio.consultarCorreios(pedido.tracking_code);
+    const evento = rastreio.eventoDeEntrega(live?.events);
+    if(evento){
+      db.markOrderDelivered(pedido.external_reference, rastreio.dataDoEvento(evento));
+      entregues++;
+      console.log(`  ✓ ${pedido.external_reference} entregue — ${evento.description}`);
+    }
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  console.log(`Entregas: ${pedidos.length} conferido(s), ${entregues} confirmado(s) como entregue(s).`);
+  return { conferidos: pedidos.length, entregues };
+}
+
 async function main(){
   await reenviarFilaDeEmail();
+  await fecharEntregasConfirmadas();
 }
 
 if(require.main === module){
@@ -75,4 +101,4 @@ if(require.main === module){
   });
 }
 
-module.exports = { reenviarFilaDeEmail };
+module.exports = { reenviarFilaDeEmail, fecharEntregasConfirmadas };

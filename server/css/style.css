@@ -2498,6 +2498,15 @@ body.tem-secao-fab-oculta .coupon-toast-container{
 }
 
 .tracking-feedback{ min-height:1.1em; }
+.tracking-bloco{ display:flex; flex-direction:column; gap:.5rem; }
+.tracking-bloco + .tracking-bloco{
+  margin-top:.9rem; padding-top:.9rem; border-top:1px dashed var(--blush-100);
+}
+.tracking-bloco-titulo{
+  font-size:.72rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--ink-soft); margin:0;
+}
+.tracking-bloco .tracking-input{ flex:1 1 200px; min-width:0; }
 .aviso-postagem{ font-size:.8rem; font-weight:600; display:inline-flex; align-items:center; }
 .aviso-postagem.is-enviado{ color:var(--color-success); }
 .aviso-postagem.is-pendente{ color:var(--ink-soft); }

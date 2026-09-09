@@ -487,11 +487,34 @@
     return whatsappUrl(order.customer?.telefone, WHATSAPP_POST_SALE_MESSAGE);
   }
 
+  function descricaoDoPedido(order){
+    const itens = Array.isArray(order.items) ? order.items : [];
+    if(!itens.length) return "";
+    if(itens.length === 1) return `*${itens[0].name}*`;
+    return `*${itens[0].name}* e mais ${itens.length - 1} ${itens.length - 1 === 1 ? "peça" : "peças"}`;
+  }
+
   function whatsappPostagemUrl(order){
     if(!order.trackingCode) return null;
     const primeiroNome = String(order.customer?.nome || "").trim().split(" ")[0] || "";
     const link = `${location.origin}/acompanhar-pedido.html?pedido=${encodeURIComponent(order.reference)}`;
-    const msg = `Oi${primeiroNome ? " " + primeiroNome : ""}! Seu pedido já foi postado nos Correios.\nCódigo de rastreio: ${order.trackingCode}\nVocê pode acompanhar por aqui: ${link}`;
+    const oQueSaiu = descricaoDoPedido(order);
+    const msg = [
+      `Olá${primeiroNome ? ", " + primeiroNome : ""}! 🎀`,
+      "",
+      oQueSaiu
+        ? `Seu pedido ${oQueSaiu} saiu do ateliê e já está a caminho.`
+        : "Seu pedido saiu do ateliê e já está a caminho.",
+      "",
+      `Código de rastreio: *${order.trackingCode}*`,
+      "Acompanhe a entrega por aqui:",
+      link,
+      "",
+      "Fico à disposição por aqui para o que precisar.",
+      "",
+      "🎀 *Adriana Melo Acessórios*",
+      "Laços feitos à mão em Brasília",
+    ].join("\n");
     return whatsappUrl(order.customer?.telefone, msg);
   }
 
@@ -1705,25 +1728,39 @@
         </div>
 
         ${isPaid ? `
-        <div class="tracking-row mt-3 pt-3 border-top d-flex flex-wrap align-items-center gap-2" style="border-color:var(--blush-100)!important">
-          <label class="small fw-semibold mb-0" for="tracking-${escapeHTML(ref)}">Código de rastreio (Correios)</label>
-          <div class="d-flex gap-2 flex-grow-1 flex-wrap" style="min-width:220px">
-            <input type="text" class="form-control form-control-sm tracking-input" id="tracking-${escapeHTML(ref)}"
-                   value="${escapeHTML(order.trackingCode || "")}" placeholder="Ex.: BR123456789BR" maxlength="60">
-            <button type="button" class="btn-outline-blush save-tracking-btn" data-ref="${escapeHTML(ref)}" title="Comprou a etiqueta direto no site da transportadora (Correios, etc.)? Cole o código aqui e salve — a cliente acompanha ao vivo do mesmo jeito.">Salvar</button>
-            <button type="button" class="btn-outline-blush generate-label-btn" data-ref="${escapeHTML(ref)}" title="Compra a etiqueta no Melhor Envio (gasta saldo real) e preenche o código automaticamente"><i class="bi bi-stars me-1"></i>Comprar etiqueta</button>
-            ${order.fulfillmentStatus === "postado" ? `
-            <button type="button" class="btn-outline-blush mark-delivered-btn" data-ref="${escapeHTML(ref)}" title="Marca este pedido como entregue"><i class="bi bi-check2-circle me-1"></i>Marcar como entregue</button>
-            ` : order.fulfillmentStatus === "entregue" ? `<span class="small fw-semibold" style="color:var(--color-success)"><i class="bi bi-check2-circle me-1"></i>Entregue</span>` : ""}
+        <div class="tracking-row mt-3 pt-3 border-top" style="border-color:var(--blush-100)!important">
+          <div class="tracking-bloco">
+            <label class="tracking-bloco-titulo" for="tracking-${escapeHTML(ref)}">Código de rastreio (Correios)</label>
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+              <input type="text" class="form-control form-control-sm tracking-input" id="tracking-${escapeHTML(ref)}"
+                     value="${escapeHTML(order.trackingCode || "")}" placeholder="Ex.: BR123456789BR" maxlength="60">
+              <button type="button" class="btn-outline-blush save-tracking-btn" data-ref="${escapeHTML(ref)}" title="Comprou a etiqueta direto no site da transportadora (Correios, etc.)? Cole o código aqui e salve — a cliente acompanha ao vivo do mesmo jeito.">Salvar</button>
+              <button type="button" class="btn-outline-blush generate-label-btn" data-ref="${escapeHTML(ref)}" title="Compra a etiqueta no Melhor Envio (gasta saldo real) e preenche o código automaticamente"><i class="bi bi-stars me-1"></i>Comprar etiqueta</button>
+            </div>
           </div>
+
           ${order.trackingCode ? `
-          <div class="d-flex flex-wrap align-items-center gap-2 w-100">
-            ${whatsappPostagemUrl(order) ? `
-            <a class="btn-outline-blush" href="${escapeHTML(whatsappPostagemUrl(order))}" target="_blank" rel="noopener" title="Abre a conversa com a cliente já com o código e o link"><i class="bi bi-whatsapp me-1"></i>Avisar no WhatsApp</a>
-            ` : ""}
-            <button type="button" class="btn-outline-blush resend-notice-btn" data-ref="${escapeHTML(ref)}" title="Reenvia o e-mail de 'seu pedido foi postado' com o código já salvo"><i class="bi bi-send me-1"></i>Avisar de novo por e-mail</button>
+          <div class="tracking-bloco">
+            <span class="tracking-bloco-titulo">Entrega</span>
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+              ${order.fulfillmentStatus === "postado" ? `
+              <button type="button" class="btn-outline-blush check-delivery-btn" data-ref="${escapeHTML(ref)}" title="Pergunta aos Correios se o pedido já chegou"><i class="bi bi-search me-1"></i>Conferir nos Correios</button>
+              <button type="button" class="btn-outline-blush mark-delivered-btn" data-ref="${escapeHTML(ref)}" title="Marca este pedido como entregue"><i class="bi bi-check2-circle me-1"></i>Marcar como entregue</button>
+              ` : order.fulfillmentStatus === "entregue" ? `<span class="small fw-semibold" style="color:var(--color-success)"><i class="bi bi-check2-circle me-1"></i>Entregue${order.deliveredAt ? " em " + escapeHTML(formatDate(order.deliveredAt)) : ""}</span>` : `<span class="small" style="color:var(--ink-soft)">Aguardando a postagem.</span>`}
+            </div>
+          </div>
+
+          <div class="tracking-bloco">
+            <span class="tracking-bloco-titulo">Aviso à cliente</span>
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+              ${whatsappPostagemUrl(order) ? `
+              <a class="btn-outline-blush" href="${escapeHTML(whatsappPostagemUrl(order))}" target="_blank" rel="noopener" title="Abre a conversa com a cliente já com o código e o link"><i class="bi bi-whatsapp me-1"></i>Avisar no WhatsApp</a>
+              ` : ""}
+              <button type="button" class="btn-outline-blush resend-notice-btn" data-ref="${escapeHTML(ref)}" title="Reenvia o e-mail de 'seu pedido foi postado' com o código já salvo"><i class="bi bi-send me-1"></i>Avisar de novo por e-mail</button>
+            </div>
             ${textoDoAviso(order)}
           </div>` : ""}
+
           <span class="small tracking-feedback" data-ref-feedback="${escapeHTML(ref)}"></span>
         </div>
         ` : ""}
@@ -1834,6 +1871,39 @@
     }
   }
 
+  async function conferirEntrega(ref, feedbackEl, btn){
+    const rotulo = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = "Consultando...";
+    feedbackEl.textContent = "";
+    feedbackEl.classList.remove("is-success", "is-error");
+    try{
+      const res = await fetchWithTimeout(`/api/admin/orders/${encodeURIComponent(ref)}/conferir-entrega`, { method: "POST" }, 20000);
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível consultar.");
+      if(data.entregue){
+        feedbackEl.textContent = data.quando
+          ? `Os Correios confirmaram a entrega em ${formatDate(data.quando)}.`
+          : "Os Correios confirmaram a entrega.";
+        feedbackEl.classList.add("is-success");
+        loadDashboard();
+      }else if(data.semResposta){
+        feedbackEl.textContent = "Os Correios não responderam agora. Tente daqui a pouco.";
+        feedbackEl.classList.add("is-error");
+      }else{
+        feedbackEl.textContent = data.ultimoEvento
+          ? `Ainda a caminho — último: ${data.ultimoEvento}`
+          : "Ainda a caminho.";
+      }
+    }catch(err){
+      feedbackEl.textContent = err.message || "Erro ao consultar os Correios.";
+      feedbackEl.classList.add("is-error");
+    }finally{
+      btn.disabled = false;
+      btn.innerHTML = rotulo;
+    }
+  }
+
   async function reenviarAviso(ref, feedbackEl, btn){
     const rotulo = btn.innerHTML;
     btn.disabled = true;
@@ -1916,6 +1986,7 @@
     const labelBtn = e.target.closest(".generate-label-btn");
     const deliveredBtn = e.target.closest(".mark-delivered-btn");
     const resendBtn = e.target.closest(".resend-notice-btn");
+    const checkBtn = e.target.closest(".check-delivery-btn");
     const deleteBtn = e.target.closest(".delete-order-btn");
     const copyBtn = e.target.closest(".copy-field-btn");
 
@@ -1935,6 +2006,13 @@
       const ref = resendBtn.dataset.ref;
       const feedbackEl = listEl.querySelector(`[data-ref-feedback="${ref}"]`);
       if(feedbackEl) reenviarAviso(ref, feedbackEl, resendBtn);
+      return;
+    }
+
+    if(checkBtn){
+      const ref = checkBtn.dataset.ref;
+      const feedbackEl = listEl.querySelector(`[data-ref-feedback="${ref}"]`);
+      if(feedbackEl) conferirEntrega(ref, feedbackEl, checkBtn);
       return;
     }
 

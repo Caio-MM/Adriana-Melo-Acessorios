@@ -142,8 +142,40 @@
     paymentIssue.classList.add("d-none");
     timelineWrap.classList.remove("d-none");
     renderTimeline(order.fulfillmentStatus);
+    renderConfirmacao(order);
     renderShipping(order);
   }
+
+  const recebiWrap = document.getElementById("trackRecebiWrap");
+  const recebiBtn = document.getElementById("trackRecebiBtn");
+  const recebiFeedback = document.getElementById("trackRecebiFeedback");
+  let referenciaAtual = "";
+
+  function renderConfirmacao(order){
+    if(!recebiWrap) return;
+    referenciaAtual = order.reference;
+    const podeConfirmar = order.fulfillmentStatus === "postado";
+    recebiWrap.classList.toggle("d-none", !podeConfirmar);
+    recebiFeedback.classList.add("d-none");
+    if(recebiBtn) recebiBtn.disabled = false;
+  }
+
+  recebiBtn?.addEventListener("click", async () => {
+    if(!referenciaAtual) return;
+    recebiBtn.disabled = true;
+    try{
+      const res = await fetch(`/api/orders/${encodeURIComponent(referenciaAtual)}/recebi`, { method: "POST" });
+      if(!res.ok) throw new Error("falhou");
+      recebiWrap.classList.add("d-none");
+      renderTimeline("entregue");
+      recebiFeedback.textContent = "Que bom que chegou! Obrigada 💗";
+      recebiFeedback.classList.remove("d-none");
+      recebiWrap.classList.remove("d-none");
+      recebiBtn.classList.add("d-none");
+    }catch(err){
+      recebiBtn.disabled = false;
+    }
+  });
 
   async function loadOrder(){
     const reference = getReferenceFromQuery();
