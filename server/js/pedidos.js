@@ -108,7 +108,11 @@
     }
   }
 
-  retryBtn?.addEventListener("click", loadOrders);
+  retryBtn?.addEventListener("click", async () => {
+    showOnly(stateLoading);
+    const user = await PLCAuth.checkSession();
+    if(user) loadOrders(); else showOnly(stateLoggedOut);
+  });
 
   listEl?.addEventListener("click", async (e) => {
     const btn = e.target.closest(".resume-payment-btn");
@@ -186,13 +190,13 @@
     }
   });
 
-  document.addEventListener("plc:auth", (e) => {
-    if(e.detail.user){
+  PLCAuth.aoSaberDaSessao(({ user, falhou }) => {
+    if(user){
       loadOrders();
       accountDanger?.classList.remove("d-none");
-    }else{
-      showOnly(stateLoggedOut);
-      accountDanger?.classList.add("d-none");
+      return;
     }
+    accountDanger?.classList.add("d-none");
+    showOnly(falhou ? stateError : stateLoggedOut);
   });
 })();

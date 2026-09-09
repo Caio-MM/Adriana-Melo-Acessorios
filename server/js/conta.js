@@ -339,8 +339,7 @@
     btn.querySelector("i").className = showing ? "bi bi-eye" : "bi bi-eye-slash";
   });
 
-  document.addEventListener("plc:auth", (e) => {
-    const user = e.detail.user;
+  PLCAuth.aoSaberDaSessao(({ user }) => {
     const authForms = document.getElementById("authForms");
     const alreadyBox = document.getElementById("alreadyLoggedIn");
     if(user && authForms && alreadyBox){

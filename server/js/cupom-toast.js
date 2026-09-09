@@ -151,8 +151,8 @@
     if(toastEl.classList.contains("show")) toast.hide();
   });
 
-  document.addEventListener("plc:auth", (e) => {
-    if(e.detail.user) return;
+  PLCAuth.aoSaberDaSessao(({ user }) => {
+    if(user) return;
     setTimeout(() => {
       if(algumOverlayAberto()) return;
       toast.show();

@@ -2446,7 +2446,13 @@
     }
   }
 
-  retryBtn?.addEventListener("click", loadDashboard);
+  retryBtn?.addEventListener("click", async () => {
+    showOnly(stateLoading);
+    const user = await PLCAuth.checkSession();
+    if(!user) showOnly(stateLoggedOut);
+    else if(!user.isAdmin) showOnly(stateForbidden);
+    else loadDashboard();
+  });
 
   /* Baixar toda a base numa planilha Excel (.xlsx). O arquivo é gerado no
      servidor (rota /api/admin/export.xlsx, protegida por sessão + 2FA); aqui
@@ -2506,16 +2512,8 @@
     }
   });
 
-  let authEventReceived = false;
-  document.addEventListener("plc:auth", (e) => {
-    authEventReceived = true;
-    const user = e.detail.user;
-    if(!user) showOnly(stateLoggedOut);
-    else if(!user.isAdmin) showOnly(stateForbidden);
-    else loadDashboard();
+  PLCAuth.aoSaberDaSessao(({ user, falhou }) => {
+    if(user) return user.isAdmin ? loadDashboard() : showOnly(stateForbidden);
+    showOnly(falhou ? stateError : stateLoggedOut);
   });
-
-  setTimeout(() => {
-    if(!authEventReceived) showOnly(stateError);
-  }, 10000);
 })();

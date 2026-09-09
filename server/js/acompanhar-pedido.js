@@ -198,13 +198,15 @@
     }
   }
 
-  retryBtn?.addEventListener("click", loadOrder);
+  retryBtn?.addEventListener("click", async () => {
+    showOnly(stateLoading);
+    const user = await PLCAuth.checkSession();
+    if(user) loadOrder(); else showOnly(stateLoggedOut);
+  });
 
-  document.addEventListener("plc:auth", (e) => {
-    if(e.detail.user){
-      loadOrder();
-    }else{
-      showOnly(stateLoggedOut);
-    }
+  PLCAuth.aoSaberDaSessao(({ user, falhou }) => {
+    if(user) loadOrder();
+    else if(falhou) showOnly(stateError);
+    else showOnly(stateLoggedOut);
   });
 })();

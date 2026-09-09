@@ -994,8 +994,8 @@
     cartLoginNotice?.classList.toggle("d-none", !!currentUser);
     renderPrimaryButton();
   }
-  document.addEventListener("plc:auth", (e) => {
-    currentUser = e.detail.user;
+  PLCAuth.aoSaberDaSessao(({ user }) => {
+    currentUser = user;
     sessionChecked = true;
     renderAuthGate();
 

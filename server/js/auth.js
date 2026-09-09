@@ -71,19 +71,46 @@
     window.location.href = "index.html";
   }
 
+  let sessaoResolvida = false;
+  let sessao = { user: null, falhou: false };
+
+  /* ⚠️ Duas armadilhas silenciosas moram aqui.
+     1) Quem escuta "plc:auth" pode chegar depois do disparo: script com defer
+        roda em ordem, mas o navegador atende a fila de eventos enquanto
+        espera o próximo arquivo baixar. Por isso o resultado fica guardado.
+     2) A resposta guardada sai numa microtarefa, nunca na hora: chamar o
+        callback de imediato o executaria no meio do script que acabou de
+        pedir, antes das const de baixo existirem (ReferenceError de TDZ). */
+  function aoSaberDaSessao(callback){
+    if(sessaoResolvida){ Promise.resolve().then(() => callback(sessao)); return; }
+    document.addEventListener("plc:auth", (e) => callback(e.detail), { once: true });
+  }
+
   async function checkSession(){
     let user = null;
+    let falhou = false;
     try{
       const res = await fetchWithTimeout("/api/auth/me");
       if(res.ok) user = await res.json();
+      else if(res.status !== 401) falhou = true;
     }catch(err){
       console.warn("Não foi possível verificar a sessão:", err);
+      falhou = true;
     }
-    if(user) renderLoggedIn(user); else renderLoggedOut();
-    document.dispatchEvent(new CustomEvent("plc:auth", { detail: { user } }));
+    try{
+      if(user) renderLoggedIn(user); else renderLoggedOut();
+    } finally {
+      sessao = { user, falhou };
+      sessaoResolvida = true;
+      document.dispatchEvent(new CustomEvent("plc:auth", { detail: sessao }));
+    }
     return user;
   }
 
-  window.PLCAuth = { checkSession, escapeHTML, logout };
+  window.addEventListener("pageshow", () => {
+    if(!sessaoResolvida) checkSession();
+  });
+
+  window.PLCAuth = { checkSession, aoSaberDaSessao, escapeHTML, logout };
   checkSession();
 })();
