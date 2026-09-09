@@ -850,10 +850,18 @@
   const cartTotalEl = document.getElementById("cartTotal");
   const cartInstallmentNoteEl = document.getElementById("cartInstallmentNote");
   const payMethodGroupEl = document.getElementById("payMethodGroup");
-  const pmPixPriceEl = document.getElementById("pmPixPrice");
   const pmPixNoteEl = document.getElementById("pmPixNote");
-  const pmCardPriceEl = document.getElementById("pmCardPrice");
   const pmCardNoteEl = document.getElementById("pmCardNote");
+  const cartOffcanvasEl = document.getElementById("cartOffcanvas");
+  const cartOffcanvasLabel = document.getElementById("cartOffcanvasLabel");
+  const cartBackBtn = document.getElementById("cartBackBtn");
+  const cartFooter = document.getElementById("cartFooter");
+  const cartStep1 = document.getElementById("cartStep1");
+  const cartStep2 = document.getElementById("cartStep2");
+  const cartShippingRow = document.getElementById("cartShippingRow");
+  const cartChosenShippingEl = document.getElementById("cartChosenShipping");
+  const couponToggle = document.getElementById("couponToggle");
+  const couponFields = document.getElementById("couponFields");
   const checkoutBtn = document.getElementById("checkoutBtn");
   const checkoutMsg = document.getElementById("checkoutMsg");
   const cartLoginNotice = document.getElementById("cartLoginNotice");
@@ -893,11 +901,11 @@
     const pixDiscount = pricing.pixDiscountFor(afterCoupon);
     const shippingPrice = shipping ? shipping.price : 0;
 
-    pmPixPriceEl.textContent = formatMoney(afterCoupon - pixDiscount + shippingPrice);
-    pmPixNoteEl.textContent = `${pricing.PAYMENT_RULES.pixDiscountPercent}% de desconto · ${formatMoney(pixDiscount)} a menos`;
-    pmCardPriceEl.textContent = formatMoney(afterCoupon + shippingPrice);
+    pmPixNoteEl.textContent = pixDiscount > 0
+      ? `${pricing.PAYMENT_RULES.pixDiscountPercent}% de desconto`
+      : "à vista";
     pmCardNoteEl.textContent = pricing.installmentPlanFor(afterCoupon + shippingPrice).count > 1
-      ? `em até ${pricing.installmentLabelFor(afterCoupon + shippingPrice)}`
+      ? `até ${pricing.installmentPlanFor(afterCoupon + shippingPrice).count}x sem juros`
       : "à vista";
 
     const isPix = paymentMethod === "pix";
@@ -906,7 +914,8 @@
     cartPixDiscountEl.textContent = "-" + formatMoney(pixDiscount);
 
     const total = pricing.round2(afterCoupon - (isPix ? pixDiscount : 0) + shippingPrice);
-    cartShippingPriceEl.textContent = shipping ? formatMoney(shipping.price) : "a calcular";
+    cartShippingRow.classList.toggle("d-none", !shipping);
+    if(shipping) cartShippingPriceEl.textContent = formatMoney(shipping.price);
     cartTotalEl.textContent = formatMoney(total);
 
     const plan = pricing.installmentPlanFor(total);
@@ -914,10 +923,54 @@
       ? `ou ${pricing.installmentLabelFor(total)} no cartão`
       : "";
 
-    const pendente = checkoutBlockInfo();
-    checkoutBtn.disabled = cart.length === 0;
-    checkoutBtn.classList.toggle("is-pending", !!pendente);
+    renderPrimaryButton();
+  }
 
+  let cartStep = 1;
+
+  function irParaPasso(passo){
+    cartStep = passo;
+    cartOffcanvasEl.dataset.step = String(passo);
+    cartOffcanvasLabel.textContent = passo === 2 ? "Entrega e pagamento" : "Seu carrinho";
+    cartBackBtn.setAttribute("aria-label", passo === 2 ? "Voltar para a sacola" : "Voltar para a loja");
+    if(passo === 2) cartBackBtn.removeAttribute("data-bs-dismiss");
+    else cartBackBtn.setAttribute("data-bs-dismiss", "offcanvas");
+    cartOffcanvasEl.querySelector(".offcanvas-body").scrollTop = 0;
+    renderChosenShipping();
+    renderPrimaryButton();
+  }
+
+  function renderChosenShipping(){
+    if(!shipping){ cartChosenShippingEl.innerHTML = ""; return; }
+    cartChosenShippingEl.innerHTML = `
+      <span>
+        <span class="cart-chosen-name">${escapeHTML(shipping.name)}</span>
+        <span class="cart-chosen-days">${escapeHTML(shipping.delivery_time)}</span>
+      </span>
+      <span class="cart-chosen-price">${formatMoney(shipping.price)}</span>`;
+  }
+
+  function renderPrimaryButton(){
+    const vazio = cart.length === 0;
+    cartFooter.classList.toggle("d-none", vazio);
+    if(vazio) return;
+
+    if(cartStep === 1){
+      checkoutBtn.disabled = false;
+      checkoutBtn.classList.toggle("is-pending", !shipping);
+      checkoutBtn.innerHTML = shipping
+        ? "Continuar"
+        : `<i class="bi bi-truck"></i> Calcule o frete para continuar`;
+      renderCheckoutHint(null);
+      return;
+    }
+
+    const pendente = checkoutBlockInfo();
+    checkoutBtn.disabled = false;
+    checkoutBtn.classList.toggle("is-pending", !!pendente);
+    checkoutBtn.innerHTML = currentUser
+      ? `<i class="bi bi-lock-fill"></i> Ir para pagamento`
+      : `<i class="bi bi-box-arrow-in-right"></i> Entrar para finalizar`;
     renderCheckoutHint(pendente);
   }
 
@@ -938,11 +991,8 @@
   }
 
   function renderAuthGate(){
-    const loggedOut = !currentUser;
-    cartLoginNotice?.classList.toggle("d-none", !loggedOut);
-    checkoutBtn.innerHTML = loggedOut
-      ? `<i class="bi bi-box-arrow-in-right"></i> Entrar para finalizar`
-      : `<i class="bi bi-lock-fill"></i> Ir para pagamento`;
+    cartLoginNotice?.classList.toggle("d-none", !!currentUser);
+    renderPrimaryButton();
   }
   document.addEventListener("plc:auth", (e) => {
     currentUser = e.detail.user;
@@ -998,7 +1048,8 @@
   function resetShipping(){
     shipping = null;
     document.getElementById("shippingOptions").innerHTML = "";
-    document.getElementById("addressFields").classList.add("d-none");
+    if(cartStep === 2) irParaPasso(1);
+    renderChosenShipping();
     document.getElementById("shippingMsg").textContent = cart.length
       ? "Informe seu CEP para ver as opções de entrega."
       : "";
@@ -1012,8 +1063,11 @@
 
   function renderCart(){
 
-    const checkoutPanel = document.getElementById("cartCheckoutPanel");
-    checkoutPanel?.classList.toggle("d-none", cart.length === 0);
+    const vazio = cart.length === 0;
+    cartStep1.classList.toggle("d-none", vazio);
+    cartStep2.classList.toggle("d-none", vazio);
+    cartFooter.classList.toggle("d-none", vazio);
+    if(vazio && cartStep !== 1) irParaPasso(1);
 
     if(cart.length === 0){
       cartItemsList.innerHTML = "";
@@ -1128,7 +1182,6 @@
   const calcShippingBtn = document.getElementById("calcShippingBtn");
   const shippingMsgEl = document.getElementById("shippingMsg");
   const shippingOptionsEl = document.getElementById("shippingOptions");
-  const addressFieldsEl = document.getElementById("addressFields");
   const saveAddressCheck = document.getElementById("saveAddressCheck");
   const addrInputs = {
     nome: document.getElementById("addrNome"),
@@ -1333,7 +1386,6 @@
 
     calcShippingBtn.disabled = true;
     shippingOptionsEl.innerHTML = "";
-    addressFieldsEl.classList.add("d-none");
     shippingMsgEl.textContent = "Calculando opções de entrega...";
     shipping = null;
     updateTotals();
@@ -1373,7 +1425,7 @@
           shippingOptionsEl.querySelectorAll(".shipping-option").forEach(l => l.classList.remove("selected"));
           label.classList.add("selected");
           label.querySelector("input").checked = true;
-          addressFieldsEl.classList.remove("d-none");
+          renderChosenShipping();
           updateTotals();
         });
       });
@@ -1428,6 +1480,19 @@
 
   renderCart(); 
 
+  function acaoDoBotaoPrincipal(){
+    if(cartStep === 1){
+      if(!shipping){
+        showCheckoutHintToast("Informe seu CEP e escolha a entrega para continuar.");
+        cepInput.focus();
+        return;
+      }
+      irParaPasso(2);
+      return;
+    }
+    goToCheckout();
+  }
+
   async function goToCheckout(){
 
     if(!currentUser){
@@ -1438,6 +1503,7 @@
     const pendente = checkoutBlockInfo();
     if(pendente){
       if(shipping){
+        irParaPasso(2);
         addressValidationAttempted = true;
         renderAddressErrors();
         focusFirstInvalidAddressField();
@@ -1494,7 +1560,19 @@
       checkoutBtn.disabled = false;
     }
   }
-  checkoutBtn.addEventListener("click", goToCheckout);
+  checkoutBtn.addEventListener("click", acaoDoBotaoPrincipal);
+  cartBackBtn.addEventListener("click", (e) => {
+    if(cartStep !== 2) return;
+    e.preventDefault();
+    e.stopPropagation();
+    irParaPasso(1);
+  });
+  couponToggle.addEventListener("click", () => {
+    const aberto = couponFields.classList.toggle("d-none");
+    couponToggle.setAttribute("aria-expanded", String(!aberto));
+    if(!aberto) couponInput.focus();
+  });
+  document.getElementById("cartOffcanvas").addEventListener("hidden.bs.offcanvas", () => irParaPasso(1));
 
   if(new URLSearchParams(location.search).get("carrinho") === "1"){
     bootstrap.Offcanvas.getOrCreateInstance(document.getElementById("cartOffcanvas")).show();

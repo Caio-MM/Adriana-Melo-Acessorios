@@ -114,40 +114,63 @@
   </div>
 </div>
 
-<div class="offcanvas offcanvas-end cart-offcanvas" tabindex="-1" id="cartOffcanvas" aria-labelledby="cartOffcanvasLabel">
+<div class="offcanvas offcanvas-end cart-offcanvas" tabindex="-1" id="cartOffcanvas" data-step="1" aria-labelledby="cartOffcanvasLabel">
   <div class="offcanvas-header">
     <div class="d-flex align-items-center gap-2">
-      <button type="button" class="cart-back-btn" data-bs-dismiss="offcanvas" aria-label="Voltar para a loja"><i class="bi bi-arrow-left"></i></button>
-      <h5 class="offcanvas-title font-display mb-0" id="cartOffcanvasLabel"><i class="bi bi-bag-heart me-2"></i>Seu carrinho</h5>
+      <button type="button" class="cart-back-btn" id="cartBackBtn" data-bs-dismiss="offcanvas" aria-label="Voltar para a loja"><i class="bi bi-arrow-left"></i></button>
+      <h5 class="offcanvas-title font-display mb-0" id="cartOffcanvasLabel">Seu carrinho</h5>
     </div>
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
   </div>
-  <div class="offcanvas-body d-flex flex-column">
-    <div id="cartItemsList" class="flex-grow-1 d-flex flex-column gap-3"></div>
 
-    <div id="cartEmptyState" class="text-center my-auto py-5 d-none">
-      <i class="bi bi-bag-heart" style="font-size:2.4rem; color:var(--blush-300)"></i>
-      <p class="section-sub mt-2 mb-0">Seu carrinho está vazio.<br>Que tal escolher um laço?</p>
+  <div class="offcanvas-body">
+    <div id="cartEmptyState" class="cart-empty d-none">
+      <i class="bi bi-bag-heart"></i>
+      <p>Seu carrinho está vazio.<br>Que tal escolher um laço?</p>
     </div>
 
-        <div id="cartRecommendations" class="cart-recs d-none">
-      <span class="cart-block-label">Complete seu pedido</span>
-      <div id="cartRecsList" class="d-flex flex-column gap-2"></div>
+    <div class="cart-step" id="cartStep1">
+      <div id="cartItemsList" class="cart-items"></div>
+
+      <section class="cart-section">
+        <h2 class="cart-section-title" id="shippingTitle">Entrega</h2>
+        <div class="cart-field-row">
+          <input type="text" class="form-control" id="cepInput" placeholder="Seu CEP" inputmode="numeric" maxlength="9" autocomplete="postal-code" aria-labelledby="shippingTitle">
+          <button class="btn-outline-blush cart-field-btn" id="calcShippingBtn" type="button">Calcular</button>
+        </div>
+        <div class="cart-hint" id="shippingMsg"></div>
+        <div id="shippingOptions" class="cart-choices"></div>
+      </section>
+
+      <section class="cart-section">
+        <button type="button" class="cart-disclosure" id="couponToggle" aria-expanded="false" aria-controls="couponFields">
+          <i class="bi bi-ticket-perforated"></i>Tenho um cupom
+        </button>
+        <div class="cart-disclosure-body d-none" id="couponFields">
+          <div class="cart-field-row">
+            <input type="text" class="form-control" id="couponInput" maxlength="30" autocomplete="off" placeholder="Código do cupom" aria-label="Código do cupom">
+            <button class="btn-outline-blush cart-field-btn" id="couponApplyBtn" type="button">Aplicar</button>
+          </div>
+          <div class="cart-hint" id="couponMsg"></div>
+        </div>
+      </section>
+
+      <section class="cart-section d-none" id="cartRecommendations">
+        <h2 class="cart-section-title">Complete seu pedido</h2>
+        <div id="cartRecsList" class="cart-recs-list"></div>
+      </section>
+
+      <a href="#colecoes" class="cart-continue-link" id="cartContinueLink">Ver mais produtos</a>
     </div>
 
-        <div class="cart-checkout-panel" id="cartCheckoutPanel">
+    <div class="cart-step" id="cartStep2">
+      <section class="cart-section">
+        <h2 class="cart-section-title">Entrega</h2>
+        <div class="cart-chosen" id="cartChosenShipping"></div>
+      </section>
 
-    <div class="cart-panel-block">
-      <label class="cart-block-label" for="cepInput">Calcular frete</label>
-      <div class="cart-field-row">
-        <input type="text" class="form-control" id="cepInput" placeholder="00000-000" inputmode="numeric" maxlength="9" autocomplete="postal-code">
-        <button class="btn-outline-blush cart-field-btn" id="calcShippingBtn" type="button">Calcular</button>
-      </div>
-      <div class="cart-hint" id="shippingMsg"></div>
-      <div id="shippingOptions" class="d-flex flex-column gap-2 mt-2"></div>
-
-            <div id="addressFields" class="d-none cart-address">
-        <span class="cart-address-title">Endereço de entrega</span>
+      <section class="cart-section cart-address" id="addressFields">
+        <h2 class="cart-section-title">Endereço</h2>
         <div class="row g-3">
           <div class="col-12 cart-address-field">
             <label class="form-label" for="addrNome">Nome completo<span class="required-mark" aria-hidden="true">*</span></label>
@@ -202,22 +225,50 @@
           <input class="form-check-input" type="checkbox" id="saveAddressCheck" checked>
           <label class="form-check-label small" for="saveAddressCheck">Salvar este endereço para as próximas compras</label>
         </div>
+      </section>
+
+      <section class="cart-section">
+        <h2 class="cart-section-title" id="payMethodLabel">Pagamento</h2>
+        <div class="pay-methods" id="payMethodGroup" role="radiogroup" aria-labelledby="payMethodLabel">
+          <label class="pay-method">
+            <input type="radio" name="payMethod" value="pix" checked>
+            <span class="pm-icon"><i class="bi bi-qr-code"></i></span>
+            <span class="pm-body">
+              <span class="pm-name">Pix</span>
+              <span class="pm-note" id="pmPixNote"></span>
+            </span>
+          </label>
+          <label class="pay-method">
+            <input type="radio" name="payMethod" value="card">
+            <span class="pm-icon"><i class="bi bi-credit-card"></i></span>
+            <span class="pm-body">
+              <span class="pm-name">Cartão ou boleto</span>
+              <span class="pm-note" id="pmCardNote"></span>
+            </span>
+          </label>
+        </div>
+        <p class="cart-gateway-note">
+          <i class="bi bi-shield-lock-fill"></i>
+          <span id="cartGatewayText">Você conclui a compra no <strong>Mercado Pago</strong>, com segurança.</span>
+        </p>
+      </section>
+
+      <div class="cart-login-notice d-none" id="cartLoginNotice">
+        <i class="bi bi-person-circle"></i>
+        <span>Entre na sua conta para finalizar. Assim você também acompanha a entrega em "Meus pedidos".</span>
       </div>
     </div>
+  </div>
 
-    <div class="cart-panel-block">
-      <label class="cart-block-label" for="couponInput">Cupom de desconto</label>
-      <div class="cart-field-row">
-        <input type="text" class="form-control" id="couponInput" maxlength="30" autocomplete="off">
-        <button class="btn-outline-blush cart-field-btn" id="couponApplyBtn" type="button">Aplicar</button>
-      </div>
-      <div class="cart-hint" id="couponMsg"></div>
-    </div>
-
-    <div class="cart-panel-block cart-totals">
+  <div class="cart-footer" id="cartFooter">
+    <div class="cart-resumo">
       <div class="cart-total-line">
         <span>Subtotal</span>
         <strong id="cartSubtotal">R$ 0,00</strong>
+      </div>
+      <div class="cart-total-line d-none" id="cartShippingRow">
+        <span>Frete</span>
+        <strong id="cartShippingPrice">—</strong>
       </div>
       <div class="cart-total-line is-discount d-none" id="cartDiscountRow">
         <span>Desconto <span id="cartCouponCode"></span></span>
@@ -227,59 +278,15 @@
         <span>Desconto Pix <span id="cartPixPercent"></span></span>
         <strong id="cartPixDiscount">-R$ 0,00</strong>
       </div>
-      <div class="cart-total-line">
-        <span>Frete</span>
-        <strong id="cartShippingPrice">a calcular</strong>
-      </div>
       <div class="cart-total-line is-grand">
         <span>Total</span>
         <strong id="cartTotal">R$ 0,00</strong>
       </div>
       <div class="cart-hint" id="cartInstallmentNote"></div>
     </div>
-
-    <div class="cart-panel-block">
-
-            <label class="cart-block-label" id="payMethodLabel">Forma de pagamento</label>
-      <div class="pay-methods" id="payMethodGroup" role="radiogroup" aria-labelledby="payMethodLabel">
-        <label class="pay-method">
-          <input type="radio" name="payMethod" value="pix" checked>
-          <span class="pm-icon"><i class="bi bi-qr-code"></i></span>
-          <span class="pm-body">
-            <span class="pm-name">Pix</span>
-            <span class="pm-note" id="pmPixNote">à vista</span>
-          </span>
-          <span class="pm-price" id="pmPixPrice">R$ 0,00</span>
-        </label>
-        <label class="pay-method">
-          <input type="radio" name="payMethod" value="card">
-          <span class="pm-icon"><i class="bi bi-credit-card"></i></span>
-          <span class="pm-body">
-            <span class="pm-name">Cartão ou boleto</span>
-            <span class="pm-note" id="pmCardNote"></span>
-          </span>
-          <span class="pm-price" id="pmCardPrice">R$ 0,00</span>
-        </label>
-      </div>
-    </div>
-
-    <div class="cart-panel-block">
-            <div class="cart-login-notice d-none" id="cartLoginNotice">
-        <i class="bi bi-person-circle"></i>
-        <span>Para ir ao pagamento, entre na sua conta e informe o CEP para calcular o frete. Assim você também acompanha a entrega em "Meus pedidos".</span>
-      </div>
-      <button class="btn-blush cart-checkout-btn" id="checkoutBtn" disabled>
-        <i class="bi bi-lock-fill"></i> Ir para pagamento
-      </button>
-      <div class="cart-hint text-center" id="checkoutMsg" style="color:var(--blush-700)"></div>
-                  <p class="cart-gateway-note">
-        <i class="bi bi-shield-lock-fill"></i>
-        <span id="cartGatewayText">Você conclui a compra no <strong>Mercado Pago</strong>, com segurança.</span>
-      </p>
-      <a href="#colecoes" class="cart-continue-link" id="cartContinueLink">Ver mais produtos</a>
-    </div>
-
-    </div>  </div>
+    <button class="btn-blush cart-checkout-btn" id="checkoutBtn">Continuar</button>
+    <div class="cart-hint text-center" id="checkoutMsg"></div>
+  </div>
 </div>
 
 <header class="hero" id="inicio">
