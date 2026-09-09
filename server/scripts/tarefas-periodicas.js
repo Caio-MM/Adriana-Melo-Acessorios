@@ -1,6 +1,6 @@
 /**
  * =============================================================================
- *  TAREFAS PERIÓDICAS — reenvio da fila de e-mail
+ *  TAREFAS PERIÓDICAS — fila de e-mail + confirmação de entrega
  * =============================================================================
  *  Uso:
  *      cd server && node scripts/tarefas-periodicas.js
@@ -19,11 +19,13 @@
  *
  *  O QUE FAZ
  *  --------------------------------------------------------------------------
- *  Reenvia os e-mails de cliente que ficaram na fila (lib/db.js, tabela
- *  email_outbox) porque a tentativa na hora do pedido falhou — SMTP fora do
- *  ar, credencial vencida, caixa cheia. Cada falha aumenta a espera até a
- *  próxima tentativa (5min, 15, 45, 2h15, 6h45) e desiste após 5 tentativas,
- *  deixando o erro gravado em last_error para investigação.
+ *  1. Reenvia os e-mails de cliente que ficaram na fila (lib/db.js, tabela
+ *     email_outbox) porque a tentativa na hora do pedido falhou — SMTP fora
+ *     do ar, credencial vencida, caixa cheia. Cada falha aumenta a espera até
+ *     a próxima tentativa (5min, 15, 45, 2h15, 6h45) e desiste após 5
+ *     tentativas, deixando o erro gravado em last_error para investigação.
+ *  2. Pergunta aos Correios se os pedidos postados já chegaram, e fecha a
+ *     entrega (fulfillment_status = 'entregue') nos que já confirmaram.
  */
 const path = require("node:path");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env"), quiet: true });
