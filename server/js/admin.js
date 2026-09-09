@@ -472,7 +472,9 @@
   function whatsappUrl(phone, message){
     const phoneDigits = whatsappDigitsWithCountryCode(phone);
     if(!phoneDigits) return null;
-    return `https://wa.me/${phoneDigits}?text=${encodeURIComponent(message)}`;
+    /* ⚠️ api.whatsapp.com, nunca wa.me: o redirecionamento do wa.me troca todo
+       caractere acima de Latin-1 por "?" — emoji some sem erro nenhum. */
+    return `https://api.whatsapp.com/send?phone=${phoneDigits}&text=${encodeURIComponent(message)}`;
   }
 
   function whatsappRecoveryUrl(order){

@@ -14,7 +14,7 @@
   function montarLinks(base){
     return {
 
-      whatsapp: `https://wa.me/?text=${encodeURIComponent(`${MENSAGEM} ${comUtm(base, "whatsapp")}`)}`,
+      whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${MENSAGEM} ${comUtm(base, "whatsapp")}`)}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(comUtm(base, "facebook"))}`,
       pinterest: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(comUtm(base, "pinterest"))}&description=${encodeURIComponent(MENSAGEM)}`,
       telegram: `https://t.me/share/url?url=${encodeURIComponent(comUtm(base, "telegram"))}&text=${encodeURIComponent(MENSAGEM)}`,
