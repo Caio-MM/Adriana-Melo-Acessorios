@@ -442,7 +442,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       baseUri: ["'self'"],
-      // Nenhum CDN aqui: Bootstrap, ícones, JsBarcode e as fontes são
+      // Nenhum CDN aqui: Bootstrap, ícones e as fontes são
       // todos servidos por este mesmo servidor (css/vendor/, js/vendor/,
       // css/fonts/), então 'self' cobre tudo. Só o SDK do Mercado Pago
       // continua externo — ele precisa vir do domínio deles.
@@ -2284,18 +2284,24 @@ async function entregarEmailDaFila(id){
    em qualquer um.
    Devolve o id na fila (ou null quando não há o que enviar: pedido sem
    e-mail, ou aviso já enfileirado antes para este pedido). */
+function estadoDoAvisoDePostagem(reference){
+  const linha = db.getOutboxEntry("pedido_postado", reference);
+  if(!linha) return null;
+  return {
+    enviadoEm: linha.sent_at || null,
+    tentativas: linha.attempts || 0,
+    ultimoErro: linha.last_error || null,
+  };
+}
+
 function salvarRastreioEAvisar(reference, trackingCode){
   if(!reference || !trackingCode) return null;
 
   const anterior = db.getOrderByExternalReference(reference);
-  const mudou = !anterior || anterior.tracking_code !== trackingCode;
+  const corrigiuOCodigo = !!anterior?.tracking_code && anterior.tracking_code !== trackingCode;
   db.updateOrderTracking(reference, trackingCode);
 
-  // Regravar o MESMO código (salvar duas vezes no painel, webhook reenviado)
-  // não avisa de novo. Um código DIFERENTE avisa: significa que a lojista
-  // corrigiu um erro de digitação, e a cliente precisa saber do certo.
-  if(!mudou) return null;
-  db.deleteOutboxEntry("pedido_postado", reference);
+  if(corrigiuOCodigo) db.deleteOutboxEntry("pedido_postado", reference);
 
   const pedido = db.getOrderByExternalReference(reference);
   if(!pedido || !pedido.customer_email) return null;
@@ -3189,6 +3195,7 @@ app.get("/api/admin/orders", auth.requireAdmin, auth.requireAdminTwoFactor, (req
         fulfillmentStatus: row.fulfillment_status || null,
         shippedAt: row.shipped_at || null,
         deliveredAt: row.delivered_at || null,
+        avisoDePostagem: estadoDoAvisoDePostagem(row.external_reference),
         subtotal: row.subtotal,
         discount: row.discount,
         pixDiscount: row.pix_discount || 0,
@@ -3380,15 +3387,37 @@ app.patch("/api/admin/orders/:reference/tracking", auth.requireAdmin, auth.requi
     if(!order){
       return res.status(404).json({ error: "Pedido não encontrado." });
     }
-    db.updateOrderTracking(reference, trackingCode);
+    const naFila = salvarRastreioEAvisar(reference, trackingCode);
     res.json({ ok: true, trackingCode });
 
-    /* Depois de responder, para a lojista não ficar esperando o SMTP. Regravar
-       o MESMO pedido não reenvia — o índice único da fila barra. */
-    entregarEmailDaFila(salvarRastreioEAvisar(reference, trackingCode)).catch(() => {});
+    entregarEmailDaFila(naFila).catch(() => {});
   } catch (err) {
     console.error("Erro ao salvar código de rastreio:", err);
     res.status(500).json({ error: "Não foi possível salvar o código de rastreio agora." });
+  }
+});
+
+/* POST /api/admin/orders/:reference/avisar-postagem — reenvia o aviso de
+   postagem com o código já salvo, para quando o e-mail cai em spam. */
+app.post("/api/admin/orders/:reference/avisar-postagem", auth.requireAdmin, auth.requireAdminTwoFactor, async (req, res) => {
+  try {
+    const reference = String(req.params.reference || "");
+    const order = db.getOrderByExternalReference(reference);
+    if(!order){
+      return res.status(404).json({ error: "Pedido não encontrado." });
+    }
+    if(!order.tracking_code){
+      return res.status(409).json({ error: "Este pedido ainda não tem código de rastreio." });
+    }
+    if(!order.customer_email){
+      return res.status(409).json({ error: "Este pedido não tem e-mail para avisar." });
+    }
+    db.deleteOutboxEntry("pedido_postado", reference);
+    await entregarEmailDaFila(salvarRastreioEAvisar(reference, order.tracking_code));
+    res.json({ ok: true, aviso: estadoDoAvisoDePostagem(reference) });
+  } catch (err) {
+    console.error("Erro ao reenviar aviso de postagem:", err);
+    res.status(500).json({ error: "Não foi possível reenviar o aviso agora." });
   }
 });
 

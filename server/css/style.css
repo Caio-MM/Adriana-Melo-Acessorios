@@ -2484,6 +2484,7 @@ body.tem-secao-fab-oculta .coupon-toast-container{
 .fulfillment-step.is-done .fulfillment-dot{ background:var(--color-success); border-color:var(--color-success); }
 .fulfillment-step.is-done::before{ background:var(--color-success); }
 .fulfillment-step.is-current .fulfillment-dot{ background:var(--blush-500); border-color:var(--blush-500); }
+.fulfillment-step.is-current::before{ background:linear-gradient(90deg, var(--color-success), var(--blush-500)); }
 .fulfillment-step.is-current, .fulfillment-step.is-done{ color:var(--ink); font-weight:600; }
 
 .tracking-route{ display:flex; flex-direction:column; gap:.85rem; margin:0; padding:0; list-style:none; }
@@ -2496,15 +2497,11 @@ body.tem-secao-fab-oculta .coupon-toast-container{
   transition:box-shadow .3s ease, border-color .3s ease;
 }
 
-.tracking-barcode-wrap{ display:flex; flex-direction:column; align-items:flex-start; gap:.5rem; width:100%; }
-.tracking-barcode{ display:block; width:100%; max-width:260px; height:0; }
-.tracking-barcode.is-visible{ height:auto; }
-.barcode-download-btn{
-  display:flex; align-items:center; gap:.4rem; border:none; background:none; padding:0;
-  font-size:.78rem; font-weight:600; color:var(--blush-700); cursor:pointer;
-}
-.barcode-download-btn:hover{ text-decoration:underline; }
 .tracking-feedback{ min-height:1.1em; }
+.aviso-postagem{ font-size:.8rem; font-weight:600; display:inline-flex; align-items:center; }
+.aviso-postagem.is-enviado{ color:var(--color-success); }
+.aviso-postagem.is-pendente{ color:var(--ink-soft); }
+.aviso-postagem.is-erro{ color:var(--color-danger); }
 .tracking-feedback.is-success, #epPhotoStatus.is-success{ color:var(--color-success); }
 .tracking-feedback.is-error, #epPhotoStatus.is-error{ color:var(--color-danger); }
 .delete-order-icon-btn, .edit-order-icon-btn{

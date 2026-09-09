@@ -487,6 +487,23 @@
     return whatsappUrl(order.customer?.telefone, WHATSAPP_POST_SALE_MESSAGE);
   }
 
+  function whatsappPostagemUrl(order){
+    if(!order.trackingCode) return null;
+    const primeiroNome = String(order.customer?.nome || "").trim().split(" ")[0] || "";
+    const link = `${location.origin}/acompanhar-pedido.html?pedido=${encodeURIComponent(order.reference)}`;
+    const msg = `Oi${primeiroNome ? " " + primeiroNome : ""}! Seu pedido já foi postado nos Correios.\nCódigo de rastreio: ${order.trackingCode}\nVocê pode acompanhar por aqui: ${link}`;
+    return whatsappUrl(order.customer?.telefone, msg);
+  }
+
+  function textoDoAviso(order){
+    const aviso = order.avisoDePostagem;
+    if(!order.trackingCode) return "";
+    if(!aviso) return `<span class="aviso-postagem is-pendente"><i class="bi bi-hourglass-split me-1"></i>Cliente ainda não avisada</span>`;
+    if(aviso.enviadoEm) return `<span class="aviso-postagem is-enviado"><i class="bi bi-check-circle me-1"></i>Cliente avisada em ${escapeHTML(formatDate(aviso.enviadoEm))}</span>`;
+    if(aviso.ultimoErro) return `<span class="aviso-postagem is-erro"><i class="bi bi-exclamation-triangle me-1"></i>Não consegui avisar: ${escapeHTML(aviso.ultimoErro)}</span>`;
+    return `<span class="aviso-postagem is-pendente"><i class="bi bi-hourglass-split me-1"></i>Aviso na fila para envio</span>`;
+  }
+
   function renderPendingCarts(orders){
     const now = Date.now();
     const pending = orders.filter(o => {
@@ -1694,17 +1711,20 @@
             <input type="text" class="form-control form-control-sm tracking-input" id="tracking-${escapeHTML(ref)}"
                    value="${escapeHTML(order.trackingCode || "")}" placeholder="Ex.: BR123456789BR" maxlength="60">
             <button type="button" class="btn-outline-blush save-tracking-btn" data-ref="${escapeHTML(ref)}" title="Comprou a etiqueta direto no site da transportadora (Correios, etc.)? Cole o código aqui e salve — a cliente acompanha ao vivo do mesmo jeito.">Salvar</button>
-            <button type="button" class="btn-outline-blush show-barcode-btn" data-ref="${escapeHTML(ref)}" title="Desenha o código digitado acima como código de barras"><i class="bi bi-upc-scan me-1"></i>Gerar código de barras</button>
             <button type="button" class="btn-outline-blush generate-label-btn" data-ref="${escapeHTML(ref)}" title="Compra a etiqueta no Melhor Envio (gasta saldo real) e preenche o código automaticamente"><i class="bi bi-stars me-1"></i>Comprar etiqueta</button>
             ${order.fulfillmentStatus === "postado" ? `
             <button type="button" class="btn-outline-blush mark-delivered-btn" data-ref="${escapeHTML(ref)}" title="Marca este pedido como entregue"><i class="bi bi-check2-circle me-1"></i>Marcar como entregue</button>
             ` : order.fulfillmentStatus === "entregue" ? `<span class="small fw-semibold" style="color:var(--color-success)"><i class="bi bi-check2-circle me-1"></i>Entregue</span>` : ""}
           </div>
+          ${order.trackingCode ? `
+          <div class="d-flex flex-wrap align-items-center gap-2 w-100">
+            ${whatsappPostagemUrl(order) ? `
+            <a class="btn-outline-blush" href="${escapeHTML(whatsappPostagemUrl(order))}" target="_blank" rel="noopener" title="Abre a conversa com a cliente já com o código e o link"><i class="bi bi-whatsapp me-1"></i>Avisar no WhatsApp</a>
+            ` : ""}
+            <button type="button" class="btn-outline-blush resend-notice-btn" data-ref="${escapeHTML(ref)}" title="Reenvia o e-mail de 'seu pedido foi postado' com o código já salvo"><i class="bi bi-send me-1"></i>Avisar de novo por e-mail</button>
+            ${textoDoAviso(order)}
+          </div>` : ""}
           <span class="small tracking-feedback" data-ref-feedback="${escapeHTML(ref)}"></span>
-          <div class="tracking-barcode-wrap">
-            <svg class="tracking-barcode" id="barcode-${escapeHTML(ref)}"></svg>
-            <button type="button" class="barcode-download-btn d-none" id="barcode-download-${escapeHTML(ref)}" data-ref="${escapeHTML(ref)}" title="Baixar código de barras (PNG)"><i class="bi bi-download"></i> Baixar código de barras</button>
-          </div>
         </div>
         ` : ""}
       </div>
@@ -1783,64 +1803,7 @@
     stateEmpty.classList.add("d-none");
     listEl.classList.remove("d-none");
     listEl.innerHTML = orders.map(orderCardHTML).join("");
-    orders.forEach(order => {
-      if(order.status === "pago" && order.trackingCode) renderBarcode(order.reference, order.trackingCode);
-    });
     highlightFromQuery();
-  }
-
-  function renderBarcode(ref, code){
-    const svg = document.getElementById(`barcode-${ref}`);
-    const downloadBtn = document.getElementById(`barcode-download-${ref}`);
-    if(!svg) return;
-    if(!code){
-      svg.innerHTML = "";
-      svg.classList.remove("is-visible");
-      downloadBtn?.classList.add("d-none");
-      return;
-    }
-    try{
-      JsBarcode(svg, code, {
-        format: "CODE128",
-        displayValue: true,
-        height: 40,
-        width: 1.6,
-        fontSize: 12,
-        margin: 4,
-      });
-      svg.classList.add("is-visible");
-      downloadBtn?.classList.remove("d-none");
-    }catch(err){
-
-      console.error("Não foi possível desenhar o código de barras:", err);
-      svg.innerHTML = "";
-      svg.classList.remove("is-visible");
-      downloadBtn?.classList.add("d-none");
-    }
-  }
-
-  function downloadBarcode(ref){
-    const input = document.getElementById(`tracking-${ref}`);
-    const code = input?.value.trim();
-    if(!code) return;
-    try{
-      const canvas = document.createElement("canvas");
-      JsBarcode(canvas, code, {
-        format: "CODE128",
-        displayValue: true,
-        height: 80,
-        width: 3,
-        fontSize: 20,
-        margin: 12,
-      });
-      const link = document.createElement("a");
-      link.download = `rastreio-${code}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    }catch(err){
-      console.error("Não foi possível gerar o download do código de barras:", err);
-      alert("Não foi possível gerar o arquivo do código de barras agora.");
-    }
   }
 
   async function saveTracking(ref, trackingCode, feedbackEl){
@@ -1854,13 +1817,34 @@
       });
       const data = await res.json().catch(() => ({}));
       if(!res.ok) throw new Error(data.error || "Não foi possível salvar.");
-      renderBarcode(ref, data.trackingCode);
-      feedbackEl.textContent = "Salvo!";
+      feedbackEl.textContent = "Salvo! Avisando a cliente...";
       feedbackEl.classList.add("is-success");
-      setTimeout(() => { feedbackEl.textContent = ""; }, 2500);
+      setTimeout(loadDashboard, 1200);
     }catch(err){
       feedbackEl.textContent = err.message || "Erro ao salvar.";
       feedbackEl.classList.add("is-error");
+    }
+  }
+
+  async function reenviarAviso(ref, feedbackEl, btn){
+    const rotulo = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = "Enviando...";
+    feedbackEl.textContent = "";
+    feedbackEl.classList.remove("is-success", "is-error");
+    try{
+      const res = await fetchWithTimeout(`/api/admin/orders/${encodeURIComponent(ref)}/avisar-postagem`, { method: "POST" }, 20000);
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível reenviar.");
+      feedbackEl.textContent = data.aviso?.enviadoEm ? "Aviso enviado para a cliente." : "Aviso na fila para envio.";
+      feedbackEl.classList.add("is-success");
+      loadDashboard();
+    }catch(err){
+      feedbackEl.textContent = err.message || "Erro ao reenviar o aviso.";
+      feedbackEl.classList.add("is-error");
+    }finally{
+      btn.disabled = false;
+      btn.innerHTML = rotulo;
     }
   }
 
@@ -1877,7 +1861,6 @@
       if(!res.ok) throw new Error(data.error || "Não foi possível gerar a etiqueta.");
       const input = document.getElementById(`tracking-${ref}`);
       if(input && data.trackingCode) input.value = data.trackingCode;
-      if(data.trackingCode) renderBarcode(ref, data.trackingCode);
       feedbackEl.textContent = data.trackingCode ? "Código gerado!" : "Etiqueta comprada, mas sem código de rastreio na resposta — confira no painel do Melhor Envio.";
       feedbackEl.classList.add("is-success");
     }catch(err){
@@ -1922,11 +1905,10 @@
 
   listEl.addEventListener("click", (e) => {
     const trackBtn = e.target.closest(".save-tracking-btn");
-    const barcodeBtn = e.target.closest(".show-barcode-btn");
     const labelBtn = e.target.closest(".generate-label-btn");
     const deliveredBtn = e.target.closest(".mark-delivered-btn");
+    const resendBtn = e.target.closest(".resend-notice-btn");
     const deleteBtn = e.target.closest(".delete-order-btn");
-    const downloadBtn = e.target.closest(".barcode-download-btn");
     const copyBtn = e.target.closest(".copy-field-btn");
 
     if(copyBtn){
@@ -1941,17 +1923,10 @@
       return;
     }
 
-    if(barcodeBtn){
-      const ref = barcodeBtn.dataset.ref;
-      const input = document.getElementById(`tracking-${ref}`);
+    if(resendBtn){
+      const ref = resendBtn.dataset.ref;
       const feedbackEl = listEl.querySelector(`[data-ref-feedback="${ref}"]`);
-      const code = input ? input.value.trim() : "";
-      if(feedbackEl){
-        feedbackEl.classList.remove("is-success", "is-error");
-        feedbackEl.textContent = code ? "" : "Digite o código de rastreio primeiro.";
-        if(!code) feedbackEl.classList.add("is-error");
-      }
-      if(code) renderBarcode(ref, code);
+      if(feedbackEl) reenviarAviso(ref, feedbackEl, resendBtn);
       return;
     }
 
@@ -1966,10 +1941,6 @@
       const ref = labelBtn.dataset.ref;
       const feedbackEl = listEl.querySelector(`[data-ref-feedback="${ref}"]`);
       if(feedbackEl) generateLabel(ref, feedbackEl, labelBtn);
-      return;
-    }
-    if(downloadBtn){
-      downloadBarcode(downloadBtn.dataset.ref);
       return;
     }
     if(deleteBtn){

@@ -1344,6 +1344,14 @@ function enqueueEmail({ kind, toEmail, subject, textBody, htmlBody, orderReferen
   return r.changes > 0 ? Number(r.lastInsertRowid) : null;
 }
 
+const stmtEmailDoPedido = db.prepare(
+  `SELECT * FROM email_outbox WHERE kind = ? AND order_reference = ?`
+);
+function getOutboxEntry(kind, orderReference){
+  if(!orderReference) return null;
+  return stmtEmailDoPedido.get(kind, orderReference) || null;
+}
+
 const stmtApagaEmailDoPedido = db.prepare(
   `DELETE FROM email_outbox WHERE kind = ? AND order_reference = ?`
 );
@@ -1411,6 +1419,7 @@ module.exports = {
   catalogVersion,
   enqueueEmail,
   deleteOutboxEntry,
+  getOutboxEntry,
   pendingEmails,
   getOutboxEmail,
   markEmailSent,
