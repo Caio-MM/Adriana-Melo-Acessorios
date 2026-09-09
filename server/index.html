@@ -171,49 +171,49 @@
 
       <section class="cart-section cart-address" id="addressFields">
         <h2 class="cart-section-title">Endereço</h2>
+        <p class="cart-address-hint"><i class="bi bi-info-circle"></i><span>Precisamos de todos os campos para a etiqueta de envio — só o complemento é opcional.</span></p>
         <div class="row g-3">
           <div class="col-12 cart-address-field">
-            <label class="form-label" for="addrNome">Nome completo<span class="required-mark" aria-hidden="true">*</span></label>
-            <input type="text" class="form-control" id="addrNome" placeholder="Digite seu nome completo" required aria-describedby="addrNome-error" autocomplete="name">
+            <label class="form-label" for="addrNome">Nome completo</label>
+            <input type="text" class="form-control" id="addrNome" required aria-describedby="addrNome-error" autocomplete="name">
             <div class="field-error" id="addrNome-error"></div>
           </div>
           <div class="col-12 cart-address-field">
-            <label class="form-label" for="addrTelefone">Telefone / WhatsApp<span class="required-mark" aria-hidden="true">*</span></label>
-            <input type="tel" class="form-control" id="addrTelefone" placeholder="(11) 99999-9999" inputmode="tel" required aria-describedby="addrTelefone-error" autocomplete="tel">
+            <label class="form-label" for="addrTelefone">Telefone / WhatsApp</label>
+            <input type="tel" class="form-control" id="addrTelefone" placeholder="(00) 00000-0000" inputmode="tel" required aria-describedby="addrTelefone-error" autocomplete="tel">
             <div class="field-error" id="addrTelefone-error"></div>
           </div>
           <div class="col-12 cart-address-field">
-            <label class="form-label" for="addrCpf">CPF do destinatário<span class="required-mark" aria-hidden="true">*</span></label>
+            <label class="form-label" for="addrCpf">CPF do destinatário</label>
             <input type="text" class="form-control" id="addrCpf" placeholder="000.000.000-00" inputmode="numeric" required aria-describedby="addrCpf-error" autocomplete="off" maxlength="14">
             <div class="field-error" id="addrCpf-error"></div>
-            <div class="form-text">Necessário para a etiqueta de envio.</div>
           </div>
           <div class="col-8 cart-address-field">
-            <label class="form-label" for="addrRua">Rua<span class="required-mark" aria-hidden="true">*</span></label>
-            <input type="text" class="form-control" id="addrRua" placeholder="Ex: Rua das Flores" required aria-describedby="addrRua-error" autocomplete="address-line1">
+            <label class="form-label" for="addrRua">Rua</label>
+            <input type="text" class="form-control" id="addrRua" required aria-describedby="addrRua-error" autocomplete="address-line1">
             <div class="field-error" id="addrRua-error"></div>
           </div>
           <div class="col-4 cart-address-field">
-            <label class="form-label" for="addrNumero">Número<span class="required-mark" aria-hidden="true">*</span></label>
-            <input type="text" class="form-control" id="addrNumero" placeholder="123" required aria-describedby="addrNumero-error" autocomplete="off">
+            <label class="form-label" for="addrNumero">Número</label>
+            <input type="text" class="form-control" id="addrNumero" required aria-describedby="addrNumero-error" autocomplete="off">
             <div class="field-error" id="addrNumero-error"></div>
           </div>
           <div class="col-12 cart-address-field">
             <label class="form-label" for="addrComplemento">Complemento <span class="optional-mark">(opcional)</span></label>
-            <input type="text" class="form-control" id="addrComplemento" placeholder="Apto, sala, etc" autocomplete="address-line2">
+            <input type="text" class="form-control" id="addrComplemento" placeholder="Apto, bloco, casa" autocomplete="address-line2">
           </div>
           <div class="col-12 cart-address-field">
-            <label class="form-label" for="addrBairro">Bairro<span class="required-mark" aria-hidden="true">*</span></label>
-            <input type="text" class="form-control" id="addrBairro" placeholder="Ex: Centro" required aria-describedby="addrBairro-error" autocomplete="off">
+            <label class="form-label" for="addrBairro">Bairro</label>
+            <input type="text" class="form-control" id="addrBairro" required aria-describedby="addrBairro-error" autocomplete="off">
             <div class="field-error" id="addrBairro-error"></div>
           </div>
           <div class="col-8 cart-address-field">
-            <label class="form-label" for="addrCidade">Cidade<span class="required-mark" aria-hidden="true">*</span></label>
-            <input type="text" class="form-control" id="addrCidade" placeholder="Ex: Brasília" required aria-describedby="addrCidade-error" autocomplete="address-level2">
+            <label class="form-label" for="addrCidade">Cidade</label>
+            <input type="text" class="form-control" id="addrCidade" required aria-describedby="addrCidade-error" autocomplete="address-level2">
             <div class="field-error" id="addrCidade-error"></div>
           </div>
           <div class="col-4 cart-address-field">
-            <label class="form-label" for="addrUf">Estado<span class="required-mark" aria-hidden="true">*</span></label>
+            <label class="form-label" for="addrUf">Estado</label>
             <select class="form-select" id="addrUf" required aria-describedby="addrUf-error" autocomplete="address-level1">
               <option value="">UF</option>
               <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option>

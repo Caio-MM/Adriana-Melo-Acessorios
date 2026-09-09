@@ -1683,8 +1683,13 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   display:block; font-size:.8rem; font-weight:700;
   color:var(--ink); margin-bottom:.4rem;
 }
-.cart-address-field .required-mark{ color:var(--color-danger); margin-left:.15rem; }
 .cart-address-field .optional-mark{ color:var(--ink-soft); font-weight:400; }
+
+.cart-address-hint{
+  display:flex; gap:.45rem; align-items:flex-start;
+  margin:-.2rem 0 .9rem; font-size:.78rem; line-height:1.45; color:var(--ink-soft);
+}
+.cart-address-hint i{ font-size:.9rem; line-height:1.35; color:var(--blush-800); flex-shrink:0; }
 
 .cart-address .form-control,
 .cart-address .form-select{
