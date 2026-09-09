@@ -1750,10 +1750,16 @@
     pendente:  ["pendente", "em análise"],
     cancelado: ["recusado", "cancelado", "reembolsado", "estornado"],
   };
+  const GRUPOS_DE_ENTREGA = {
+    enviado:  ["postado"],
+    entregue: ["entregue"],
+  };
   const VAZIO_POR_SITUACAO = {
     todos:     "Nenhum pedido registrado ainda.",
     pago:      "Nenhum pedido pago ainda.",
     pendente:  "Nenhum pedido aguardando pagamento.",
+    enviado:   "Nenhum pedido postado esperando entrega.",
+    entregue:  "Nenhum pedido entregue ainda.",
     cancelado: "Nenhum pedido cancelado ou recusado.",
   };
 
@@ -1762,6 +1768,8 @@
 
   function pedidosDaSituacao(situacao){
     if(situacao === "todos") return todosOsPedidos;
+    const porEntrega = GRUPOS_DE_ENTREGA[situacao];
+    if(porEntrega) return todosOsPedidos.filter(o => porEntrega.includes(o.fulfillmentStatus));
     const aceitos = GRUPOS_DE_SITUACAO[situacao] || [];
     return todosOsPedidos.filter(o => aceitos.includes(o.status));
   }
