@@ -76,6 +76,20 @@
       };
     }
 
+    /* ⚠️ A caixa do <em> já inclui o respiro dele; somar de novo faz o bloco
+       terminar maior que o destaque em CSS e encolher na troca. */
+    function caixaDoDestaque() {
+      const a = destaque.getBoundingClientRect();
+      const t = titulo.getBoundingClientRect();
+      const recuo = RECUO_TOPO + SOBRA_BASE;
+      return {
+        left: a.left - t.left,
+        top: a.top - t.top + recuo,
+        width: a.width,
+        height: a.height - recuo,
+      };
+    }
+
     function levarBlocoPara(letra, cor) {
       gsap.set(bloco, { ...caixaRelativa(letra), opacity: 1 });
       if (cor !== corAtual) {
@@ -101,7 +115,7 @@
     const podeMarcarTexto = destaque && destaque.getClientRects().length === 1;
     if (podeMarcarTexto) {
       linha.call(() => {
-        gsap.to(bloco, { ...caixaRelativa(destaque), duration: 0.34, ease: "power2.inOut", overwrite: true });
+        gsap.to(bloco, { ...caixaDoDestaque(), duration: 0.34, ease: "power2.inOut", overwrite: true });
       }, null, quando + 0.16);
     } else {
       linha.to(bloco, { opacity: 0, duration: 0.3 }, quando + 0.2);
