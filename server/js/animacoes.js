@@ -366,6 +366,7 @@
     if (!visivel(movel)) return;
 
     const ehVan = movel === van;
+    const CHEGADA = ehVan ? 0.1 : 0.3;
     movel.classList.add("is-guiada");
 
     /* ⚠️ offsetLeft/offsetTop, não getBoundingClientRect: o rect devolve a
@@ -386,16 +387,19 @@
     /* ⚠️ Precisa ser passado na CRIAÇÃO do gatilho: o ScrollTrigger guarda a
        referência agora, e atribuir vars.onUpdate depois não faz nada — em
        silêncio. */
+    function acender(progresso) {
+      const naVez = Math.min(
+        Math.floor(progresso * (passos.length - 1) + CHEGADA),
+        passos.length - 1
+      );
+      passos.forEach((passo, i) => passo.classList.toggle("is-na-vez", i === naVez));
+    }
+
     function aCadaQuadro(self) {
       movel.classList.add("is-andando");
       clearTimeout(parada);
       parada = setTimeout(() => movel.classList.remove("is-andando"), 120);
-
-      const naVez = Math.min(
-        Math.floor(self.progress * passos.length),
-        passos.length - 1
-      );
-      passos.forEach((passo, i) => passo.classList.toggle("is-na-vez", i === naVez));
+      acender(self.progress);
     }
 
     const gatilho = {
@@ -404,6 +408,7 @@
       invalidateOnRefresh: true,
       refreshPriority: 1,
       onUpdate: aCadaQuadro,
+      onRefresh: (self) => acender(self.progress),
     };
 
     if (comPin) {
@@ -411,9 +416,16 @@
       gatilho.end = "+=100%";
       gatilho.pin = true;
       gatilho.anticipatePin = 1;
-    } else {
+    } else if (ehVan) {
       gatilho.start = "top 80%";
       gatilho.end = "bottom 55%";
+    } else {
+      /* ⚠️ Preso aos ícones, não à seção: com "top 80%" a parada no passo 1
+         caía com o ícone ainda abaixo da tela e o pacote sumia antes de ele
+         aparecer. Assim cada parada acontece com o seu ícone a 60% da tela. */
+      gatilho.trigger = wrap;
+      gatilho.start = () => `top+=${centroDoPasso(passos[0]).y} 60%`;
+      gatilho.end = () => `top+=${centroDoPasso(passos[2]).y} 60%`;
     }
 
     const tl = gsap.timeline({ scrollTrigger: gatilho });
@@ -443,10 +455,10 @@
          GSAP virou dono da posição. */
       tl.fromTo(movel,
         { opacity: 1 },
-        { opacity: 0, duration: 0.3, ease: "none" }, 0
-      ).to(movel, { opacity: 1, duration: 0.3, ease: "none" }, 0.7)
-        .to(movel, { opacity: 0, duration: 0.3, ease: "none" }, 1)
-        .to(movel, { opacity: 1, duration: 0.3, ease: "none" }, 1.7);
+        { opacity: 0, duration: CHEGADA, ease: "none" }, 0
+      ).to(movel, { opacity: 1, duration: CHEGADA, ease: "none" }, 1 - CHEGADA)
+        .to(movel, { opacity: 0, duration: CHEGADA, ease: "none" }, 1)
+        .to(movel, { opacity: 1, duration: CHEGADA, ease: "none" }, 2 - CHEGADA);
     }
 
     return tl;
