@@ -597,6 +597,268 @@
     entradaDoHero();
   });
 
+  function fitaDasGarantias({ animar }) {
+    const grade = document.querySelector(".garantias");
+    const cartoes = grade ? Array.from(grade.querySelectorAll(".garantia")) : [];
+    if (cartoes.length < 2 || !("ResizeObserver" in window)) return;
+
+    const NS = "http://www.w3.org/2000/svg";
+    const FORA = 24;
+    const ONDA = 12;
+    const MEIO_LACO = 21;
+    const LINHA_DO_LACO = 0.6;
+
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "fita-garantias");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    const base = document.createElementNS(NS, "path");
+    base.setAttribute("class", "fita-garantias-base");
+    svg.append(base);
+
+    const laco = document.createElementNS(NS, "svg");
+    laco.setAttribute("class", "fita-garantias-laco");
+    laco.setAttribute("aria-hidden", "true");
+    laco.setAttribute("focusable", "false");
+    laco.setAttribute("viewBox", "0 0 100 70");
+    const uso = document.createElementNS(NS, "use");
+    uso.setAttribute("href", "#bow-shape");
+    laco.append(uso);
+
+    grade.prepend(svg);
+    grade.append(laco);
+
+    function centro(el) {
+      let x = el.offsetWidth / 2, y = el.offsetHeight / 2;
+      for (let n = el; n && n !== grade; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; }
+      return { x, y };
+    }
+
+    let umaColuna = false;
+    let limites = { min: -Infinity, max: Infinity };
+
+    function pontos() {
+      const W = grade.clientWidth, H = grade.clientHeight;
+      const r = grade.getBoundingClientRect();
+      const folgaEsq = Math.max(0, r.left), folgaDir = Math.max(0, window.innerWidth - r.right);
+      const foraEsq = Math.max(0, Math.min(FORA, folgaEsq - MEIO_LACO));
+      const foraDir = Math.max(0, Math.min(FORA, folgaDir - MEIO_LACO));
+      limites = { min: -Math.max(0, folgaEsq - 4), max: W + Math.max(0, folgaDir - 4) };
+
+      const icones = cartoes.map((c, i) => ({ p: centro(c.querySelector(".garantia-icone")), i }));
+      const linhas = [];
+      icones.forEach((it) => {
+        const linha = linhas.find((l) => Math.abs(l.y - it.p.y) < 8);
+        if (linha) linha.itens.push(it); else linhas.push({ y: it.p.y, itens: [it] });
+      });
+      linhas.sort((a, b) => a.y - b.y);
+      linhas.forEach((l, n) => { l.itens.sort((a, b) => a.p.x - b.p.x); if (n % 2) l.itens.reverse(); });
+      umaColuna = linhas.every((l) => l.itens.length === 1);
+
+      const pts = [], paradas = [];
+      const poe = (p, cartao) => { if (cartao !== undefined) paradas.push({ indice: pts.length, cartao }); pts.push(p); };
+
+      if (umaColuna) {
+        const itens = linhas.map((l) => l.itens[0]);
+        poe({ x: itens[0].p.x, y: -FORA });
+        itens.forEach((it, k) => {
+          if (k > 0) {
+            const a = itens[k - 1].p;
+            poe({ x: (a.x + it.p.x) / 2 + (k % 2 ? ONDA : -ONDA), y: (a.y + it.p.y) / 2 });
+          }
+          poe(it.p, it.i);
+        });
+        poe({ x: itens[itens.length - 1].p.x, y: H + FORA });
+      } else {
+        linhas.forEach((l, n) => {
+          const indo = n % 2 === 0;
+          poe({ x: indo ? -foraEsq : W + foraDir, y: l.y });
+          l.itens.forEach((it, k) => {
+            if (k > 0) {
+              const a = l.itens[k - 1].p;
+              poe({ x: (a.x + it.p.x) / 2, y: (a.y + it.p.y) / 2 + (k % 2 ? ONDA : -ONDA) });
+            }
+            poe(it.p, it.i);
+          });
+          poe({ x: indo ? W + foraDir : -foraEsq, y: l.y });
+        });
+      }
+      return { pts, paradas };
+    }
+
+    /* ⚠️ Os pontos de controle ficam presos dentro da tela: uma Bézier nunca
+       sai da área dos seus pontos de controle, e sem isso a volta do tablet
+       passava da borda e aparecia cortada. */
+    function trechos(pts) {
+      const x = (v) => Math.max(limites.min, Math.min(limites.max, v));
+      const out = [];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+        const c1x = x(p1.x + (p2.x - p0.x) / 6), c1y = p1.y + (p2.y - p0.y) / 6;
+        const c2x = x(p2.x - (p3.x - p1.x) / 6), c2y = p2.y - (p3.y - p1.y) / 6;
+        out.push(`C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`);
+      }
+      return out;
+    }
+
+    let comprimento = 0, marcas = [], alturas = null, tocou = false, tl = null;
+
+    function aplicarAte(ate) {
+      const s = comprimento ? ate / comprimento : 0;
+      const resto = String(comprimento - ate);
+      base.style.strokeDashoffset = resto;
+      const p = base.getPointAtLength(Math.max(0, Math.min(comprimento, ate)));
+      gsap.set(laco, { x: p.x, y: p.y, xPercent: -50, yPercent: -50, rotation: s < 1 ? Math.sin(s * 14) * 10 : 0 });
+      marcas.forEach(({ px, cartao }) => { if (ate >= px - 1) cartoes[cartao].classList.add("is-atada"); });
+    }
+
+    function comprimentoNaAltura(y) {
+      if (!alturas) return 0;
+      if (y <= alturas[0].y) return 0;
+      const ultima = alturas[alturas.length - 1];
+      if (y >= ultima.y) return comprimento;
+      let i = 1;
+      while (alturas[i].y < y) i++;
+      const a = alturas[i - 1], b = alturas[i];
+      return a.len + (b.len - a.len) * ((y - a.y) / ((b.y - a.y) || 1));
+    }
+
+    function acompanharRolagem() {
+      if (!animar || !umaColuna) return;
+      const ate = comprimentoNaAltura(window.innerHeight * LINHA_DO_LACO - grade.getBoundingClientRect().top);
+      gsap.set(laco, { opacity: ate > 0 ? 1 : 0 });
+      aplicarAte(ate);
+      if (ate >= comprimento) tocou = true;
+    }
+
+    function desenhar() {
+      const W = grade.clientWidth, H = grade.clientHeight;
+      svg.setAttribute("width", W);
+      svg.setAttribute("height", H);
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const { pts, paradas } = pontos();
+      const partes = trechos(pts);
+      const inicio = `M${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+      const d = [inicio, ...partes].join(" ");
+      base.setAttribute("d", d);
+      comprimento = base.getTotalLength();
+
+      const regua = document.createElementNS(NS, "path");
+      svg.append(regua);
+      marcas = paradas.map(({ indice, cartao }) => {
+        regua.setAttribute("d", [inicio, ...partes.slice(0, indice)].join(" "));
+        return { px: indice ? regua.getTotalLength() : 0, cartao };
+      });
+      regua.remove();
+
+      alturas = null;
+      if (umaColuna) {
+        alturas = [];
+        for (let k = 0; k <= 160; k++) {
+          const len = (comprimento * k) / 160;
+          alturas.push({ len, y: base.getPointAtLength(len).y });
+        }
+      }
+
+      base.style.strokeDasharray = String(comprimento);
+      if (!animar || (tocou && !umaColuna)) {
+        gsap.set(laco, { opacity: 1 });
+        aplicarAte(comprimento);
+      } else if (umaColuna) {
+        acompanharRolagem();
+      } else {
+        base.style.strokeDashoffset = String(comprimento);
+        gsap.set(laco, { opacity: 0 });
+      }
+    }
+
+    function esperarEntrada() {
+      const inicio = performance.now();
+      return new Promise((pronto) => {
+        (function checar() {
+          const entraram = cartoes.every((c) => {
+            const cs = getComputedStyle(c);
+            return cs.opacity === "1" && cs.transform === "none";
+          });
+          if (entraram || performance.now() - inicio > 3000) return pronto();
+          requestAnimationFrame(checar);
+        })();
+      });
+    }
+
+    function tocar() {
+      if (tl || tocou || umaColuna) return;
+      desenhar();
+      const estado = { s: 0 };
+      gsap.to(laco, { opacity: 1, duration: 0.25 });
+      tl = gsap.to(estado, {
+        s: 1,
+        duration: 1.8,
+        ease: "power1.inOut",
+        onUpdate: () => aplicarAte(comprimento * estado.s),
+        onComplete: () => { tocou = true; aplicarAte(comprimento); },
+      });
+    }
+
+    let quadroDeTamanho = 0;
+    function redesenhar() {
+      if (quadroDeTamanho) return;
+      quadroDeTamanho = requestAnimationFrame(() => {
+        quadroDeTamanho = 0;
+        if (tl && tl.isActive()) tl.progress(1);
+        desenhar();
+      });
+    }
+
+    desenhar();
+    const ro = new ResizeObserver(redesenhar);
+    ro.observe(grade);
+    window.addEventListener("resize", redesenhar);
+
+    let io = null, vista = null, quadroDeRolagem = 0, ouvindo = false;
+    const aoRolar = () => {
+      if (quadroDeRolagem) return;
+      quadroDeRolagem = requestAnimationFrame(() => { quadroDeRolagem = 0; acompanharRolagem(); });
+    };
+    if (animar) {
+      io = new IntersectionObserver((entradas) => {
+        if (umaColuna || !entradas.some((e) => e.isIntersecting)) return;
+        io.disconnect();
+        esperarEntrada().then(tocar);
+      }, { threshold: 0.35 });
+      io.observe(grade);
+
+      vista = new IntersectionObserver(([e]) => {
+        if (e.isIntersecting && !ouvindo) {
+          window.addEventListener("scroll", aoRolar, { passive: true });
+          ouvindo = true;
+        } else if (!e.isIntersecting && ouvindo) {
+          window.removeEventListener("scroll", aoRolar);
+          ouvindo = false;
+        }
+        aoRolar();
+      }, { rootMargin: "25% 0px" });
+      vista.observe(grade);
+    }
+
+    return () => {
+      if (io) io.disconnect();
+      if (vista) vista.disconnect();
+      ro.disconnect();
+      window.removeEventListener("resize", redesenhar);
+      window.removeEventListener("scroll", aoRolar);
+      cancelAnimationFrame(quadroDeRolagem);
+      cancelAnimationFrame(quadroDeTamanho);
+      if (tl) tl.kill();
+      svg.remove();
+      laco.remove();
+      cartoes.forEach((c) => c.classList.remove("is-atada"));
+    };
+  }
+
+  mm.add("(prefers-reduced-motion: no-preference)", () => fitaDasGarantias({ animar: true }));
+  mm.add("(prefers-reduced-motion: reduce)", () => fitaDasGarantias({ animar: false }));
+
   function animacoesDeRolagem() {
     gsap.registerPlugin(ScrollTrigger);
 
