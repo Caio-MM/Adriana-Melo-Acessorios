@@ -880,7 +880,7 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
   .instagram-feed-thumb:hover img{ transform:none; }
 }
 
-.sobre-caixa{ background:var(--blush-50); }
+.sobre-caixa{ background:linear-gradient(180deg, var(--blush-50) 0%, var(--blush-50) 75%, var(--cream) 100%); }
 .process-wrap{ position:relative; }
 .process-step{ text-align:center; padding:0 1.1rem; }
 .process-icon-wrap{
