@@ -354,7 +354,7 @@
     });
   }
 
-  function entregaGuiada({ comPin }) {
+  function entregaGuiada({ comTrava = false } = {}) {
     const wrap = document.querySelector(".process-wrap");
     const passos = gsap.utils.toArray("#sobre .process-step");
     if (!wrap || passos.length < 3) return;
@@ -382,6 +382,28 @@
     }
     const partida = () => wrap.getBoundingClientRect().width * 0.14;
 
+    const secao = document.getElementById("sobre");
+    const caixa = secao && secao.querySelector(":scope > .sobre-caixa");
+    const trava = comTrava && caixa;
+    const RAMPA = 0.25;
+    const PAUSA = 0.5;
+
+    /* ⚠️ Quem segura a seção parada é o pin (fixed: o navegador mantém, não
+       treme). A caixa de dentro só faz a entrada e a saída, sem scrub
+       amortecido — com atraso, a página subia na hora e a caixa voltava
+       depois: a tela "pulava". A derivada desta curva vai de 0 a 1 na
+       entrada, é 0 durante o pin e volta de 1 a 0 na saída; casada com o pin,
+       a velocidade na tela nunca salta. */
+    function rampaComPausa(r) {
+      const sobe = (u) => (u - Math.sin(Math.PI * u) / Math.PI) / 2;
+      const desce = (v) => (v + Math.sin(Math.PI * v) / Math.PI) / 2;
+      return (t) => {
+        if (t < r) return sobe(t / r);
+        if (t <= 1 - r) return 0.5;
+        return 0.5 + desce((t - (1 - r)) / r);
+      };
+    }
+
     let parada;
 
     /* ⚠️ Precisa ser passado na CRIAÇÃO do gatilho: o ScrollTrigger guarda a
@@ -403,7 +425,7 @@
     }
 
     const gatilho = {
-      trigger: "#sobre",
+      trigger: wrap,
       scrub: 0.6,
       invalidateOnRefresh: true,
       refreshPriority: 1,
@@ -411,24 +433,45 @@
       onRefresh: (self) => acender(self.progress),
     };
 
-    if (comPin) {
-      gatilho.start = "center center";
-      gatilho.end = "+=100%";
+    if (trava) {
+      /* ⚠️ Números absolutos, por offsetTop: a caixa se move, e o
+         ScrollTrigger mediria o gatilho já deslocado. Sem anticipatePin: ele
+         prende antes da hora, com a caixa ainda freando, e ela dá um tranco
+         de ~10px ao entrar na trava pelos dois lados. */
+      const tela = () => window.innerHeight;
+      const topoNoDocumento = (el) => { let y = 0; for (let n = el; n; n = n.offsetParent) y += n.offsetTop; return y; };
+      const inicio = () => topoNoDocumento(caixa) + caixa.offsetHeight / 2 + tela() * RAMPA / 2 - tela() / 2;
+      gatilho.trigger = secao;
+      gatilho.start = () => inicio();
+      gatilho.end = () => inicio() + tela() * PAUSA;
       gatilho.pin = true;
-      gatilho.anticipatePin = 1;
+      gsap.set(secao, { paddingBottom: `${RAMPA * 100}vh` });
     } else if (ehVan) {
-      gatilho.start = "top 80%";
-      gatilho.end = "bottom 55%";
+      const linha = () => centroDoPasso(passos[0]).y;
+      gatilho.start = () => `top+=${linha()} 80%`;
+      gatilho.end = () => `top+=${linha()} 30%`;
     } else {
       /* ⚠️ Preso aos ícones, não à seção: com "top 80%" a parada no passo 1
          caía com o ícone ainda abaixo da tela e o pacote sumia antes de ele
          aparecer. Assim cada parada acontece com o seu ícone a 60% da tela. */
-      gatilho.trigger = wrap;
       gatilho.start = () => `top+=${centroDoPasso(passos[0]).y} 60%`;
       gatilho.end = () => `top+=${centroDoPasso(passos[2]).y} 60%`;
     }
 
     const tl = gsap.timeline({ scrollTrigger: gatilho });
+
+    if (trava) {
+      gsap.fromTo(caixa, { y: 0 }, {
+        y: () => window.innerHeight * RAMPA,
+        ease: rampaComPausa(RAMPA / (PAUSA + 2 * RAMPA)),
+        scrollTrigger: {
+          start: () => tl.scrollTrigger.start - window.innerHeight * RAMPA,
+          end: () => tl.scrollTrigger.end + window.innerHeight * RAMPA,
+          scrub: true,
+          invalidateOnRefresh: true,
+        },
+      });
+    }
 
     if (ehVan) {
       tl.fromTo(movel,
@@ -558,12 +601,17 @@
     gsap.registerPlugin(ScrollTrigger);
 
     mm.add("(min-width: 992px) and (prefers-reduced-motion: no-preference)", () => {
-      const tl = entregaGuiada({ comPin: true });
+      const tl = entregaGuiada({ comTrava: true });
       return () => { if (tl && tl.scrollTrigger) tl.scrollTrigger.kill(); };
     });
 
-    mm.add("(max-width: 991.98px) and (prefers-reduced-motion: no-preference)", () => {
-      const tl = entregaGuiada({ comPin: false });
+    mm.add("(min-width: 768px) and (max-width: 991.98px) and (prefers-reduced-motion: no-preference)", () => {
+      const tl = entregaGuiada();
+      return () => { if (tl && tl.scrollTrigger) tl.scrollTrigger.kill(); };
+    });
+
+    mm.add("(max-width: 767.98px) and (prefers-reduced-motion: no-preference)", () => {
+      const tl = entregaGuiada();
       return () => { if (tl && tl.scrollTrigger) tl.scrollTrigger.kill(); };
     });
 
