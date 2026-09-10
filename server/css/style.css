@@ -1026,9 +1026,17 @@ body.has-cookie-consent{ padding-bottom:var(--cookie-consent-space, 0px); }
 }
 
 .garantias-section{
-  padding:5rem 0; overflow-x:clip;
-  background:linear-gradient(180deg, var(--blush-50) 0%, var(--cream) 70%);
+  padding:3rem 0 5rem; overflow-x:clip;
+  background:var(--cream);
 }
+.divisor-laco{
+  display:flex; align-items:center; gap:1rem;
+  max-width:420px; margin:0 auto 3rem;
+  color:var(--blush-500);
+}
+.divisor-laco::before,
+.divisor-laco::after{ content:""; flex:1 1 auto; height:1px; background:var(--blush-300); }
+.divisor-laco svg{ width:30px; height:21px; flex:none; fill:currentColor; }
 .garantias-head{ max-width:600px; margin-bottom:2.5rem; }
 .garantias{ position:relative; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:1.25rem; }
 .garantia{
