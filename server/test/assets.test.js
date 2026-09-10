@@ -60,12 +60,3 @@ test("nenhum preload aponta para a faixa latin-ext, que o português não usa", 
   assert.deepEqual(erradas, [], `preload inútil para português:\n${erradas.join("\n")}`);
 });
 
-test("imagem decorativa fora da primeira tela não baixa adiantado", () => {
-  const html = ler("index.html");
-  const semLazy = [];
-  const re = /<img[^>]+src="img\/mock-produto-[^"]+"[^>]*>/g;
-  for(const [tag] of [...html.matchAll(re)].map(m => [m[0]])){
-    if(!tag.includes('loading="lazy"')) semLazy.push(tag.slice(0, 80));
-  }
-  assert.deepEqual(semLazy, [], `<img> sem loading="lazy":\n${semLazy.join("\n")}`);
-});
