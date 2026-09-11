@@ -705,9 +705,6 @@
     return coupon ? Math.round(subtotal * coupon.percentOff / 100 * 100) / 100 : 0;
   }
 
-  // Preview no cliente, com o preço já com cupom por unidade — o servidor
-  // recalcula tudo de novo em buildCheckoutDraft; este valor nunca é o que
-  // é cobrado.
   function currentPromoDiscount(){
     const couponFactor = coupon ? (1 - coupon.percentOff / 100) : 1;
     const itensComCupom = cart.map(i => {

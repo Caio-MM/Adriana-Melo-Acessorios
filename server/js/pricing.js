@@ -30,14 +30,6 @@
 
   const PROMO_LEVE4_GRUPO = 4;
 
-  /* ⚠️ Ordena por preço para achar o mais barato de cada grupo de 4 — a
-     ordem em que os itens foram adicionados ao carrinho não pode mudar
-     quem sai grátis, senão duas clientes com o mesmo carrinho recebem
-     descontos diferentes. Devolve também quantas unidades de cada produto
-     saem grátis (freeQtyById): o servidor precisa disso para separar, na
-     preferência do Mercado Pago, as unidades pagas das grátis do mesmo
-     produto — cobrar por `unit_price * quantity` numa linha só não permite
-     misturar preço cheio e grátis dentro da mesma linha. */
   function promoLeve4Pague3Breakdown(items) {
     const unidades = [];
     (Array.isArray(items) ? items : []).forEach(item => {

@@ -45,6 +45,7 @@ const db = require("./lib/db");
 const spreadsheetExport = require("./lib/export-spreadsheet");
 const auth = require("./lib/auth");
 const whatsapp = require("./lib/whatsapp");
+const notaFiscal = require("./lib/notaFiscal");
 const instagram = require("./lib/instagram");
 const email = require("./lib/email");
 const emailPhotos = require("./lib/emailPhotos.js");
@@ -2427,6 +2428,32 @@ async function runApprovedOrderSideEffects(orderRow, info){
     console.warn(`Pedido ${info.external_reference} sem e-mail da cliente gravado — recibo não enviado.`);
   }
 
+  // Nota fiscal — best-effort, mesmo racional do WhatsApp/e-mail acima:
+  // uma falha (credenciais ausentes, NCM faltando, Focus NFe fora do ar)
+  // nunca pode reverter a confirmação do pedido.
+  if(process.env.NFE_AUTO_EMIT === "true"){
+    try{
+      const resultado = await notaFiscal.emitirNotaFiscal({
+        externalReference: info.external_reference,
+        items: order.items.map(item => ({
+          id: item.id, qty: item.qty, price: item.price,
+          name: effectiveProduct(item.id, notifyOverridesMap)?.name || `Produto #${item.id}`,
+          ncm: effectiveProduct(item.id, notifyOverridesMap)?.ncm || null,
+        })),
+        address: order.address,
+        subtotal: orderRow.subtotal,
+        shippingPrice: orderRow.shipping_price,
+        discountTotal: orderRow.discount + orderRow.pix_discount + orderRow.promo_discount,
+        total: orderRow.total,
+      });
+      db.setOrderNfeStatus(info.external_reference, resultado);
+      console.log(`Nota fiscal do pedido ${info.external_reference}: ${resultado.status}.`);
+    }catch(nfeErr){
+      db.setOrderNfeStatus(info.external_reference, { status: "erro", error: nfeErr.message });
+      console.error(`Falha ao emitir nota fiscal (pedido ${info.external_reference} segue pago normalmente):`, nfeErr.message || nfeErr);
+    }
+  }
+
   /* Se a etiqueta foi comprada automaticamente, o rastreio já existe neste
      instante e a cliente recebe os dois e-mails na sequência certa: primeiro
      o recibo, depois o "está a caminho". Com a compra automática desligada
@@ -3456,6 +3483,46 @@ app.post("/api/admin/orders/:reference/avisar-postagem", auth.requireAdmin, auth
   } catch (err) {
     console.error("Erro ao reenviar aviso de postagem:", err);
     res.status(500).json({ error: "Não foi possível reenviar o aviso agora." });
+  }
+});
+
+/* POST /api/admin/orders/:reference/emitir-nota — emite (ou tenta de novo)
+   a nota fiscal do pedido na hora, pelo painel. Serve tanto para quando
+   NFE_AUTO_EMIT está desligado quanto para reprocessar um pedido que
+   falhou (NCM faltando, corrigido depois) ou ficou "processando" — a
+   mesma referência do pedido é reenviada à Focus NFe, que trata como o
+   mesmo pedido de nota (ver lib/notaFiscal.js). */
+app.post("/api/admin/orders/:reference/emitir-nota", auth.requireAdmin, auth.requireAdminTwoFactor, async (req, res) => {
+  try {
+    const reference = String(req.params.reference || "");
+    const order = db.getOrderByExternalReference(reference);
+    if(!order){
+      return res.status(404).json({ error: "Pedido não encontrado." });
+    }
+    if(order.status !== "pago"){
+      return res.status(409).json({ error: "Só é possível emitir nota de um pedido pago." });
+    }
+    const overridesMap = getProductOverridesMap();
+    const items = JSON.parse(order.items_json).map(item => ({
+      id: item.id, qty: item.qty, price: item.price,
+      name: effectiveProduct(item.id, overridesMap)?.name || `Produto #${item.id}`,
+      ncm: effectiveProduct(item.id, overridesMap)?.ncm || null,
+    }));
+    const resultado = await notaFiscal.emitirNotaFiscal({
+      externalReference: reference,
+      items,
+      address: JSON.parse(order.address_json),
+      subtotal: order.subtotal,
+      shippingPrice: order.shipping_price,
+      discountTotal: order.discount + order.pix_discount + order.promo_discount,
+      total: order.total,
+    });
+    db.setOrderNfeStatus(reference, resultado);
+    res.json({ ok: true, nota: resultado });
+  } catch (err) {
+    db.setOrderNfeStatus(String(req.params.reference || ""), { status: "erro", error: err.message });
+    console.error("Erro ao emitir nota fiscal:", err);
+    res.status(err.status || 500).json({ error: err.message || "Não foi possível emitir a nota agora." });
   }
 });
 
