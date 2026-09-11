@@ -522,6 +522,35 @@ test("NCM do produto: PATCH aceita com pontos ou só dígitos, rejeita formato e
   assert.equal((await limpo.json()).ncm, null);
 });
 
+test("POST /api/admin/orders/:reference/emitir-nota — sem FOCUS_NFE_TOKEN no .env, recusa e grava o erro no pedido", async () => {
+  // Este ambiente de teste nunca tem FOCUS_NFE_TOKEN/dados fiscais no .env
+  // (ver spawn do server.js, no topo do arquivo) — não tem como testar uma
+  // emissão de verdade sem uma conta real na Focus NFe. O que dá pra testar
+  // sem rede é exatamente a guarda que impede a tentativa: configuracaoCompleta()
+  // (lib/notaFiscal.js) falha, a rota responde com o erro e grava
+  // nfe_status:"erro" no pedido, sem derrubar nada.
+  const dona = db.createUser({ name: "Dona Nota", email: "donanota@test.com", passwordHash: "x", cpf: "11144477735" });
+  const pedido = db.createOrder({
+    externalReference: "TEST-EMITIR-NOTA-1", userId: dona.id, status: "pago",
+    items: [{ id: 1, qty: 1, price: 34.9, color: "#F4B4CC" }],
+    address: { nome: "Dona Nota", telefone: "61982749808", rua: "Rua X", numero: "1", bairro: "B", cidade: "Brasília", uf: "DF", cep: "70040020" },
+    shipping: { service_id: "1", name: "PAC", price: 10 },
+    subtotal: 34.9, shippingPrice: 10, total: 44.9, customerPhone: "61982749808",
+  });
+
+  const semLogin = await post(`/api/admin/orders/${pedido.external_reference}/emitir-nota`, {});
+  assert.equal(semLogin.status, 401);
+
+  const res = await post(`/api/admin/orders/${pedido.external_reference}/emitir-nota`, {}, sharedAdminCookie);
+  assert.equal(res.status, 500);
+  const body = await res.json();
+  assert.match(body.error, /não configurada/i);
+
+  const salvo = db.getOrderByExternalReference(pedido.external_reference);
+  assert.equal(salvo.nfe_status, "erro");
+  assert.match(salvo.nfe_error, /não configurada/i);
+});
+
 test("continuar pagamento: 404 se não existe/não é da cliente, 409 se já não está pendente", async () => {
   // Duas clientes novas, cada uma dona de um pedido — tudo inserido direto
   // no banco (db.createUser/createSession/createOrder), sem passar por

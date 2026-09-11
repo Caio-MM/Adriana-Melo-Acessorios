@@ -3237,6 +3237,10 @@ app.get("/api/admin/orders", auth.requireAdmin, auth.requireAdminTwoFactor, (req
         shippingPrice: row.shipping_price,
         total: row.total,
         createdAt: row.created_at,
+        nfeStatus: row.nfe_status || null,
+        nfeNumber: row.nfe_number || null,
+        nfeUrl: row.nfe_url || null,
+        nfeError: row.nfe_error || null,
       };
     });
     const stats = db.getOrderStats();

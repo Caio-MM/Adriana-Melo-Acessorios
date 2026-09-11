@@ -529,6 +529,21 @@
     return `<span class="aviso-postagem is-pendente"><i class="bi bi-hourglass-split me-1"></i>Aviso na fila para envio</span>`;
   }
 
+  function textoDaNota(order){
+    if(order.nfeStatus === "emitida"){
+      const numero = order.nfeNumber ? ` nº ${escapeHTML(order.nfeNumber)}` : "";
+      const link = order.nfeUrl ? ` — <a href="${escapeHTML(order.nfeUrl)}" target="_blank" rel="noopener">ver DANFE</a>` : "";
+      return `<span class="aviso-postagem is-enviado"><i class="bi bi-check-circle me-1"></i>Nota emitida${numero}${link}</span>`;
+    }
+    if(order.nfeStatus === "processando"){
+      return `<span class="aviso-postagem is-pendente"><i class="bi bi-hourglass-split me-1"></i>Nota em processamento — atualize a página em instantes</span>`;
+    }
+    if(order.nfeStatus === "erro"){
+      return `<span class="aviso-postagem is-erro"><i class="bi bi-exclamation-triangle me-1"></i>Não consegui emitir: ${escapeHTML(order.nfeError || "erro desconhecido")}</span>`;
+    }
+    return `<span class="aviso-postagem is-pendente"><i class="bi bi-hourglass-split me-1"></i>Nota ainda não emitida</span>`;
+  }
+
   function renderPendingCarts(orders){
     const now = Date.now();
     const pending = orders.filter(o => {
@@ -1770,6 +1785,16 @@
               <button type="button" class="btn-outline-blush resend-notice-btn" data-ref="${escapeHTML(ref)}" title="Reenvia o e-mail de 'seu pedido foi postado' com o código já salvo"><i class="bi bi-send me-1"></i>Avisar de novo por e-mail</button>
             </div>
             ${textoDoAviso(order)}
+          </div>
+
+          <div class="tracking-bloco">
+            <span class="tracking-bloco-titulo">Nota fiscal</span>
+            ${order.nfeStatus !== "emitida" ? `
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+              <button type="button" class="btn-outline-blush emit-nfe-btn" data-ref="${escapeHTML(ref)}" title="Emite a nota fiscal deste pedido agora"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Emitir nota</button>
+            </div>
+            ` : ""}
+            ${textoDaNota(order)}
           </div>` : ""}
 
           <span class="small tracking-feedback" data-ref-feedback="${escapeHTML(ref)}"></span>
@@ -1937,6 +1962,31 @@
     }
   }
 
+  async function emitirNota(ref, feedbackEl, btn){
+    const rotulo = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = "Emitindo...";
+    feedbackEl.textContent = "";
+    feedbackEl.classList.remove("is-success", "is-error");
+    try{
+      const res = await fetchWithTimeout(`/api/admin/orders/${encodeURIComponent(ref)}/emitir-nota`, { method: "POST" }, 30000);
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || "Não foi possível emitir a nota.");
+      const status = data.nota?.status;
+      feedbackEl.textContent = status === "emitida" ? "Nota emitida!"
+        : status === "processando" ? "Nota em processamento — atualize a página em instantes."
+        : (data.nota?.error || "Não emitida.");
+      feedbackEl.classList.add(status === "emitida" ? "is-success" : "is-error");
+      loadDashboard();
+    }catch(err){
+      feedbackEl.textContent = err.message || "Erro ao emitir a nota.";
+      feedbackEl.classList.add("is-error");
+    }finally{
+      btn.disabled = false;
+      btn.innerHTML = rotulo;
+    }
+  }
+
   async function generateLabel(ref, feedbackEl, btn){
     if(!confirm("Gerar a etiqueta de envio agora? Isso compra o frete de verdade no Melhor Envio (gasta saldo da conta).")) return;
     const originalLabel = btn.innerHTML;
@@ -1997,6 +2047,7 @@
     const labelBtn = e.target.closest(".generate-label-btn");
     const deliveredBtn = e.target.closest(".mark-delivered-btn");
     const resendBtn = e.target.closest(".resend-notice-btn");
+    const emitNfeBtn = e.target.closest(".emit-nfe-btn");
     const checkBtn = e.target.closest(".check-delivery-btn");
     const deleteBtn = e.target.closest(".delete-order-btn");
     const copyBtn = e.target.closest(".copy-field-btn");
@@ -2017,6 +2068,13 @@
       const ref = resendBtn.dataset.ref;
       const feedbackEl = listEl.querySelector(`[data-ref-feedback="${ref}"]`);
       if(feedbackEl) reenviarAviso(ref, feedbackEl, resendBtn);
+      return;
+    }
+
+    if(emitNfeBtn){
+      const ref = emitNfeBtn.dataset.ref;
+      const feedbackEl = listEl.querySelector(`[data-ref-feedback="${ref}"]`);
+      if(feedbackEl) emitirNota(ref, feedbackEl, emitNfeBtn);
       return;
     }
 
