@@ -494,6 +494,34 @@ test("descrição do produto: PATCH edita, GET /api/products reflete, POST /api/
   assert.equal((await created.json()).description, "Feito sob encomenda.");
 });
 
+test("NCM do produto: PATCH aceita com pontos ou só dígitos, rejeita formato errado, some do catálogo público", async () => {
+  const adminCookie = sharedAdminCookie;
+  assert.ok(adminCookie);
+
+  // Aceita com pontuação (como costuma vir de uma tabela de NCM) e
+  // normaliza para só os 8 dígitos.
+  const comPontos = await patch("/api/admin/products/4", { ncm: "6117.10.00" }, adminCookie);
+  assert.equal(comPontos.status, 200);
+  assert.equal((await comPontos.json()).ncm, "61171000");
+
+  // Aparece na listagem do painel...
+  const adminList = await (await fetch(ORIGIN + "/api/admin/products", { headers: { Cookie: adminCookie } })).json();
+  assert.equal(adminList.products.find(p => p.id === 4).ncm, "61171000");
+
+  // ...mas NUNCA no catálogo público — é dado fiscal, não de vitrine.
+  const pub = await (await fetch(ORIGIN + "/api/products")).json();
+  assert.equal(pub.products.find(p => p.id === 4).ncm, undefined);
+
+  // Menos de 8 dígitos é rejeitado.
+  const curto = await patch("/api/admin/products/4", { ncm: "1234567" }, adminCookie);
+  assert.equal(curto.status, 400);
+
+  // String vazia limpa de volta pro padrão (null) — não é erro.
+  const limpo = await patch("/api/admin/products/4", { ncm: "" }, adminCookie);
+  assert.equal(limpo.status, 200);
+  assert.equal((await limpo.json()).ncm, null);
+});
+
 test("continuar pagamento: 404 se não existe/não é da cliente, 409 se já não está pendente", async () => {
   // Duas clientes novas, cada uma dona de um pedido — tudo inserido direto
   // no banco (db.createUser/createSession/createOrder), sem passar por

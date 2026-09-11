@@ -303,6 +303,7 @@ function effectiveProduct(id, overridesMap){
       // NULL = nunca customizado -> todas as cores disponíveis (não deixa
       // nada subitamente incomprável para produto que a lojista nunca editou).
       description: custom.description || null,
+      ncm: custom.ncm || null,
       hidden: Boolean(custom.hidden),
       soldOut: Boolean(custom.sold_out),
     };
@@ -310,7 +311,7 @@ function effectiveProduct(id, overridesMap){
   const base = PRODUCTS[id];
   if(!base) return null;
   const override = overridesMap.get(id);
-  if(!override) return { ...base, photos: [], photoUrl: null, description: null, hidden: false, soldOut: false };
+  if(!override) return { ...base, photos: [], photoUrl: null, description: null, ncm: null, hidden: false, soldOut: false };
   const photos = photosFromRow(override);
   return {
     ...base,
@@ -320,6 +321,7 @@ function effectiveProduct(id, overridesMap){
     category: override.category || base.category,
     badges: override.badges ? JSON.parse(override.badges) : base.badges,
     description: override.description || null,
+    ncm: override.ncm || null,
     hidden: Boolean(override.hidden),
     soldOut: Boolean(override.sold_out),
   };
@@ -3552,7 +3554,7 @@ app.get("/api/admin/products", auth.requireAdmin, auth.requireAdminTwoFactor, (r
   const overridesMap = getProductOverridesMap();
   const products = getAllProductIds().map(id => {
     const p = effectiveProduct(id, overridesMap);
-    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, description: p.description, hidden: p.hidden, soldOut: p.soldOut };
+    return { id, name: p.name, price: p.price, photoUrl: p.photoUrl, photos: p.photos, category: p.category, badges: p.badges, description: p.description, ncm: p.ncm, hidden: p.hidden, soldOut: p.soldOut };
   });
   res.json({ products, categories: getAllCategories(), availableBadges: PRODUCT_BADGES });
 });
@@ -3630,6 +3632,15 @@ function isValidBadges(v){
   if(!Array.isArray(v)) return false;
   if(v.length > PRODUCT_BADGES.length) return false;
   return v.every(b => PRODUCT_BADGES.includes(b)) && new Set(v).size === v.length;
+}
+// NCM: 8 dígitos, sem pontuação — a lojista pode colar com pontos
+// ("6117.10.00", formato comum em tabelas), normalizeNcm tira tudo que não
+// é dígito antes de validar/gravar.
+function normalizeNcm(v){
+  return String(v || "").replace(/\D/g, "");
+}
+function isValidNcm(v){
+  return /^\d{8}$/.test(v);
 }
 // Galeria de fotos: array vazio é um estado real ("removeu todas as fotos"),
 // mesmo racional das outras listas. Teto de 8 fotos por produto — generoso
@@ -3799,6 +3810,13 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFact
       }
       fields.description = description || null;
     }
+    if("ncm" in body){
+      const ncm = normalizeNcm(body.ncm);
+      if(ncm && !isValidNcm(ncm)){
+        return res.status(400).json({ error: "NCM inválido. Use os 8 dígitos do código (com ou sem pontos)." });
+      }
+      fields.ncm = ncm || null;
+    }
     if("hidden" in body){
       fields.hidden = Boolean(body.hidden);
     }
@@ -3814,7 +3832,7 @@ app.patch("/api/admin/products/:id", auth.requireAdmin, auth.requireAdminTwoFact
     else db.upsertProductOverride(id, fields);
 
     const updated = effectiveProduct(id, getProductOverridesMap());
-    res.json({ id, name: updated.name, price: updated.price, photoUrl: updated.photoUrl, photos: updated.photos, category: updated.category, badges: updated.badges, description: updated.description, hidden: updated.hidden, soldOut: updated.soldOut });
+    res.json({ id, name: updated.name, price: updated.price, photoUrl: updated.photoUrl, photos: updated.photos, category: updated.category, badges: updated.badges, description: updated.description, ncm: updated.ncm, hidden: updated.hidden, soldOut: updated.soldOut });
   } catch (err) {
     console.error("Erro ao atualizar produto:", err);
     res.status(500).json({ error: "Não foi possível salvar o produto agora." });

@@ -245,6 +245,20 @@ test("upsertProductOverride — description: mesmo padrão de name (ausente pres
   assert.equal(limpa.description, null, "descrição vazia volta pro padrão (NULL)");
 });
 
+test("upsertProductOverride — ncm: mesmo padrão de description (ausente preserva, vazio limpa)", () => {
+  const semTocar = db.upsertProductOverride(90005, { name: "Produto Teste NCM" });
+  assert.equal(semTocar.ncm, null, "chave ausente preserva NULL — emissão de nota recusa item sem NCM");
+
+  const comNcm = db.upsertProductOverride(90005, { ncm: "61171000" });
+  assert.equal(comNcm.ncm, "61171000");
+
+  const depoisDeOutraEdicao = db.upsertProductOverride(90005, { price: 42 });
+  assert.equal(depoisDeOutraEdicao.ncm, "61171000", "edição de outro campo preserva o NCM salvo");
+
+  const limpa = db.upsertProductOverride(90005, { ncm: "" });
+  assert.equal(limpa.ncm, null, "NCM vazio volta pro padrão (NULL)");
+});
+
 // Reproduz o mesmo SHA-256 de lib/auth.js (hashToken, não exportada) só
 // para conseguir mexer direto numa linha de desafio nos testes de prazo
 // abaixo — não é um algoritmo novo, é o mesmo já usado em produção.

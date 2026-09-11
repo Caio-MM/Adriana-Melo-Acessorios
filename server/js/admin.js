@@ -546,12 +546,12 @@
       const recoveryUrl = whatsappRecoveryUrl(order);
       return `
       <div class="order-card">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+        <div class="d-flex align-items-start flex-wrap gap-2 mb-2">
           <div>
             <div class="fw-semibold">${escapeHTML(order.customer?.nome || "Cliente")}</div>
             <div class="small text-ink-soft">Iniciado em ${formatDate(order.createdAt)}</div>
           </div>
-          <span class="order-status order-status-pending">${escapeHTML(order.items.length)} ${order.items.length === 1 ? "item" : "itens"} — ${formatMoney(order.total)}</span>
+          <span class="order-status order-status-pending ms-auto">${escapeHTML(order.items.length)} ${order.items.length === 1 ? "item" : "itens"} — ${formatMoney(order.total)}</span>
         </div>
         <div class="d-flex flex-wrap gap-2">
           ${recoveryUrl ? `
@@ -705,6 +705,7 @@
   const epName = document.getElementById("epName");
   const epDescription = document.getElementById("epDescription");
   const epPrice = document.getElementById("epPrice");
+  const epNcm = document.getElementById("epNcm");
   const epPhotoFile = document.getElementById("epPhotoFile");
   const epAddPhotoBtn = document.getElementById("epAddPhotoBtn");
   const epPhotosListEl = document.getElementById("epPhotosList");
@@ -812,6 +813,7 @@
     epName.value = product.name;
     epDescription.value = product.description || "";
     epPrice.value = product.price;
+    epNcm.value = product.ncm || "";
     epPhotoFile.value = "";
     epCategory.dataset.categoriaManual = "false";
     renderCategoryOptions(epCategory, product.category || "");
@@ -837,6 +839,7 @@
       photos: [...pendingPhotos],
       category: product.category || "",
       badges: [...(product.badges || [])].sort(),
+      ncm: product.ncm || "",
       soldOut: Boolean(product.soldOut),
     };
     editModal.show();
@@ -1229,6 +1232,7 @@
     const name = epName.value.trim();
     const description = epDescription.value.trim();
     const price = Number(epPrice.value);
+    const ncm = epNcm.value.replace(/\D/g, "");
     const category = epCategory.value;
     const badges = selectedBadges();
 
@@ -1236,6 +1240,7 @@
     if(name !== editOriginal.name) patch.name = name;
     if(description !== editOriginal.description) patch.description = description;
     if(price !== editOriginal.price) patch.price = price;
+    if(ncm !== editOriginal.ncm) patch.ncm = ncm;
     if(JSON.stringify(pendingPhotos) !== JSON.stringify(editOriginal.photos)) patch.photos = pendingPhotos;
     if(category !== editOriginal.category) patch.category = category;
     const sortedBadges = [...badges].sort();
@@ -1689,12 +1694,12 @@
 
     return `
       <div class="order-card" id="pedido-${escapeHTML(ref)}" data-ref="${escapeHTML(ref)}">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+        <div class="d-flex align-items-start flex-wrap gap-2 mb-2">
           <div>
             <div class="fw-semibold">Pedido #${escapeHTML(ref.slice(0, 8))}</div>
             <div class="small text-ink-soft">${formatDate(order.createdAt)}</div>
           </div>
-          <div class="d-flex align-items-center gap-2">
+          <div class="d-flex align-items-center gap-2 ms-auto">
             <span class="order-status ${status.cls}">${status.label}</span>
             ${!isPaid ? `<button type="button" class="delete-order-icon-btn delete-order-btn" data-ref="${escapeHTML(ref)}" aria-label="Apagar pedido" title="Apagar pedido"><i class="bi bi-trash3"></i></button>` : ""}
           </div>

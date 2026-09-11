@@ -271,6 +271,12 @@ ensureColumn("orders", "promo_discount", "REAL NOT NULL DEFAULT 0");
 ensureColumn("orders", "payment_method", "TEXT NOT NULL DEFAULT 'card'");
 ensureColumn("product_overrides", "category", "TEXT");
 ensureColumn("product_overrides", "badges", "TEXT");
+// NCM (Nomenclatura Comum do Mercosul) — código da Receita usado para
+// classificar o produto na nota fiscal. NULL = nunca preenchido; a
+// emissão automática (lib/notaFiscal.js) recusa gerar nota de um pedido
+// com algum item sem NCM, em vez de mandar um código fictício.
+ensureColumn("product_overrides", "ncm", "TEXT");
+ensureColumn("custom_products", "ncm", "TEXT");
 // Cores em estoque (array JSON de hex da paleta em js/colors.js). NULL
 // significa "nunca editado pela lojista" -> todas as cores disponíveis
 // (effectiveProduct() aplica esse default). Diferente de badges: aqui um
@@ -358,6 +364,13 @@ ensureColumn("orders", "delivered_at", "INTEGER");
 // requisição separada, feita quando a cliente abre a página de
 // acompanhamento.
 ensureColumn("orders", "melhor_envio_shipment_id", "TEXT");
+// Nota fiscal — ver server/lib/notaFiscal.js. status começa "nao_emitida"
+// em todo pedido antigo (a coluna nasce NULL; tratado como "não emitida"
+// no código que lê, nunca aqui, para não ter que reescrever o histórico).
+ensureColumn("orders", "nfe_status", "TEXT");
+ensureColumn("orders", "nfe_number", "TEXT");
+ensureColumn("orders", "nfe_url", "TEXT");
+ensureColumn("orders", "nfe_error", "TEXT");
 // Cupom de uso único por cliente (ex.: o de boas-vindas). Fica no cupom, e
 // não no código, para a loja poder ter os dois tipos.
 ensureColumn("coupons", "once_per_customer", "INTEGER NOT NULL DEFAULT 0");
@@ -897,6 +910,17 @@ function markOrderDelivered(ref, quando) {
 function setMelhorEnvioShipmentId(ref, shipmentId) {
   stmtSetMelhorEnvioShipmentId.run(shipmentId, Date.now(), ref);
 }
+const stmtSetOrderNfe = db.prepare(`
+  UPDATE orders SET nfe_status = ?, nfe_number = ?, nfe_url = ?, nfe_error = ?, updated_at = ?
+  WHERE external_reference = ?
+`);
+// status: "emitida" | "erro" | "sem_ncm" — nunca "nao_emitida" aqui; esse
+// estado é a ausência de linha (coluna NULL), o padrão de todo pedido que
+// nunca passou por emitirNotaFiscal (server/lib/notaFiscal.js).
+function setOrderNfeStatus(ref, { status, number = null, url = null, error = null }) {
+  stmtSetOrderNfe.run(status, number, url, error, Date.now(), ref);
+  return getOrderByExternalReference(ref);
+}
 function getOrderStats() {
   return stmtOrderStats.get();
 }
@@ -959,13 +983,14 @@ function saveProductPhotoVariant(photoId, width, format, mimeType, buffer) {
 const stmtGetProductOverride = db.prepare(`SELECT * FROM product_overrides WHERE product_id = ?`);
 const stmtListProductOverrides = db.prepare(`SELECT * FROM product_overrides`);
 const stmtUpsertProductOverride = db.prepare(`
-  INSERT INTO product_overrides (product_id, name, price, photo_url, category, badges, available_colors, photos, allow_second_color, description, hidden, sold_out, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO product_overrides (product_id, name, price, photo_url, category, badges, available_colors, photos, allow_second_color, description, ncm, hidden, sold_out, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON CONFLICT(product_id) DO UPDATE SET
     name = excluded.name, price = excluded.price, photo_url = excluded.photo_url,
     category = excluded.category, badges = excluded.badges,
     available_colors = excluded.available_colors, photos = excluded.photos,
     allow_second_color = excluded.allow_second_color, description = excluded.description,
+    ncm = excluded.ncm,
     hidden = excluded.hidden, sold_out = excluded.sold_out, updated_at = excluded.updated_at
 `);
 
@@ -1045,9 +1070,10 @@ function upsertProductOverride(productId, fields) {
   // novo) — sem a distinção NULL-vs-vazio que available_colors/photos
   // precisam, já que aqui não existe um "descrição vazia de propósito".
   const description = "description" in fields ? (fields.description || null) : (current.description ?? null);
+  const ncm = "ncm" in fields ? (fields.ncm || null) : (current.ncm ?? null);
   const hidden = "hidden" in fields ? (fields.hidden ? 1 : 0) : (current.hidden ?? 0);
   const soldOut = "soldOut" in fields ? (fields.soldOut ? 1 : 0) : (current.sold_out ?? 0);
-  stmtUpsertProductOverride.run(productId, name, price, photoUrl, category, badges, availableColors, photos, allowSecondColor, description, hidden, soldOut, Date.now());
+  stmtUpsertProductOverride.run(productId, name, price, photoUrl, category, badges, availableColors, photos, allowSecondColor, description, ncm, hidden, soldOut, Date.now());
   return getProductOverride(productId);
 }
 
@@ -1057,12 +1083,12 @@ const stmtGetCustomProduct = db.prepare(`SELECT * FROM custom_products WHERE id 
 const stmtMaxCustomProductId = db.prepare(`SELECT MAX(id) AS maxId FROM custom_products`);
 const stmtInsertCustomProduct = db.prepare(`
   INSERT INTO custom_products
-    (id, name, price, weight, width, height, length, category, photo_url, badges, available_colors, photos, allow_second_color, description, hidden, sold_out, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (id, name, price, weight, width, height, length, category, photo_url, badges, available_colors, photos, allow_second_color, description, ncm, hidden, sold_out, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const stmtUpdateCustomProduct = db.prepare(`
   UPDATE custom_products SET
-    name = ?, price = ?, category = ?, photo_url = ?, badges = ?, available_colors = ?, photos = ?, allow_second_color = ?, description = ?, hidden = ?, sold_out = ?, updated_at = ?
+    name = ?, price = ?, category = ?, photo_url = ?, badges = ?, available_colors = ?, photos = ?, allow_second_color = ?, description = ?, ncm = ?, hidden = ?, sold_out = ?, updated_at = ?
   WHERE id = ?
 `);
 const stmtDeleteCustomProduct = db.prepare(`DELETE FROM custom_products WHERE id = ?`);
@@ -1090,6 +1116,7 @@ function insertCustomProduct({ startAt, name, price, weight, width, height, leng
     null, // photos: produto novo começa sem foto — mesmo estado de photo_url null
     0,    // allow_second_color: produto novo começa sem a 2ª cor liberada
     description || null,
+    null, // ncm: produto novo começa sem classificação fiscal
     0,    // hidden: produto novo começa visível na vitrine
     0,    // sold_out: produto novo começa disponível para compra
     now, now
@@ -1121,9 +1148,10 @@ function updateCustomProduct(id, fields) {
     ? (fields.allowSecondColor ? 1 : 0)
     : (current.allow_second_color ?? 0);
   const description = "description" in fields ? (fields.description || null) : (current.description ?? null);
+  const ncm = "ncm" in fields ? (fields.ncm || null) : (current.ncm ?? null);
   const hidden = "hidden" in fields ? (fields.hidden ? 1 : 0) : (current.hidden ?? 0);
   const soldOut = "soldOut" in fields ? (fields.soldOut ? 1 : 0) : (current.sold_out ?? 0);
-  stmtUpdateCustomProduct.run(name, price, category, photoUrl, badges, availableColors, photos, allowSecondColor, description, hidden, soldOut, Date.now(), id);
+  stmtUpdateCustomProduct.run(name, price, category, photoUrl, badges, availableColors, photos, allowSecondColor, description, ncm, hidden, soldOut, Date.now(), id);
   return getCustomProduct(id);
 }
 // Não apaga a foto em disco — quem chama (server.js) já leu photo_url ANTES
@@ -1472,6 +1500,7 @@ module.exports = {
   listOrdersAwaitingDelivery,
   markOrderDelivered,
   setMelhorEnvioShipmentId,
+  setOrderNfeStatus,
   getOrderStats,
   deleteOrder,
   hasUsedCoupon,

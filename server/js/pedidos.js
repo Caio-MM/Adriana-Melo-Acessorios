@@ -50,12 +50,12 @@
       const shippingLabel = order.shipping?.name ? ` — ${escapeHTML(order.shipping.name)}` : "";
       return `
         <div class="order-card">
-          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+          <div class="d-flex align-items-start flex-wrap gap-2 mb-2">
             <div>
               <div class="fw-semibold">Pedido #${escapeHTML(order.reference.slice(0, 8))}</div>
               <div class="small" style="color:var(--ink-soft)">${formatDate(order.createdAt)}</div>
             </div>
-            <div class="d-flex flex-column align-items-end gap-1">
+            <div class="d-flex flex-column align-items-end gap-1 ms-auto">
               <span class="order-status ${status.cls}">${status.label}</span>
               ${order.status === "pendente" ? `
               <button type="button" class="btn btn-outline-blush btn-sm resume-payment-btn" data-reference="${escapeHTML(order.reference)}">
