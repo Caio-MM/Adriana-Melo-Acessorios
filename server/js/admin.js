@@ -1723,6 +1723,10 @@
         <div class="d-flex justify-content-between small text-blush">
           <span>Desconto Pix</span><span>-${formatMoney(order.pixDiscount)}</span>
         </div>` : ""}
+        ${order.promoDiscount > 0 ? `
+        <div class="d-flex justify-content-between small text-blush">
+          <span>Leve 4, pague 3</span><span>-${formatMoney(order.promoDiscount)}</span>
+        </div>` : ""}
 
         <div class="d-flex justify-content-between fw-semibold pt-2 mt-1 border-top" style="border-color:var(--blush-100)!important">
           <span>Total <span class="fw-normal small text-ink-soft">· ${escapeHTML(PAYMENT_METHOD_LABELS[order.paymentMethod] || "Cartão ou boleto")}</span></span>

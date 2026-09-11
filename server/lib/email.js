@@ -601,7 +601,7 @@ function linhaResumo(rotulo, valor, forte){
 
 /** Recibo da compra, enviado quando o pagamento é aprovado. */
 function formatOrderConfirmationEmail({
-  externalReference, items, subtotal, discount, pixDiscount, shippingPrice,
+  externalReference, items, subtotal, discount, pixDiscount, promoDiscount, shippingPrice,
   total, couponCode, address, paidAt, trackUrl,
 }){
   const subject = `Pedido confirmado — ${externalReference}`;
@@ -623,6 +623,7 @@ function formatOrderConfirmationEmail({
     `Subtotal: ${formatCurrency(subtotal)}`,
     ...(discount > 0 ? [`Desconto${couponCode ? ` (${couponCode})` : ""}: -${formatCurrency(discount)}`] : []),
     ...(pixDiscount > 0 ? [`Desconto Pix: -${formatCurrency(pixDiscount)}`] : []),
+    ...(promoDiscount > 0 ? [`Promoção Leve 4 Pague 3: -${formatCurrency(promoDiscount)}`] : []),
     `Frete: ${shippingPrice > 0 ? formatCurrency(shippingPrice) : "grátis"}`,
     `Total: ${formatCurrency(total)}`,
     "",
@@ -661,6 +662,7 @@ function formatOrderConfirmationEmail({
             ${linhaResumo("Subtotal", formatCurrency(subtotal))}
             ${discount > 0 ? linhaResumo(`Desconto${couponCode ? ` (${couponCode})` : ""}`, `-${formatCurrency(discount)}`) : ""}
             ${pixDiscount > 0 ? linhaResumo("Desconto Pix", `-${formatCurrency(pixDiscount)}`) : ""}
+            ${promoDiscount > 0 ? linhaResumo("Promoção Leve 4 Pague 3", `-${formatCurrency(promoDiscount)}`) : ""}
             ${linhaResumo("Frete", shippingPrice > 0 ? formatCurrency(shippingPrice) : "grátis")}
             ${linhaResumo("Total", formatCurrency(total), true)}
           </table>

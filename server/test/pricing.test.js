@@ -41,3 +41,44 @@ test("pixPriceFor e round2 lidam com entrada inválida sem quebrar", () => {
   assert.equal(pricing.pixPriceFor(null), 0);
   assert.equal(pricing.pixPriceFor(undefined), 0);
 });
+
+test("promoção Leve 4 Pague 3: nada grátis abaixo de 4 unidades", () => {
+  assert.equal(pricing.promoLeve4Pague3For([]), 0);
+  assert.equal(pricing.promoLeve4Pague3For([{ qty: 1, price: 50 }]), 0);
+  assert.equal(pricing.promoLeve4Pague3For([{ qty: 3, price: 50 }]), 0);
+});
+
+test("promoção Leve 4 Pague 3: 1 grátis a cada 4 unidades, sempre a mais barata do grupo", () => {
+  // 4 unidades iguais: a 4ª sai grátis.
+  assert.equal(pricing.promoLeve4Pague3For([{ qty: 4, price: 50 }]), 50);
+  // 5 e 7 unidades: ainda só 1 grupo completo de 4 (a mais barata do grupo).
+  assert.equal(pricing.promoLeve4Pague3For([{ qty: 5, price: 50 }]), 50);
+  assert.equal(pricing.promoLeve4Pague3For([{ qty: 7, price: 50 }]), 50);
+  // 8 unidades: 2 grupos completos, 2 grátis.
+  assert.equal(pricing.promoLeve4Pague3For([{ qty: 8, price: 50 }]), 100);
+  // 12 unidades: 3 grupos completos.
+  assert.equal(pricing.promoLeve4Pague3For([{ qty: 12, price: 50 }]), 150);
+});
+
+test("promoção Leve 4 Pague 3: mistura produtos, sempre libera a mais barata do grupo de 4", () => {
+  // 3 unidades de R$100 + 1 de R$20: um grupo de 4, a mais barata (R$20) sai grátis.
+  assert.equal(pricing.promoLeve4Pague3For([
+    { qty: 3, price: 100 },
+    { qty: 1, price: 20 },
+  ]), 20);
+  // 6 unidades de R$100 + 2 de R$10: ordenado por preço, os 4 primeiros
+  // (todos R$100) formam o 1º grupo — a mais barata DELE (R$100) sai
+  // grátis; os 4 seguintes (2x R$100 + 2x R$10) formam o 2º grupo — a
+  // mais barata dele (R$10) sai grátis.
+  assert.equal(pricing.promoLeve4Pague3For([
+    { qty: 6, price: 100 },
+    { qty: 2, price: 10 },
+  ]), 110);
+});
+
+test("promoção Leve 4 Pague 3: não muda com a ordem dos itens no carrinho", () => {
+  const a = pricing.promoLeve4Pague3For([{ qty: 1, price: 90 }, { qty: 3, price: 30 }]);
+  const b = pricing.promoLeve4Pague3For([{ qty: 3, price: 30 }, { qty: 1, price: 90 }]);
+  assert.equal(a, b);
+  assert.equal(a, 30);
+});

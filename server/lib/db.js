@@ -66,6 +66,7 @@ db.exec(`
     -- Pix"), e somar os dois numa coluna só tornaria impossível remontar o
     -- recibo depois.
     pix_discount        REAL NOT NULL DEFAULT 0,
+    promo_discount      REAL NOT NULL DEFAULT 0,
     payment_method      TEXT NOT NULL DEFAULT 'card',
     shipping_price      REAL NOT NULL,
     total               REAL NOT NULL,
@@ -266,6 +267,7 @@ ensureColumn("orders", "tracking_code", "TEXT");
 // Pedidos criados antes da forma de pagamento existir são todos de cartão
 // (era a única opção), então o DEFAULT já deixa o histórico correto.
 ensureColumn("orders", "pix_discount", "REAL NOT NULL DEFAULT 0");
+ensureColumn("orders", "promo_discount", "REAL NOT NULL DEFAULT 0");
 ensureColumn("orders", "payment_method", "TEXT NOT NULL DEFAULT 'card'");
 ensureColumn("product_overrides", "category", "TEXT");
 ensureColumn("product_overrides", "badges", "TEXT");
@@ -727,9 +729,9 @@ function incrementTwoFactorEmailCodeAttempts(tokenHash) {
 const stmtInsertOrder = db.prepare(`
   INSERT INTO orders (
     external_reference, user_id, status, items_json, address_json, shipping_json,
-    coupon_code, subtotal, discount, pix_discount, payment_method,
+    coupon_code, subtotal, discount, pix_discount, promo_discount, payment_method,
     shipping_price, total, customer_phone, customer_email, created_at, updated_at
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const stmtGetOrderByRef = db.prepare(`SELECT * FROM orders WHERE external_reference = ?`);
 const stmtUpdateOrderStatus = db.prepare(
@@ -790,6 +792,7 @@ function createOrder(order) {
     order.subtotal,
     order.discount ?? 0,
     order.pixDiscount ?? 0,
+    order.promoDiscount ?? 0,
     order.paymentMethod ?? "card",
     order.shippingPrice,
     order.total,
@@ -850,7 +853,7 @@ function updateOrderStatus(ref, status, paymentId) {
 const stmtUpdateOrderDraft = db.prepare(`
   UPDATE orders SET
     items_json = ?, address_json = ?, shipping_json = ?, coupon_code = ?,
-    subtotal = ?, discount = ?, pix_discount = ?, shipping_price = ?, total = ?,
+    subtotal = ?, discount = ?, pix_discount = ?, promo_discount = ?, shipping_price = ?, total = ?,
     customer_phone = ?, updated_at = ?
   WHERE external_reference = ?
 `);
@@ -863,6 +866,7 @@ function updateOrderDraft(ref, order) {
     order.subtotal,
     order.discount ?? 0,
     order.pixDiscount ?? 0,
+    order.promoDiscount ?? 0,
     order.shippingPrice,
     order.total,
     order.customerPhone ?? null,

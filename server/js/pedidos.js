@@ -81,6 +81,10 @@
           <div class="d-flex justify-content-between small" style="color:var(--blush-700)">
             <span>Desconto Pix</span><span>-${formatMoney(order.pixDiscount)}</span>
           </div>` : ""}
+          ${order.promoDiscount > 0 ? `
+          <div class="d-flex justify-content-between small" style="color:var(--blush-700)">
+            <span>Leve 4, pague 3</span><span>-${formatMoney(order.promoDiscount)}</span>
+          </div>` : ""}
           <div class="d-flex justify-content-between small">
             <span>Frete${shippingLabel}</span><span>${formatMoney(order.shippingPrice)}</span>
           </div>
