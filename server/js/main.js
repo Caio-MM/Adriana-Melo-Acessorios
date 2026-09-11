@@ -1644,7 +1644,7 @@
 
   function updateActiveSection(){
     if(!navTargets.length) return;
-    const line = nav.offsetHeight + 24;
+    const line = nav.getBoundingClientRect().bottom + 24;
     let current = null;
     for(const t of navTargets){
       if(t.section.getBoundingClientRect().top <= line) current = t.link;
