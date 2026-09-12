@@ -39,7 +39,7 @@
     ]);
   }
 
-  function criarBlocoDeDigitacao(titulo) {
+  function criarBlocoDeMarcador(titulo) {
     const bloco = document.createElement("span");
     bloco.className = "hero-bloco";
     bloco.setAttribute("aria-hidden", "true");
@@ -47,85 +47,51 @@
     return bloco;
   }
 
-  function digitacaoDoTitulo(titulo, split) {
-    const letras = split.chars;
-    const bloco = criarBlocoDeDigitacao(titulo);
+  function entradaDoTitulo(titulo, split) {
+    const palavras = split.words;
     const destaque = titulo.querySelector("em");
-    const inicioDoDestaque = letras.findIndex((letra) => letra.closest("em"));
     const linha = gsap.timeline();
 
-    titulo.classList.add("esta-digitando");
     gsap.set(titulo, { opacity: 1 });
-    gsap.set(letras, { opacity: 0 });
-    gsap.set(bloco, { opacity: 0 });
-
-    const CORPO = parseFloat(getComputedStyle(titulo).fontSize) || 16;
-    const FOLGA_X = 0.09 * CORPO;
-    const RECUO_TOPO = 0.2 * CORPO;
-    const SOBRA_BASE = 0.04 * CORPO;
-    let corAtual = null;
-
-    function caixaRelativa(alvo) {
-      const a = alvo.getBoundingClientRect();
-      const t = titulo.getBoundingClientRect();
-      return {
-        left: a.left - t.left - FOLGA_X,
-        top: a.top - t.top + RECUO_TOPO,
-        width: a.width + FOLGA_X * 2,
-        height: a.height - RECUO_TOPO + SOBRA_BASE,
-      };
-    }
-
-    /* ⚠️ A caixa do <em> já inclui o respiro dele; somar de novo faz o bloco
-       terminar maior que o destaque em CSS e encolher na troca. */
-    function caixaDoDestaque() {
-      const a = destaque.getBoundingClientRect();
-      const t = titulo.getBoundingClientRect();
-      const recuo = RECUO_TOPO + SOBRA_BASE;
-      return {
-        left: a.left - t.left,
-        top: a.top - t.top + recuo,
-        width: a.width,
-        height: a.height - recuo,
-      };
-    }
-
-    function levarBlocoPara(letra, cor) {
-      gsap.set(bloco, { ...caixaRelativa(letra), opacity: 1 });
-      if (cor !== corAtual) {
-        corAtual = cor;
-        gsap.to(bloco, { backgroundColor: cor, duration: 0.25, overwrite: "auto" });
-      }
-    }
-
-    const corComum = "var(--blush-500)";
-    const corDestaque = "var(--blush-150)";
-
-    let quando = 0;
-    letras.forEach((letra, i) => {
-      const noDestaque = inicioDoDestaque >= 0 && i >= inicioDoDestaque;
-      if (i === inicioDoDestaque) quando += 0.2;
-      quando += noDestaque ? 0.036 : 0.018;
-      linha.call(() => {
-        gsap.set(letra, { opacity: 1 });
-        levarBlocoPara(letra, noDestaque ? corDestaque : corComum);
-      }, null, quando);
-    });
 
     const podeMarcarTexto = destaque && destaque.getClientRects().length === 1;
+    let bloco = null;
+    let larguraFinal = 0;
+
     if (podeMarcarTexto) {
-      linha.call(() => {
-        gsap.to(bloco, { ...caixaDoDestaque(), duration: 0.34, ease: "power2.inOut", overwrite: true });
-      }, null, quando + 0.16);
-    } else {
-      linha.to(bloco, { opacity: 0, duration: 0.3 }, quando + 0.2);
+      const CORPO = parseFloat(getComputedStyle(titulo).fontSize) || 16;
+      const recuo = 0.2 * CORPO + 0.04 * CORPO;
+      const a = destaque.getBoundingClientRect();
+      const t = titulo.getBoundingClientRect();
+      larguraFinal = a.width;
+      bloco = criarBlocoDeMarcador(titulo);
+      titulo.classList.add("esta-digitando");
+      gsap.set(bloco, {
+        left: a.left - t.left, top: a.top - t.top + recuo,
+        width: 0, height: a.height - recuo,
+        backgroundColor: "var(--blush-150)", opacity: 1,
+      });
     }
 
-    linha.call(() => {
-      split.revert();
-      titulo.classList.remove("esta-digitando");
-      bloco.remove();
-    }, null, quando + (podeMarcarTexto ? 0.95 : 1.35));
+    gsap.set(palavras, { opacity: 0, y: 14 });
+
+    const duracaoPalavras = 0.5;
+    const staggerPalavras = 0.055;
+    linha.to(palavras, {
+      opacity: 1, y: 0, duration: duracaoPalavras, stagger: staggerPalavras, ease: "power3.out",
+    }, 0);
+
+    if (bloco) {
+      const inicioDoTraco = duracaoPalavras + staggerPalavras * (palavras.length - 1) - 0.25;
+      linha.to(bloco, { width: larguraFinal, duration: 0.4, ease: "power2.inOut" }, Math.max(inicioDoTraco, 0));
+      linha.call(() => {
+        titulo.classList.remove("esta-digitando");
+        bloco.remove();
+        split.revert();
+      });
+    } else {
+      linha.call(() => split.revert());
+    }
 
     return linha;
   }
@@ -155,14 +121,14 @@
       if (window.SplitText && titulo) {
         gsap.registerPlugin(SplitText);
         try {
-          split = new SplitText(titulo, { type: "words,chars" });
+          split = new SplitText(titulo, { type: "words" });
         } catch (e) {
           split = null;
         }
       }
 
-      if (split && split.chars.length) {
-        tl.add(digitacaoDoTitulo(titulo, split), 0);
+      if (split && split.words.length) {
+        tl.add(entradaDoTitulo(titulo, split), 0);
       } else if (titulo) {
         tl.to(titulo, { opacity: 1, duration: 0.8 });
       }
@@ -593,8 +559,25 @@
     }
   }
 
+  function entradaDoHeroSemMovimento() {
+    const hero = document.querySelector(".hero");
+    if (!hero) return;
+    const titulo = hero.querySelector(".hero-title");
+    const arte = hero.querySelector(".hero-art");
+    const lacos = hero.querySelectorAll(".hero-art .floaty");
+    const texto = [
+      hero.querySelector(".hero-lead"),
+      ...hero.querySelectorAll(".hero .d-flex.flex-wrap > *"),
+      ...hero.querySelectorAll(".hero-stats > div"),
+    ].filter(Boolean);
+    gsap.set([titulo, arte, ...lacos, ...texto].filter(Boolean), { clearProps: "opacity,transform" });
+  }
+
   mm.add("(prefers-reduced-motion: no-preference)", () => {
     entradaDoHero();
+  });
+  mm.add("(prefers-reduced-motion: reduce)", () => {
+    entradaDoHeroSemMovimento();
   });
 
   function fitaDasGarantias({ animar }) {

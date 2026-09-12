@@ -1696,7 +1696,7 @@
   }
 
   const newsletterForm = document.getElementById("newsletterForm");
-  newsletterForm.addEventListener("submit", async function(e){
+  newsletterForm?.addEventListener("submit", async function(e){
     e.preventDefault();
     const input = this.querySelector("input[type=email]");
     const btn = this.querySelector("button[type=submit]");
