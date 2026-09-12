@@ -59,6 +59,33 @@ const app = express();
 const PORT = process.env.PORT || 3333;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:3333";
 
+/* ⚠️ O site responde no domínio com e sem "www.", mas CLIENT_ORIGIN é UM
+   valor só. Sem o que vem abaixo, quem chegasse pelo host errado levava
+   403 "origem não confiável" em TODO POST — criar conta, entrar, fechar
+   pedido — porque o header Origin do navegador não batia com a string
+   única. Não é hipótese: foi assim que apareceu, uma cliente não conseguia
+   criar conta pelo celular.
+
+   São duas camadas, de propósito:
+   1. O host gêmeo é redirecionado (301) para o canônico, então o navegador
+      passa a viver numa origem só — é o que realmente resolve, e também
+      alinha com o <link rel="canonical"> que o index.html já declara.
+   2. As duas origens entram na lista de confiáveis, para a página que já
+      estava aberta no host antigo não quebrar no meio de um cadastro.
+
+   O redirecionamento só vale para o gêmeo exato (www ↔ sem www), nunca
+   para um host desconhecido: redirecionar qualquer Host que chegue é como
+   se criam laços infinitos quando o proxy da hospedagem manda um nome
+   interno. */
+const CANONICAL_HOST = new URL(CLIENT_ORIGIN).host;
+const HOST_GEMEO = CANONICAL_HOST.startsWith("www.")
+  ? CANONICAL_HOST.slice(4)
+  : `www.${CANONICAL_HOST}`;
+const ORIGENS_CONFIAVEIS = new Set([
+  CLIENT_ORIGIN,
+  CLIENT_ORIGIN.replace(CANONICAL_HOST, HOST_GEMEO),
+]);
+
 /* ⚠️ Em produção este processo roda ATRÁS do proxy da hospedagem (a
    Hostinger serve por LiteSpeed), então o IP da conexão é sempre o do
    proxy — o IP real da cliente vem no cabeçalho X-Forwarded-For.
@@ -135,7 +162,7 @@ const mpClient = new MercadoPagoConfig({
 // lojista usa para postar (16x7x20cm, 200g) — antes cada linha tinha um
 // palpite diferente (2 a 6cm de altura), que não correspondia à embalagem
 // verdadeira e distorcia o frete calculado.
-const CAIXA_PADRAO = { weight:0.2, width:16, height:7, length:20 };
+const { CAIXA_PADRAO, buildPackage } = require("./lib/empacotamento.js");
 const PRODUCTS = {
   1: { name:"Laço Bailarina",        price:34.90, ...CAIXA_PADRAO, category:"laco-unico",  badges:[] },
   2: { name:"Laço Duquesa",          price:49.90, ...CAIXA_PADRAO, category:"laco-unico",  badges:["Mais vendido"] },
@@ -177,14 +204,6 @@ const PRODUCT_BADGES = ["Mais vendido", "Novo"];
    daqui — os ids 1-8 (PRODUCTS acima) nunca mudam, então não há colisão
    possível mesmo que o catálogo fixo cresça um pouco no futuro. */
 const CUSTOM_PRODUCT_ID_START = 1000;
-
-/* A lojista posta TUDO junto, numa caixa só — o TAMANHO dela (16x7x20cm,
-   CAIXA_PADRAO acima) nunca muda com a quantidade, mas o PESO nunca é fixo:
-   é a embalagem em si (caixa + papel) mais ~20g por laço, do primeiro em
-   diante. Calibrado com o dado dela — 8 laços pesam uns 200g — então a
-   embalagem sozinha é 200g − 8×20g = 40g. Ver buildPackage, abaixo. */
-const PESO_EMBALAGEM_KG = 0.04;
-const PESO_LACO_KG = 0.02;
 
 /* Categorias do modelo antigo, por ocasião. Saíram de BUILTIN_CATEGORIES na
    virada para tipo de produto, mas continuam listadas ENQUANTO houver produto
@@ -491,7 +510,19 @@ app.use(helmet({
 // site é aberto de uma origem diferente da API (ex.: durante o desenvolvimento
 // com um live-reload em outra porta). Combinado com `origin` fixo (não "*"),
 // só o seu próprio site pode enviar/receber esse cookie.
-app.use(cors({ origin: CLIENT_ORIGIN, credentials: true }));
+app.use(cors({ origin: [...ORIGENS_CONFIAVEIS], credentials: true }));
+
+/* Manda quem chegou pelo host gêmeo para o canônico, para o navegador
+   passar a mandar o Origin certo nos POSTs seguintes. Só GET/HEAD de
+   página: um POST redirecionado perderia o corpo, e /api fica de fora
+   para o webhook do Mercado Pago não ser desviado. */
+app.use((req, res, next) => {
+  if(req.method !== "GET" && req.method !== "HEAD") return next();
+  if(req.path.startsWith("/api/")) return next();
+  if(req.headers.host !== HOST_GEMEO) return next();
+  res.set("Cache-Control", "no-store");
+  return res.redirect(301, CLIENT_ORIGIN + req.originalUrl);
+});
 // Comprime HTML/CSS/JS/JSON com gzip antes de enviar — sem isso, o
 // style.css (~21KB) e o main.js (~37KB) saíam do jeito que estão no disco,
 // mesmo o navegador sempre anunciando que aceita gzip. Não comprime
@@ -591,7 +622,7 @@ function verifyOrigin(req, res, next){
   if(req.path === "/webhook") return next();
   if(req.path === "/newsletter/unsubscribe") return next();
   const origin = req.headers.origin;
-  if(!origin || origin !== CLIENT_ORIGIN){
+  if(!origin || !ORIGENS_CONFIAVEIS.has(origin)){
     return res.status(403).json({ error: "Requisição recusada (origem não confiável)." });
   }
   next();
@@ -1191,49 +1222,6 @@ function buildValidatedItems(items){
     }
     return { id, qty, product };
   });
-}
-
-/* Empacotamento: os laços do catálogo fixo (id < 1000) vão TODOS na MESMA
-   caixa — o TAMANHO dela (CAIXA_PADRAO) nunca muda com a quantidade, 1 laço
-   ou 20. O PESO nunca é fixo: soma PESO_EMBALAGEM_KG (a caixa+papel em si)
-   com PESO_LACO_KG por laço, do primeiro em diante — não é "grátis até 8",
-   é sempre proporcional; 8 laços só é o ponto que a lojista usou para
-   calibrar o peso da embalagem sozinha (200g − 8×20g = 40g).
-   Um produto do painel (id >= 1000, ex.: uma bolsa) ainda não compartilha
-   essa caixa — não é um laço, pode não caber nela — então continua somando
-   peso e altura por unidade, do jeito que já funcionava antes. Se os dois
-   tipos vierem no mesmo pedido, as caixas se empilham: altura soma, peso
-   soma, e a largura/comprimento ficam com o maior dos dois. */
-function buildPackage(validatedItems){
-  let width = 0, length = 0, insurance = 0;
-  let lacosQty = 0;
-  let pesoOutros = 0, alturaOutros = 0;
-
-  for(const { id, qty, product } of validatedItems){
-    width = Math.max(width, product.width);
-    length = Math.max(length, product.length);
-    insurance += product.price * qty;
-
-    if(id < CUSTOM_PRODUCT_ID_START){
-      lacosQty += qty;
-    } else {
-      pesoOutros += product.weight * qty;
-      alturaOutros += product.height * qty;
-    }
-  }
-
-  const pesoDaCaixaDeLacos = lacosQty > 0
-    ? PESO_EMBALAGEM_KG + lacosQty * PESO_LACO_KG
-    : 0;
-  const alturaComLacos = (lacosQty > 0 ? CAIXA_PADRAO.height : 0) + alturaOutros;
-
-  return {
-    weight: pesoDaCaixaDeLacos + pesoOutros,
-    width: Math.max(width, CAIXA_PADRAO.width),
-    length: Math.max(length, CAIXA_PADRAO.length),
-    height: Math.max(alturaComLacos, CAIXA_PADRAO.height),
-    insurance_value: Math.round(insurance * 100) / 100,
-  };
 }
 
 /* =========================================================================
